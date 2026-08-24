@@ -17,21 +17,15 @@ y se le pasan a Lucas (no quedan en el repo en claro).
 
 from __future__ import annotations
 
-import hashlib
-import json
 import os
 import secrets
-import time
+
+import bcrypt
 
 from core import paths as _paths
+from core.db import credentials_repo, sessions_repo, tenant as _tenant
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# Credenciales POR TENANT: cada instancia (piloto/demo) tiene las suyas, en su
-# directorio de datos. El piloto conserva el archivo histórico en backend/ para
-# no invalidar las contraseñas que ya tiene Lucas.
-CREDS_FILE = (os.path.join(HERE, "credenciales.json")
-              if _paths.TENANT == "piloto"
-              else os.path.join(_paths.DATA_DIR, "credenciales.json"))
 
 # ---------------------------------------------------------------------------
 # Catálogo maestro de MÓDULOS del sistema (el "PolPilot completo").
@@ -74,12 +68,17 @@ def modulos_labels(lang: str | None = None) -> dict[str, str]:
             for mid, label in MODULOS.items()}
 
 
+# DEUDA saldada (P9·C6/M10, resuelta al migrar a Postgres): bcrypt con salt,
+# ya no queda plaintext persistido — ver core/db/credentials_repo.py.
+_DUMMY_HASH = bcrypt.hashpw(b"~~jamas-coincide~~", bcrypt.gensalt()).decode()
+
+
 def _hash(pw: str) -> str:
-    # DEUDA (anotada 15/07/2026, P9·C6/M10): SHA-256 sin salt alcanza para el
-    # piloto y el demo (passwords generadas, no elegidas por humanos), pero
-    # ANTES del primer cliente nuevo esto pasa a bcrypt/argon2 con salt y se
-    # dejan de guardar los plaintext en credenciales.json. Ver PENDIENTES.md.
-    return hashlib.sha256(pw.encode("utf-8")).hexdigest()
+    return bcrypt.hashpw((pw or "").encode("utf-8"), bcrypt.gensalt()).decode()
+
+
+def _verifica(pw: str, hash_guardado: str) -> bool:
+    return bcrypt.checkpw((pw or "").encode("utf-8"), hash_guardado.encode("utf-8"))
 
 
 # ---------------------------------------------------------------------------
@@ -236,59 +235,37 @@ def nombre_dueno() -> str:
     return dueno()["nombre"]
 
 
-# Hashes de contraseñas y plaintext (cargados/generados al iniciar).
-_PASS_HASHES: dict[str, str] = {}
-_PASS_PLAIN: dict[str, str] = {}
-
-# Tokens de sesión en memoria, CON vencimiento (P9·C6, M10): token ->
-# {username, expira}. TTL configurable por env (horas); un token vencido es
-# un token que no existe. Default 12 h: cubre una jornada, no un mes.
+# TTL de sesión configurable por env (horas); un token vencido es un token
+# que no existe (P9·C6, M10). Default 12 h: cubre una jornada, no un mes.
 TOKEN_TTL_SEGUNDOS = float(os.environ.get("POLPILOT_TOKEN_TTL_HORAS", "12")) * 3600
-_SESIONES: dict[str, dict] = {}
 
 
-def _purgar_sesiones() -> None:
-    ahora = time.time()
-    vencidos = [t for t, s in _SESIONES.items() if s["expira"] <= ahora]
-    for t in vencidos:
-        _SESIONES.pop(t, None)
+# Plaintext generado por ESTE proceso (nunca persistido a disco/DB — sólo el
+# hash va a auth_credentials). Sigue el mismo rol que la vieja _PASS_PLAIN:
+# evita re-generar (y perder de vista) el plaintext de un usuario ya
+# resuelto por una llamada anterior dentro del mismo proceso.
+_GENERADAS_ESTE_PROCESO: dict[str, str] = {}
 
 
 def cargar_o_generar_credenciales() -> dict[str, str]:
-    """
-    Carga las credenciales del archivo local si existen (estables entre
-    reinicios). Si no, las genera una vez y las guarda. Devuelve los plaintext
-    para reportárselos a Lucas.
-    """
-    global _PASS_HASHES, _PASS_PLAIN
-    if os.path.exists(CREDS_FILE):
-        try:
-            data = json.load(open(CREDS_FILE, encoding="utf-8"))
-            _PASS_PLAIN = data.get("plain", {})
-            _PASS_HASHES = {u: _hash(pw) for u, pw in _PASS_PLAIN.items()}
-            # Cubrir usuarios nuevos que no estuvieran en el archivo viejo.
-            faltan = [u for u in USUARIOS if u not in _PASS_PLAIN]
-            if not faltan:
-                return dict(_PASS_PLAIN)
-        except Exception:
-            pass
-
+    """Genera una contraseña para cada usuario del seed que todavía no tenga
+    una en auth_credentials, y devuelve TODO el plaintext que este proceso
+    generó hasta ahora (para reportarlo — nunca se persiste en claro)."""
+    tid = _tenant.current_tenant_id()
     palabras = ["pilar", "manteca", "cheddar", "fiambre", "remito", "gondola", "balanza"]
     for user in USUARIOS:
-        if user in _PASS_PLAIN:
+        if user in _GENERADAS_ESTE_PROCESO:
+            continue
+        if credentials_repo.get(tid, user) is not None:
             continue
         pw = f"{secrets.choice(palabras)}-{secrets.randbelow(9000) + 1000}"
-        _PASS_PLAIN[user] = pw
-    _PASS_HASHES = {u: _hash(pw) for u, pw in _PASS_PLAIN.items()}
-    try:
-        json.dump({"plain": _PASS_PLAIN}, open(CREDS_FILE, "w", encoding="utf-8"), indent=2)
-    except Exception:
-        pass
-    return dict(_PASS_PLAIN)
+        credentials_repo.set(tid, user, _hash(pw))
+        _GENERADAS_ESTE_PROCESO[user] = pw
+    return dict(_GENERADAS_ESTE_PROCESO)
 
 
 def credenciales_actuales() -> dict[str, str]:
-    return dict(_PASS_PLAIN)
+    return dict(_GENERADAS_ESTE_PROCESO)
 
 
 def perfil_publico(username: str, lang: str | None = None) -> dict | None:
@@ -335,27 +312,25 @@ def perfil_publico(username: str, lang: str | None = None) -> dict | None:
 
 def login(username: str, password: str) -> dict | None:
     username = (username or "").strip().lower()
+    tid = _tenant.current_tenant_id()
     u = USUARIOS.get(username)
     # Comparación en TIEMPO CONSTANTE y sin return temprano (P9·C6, M10): la
     # demora de la respuesta no revela si el usuario existe (enumeración por
     # timing). Usuario inexistente → se compara igual contra un hash señuelo.
-    hash_guardado = _PASS_HASHES.get(username) or _hash("~~jamas-coincide~~")
-    ok = secrets.compare_digest(hash_guardado, _hash(password or ""))
+    hash_guardado = credentials_repo.get(tid, username) or _DUMMY_HASH
+    ok = _verifica(password, hash_guardado)
     if not (u and ok):
         return None
-    _purgar_sesiones()
+    sessions_repo.purge_expired(tid)
     token = secrets.token_urlsafe(24)
-    _SESIONES[token] = {"username": username,
-                        "expira": time.time() + TOKEN_TTL_SEGUNDOS}
+    sessions_repo.create(tid, username, token, TOKEN_TTL_SEGUNDOS)
     return {"token": token, "usuario": perfil_publico(username)}
 
 
 def usuario_por_token(token: str) -> dict | None:
-    s = _SESIONES.get(token or "")
+    tid = _tenant.current_tenant_id()
+    s = sessions_repo.get(tid, token or "")
     if not s:
-        return None
-    if s["expira"] <= time.time():  # vencido = inexistente (M10)
-        _SESIONES.pop(token, None)
         return None
     return perfil_publico(s["username"])
 
@@ -383,10 +358,10 @@ def sesion_para(username: str) -> dict | None:
     u = USUARIOS.get((username or "").strip().lower())
     if not u or u.get("interno"):
         return None
-    _purgar_sesiones()
+    tid = _tenant.current_tenant_id()
+    sessions_repo.purge_expired(tid)
     token = secrets.token_urlsafe(24)
-    _SESIONES[token] = {"username": u["username"],
-                        "expira": time.time() + TOKEN_TTL_SEGUNDOS}
+    sessions_repo.create(tid, u["username"], token, TOKEN_TTL_SEGUNDOS)
     return {"token": token, "usuario": perfil_publico(u["username"])}
 
 

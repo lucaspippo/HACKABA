@@ -149,19 +149,19 @@ def test_vendedor_piloto_tiene_cuentas():
 
 # --- P9·C6 (M10): TTL de tokens + login en tiempo constante ---
 
-def test_token_vencido_es_token_inexistente(monkeypatch):
-    creds = auth.cargar_o_generar_credenciales()
-    s = auth.login("emilio", creds["emilio"])
-    assert auth.usuario_por_token(s["token"])["username"] == "emilio"
-    # se vence el token: adelantamos el reloj más allá del TTL (capturando la
-    # función real ANTES de patchear — auth.time ES el módulo time)
-    import time as _time
-    reloj_real = _time.time
-    monkeypatch.setattr(auth.time, "time",
-                        lambda: reloj_real() + auth.TOKEN_TTL_SEGUNDOS + 1)
-    assert auth.usuario_por_token(s["token"]) is None
-    # y quedó purgado de la tabla de sesiones
-    assert s["token"] not in auth._SESIONES
+def test_token_vencido_es_token_inexistente():
+    """La expiración se resuelve enteramente en Postgres (expires_at > now()),
+    no contra el reloj de Python (ver core/db/sessions_repo.py) — así que acá
+    se emite directo una sesión YA vencida (ttl negativo) en vez de adelantar
+    un reloj que auth.py ya no consulta."""
+    from core.db import sessions_repo, tenant as _tenant_mod
+
+    tid = _tenant_mod.current_tenant_id()
+    token = "test-token-vencido"
+    sessions_repo.create(tid, "emilio", token, ttl_seconds=-1)
+    assert auth.usuario_por_token(token) is None
+    # y quedó purgada de la tabla de sesiones
+    assert sessions_repo.get(tid, token) is None
 
 
 def test_login_no_distingue_usuario_inexistente_de_password_mala():

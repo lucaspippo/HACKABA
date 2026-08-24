@@ -65,9 +65,9 @@ def test_el_nuevo_viaja_en_la_lista_del_equipo():
     out = _en_demo(
         "import json, auth, main;"
         "from fastapi.testclient import TestClient;"
-        "creds = auth.cargar_o_generar_credenciales();"
+        "from tests.conftest import DEMO_TEST_PASSWORD;"
         "c = TestClient(main.app);"
-        "tk = c.post('/api/login', json={'username':'aldo','password':creds['aldo']}).json()['token'];"
+        "tk = c.post('/api/login', json={'username':'aldo','password':DEMO_TEST_PASSWORD}).json()['token'];"
         "eq = c.get('/api/equipo/nombres', headers={'Authorization': 'Bearer '+tk}).json()['equipo'];"
         "print(json.dumps({'n': len(eq),"
         " 'nuevos': [p['username'] for p in eq if (p.get('antiguedad') or {}).get('nuevo')],"
@@ -199,9 +199,9 @@ def test_endpoint_onboarding_devuelve_la_guia_del_que_pregunta():
     out = _en_demo(
         "import json, auth, main;"
         "from fastapi.testclient import TestClient;"
-        "creds = auth.cargar_o_generar_credenciales();"
+        "from tests.conftest import DEMO_TEST_PASSWORD;"
         "c = TestClient(main.app);"
-        "tk = c.post('/api/login', json={'username':'kevin','password':creds['kevin']}).json()['token'];"
+        "tk = c.post('/api/login', json={'username':'kevin','password':DEMO_TEST_PASSWORD}).json()['token'];"
         "r = c.get('/api/onboarding', headers={'Authorization': 'Bearer '+tk});"
         "g = r.json();"
         "print(json.dumps({'status': r.status_code, 'quien': g['persona']['username'],"
