@@ -67,3 +67,14 @@ def test_customer_accounts_tables_have_rls_enabled():
         )).mappings().all()
         assert len(rows) == 2
         assert all(r["relrowsecurity"] and r["relforcerowsecurity"] for r in rows)
+
+
+def test_audit_events_table_has_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = 'audit_events'"
+        )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
