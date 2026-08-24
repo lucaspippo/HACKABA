@@ -13,17 +13,18 @@ import pytest
 import angela
 import config
 from core import cuentas, caja
+from tests.conftest import limpiar_cuentas_db
 
 
 @pytest.fixture(autouse=True)
 def _reset_datos():
-    for f in (cuentas.CUENTAS_JSON, caja.CAJA_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    limpiar_cuentas_db()
+    if os.path.exists(caja.CAJA_JSON):
+        os.remove(caja.CAJA_JSON)
     yield
-    for f in (cuentas.CUENTAS_JSON, caja.CAJA_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    limpiar_cuentas_db()
+    if os.path.exists(caja.CAJA_JSON):
+        os.remove(caja.CAJA_JSON)
 
 
 # --- A4: el grafo propaga (cobro de cuenta corriente → ingreso en caja) ---
