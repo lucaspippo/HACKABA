@@ -5,17 +5,18 @@ import pytest
 import auth
 import config
 from core import organizacion, macro
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
-    for f in (organizacion.ORG_JSON, macro.CACHE_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    limpiar_tabla_tenant("organization_config")
+    if os.path.exists(macro.CACHE_JSON):
+        os.remove(macro.CACHE_JSON)
     yield
-    for f in (organizacion.ORG_JSON, macro.CACHE_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    limpiar_tabla_tenant("organization_config")
+    if os.path.exists(macro.CACHE_JSON):
+        os.remove(macro.CACHE_JSON)
 
 
 def test_routing_apagado_usa_sonnet():
