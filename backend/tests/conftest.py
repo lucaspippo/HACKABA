@@ -1,8 +1,10 @@
 import os
 import shutil
 import tempfile
+import uuid as _uuid
 
 import pytest
+from sqlalchemy import text as _text
 
 # La suite corre contra el tenant "piloto" — la empresa FICTICIA "Supermercados
 # Horizonte" (usuarios emilio/paula/vendedor/deposito). Sin este pin, el default
@@ -24,6 +26,28 @@ if "POLPILOT_DATA_DIR" not in os.environ:
     shutil.copy2(os.path.join(_raiz, "data-demo", "inventory.json"),
                  os.path.join(_scratch, "inventory.json"))
     os.environ["POLPILOT_DATA_DIR"] = _scratch
+
+
+@pytest.fixture
+def db_tenant():
+    """A throwaway tenant row for one test. Deleting it cascades to every
+    tenant-scoped table (auth_credentials, sessions, and — from Task 8 on —
+    customer_accounts/account_movements), so tests never leak rows.
+    Uses the admin engine: creating/deleting a tenants row is admin-level
+    work, not a tenant-scoped query — see the Task 4 correction note in the
+    plan for why that distinction matters."""
+    from core.db.engine import get_admin_engine
+
+    engine = get_admin_engine()
+    slug = f"test-{_uuid.uuid4().hex[:8]}"
+    with engine.begin() as conn:
+        tid = conn.execute(_text(
+            "INSERT INTO tenants (slug, name, short_name, source) "
+            "VALUES (:slug, 'Test Tenant', 'Test', 'test') RETURNING id"
+        ), {"slug": slug}).scalar_one()
+    yield str(tid)
+    with engine.begin() as conn:
+        conn.execute(_text("DELETE FROM tenants WHERE id = :id"), {"id": tid})
 
 
 @pytest.fixture(autouse=True)
