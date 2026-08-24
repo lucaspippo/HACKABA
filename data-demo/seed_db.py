@@ -1,8 +1,12 @@
 """
-Seeds (or resets) a tenant's row plus its auth credentials and cuentas data
-into Postgres. Ports data-demo/generar.py's role for the domains migrated so
-far (cuentas only, so far — as more core/*.py modules move off JSON, see
-backend/core/db/MIGRATING_A_MODULE.md, their seed data joins this script).
+Seeds (or resets) a tenant's row, its auth credentials, and every domain
+migrated to Postgres so far (cuentas, audit, versioning*, inventory, caja —
+* versioning has no seed data, it's an empty append-only log for a new
+tenant). Ports data-demo/generar.py's role for those domains — as more
+core/*.py modules move off JSON, see backend/core/db/MIGRATING_A_MODULE.md,
+their seed data joins this script the same way: trigger the module's own
+first-read, which already knows to prefer its real on-disk dataset over its
+in-code fallback. Don't duplicate seed data here.
 
 Must run as a fresh process per tenant, never called for a second tenant
 from within an already-running one: core.paths.TENANT/DATA_DIR are resolved
@@ -61,12 +65,18 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
             import bcrypt
             credentials_repo.set(tid, username, bcrypt.hashpw(b"demo-password", bcrypt.gensalt()).decode())
 
-    # Triggers the customer_accounts/account_movements seed — core.cuentas.
-    # _load() already knows to read this tenant's real cuentas.json off disk
-    # when present (data-demo/cuentas.json for "demo") and falls back to its
-    # own small _SEED otherwise. Don't duplicate that seed data here.
+    # Each call below triggers that module's own first-read seed (real
+    # on-disk dataset if present, else its in-code fallback) — see the
+    # module docstring above for why nothing is duplicated here.
     from core import cuentas as core_cuentas
-    core_cuentas.listar()
+    core_cuentas.listar()  # customer_accounts / account_movements
+
+    from core import store as core_store
+    core_store.raw_actual()  # inventory_working
+    core_store.audit.list()  # audit_events
+
+    from core import caja as core_caja
+    core_caja.estado()  # caja_state
 
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
