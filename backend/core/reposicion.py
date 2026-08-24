@@ -30,12 +30,26 @@ CONDICIONES_JSON = os.path.join(paths.DATA_DIR, "proveedores_condiciones.json")
 DIAS_REPOSICION_FALLBACK = 14
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    """The tenant's REAL reference data if it exists on disk (e.g. data-demo/
+    proveedores_condiciones.json), used ONLY to seed Postgres the first time
+    (once per tenant). This module has no write API — {} is the fallback for
+    a tenant with no file at all, same as the old missing-file behavior."""
     try:
         with open(CONDICIONES_JSON, encoding="utf-8") as f:
             return json.load(f) or {}
     except Exception:  # noqa: BLE001 — sin archivo, el módulo se calla
         return {}
+
+
+def _load() -> dict:
+    from core.db import supplier_conditions_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = supplier_conditions_repo.get_data(tid)
+    if data is None:
+        data = _seed_inicial()
+        supplier_conditions_repo.save_data(tid, data)
+    return data
 
 
 def condiciones() -> list[dict]:
