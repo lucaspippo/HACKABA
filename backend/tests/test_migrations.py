@@ -56,3 +56,14 @@ def test_rls_blocks_cross_tenant_reads():
 
     with admin.begin() as conn:
         conn.execute(text("DELETE FROM tenants WHERE id IN (:a, :b)"), {"a": t1, "b": t2})
+
+
+def test_customer_accounts_tables_have_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname IN ('customer_accounts', 'account_movements')"
+        )).mappings().all()
+        assert len(rows) == 2
+        assert all(r["relrowsecurity"] and r["relforcerowsecurity"] for r in rows)
