@@ -1,0 +1,65 @@
+{
+  "_nota": "Las notas de voz preparadas del demo. Cada una trae su transcripción canónica (por sha256 del audio, si hay archivo) Y su interpretación canónica (por la frase normalizada). Con esto el flujo de voz es determinista de punta a punta —sin red y sin API key— igual que los comprobantes de muestra del Bloque B. Cualquier OTRA frase va al modelo real. core/transcripcion.py sirve la transcripción; core/voz.py sirve la interpretación.",
+  "muestras": {
+    "deposito_fallado": {
+      "sha256": null,
+      "rol": "deposito",
+      "titulo": "Depósito · llegó mercadería fallada",
+      "texto": "Ángela, llegaron ocho cajas falladas de gaseosa cola la ribera de la última entrega",
+      "interpretacion": {
+        "intencion": "faltante",
+        "producto": "gaseosa cola la ribera",
+        "cantidad": 8,
+        "motivo": "roto",
+        "cliente": null,
+        "nota": "Vinieron golpeadas de la última entrega.",
+        "confianza": "clara"
+      }
+    },
+    "reparto_entrega_parcial": {
+      "sha256": null,
+      "rol": "reparto",
+      "titulo": "Reparto · entregué todo menos una caja",
+      "texto": "Entregué todo en Autoservicio 9 de Julio menos una caja de leche entera campo alegre",
+      "interpretacion": {
+        "intencion": "entrega",
+        "producto": "leche entera campo alegre",
+        "cantidad": 1,
+        "motivo": "faltante",
+        "cliente": "Autoservicio 9 de Julio",
+        "nota": "Entrega completa salvo una caja.",
+        "confianza": "clara"
+      }
+    },
+    "mostrador_precio": {
+      "sha256": null,
+      "rol": "mostrador",
+      "titulo": "Mostrador · cuánto sale el kilo",
+      "texto": "¿Cuánto sale el kilo de jamón cocido el paraná?",
+      "interpretacion": {
+        "intencion": "consulta",
+        "producto": "jamón cocido el paraná",
+        "cantidad": null,
+        "motivo": null,
+        "cliente": null,
+        "nota": null,
+        "confianza": "clara"
+      }
+    },
+    "deposito_escala": {
+      "sha256": null,
+      "rol": "deposito",
+      "titulo": "Depósito · el número que no cierra",
+      "texto": "Ángela, entraron ocho mil cajas de leche entera campo alegre",
+      "interpretacion": {
+        "intencion": "conteo",
+        "producto": "leche entera campo alegre",
+        "cantidad": 8000,
+        "motivo": null,
+        "cliente": null,
+        "nota": "Ingreso de mercadería.",
+        "confianza": "clara"
+      }
+    }
+  }
+}

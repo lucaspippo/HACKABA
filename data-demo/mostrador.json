@@ -1,0 +1,859 @@
+{
+ "_nota": "Canal MOSTRADOR (minorista) del demo — 100% ficticio. La venta diaria sale de los cierres de caja que ya existen; los recargos por grupo son los del rubro (feteado ~80% sobre costo, pieza entera ~30%, congelados ~60%, almacén 40-45%).",
+ "locales": [
+  "Casa Central",
+  "Sucursal Norte",
+  "Sucursal Puerto"
+ ],
+ "venta_diaria_promedio": 3641703.0,
+ "grupos": [
+  {
+   "id": "feteado",
+   "categorias": [
+    "fiambres y quesos (balanza)"
+   ],
+   "presentacion": "feteado",
+   "recargo_sobre_costo_pct": 80.0,
+   "margen_sobre_venta_pct": 44.4,
+   "share_venta": 0.22
+  },
+  {
+   "id": "pieza_entera",
+   "categorias": [
+    "fiambres y quesos (balanza)"
+   ],
+   "presentacion": "pieza entera",
+   "recargo_sobre_costo_pct": 30.0,
+   "margen_sobre_venta_pct": 23.1,
+   "share_venta": 0.03
+  },
+  {
+   "id": "congelados",
+   "categorias": [
+    "congelados"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 60.0,
+   "margen_sobre_venta_pct": 37.5,
+   "share_venta": 0.08
+  },
+  {
+   "id": "lacteos",
+   "categorias": [
+    "lácteos"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 45.0,
+   "margen_sobre_venta_pct": 31.0,
+   "share_venta": 0.12
+  },
+  {
+   "id": "almacen",
+   "categorias": [
+    "almacén seco",
+    "aceites y aderezos"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 42.0,
+   "margen_sobre_venta_pct": 29.6,
+   "share_venta": 0.22
+  },
+  {
+   "id": "galletitas",
+   "categorias": [
+    "galletitas y golosinas"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 45.0,
+   "margen_sobre_venta_pct": 31.0,
+   "share_venta": 0.1
+  },
+  {
+   "id": "bebidas",
+   "categorias": [
+    "bebidas"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 40.0,
+   "margen_sobre_venta_pct": 28.6,
+   "share_venta": 0.15
+  },
+  {
+   "id": "limpieza",
+   "categorias": [
+    "limpieza y perfumería"
+   ],
+   "presentacion": null,
+   "recargo_sobre_costo_pct": 45.0,
+   "margen_sobre_venta_pct": 31.0,
+   "share_venta": 0.08
+  }
+ ],
+ "cierres": [
+  {
+   "fecha": "2026-05-08",
+   "local": "Casa Central",
+   "total": 1274416
+  },
+  {
+   "fecha": "2026-05-08",
+   "local": "Sucursal Norte",
+   "total": 598665
+  },
+  {
+   "fecha": "2026-05-08",
+   "local": "Sucursal Puerto",
+   "total": 345522
+  },
+  {
+   "fecha": "2026-05-09",
+   "local": "Casa Central",
+   "total": 2087100
+  },
+  {
+   "fecha": "2026-05-09",
+   "local": "Sucursal Norte",
+   "total": 976525
+  },
+  {
+   "fecha": "2026-05-09",
+   "local": "Sucursal Puerto",
+   "total": 593334
+  },
+  {
+   "fecha": "2026-05-11",
+   "local": "Casa Central",
+   "total": 2567764
+  },
+  {
+   "fecha": "2026-05-11",
+   "local": "Sucursal Norte",
+   "total": 1161561
+  },
+  {
+   "fecha": "2026-05-11",
+   "local": "Sucursal Puerto",
+   "total": 734804
+  },
+  {
+   "fecha": "2026-05-12",
+   "local": "Casa Central",
+   "total": 2719413
+  },
+  {
+   "fecha": "2026-05-12",
+   "local": "Sucursal Norte",
+   "total": 1240703
+  },
+  {
+   "fecha": "2026-05-12",
+   "local": "Sucursal Puerto",
+   "total": 799986
+  },
+  {
+   "fecha": "2026-05-13",
+   "local": "Casa Central",
+   "total": 1962053
+  },
+  {
+   "fecha": "2026-05-13",
+   "local": "Sucursal Norte",
+   "total": 880650
+  },
+  {
+   "fecha": "2026-05-13",
+   "local": "Sucursal Puerto",
+   "total": 594210
+  },
+  {
+   "fecha": "2026-05-14",
+   "local": "Casa Central",
+   "total": 1257835
+  },
+  {
+   "fecha": "2026-05-14",
+   "local": "Sucursal Norte",
+   "total": 580728
+  },
+  {
+   "fecha": "2026-05-14",
+   "local": "Sucursal Puerto",
+   "total": 392769
+  },
+  {
+   "fecha": "2026-05-15",
+   "local": "Casa Central",
+   "total": 1843084
+  },
+  {
+   "fecha": "2026-05-15",
+   "local": "Sucursal Norte",
+   "total": 845232
+  },
+  {
+   "fecha": "2026-05-15",
+   "local": "Sucursal Puerto",
+   "total": 586647
+  },
+  {
+   "fecha": "2026-05-16",
+   "local": "Casa Central",
+   "total": 2306537
+  },
+  {
+   "fecha": "2026-05-16",
+   "local": "Sucursal Norte",
+   "total": 1022585
+  },
+  {
+   "fecha": "2026-05-16",
+   "local": "Sucursal Puerto",
+   "total": 761539
+  },
+  {
+   "fecha": "2026-05-18",
+   "local": "Casa Central",
+   "total": 2185103
+  },
+  {
+   "fecha": "2026-05-18",
+   "local": "Sucursal Norte",
+   "total": 957986
+  },
+  {
+   "fecha": "2026-05-18",
+   "local": "Sucursal Puerto",
+   "total": 716500
+  },
+  {
+   "fecha": "2026-05-19",
+   "local": "Casa Central",
+   "total": 2281024
+  },
+  {
+   "fecha": "2026-05-19",
+   "local": "Sucursal Norte",
+   "total": 973556
+  },
+  {
+   "fecha": "2026-05-19",
+   "local": "Sucursal Puerto",
+   "total": 733425
+  },
+  {
+   "fecha": "2026-05-20",
+   "local": "Casa Central",
+   "total": 2721939
+  },
+  {
+   "fecha": "2026-05-20",
+   "local": "Sucursal Norte",
+   "total": 1219305
+  },
+  {
+   "fecha": "2026-05-20",
+   "local": "Sucursal Puerto",
+   "total": 941502
+  },
+  {
+   "fecha": "2026-05-21",
+   "local": "Casa Central",
+   "total": 1270034
+  },
+  {
+   "fecha": "2026-05-21",
+   "local": "Sucursal Norte",
+   "total": 556206
+  },
+  {
+   "fecha": "2026-05-21",
+   "local": "Sucursal Puerto",
+   "total": 442683
+  },
+  {
+   "fecha": "2026-05-22",
+   "local": "Casa Central",
+   "total": 2550803
+  },
+  {
+   "fecha": "2026-05-22",
+   "local": "Sucursal Norte",
+   "total": 1085869
+  },
+  {
+   "fecha": "2026-05-22",
+   "local": "Sucursal Puerto",
+   "total": 898910
+  },
+  {
+   "fecha": "2026-05-23",
+   "local": "Casa Central",
+   "total": 2027412
+  },
+  {
+   "fecha": "2026-05-23",
+   "local": "Sucursal Norte",
+   "total": 871688
+  },
+  {
+   "fecha": "2026-05-23",
+   "local": "Sucursal Puerto",
+   "total": 762525
+  },
+  {
+   "fecha": "2026-05-25",
+   "local": "Casa Central",
+   "total": 1959651
+  },
+  {
+   "fecha": "2026-05-25",
+   "local": "Sucursal Norte",
+   "total": 826226
+  },
+  {
+   "fecha": "2026-05-25",
+   "local": "Sucursal Puerto",
+   "total": 710289
+  },
+  {
+   "fecha": "2026-05-26",
+   "local": "Casa Central",
+   "total": 1465086
+  },
+  {
+   "fecha": "2026-05-26",
+   "local": "Sucursal Norte",
+   "total": 596185
+  },
+  {
+   "fecha": "2026-05-26",
+   "local": "Sucursal Puerto",
+   "total": 528514
+  },
+  {
+   "fecha": "2026-05-27",
+   "local": "Casa Central",
+   "total": 2292121
+  },
+  {
+   "fecha": "2026-05-27",
+   "local": "Sucursal Norte",
+   "total": 942373
+  },
+  {
+   "fecha": "2026-05-27",
+   "local": "Sucursal Puerto",
+   "total": 859154
+  },
+  {
+   "fecha": "2026-05-28",
+   "local": "Casa Central",
+   "total": 2527165
+  },
+  {
+   "fecha": "2026-05-28",
+   "local": "Sucursal Norte",
+   "total": 1053345
+  },
+  {
+   "fecha": "2026-05-28",
+   "local": "Sucursal Puerto",
+   "total": 1013105
+  },
+  {
+   "fecha": "2026-05-29",
+   "local": "Casa Central",
+   "total": 1715940
+  },
+  {
+   "fecha": "2026-05-29",
+   "local": "Sucursal Norte",
+   "total": 684407
+  },
+  {
+   "fecha": "2026-05-29",
+   "local": "Sucursal Puerto",
+   "total": 664001
+  },
+  {
+   "fecha": "2026-05-30",
+   "local": "Casa Central",
+   "total": 2329589
+  },
+  {
+   "fecha": "2026-05-30",
+   "local": "Sucursal Norte",
+   "total": 949799
+  },
+  {
+   "fecha": "2026-05-30",
+   "local": "Sucursal Puerto",
+   "total": 927704
+  },
+  {
+   "fecha": "2026-06-01",
+   "local": "Casa Central",
+   "total": 2018541
+  },
+  {
+   "fecha": "2026-06-01",
+   "local": "Sucursal Norte",
+   "total": 819653
+  },
+  {
+   "fecha": "2026-06-01",
+   "local": "Sucursal Puerto",
+   "total": 829103
+  },
+  {
+   "fecha": "2026-06-02",
+   "local": "Casa Central",
+   "total": 1471211
+  },
+  {
+   "fecha": "2026-06-02",
+   "local": "Sucursal Norte",
+   "total": 562787
+  },
+  {
+   "fecha": "2026-06-02",
+   "local": "Sucursal Puerto",
+   "total": 603102
+  },
+  {
+   "fecha": "2026-06-03",
+   "local": "Casa Central",
+   "total": 2570972
+  },
+  {
+   "fecha": "2026-06-03",
+   "local": "Sucursal Norte",
+   "total": 991873
+  },
+  {
+   "fecha": "2026-06-03",
+   "local": "Sucursal Puerto",
+   "total": 1046023
+  },
+  {
+   "fecha": "2026-06-04",
+   "local": "Casa Central",
+   "total": 1845518
+  },
+  {
+   "fecha": "2026-06-04",
+   "local": "Sucursal Norte",
+   "total": 709734
+  },
+  {
+   "fecha": "2026-06-04",
+   "local": "Sucursal Puerto",
+   "total": 799268
+  },
+  {
+   "fecha": "2026-06-05",
+   "local": "Casa Central",
+   "total": 2675604
+  },
+  {
+   "fecha": "2026-06-05",
+   "local": "Sucursal Norte",
+   "total": 1016583
+  },
+  {
+   "fecha": "2026-06-05",
+   "local": "Sucursal Puerto",
+   "total": 1151132
+  },
+  {
+   "fecha": "2026-06-06",
+   "local": "Casa Central",
+   "total": 1672374
+  },
+  {
+   "fecha": "2026-06-06",
+   "local": "Sucursal Norte",
+   "total": 631392
+  },
+  {
+   "fecha": "2026-06-06",
+   "local": "Sucursal Puerto",
+   "total": 739503
+  },
+  {
+   "fecha": "2026-06-08",
+   "local": "Casa Central",
+   "total": 2414163
+  },
+  {
+   "fecha": "2026-06-08",
+   "local": "Sucursal Norte",
+   "total": 875739
+  },
+  {
+   "fecha": "2026-06-08",
+   "local": "Sucursal Puerto",
+   "total": 1062658
+  },
+  {
+   "fecha": "2026-06-09",
+   "local": "Casa Central",
+   "total": 2065362
+  },
+  {
+   "fecha": "2026-06-09",
+   "local": "Sucursal Norte",
+   "total": 779143
+  },
+  {
+   "fecha": "2026-06-09",
+   "local": "Sucursal Puerto",
+   "total": 944064
+  },
+  {
+   "fecha": "2026-06-10",
+   "local": "Casa Central",
+   "total": 2108179
+  },
+  {
+   "fecha": "2026-06-10",
+   "local": "Sucursal Norte",
+   "total": 777254
+  },
+  {
+   "fecha": "2026-06-10",
+   "local": "Sucursal Puerto",
+   "total": 948996
+  },
+  {
+   "fecha": "2026-06-11",
+   "local": "Casa Central",
+   "total": 1612396
+  },
+  {
+   "fecha": "2026-06-11",
+   "local": "Sucursal Norte",
+   "total": 603978
+  },
+  {
+   "fecha": "2026-06-11",
+   "local": "Sucursal Puerto",
+   "total": 773901
+  },
+  {
+   "fecha": "2026-06-12",
+   "local": "Casa Central",
+   "total": 2097674
+  },
+  {
+   "fecha": "2026-06-12",
+   "local": "Sucursal Norte",
+   "total": 759134
+  },
+  {
+   "fecha": "2026-06-12",
+   "local": "Sucursal Puerto",
+   "total": 952868
+  },
+  {
+   "fecha": "2026-06-13",
+   "local": "Casa Central",
+   "total": 2214769
+  },
+  {
+   "fecha": "2026-06-13",
+   "local": "Sucursal Norte",
+   "total": 787000
+  },
+  {
+   "fecha": "2026-06-13",
+   "local": "Sucursal Puerto",
+   "total": 1026290
+  },
+  {
+   "fecha": "2026-06-15",
+   "local": "Casa Central",
+   "total": 1236459
+  },
+  {
+   "fecha": "2026-06-15",
+   "local": "Sucursal Norte",
+   "total": 433422
+  },
+  {
+   "fecha": "2026-06-15",
+   "local": "Sucursal Puerto",
+   "total": 587067
+  },
+  {
+   "fecha": "2026-06-16",
+   "local": "Casa Central",
+   "total": 1506812
+  },
+  {
+   "fecha": "2026-06-16",
+   "local": "Sucursal Norte",
+   "total": 535249
+  },
+  {
+   "fecha": "2026-06-16",
+   "local": "Sucursal Puerto",
+   "total": 757847
+  },
+  {
+   "fecha": "2026-06-17",
+   "local": "Casa Central",
+   "total": 1727341
+  },
+  {
+   "fecha": "2026-06-17",
+   "local": "Sucursal Norte",
+   "total": 607424
+  },
+  {
+   "fecha": "2026-06-17",
+   "local": "Sucursal Puerto",
+   "total": 860534
+  },
+  {
+   "fecha": "2026-06-18",
+   "local": "Casa Central",
+   "total": 2381817
+  },
+  {
+   "fecha": "2026-06-18",
+   "local": "Sucursal Norte",
+   "total": 807086
+  },
+  {
+   "fecha": "2026-06-18",
+   "local": "Sucursal Puerto",
+   "total": 1168496
+  },
+  {
+   "fecha": "2026-06-19",
+   "local": "Casa Central",
+   "total": 2188399
+  },
+  {
+   "fecha": "2026-06-19",
+   "local": "Sucursal Norte",
+   "total": 726496
+  },
+  {
+   "fecha": "2026-06-19",
+   "local": "Sucursal Puerto",
+   "total": 1076705
+  },
+  {
+   "fecha": "2026-06-20",
+   "local": "Casa Central",
+   "total": 1775098
+  },
+  {
+   "fecha": "2026-06-20",
+   "local": "Sucursal Norte",
+   "total": 607157
+  },
+  {
+   "fecha": "2026-06-20",
+   "local": "Sucursal Puerto",
+   "total": 936906
+  },
+  {
+   "fecha": "2026-06-22",
+   "local": "Casa Central",
+   "total": 1337058
+  },
+  {
+   "fecha": "2026-06-22",
+   "local": "Sucursal Norte",
+   "total": 433440
+  },
+  {
+   "fecha": "2026-06-22",
+   "local": "Sucursal Puerto",
+   "total": 691963
+  },
+  {
+   "fecha": "2026-06-23",
+   "local": "Casa Central",
+   "total": 2003398
+  },
+  {
+   "fecha": "2026-06-23",
+   "local": "Sucursal Norte",
+   "total": 660250
+  },
+  {
+   "fecha": "2026-06-23",
+   "local": "Sucursal Puerto",
+   "total": 1057297
+  },
+  {
+   "fecha": "2026-06-24",
+   "local": "Casa Central",
+   "total": 1585491
+  },
+  {
+   "fecha": "2026-06-24",
+   "local": "Sucursal Norte",
+   "total": 518380
+  },
+  {
+   "fecha": "2026-06-24",
+   "local": "Sucursal Puerto",
+   "total": 859907
+  },
+  {
+   "fecha": "2026-06-25",
+   "local": "Casa Central",
+   "total": 1905778
+  },
+  {
+   "fecha": "2026-06-25",
+   "local": "Sucursal Norte",
+   "total": 602907
+  },
+  {
+   "fecha": "2026-06-25",
+   "local": "Sucursal Puerto",
+   "total": 1003910
+  },
+  {
+   "fecha": "2026-06-26",
+   "local": "Casa Central",
+   "total": 2554022
+  },
+  {
+   "fecha": "2026-06-26",
+   "local": "Sucursal Norte",
+   "total": 821778
+  },
+  {
+   "fecha": "2026-06-26",
+   "local": "Sucursal Puerto",
+   "total": 1442213
+  },
+  {
+   "fecha": "2026-06-27",
+   "local": "Casa Central",
+   "total": 2773952
+  },
+  {
+   "fecha": "2026-06-27",
+   "local": "Sucursal Norte",
+   "total": 835280
+  },
+  {
+   "fecha": "2026-06-27",
+   "local": "Sucursal Puerto",
+   "total": 1514816
+  },
+  {
+   "fecha": "2026-06-29",
+   "local": "Casa Central",
+   "total": 1531335
+  },
+  {
+   "fecha": "2026-06-29",
+   "local": "Sucursal Norte",
+   "total": 471368
+  },
+  {
+   "fecha": "2026-06-29",
+   "local": "Sucursal Puerto",
+   "total": 861723
+  },
+  {
+   "fecha": "2026-06-30",
+   "local": "Casa Central",
+   "total": 2485753
+  },
+  {
+   "fecha": "2026-06-30",
+   "local": "Sucursal Norte",
+   "total": 751743
+  },
+  {
+   "fecha": "2026-06-30",
+   "local": "Sucursal Puerto",
+   "total": 1409128
+  },
+  {
+   "fecha": "2026-07-01",
+   "local": "Casa Central",
+   "total": 1682361
+  },
+  {
+   "fecha": "2026-07-01",
+   "local": "Sucursal Norte",
+   "total": 480310
+  },
+  {
+   "fecha": "2026-07-01",
+   "local": "Sucursal Puerto",
+   "total": 952888
+  },
+  {
+   "fecha": "2026-07-02",
+   "local": "Casa Central",
+   "total": 1571064
+  },
+  {
+   "fecha": "2026-07-02",
+   "local": "Sucursal Norte",
+   "total": 449426
+  },
+  {
+   "fecha": "2026-07-02",
+   "local": "Sucursal Puerto",
+   "total": 895639
+  },
+  {
+   "fecha": "2026-07-03",
+   "local": "Casa Central",
+   "total": 1600634
+  },
+  {
+   "fecha": "2026-07-03",
+   "local": "Sucursal Norte",
+   "total": 470189
+  },
+  {
+   "fecha": "2026-07-03",
+   "local": "Sucursal Puerto",
+   "total": 951858
+  },
+  {
+   "fecha": "2026-07-04",
+   "local": "Casa Central",
+   "total": 2525341
+  },
+  {
+   "fecha": "2026-07-04",
+   "local": "Sucursal Norte",
+   "total": 736103
+  },
+  {
+   "fecha": "2026-07-04",
+   "local": "Sucursal Puerto",
+   "total": 1533594
+  },
+  {
+   "fecha": "2026-07-06",
+   "local": "Casa Central",
+   "total": 1853793
+  },
+  {
+   "fecha": "2026-07-06",
+   "local": "Sucursal Norte",
+   "total": 528327
+  },
+  {
+   "fecha": "2026-07-06",
+   "local": "Sucursal Puerto",
+   "total": 1129394
+  }
+ ]
+}

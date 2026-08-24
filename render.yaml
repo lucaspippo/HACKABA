@@ -1,0 +1,37 @@
+# P22·C — Blueprint de Render para el DEMO público (link de la aplicación a YC).
+# SOLO el tenant demo: los data dirs de otros tenants no viajan — los excluye
+# .dockerignore y lo verifica la guardia del Dockerfile (el build falla si se cuela).
+#
+# "New +" → "Blueprint" → conectar este repo → Render lee este archivo.
+# Los dos secrets (sync: false) se cargan a mano en el dashboard:
+#   ANTHROPIC_API_KEY   → la key real (jamás en el repo)
+#   POLPILOT_RESET_TOKEN → cualquier string largo random (protege el reset manual)
+services:
+  - type: web
+    name: polpilot-demo
+    runtime: docker
+    plan: starter          # 512 MB alcanzan; free se duerme y arruina la primera impresión
+    healthCheckPath: /api/health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # secret: se carga en el dashboard, nunca en el repo
+      - key: POLPILOT_RESET_TOKEN
+        sync: false        # secret: token del reset manual (/api/admin/reset-demo)
+      # El modelo de Ángela. NO es un secreto (es config), pero tampoco puede
+      # quedar implícito: sin esta línea el código cae a su default histórico
+      # (`claude-sonnet-4-6`, ver backend/config.MODELO_VALIDACION) y producción
+      # correría con un modelo distinto al que se validó. Comprobado el 04/08:
+      # /api/health del demo público devolvía `modelo_angela: claude-sonnet-4-6`.
+      - key: ANGELA_MODEL
+        value: claude-sonnet-5
+      # El resto ya viene con defaults correctos en el Dockerfile (ENV):
+      # POLPILOT_TENANT=demo, POLPILOT_DATA_DIR, POLPILOT_DEFAULT_LANG=en,
+      # POLPILOT_DEMO_TODAY=2026-07-07, POLPILOT_DEMO_ROLE_SWITCH=1,
+      # POLPILOT_DEMO_AUTOLOGIN=1, POLPILOT_DEMO_MSG_CAP=35 (cap por sesión),
+      # POLPILOT_DEMO_IP_CAP=60 (freno de gasto por IP/día, sobrevive al
+      # re-login), POLPILOT_STATIC_DIR, POLPILOT_CANONICAL_DIR.
+      # Para pisar alguno, agregarlo acá con su valor.
+      #
+      # OJO (techo duro real del gasto): el cap por IP es una barrera blanda.
+      # El límite que NO se puede evadir se pone FUERA de la app: en la consola
+      # de Anthropic, un spend limit / budget alert sobre la API key.

@@ -1,0 +1,244 @@
+{
+ "pagos_proveedores": [
+  {
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "numero": "FC-A-07305",
+   "emision": "2026-06-10",
+   "vencimiento": "2026-07-10",
+   "monto": 63066000.0,
+   "estado": "pendiente"
+  },
+  {
+   "proveedor": "Lácteos Campo Alegre",
+   "numero": "FC-A-07335",
+   "emision": "2026-06-27",
+   "vencimiento": "2026-07-27",
+   "monto": 35069000.0,
+   "estado": "pendiente"
+  },
+  {
+   "proveedor": "Golosinas Costa Dulce SRL",
+   "numero": "FC-A-07354",
+   "emision": "2026-06-29",
+   "vencimiento": "2026-07-29",
+   "monto": 56106000.0,
+   "estado": "pendiente"
+  },
+  {
+   "proveedor": "Frigorífico La Ribera",
+   "numero": "FC-A-07370",
+   "emision": "2026-06-25",
+   "vencimiento": "2026-07-25",
+   "monto": 48028000.0,
+   "estado": "pendiente"
+  },
+  {
+   "proveedor": "Limpieza Total SA",
+   "numero": "FC-A-07410",
+   "emision": "2026-06-15",
+   "vencimiento": "2026-07-15",
+   "monto": 35511000.0,
+   "estado": "pendiente"
+  },
+  {
+   "proveedor": "Alimentos del Paraná SA",
+   "numero": "FC-A-07441",
+   "emision": "2026-06-03",
+   "vencimiento": "2026-07-03",
+   "monto": 35812000.0,
+   "estado": "pendiente"
+  }
+ ],
+ "tarjeta_cuotas": [
+  {
+   "venta_semana": "2026-06-09",
+   "plan": "2 cuotas",
+   "acredita": "2026-07-09",
+   "monto": 946000.0
+  },
+  {
+   "venta_semana": "2026-06-09",
+   "plan": "3 cuotas",
+   "acredita": "2026-07-09",
+   "monto": 394000.0
+  },
+  {
+   "venta_semana": "2026-06-16",
+   "plan": "2 cuotas",
+   "acredita": "2026-07-16",
+   "monto": 863000.0
+  },
+  {
+   "venta_semana": "2026-06-16",
+   "plan": "3 cuotas",
+   "acredita": "2026-07-16",
+   "monto": 360000.0
+  },
+  {
+   "venta_semana": "2026-06-23",
+   "plan": "2 cuotas",
+   "acredita": "2026-07-23",
+   "monto": 927000.0
+  },
+  {
+   "venta_semana": "2026-06-23",
+   "plan": "3 cuotas",
+   "acredita": "2026-07-23",
+   "monto": 386000.0
+  },
+  {
+   "venta_semana": "2026-05-26",
+   "plan": "2 cuotas",
+   "acredita": "2026-07-25",
+   "monto": 1062000.0
+  },
+  {
+   "venta_semana": "2026-05-26",
+   "plan": "3 cuotas",
+   "acredita": "2026-07-25",
+   "monto": 443000.0
+  },
+  {
+   "venta_semana": "2026-06-30",
+   "plan": "2 cuotas",
+   "acredita": "2026-07-30",
+   "monto": 979000.0
+  },
+  {
+   "venta_semana": "2026-06-30",
+   "plan": "3 cuotas",
+   "acredita": "2026-07-30",
+   "monto": 408000.0
+  },
+  {
+   "venta_semana": "2026-06-02",
+   "plan": "2 cuotas",
+   "acredita": "2026-08-01",
+   "monto": 1013000.0
+  },
+  {
+   "venta_semana": "2026-06-02",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-01",
+   "monto": 422000.0
+  },
+  {
+   "venta_semana": "2026-06-09",
+   "plan": "2 cuotas",
+   "acredita": "2026-08-08",
+   "monto": 946000.0
+  },
+  {
+   "venta_semana": "2026-06-09",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-08",
+   "monto": 394000.0
+  },
+  {
+   "venta_semana": "2026-06-16",
+   "plan": "2 cuotas",
+   "acredita": "2026-08-15",
+   "monto": 863000.0
+  },
+  {
+   "venta_semana": "2026-06-16",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-15",
+   "monto": 360000.0
+  },
+  {
+   "venta_semana": "2026-06-23",
+   "plan": "2 cuotas",
+   "acredita": "2026-08-22",
+   "monto": 927000.0
+  },
+  {
+   "venta_semana": "2026-06-23",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-22",
+   "monto": 386000.0
+  },
+  {
+   "venta_semana": "2026-05-26",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-24",
+   "monto": 443000.0
+  },
+  {
+   "venta_semana": "2026-06-30",
+   "plan": "2 cuotas",
+   "acredita": "2026-08-29",
+   "monto": 979000.0
+  },
+  {
+   "venta_semana": "2026-06-30",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-29",
+   "monto": 408000.0
+  },
+  {
+   "venta_semana": "2026-06-02",
+   "plan": "3 cuotas",
+   "acredita": "2026-08-31",
+   "monto": 422000.0
+  },
+  {
+   "venta_semana": "2026-06-09",
+   "plan": "3 cuotas",
+   "acredita": "2026-09-07",
+   "monto": 394000.0
+  },
+  {
+   "venta_semana": "2026-06-16",
+   "plan": "3 cuotas",
+   "acredita": "2026-09-14",
+   "monto": 360000.0
+  },
+  {
+   "venta_semana": "2026-06-23",
+   "plan": "3 cuotas",
+   "acredita": "2026-09-21",
+   "monto": 386000.0
+  },
+  {
+   "venta_semana": "2026-06-30",
+   "plan": "3 cuotas",
+   "acredita": "2026-09-28",
+   "monto": 408000.0
+  }
+ ],
+ "cheques": [
+  {
+   "cliente": "Supermercado El Puente",
+   "numero": "48451142",
+   "banco": "Macro",
+   "recibido": "2026-07-04",
+   "cobro": "2026-07-07",
+   "monto": 4560000.0
+  },
+  {
+   "cliente": "Súper Dos Hermanos",
+   "numero": "31119321",
+   "banco": "Macro",
+   "recibido": "2026-06-25",
+   "cobro": "2026-07-24",
+   "monto": 8370000.0
+  },
+  {
+   "cliente": "Autoservicio Belgrano",
+   "numero": "33795578",
+   "banco": "Banco Nación",
+   "recibido": "2026-06-28",
+   "cobro": "2026-07-24",
+   "monto": 4280000.0
+  },
+  {
+   "cliente": "Comedor Escolar N°12",
+   "numero": "41066140",
+   "banco": "Banco Provincia",
+   "recibido": "2026-07-02",
+   "cobro": "2026-07-20",
+   "monto": 8670000.0
+  }
+ ]
+}

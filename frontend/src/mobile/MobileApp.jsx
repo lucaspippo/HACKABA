@@ -1,0 +1,240 @@
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints } from "lucide-react";
+import Brand from "../components/Brand";
+import Avatar from "../components/Avatar";
+import { resaltarPorId } from "../lib/navGuiada";
+import Hoy from "./Hoy";
+import MiDia from "./MiDia";
+import EquipoMobile from "./EquipoMobile";
+import InsightsMobile from "./InsightsMobile";
+import MapaSimpleMobile from "./MapaSimpleMobile";
+import AngelaView from "../views/AngelaView";
+import MiPerfil from "../sections/MiPerfil";
+import AlertasNegocio from "../sections/AlertasNegocio";
+import Cobranzas from "../sections/Cobranzas";
+import Deposito from "../sections/Deposito";
+import Administracion from "../sections/Administracion";
+import OportunidadesNegocio from "../sections/OportunidadesNegocio";
+import ErrorBoundary from "../components/ErrorBoundary";
+import { authStore, useSession } from "../lib/auth";
+import { PREGUNTA_TAREA } from "../lib/piso";
+import { tieneVistaHerramienta } from "../lib/roles";
+import { toast } from "../lib/toastStore";
+import Toasts from "../components/Toasts";
+import Campanita from "../components/Campanita";
+import { VerComoChip } from "../components/VerComo";
+import { useT } from "../lib/i18n";
+
+// Catálogo de vistas mobile por feature (sin angela/perfil, que son especiales).
+// Los labels viven en el diccionario i18n (lk); las keys no se traducen.
+const MCAT = {
+  panel: { lk: "mnav.hoy", icon: Sun },
+  alertas: { lk: "mnav.alertas", icon: Bell },
+  equipo: { lk: "mnav.equipo", icon: Users },
+  cobranzas: { lk: "mnav.cobranzas", icon: HandCoins },
+  deposito: { lk: "mnav.deposito", icon: PackageX },
+  administracion: { lk: "mnav.oficina", icon: ClipboardList },
+  // P24·D2 — Oportunidades entra a la nav mobile (cae en "Más" si no hay lugar,
+  // sin desplazar a Alertas: el orden de features del usuario manda).
+  oportunidades: { lk: "mnav.oportunidades", icon: Sparkles },
+  // P28 — el mapa, en su versión apilada honesta (el canvas es de desktop).
+  mapa: { lk: "nav.mapa", icon: Waypoints },
+};
+
+// Nombres "de dueño" que Ángela usa para navegar → vista mobile real.
+const MALIAS = { inicio: "panel", home: "panel", principal: "panel", hoy: "panel" };
+
+export default function MobileApp({ data, oportunidades, fase, user, onRecargar }) {
+  const t = useT();
+  const session = useSession();
+  const navIds = user.features.filter((f) => MCAT[f]);
+  // P39·2 — TODO empleado aterriza en SU vista de trabajo ("Mi día": tareas,
+  // acciones de su oficio y los chips de Ángela), no en el chat vacío ni en el
+  // Today del dueño. El dueño sigue con su panel.
+  const piso = tieneVistaHerramienta(user);
+  // P24·D1 — Ángela primero: en el celular la pantalla inicial es el CHAT (la
+  // interfaz natural del teléfono); la bottom-nav queda para moverse. Para el de
+  // a pie, la pantalla inicial es "Mi día".
+  const [view, setView] = useState(piso ? "mi_dia" : "angela");
+  const [consultaAngela, setConsultaAngela] = useState(null);
+
+  const gestionarOp = (op) => {
+    // P27: las cards traen su prompt de acción; si no, el genérico de siempre.
+    setConsultaAngela(op.accion_chat || `Ayudame a gestionar esto: ${op.titulo}`);
+    setView("angela");
+  };
+
+  // Abrir Ángela con (o sin) una pregunta ya escrita — lo usan los chips de "Mi día".
+  const abrirAngelaCon = (texto) => { setConsultaAngela(texto || null); setView("angela"); };
+  // Tocar una tarea de LECTURA (negativo, entrada): abre Ángela con su pregunta
+  // real. Las cerrables (fantasma/balanza) las resuelve MiDia in situ (saneamiento).
+  const abrirTarea = (tarea) => {
+    const k = PREGUNTA_TAREA[tarea.tipo];
+    if (k) abrirAngelaCon(t(k));
+  };
+
+  // P9·C4 (M8): las acciones de Ángela funcionan también en el celular.
+  // navigate → la vista mobile si existe y el rol la tiene; una sección que
+  // solo vive en desktop lo dice honesto; sin permiso → mismo toast que M7.
+  // P18·D: el highlight TAMBIÉN resalta en mobile (antes se descartaba).
+  const navegarMobile = (sec, hl) => {
+    const destino = MALIAS[sec] || sec;
+    // Para el de a pie, "inicio/home/hoy" es SU día, no el Today del dueño.
+    if (piso && (destino === "panel" || destino === "mi_dia")) { setView("mi_dia"); return; }
+    if (destino === "perfil") { setView("perfil"); return; }
+    // P35·E2/E3 — Alertas y Oportunidades se fusionaron en "Insights" en mobile.
+    if (["insights", "alertas", "oportunidades"].includes(destino)) {
+      if (user.features.includes("alertas") || user.features.includes("oportunidades")) {
+        setView("insights");
+        if (hl) resaltarPorId(hl);
+      } else toast(t("nav.sin_permiso"), "error");
+      return;
+    }
+    if (MCAT[destino]) {
+      if (navIds.includes(destino)) {
+        setView(destino);
+        if (hl) resaltarPorId(hl);
+      } else toast(t("nav.sin_permiso"), "error");
+      return;
+    }
+    toast(t("mnav.solo_desktop"));
+  };
+
+  // P35·E2 — Barra inferior FIJA y simétrica: 5 slots en orden fijo con Ángela
+  // al centro (botón circular). Se OCULTA el slot cuya feature el rol no tiene
+  // (Ángela siempre presente). Insights = fusión Alertas+Oportunidades (E3):
+  // basta con tener alguna de las dos. Ya no hay "Más" ni el mapa en la barra
+  // (el mapa se abre desde Today, E4/E6).
+  const tiene = (f) => user.features.includes(f);
+  const izqNav = [
+    // El de a pie ve "Mi día" en el primer slot (en lugar del Today del dueño).
+    piso ? { id: "mi_dia", lk: "mnav.mi_dia", icon: ClipboardList }
+         : (tiene("panel") && { id: "panel", lk: "mnav.hoy", icon: Sun }),
+    (tiene("alertas") || tiene("oportunidades")) && { id: "insights", lk: "mnav.insights", icon: Sparkles },
+  ].filter(Boolean);
+  const derNav = [
+    tiene("deposito") && { id: "deposito", lk: "mnav.deposito", icon: PackageX },
+    tiene("equipo") && { id: "equipo", lk: "mnav.equipo", icon: Users },
+  ].filter(Boolean);
+  const nSlots = izqNav.length + derNav.length + 1; // +Ángela (centro)
+
+  const renderView = () => {
+    switch (view) {
+      case "mi_dia":
+        return <MiDia user={user} onAbrirAngela={abrirAngelaCon} onTarea={abrirTarea}
+                      onCerrada={onRecargar} onNavegar={navegarMobile} />;
+      case "panel":
+        return <Hoy data={data} oportunidades={oportunidades} onTab={setView} onGestionar={gestionarOp} />;
+      // P35·E3 — "insights": fusión de Alertas + Oportunidades en filas compactas.
+      case "insights":
+        return <InsightsMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
+      case "alertas":
+        return <AlertasNegocio onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} datos={fase?.datos} />;
+      case "equipo":
+        return <EquipoMobile />;
+      case "cobranzas":
+        // P42·1 — misma regla que en desktop: si el que mira es el dueño ve el
+        // panorama; si es el preventista, su gestión de la calle.
+        return <Cobranzas onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} datos={fase?.datos} user={user} />;
+      case "deposito":
+        return <Deposito data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
+      case "administracion":
+        return <Administracion data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
+      case "oportunidades":
+        return <OportunidadesNegocio onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
+      // P35·E6 — el mapa en mobile es la VISTA SIMPLE read-only (sin React Flow),
+      // accesible solo desde "Ver el mapa" de Today. Volver → Today.
+      case "mapa":
+        return <MapaSimpleMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onVolver={() => setView("panel")} />;
+      case "perfil":
+        return <MiPerfil user={user} />;
+      case "angela":
+        return <AngelaView inputInicial={consultaAngela} user={user} onNavigate={navegarMobile} onDatosCambiaron={onRecargar} />;
+      default:
+        return null;
+    }
+  };
+
+  // P35·E2 — tab de la barra fija. El grid da columnas iguales (sin flex-1).
+  // Activo = color + peso, sin caja. Target táctil ≥44px (min-h-11).
+  const TabBtn = ({ slot }) => {
+    const Icon = slot.icon;
+    const activo = view === slot.id;
+    return (
+      <button onClick={() => setView(slot.id)} className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5">
+        <Icon size={21} className={activo ? "text-violeta" : "text-tinta-suave"} strokeWidth={activo ? 2.4 : 2} />
+        <span className={`text-[0.62rem] font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="flex min-h-[100dvh] justify-center bg-papel">
+      <Toasts />
+      <div className="relative flex min-h-[100dvh] w-full max-w-md flex-col bg-papel">
+        <div className="sticky top-0 z-20 flex flex-col border-b border-linea/70 bg-papel/85 px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
+        {/* P37·AJUSTE 2 — grid de 3 columnas con LATERALES DE IGUAL PESO
+            (1fr auto 1fr): el logo del cliente (columna central) queda CENTRADO
+            en el viewport, sobre el mismo eje que el botón de Ángela de la barra
+            inferior. No es flex+margin (los iconos desbalancearían el centro).
+            El toggle EN/ES no vive acá (el idioma se hereda de la sesión). */}
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="flex items-center justify-self-start">
+            <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto shrink-0 select-none" draggable="false" />
+          </div>
+          <div className="flex items-center justify-center">
+            <Brand variant="mobile" />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            {/* La bandeja también en el celular: solicitudes y avisos del dueño llegan acá */}
+            <Campanita
+              token={session?.token}
+              esAdmin={user.es_admin}
+              onVerSolicitud={user.es_admin && navIds.includes("equipo") ? () => setView("equipo") : undefined}
+            />
+            <button onClick={() => setView("perfil")} className="shrink-0">
+              <Avatar persona={user} size={32} />
+            </button>
+            <button onClick={() => authStore.logout({ manual: true })} className="text-tinta-suave hover:text-tinta"><LogOut size={18} /></button>
+          </div>
+        </div>
+        {/* Indicador "Viewing as" (solo demo con View as activo, P9·E) */}
+        <div className="mt-2 empty:hidden"><VerComoChip /></div>
+        </div>
+
+        <main className="flex-1 overflow-y-auto px-5 pb-24 pt-4">
+          <AnimatePresence mode="wait">
+            <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }} className={view === "angela" ? "h-full" : ""}>
+              {/* P29·A2 — nunca una pantalla muda, tampoco en el celular */}
+              <ErrorBoundary key={view} seccion={view} onInicio={() => setView(piso ? "mi_dia" : "panel")}>
+                {renderView()}
+              </ErrorBoundary>
+            </motion.div>
+          </AnimatePresence>
+        </main>
+
+        {/* P35·E2 — Barra inferior FIJA (position:fixed), simétrica, con Ángela
+            al centro (botón circular). Respeta safe-area-inset-bottom; el <main>
+            lleva pb-24 para que el último elemento no quede tapado. Se fueron
+            "Más", el botón flotante de Ángela (redundante con el centro) y el
+            mapa de la barra (se abre desde Today). El grid da columnas iguales. */}
+        <nav className="fixed inset-x-0 bottom-0 z-30">
+          <div
+            className="mx-auto grid max-w-md items-stretch border-t border-linea bg-crema/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
+            style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
+          >
+            {izqNav.map((s) => <TabBtn key={s.id} slot={s} />)}
+            <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
+              <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
+                <MessageCircle size={18} />
+              </span>
+              <span className={`-mt-1 text-[0.62rem] font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+            </button>
+            {derNav.map((s) => <TabBtn key={s.id} slot={s} />)}
+          </div>
+        </nav>
+      </div>
+    </div>
+  );
+}

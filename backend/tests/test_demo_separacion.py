@@ -1,0 +1,157 @@
+"""
+El demo (Distribuidora del Litoral) y el piloto (Horizonte) NO se mezclan:
+directorios de datos distintos, usuarios distintos, y el dataset demo es
+coherente. La separación vive en core/paths.py (env al arrancar la instancia).
+"""
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+
+import pytest
+
+BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAIZ = os.path.dirname(BACKEND)
+DATA_DEMO = os.path.join(RAIZ, "data-demo")
+
+
+def _en_demo(codigo: str) -> str:
+    """Corre un snippet en un proceso con el entorno del DEMO y devuelve stdout."""
+    env = {**os.environ, "POLPILOT_TENANT": "demo", "POLPILOT_DATA_DIR": DATA_DEMO,
+           "PYTHONIOENCODING": "utf-8"}
+    env.pop("ANTHROPIC_API_KEY", None)  # el test no gasta API
+    r = subprocess.run([sys.executable, "-c", codigo], cwd=BACKEND, env=env,
+                       capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr[-800:]
+    return r.stdout
+
+
+def test_piloto_en_la_suite():
+    # ESTE proceso corre con el pin del conftest → tenant piloto (Horizonte)
+    # sobre una copia temporal de data-demo/ (jamás sobre el seed versionado).
+    from core import paths
+    import auth
+    assert paths.TENANT == "piloto"
+    assert not paths.DATA_DIR.endswith("data-demo")   # la copia scratch, no el seed
+    assert os.path.isfile(os.path.join(paths.DATA_DIR, "inventory.json"))
+    assert "emilio" in auth.USUARIOS and "aldo" not in auth.USUARIOS
+    assert paths.EMPRESA == "Supermercados Horizonte"
+
+
+def test_demo_por_default_sin_env():
+    # Un proceso SIN env corre el tenant demo sobre data-demo/: el repo
+    # publicado arranca la demo solo, sin configurar nada.
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("POLPILOT_TENANT", "POLPILOT_DATA_DIR")}
+    env["PYTHONIOENCODING"] = "utf-8"
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "from core import paths; import auth;"
+         "print(paths.TENANT, paths.DATA_DIR.replace(chr(92), '/').split('/')[-1]);"
+         "print('aldo' in auth.USUARIOS)"],
+        cwd=BACKEND, env=env, capture_output=True, text=True, timeout=120)
+    assert r.returncode == 0, r.stderr[-800:]
+    lineas = r.stdout.strip().splitlines()
+    assert lineas[0] == "demo data-demo"
+    assert lineas[1] == "True"
+
+
+def test_demo_aislado_en_su_directorio():
+    out = _en_demo(
+        "from core import paths; import auth, data_store as ds;"
+        "print(paths.TENANT, paths.DATA_DIR.replace(chr(92), '/').split('/')[-1]);"
+        "print(','.join(sorted(auth.USUARIOS)));"
+        "print(ds.meta()['empresa'])"
+    )
+    lineas = out.strip().splitlines()
+    assert lineas[0] == "demo data-demo"
+    assert "aldo" in lineas[1] and "emilio" not in lineas[1]  # equipos separados
+    assert lineas[2] == "Distribuidora del Litoral"
+
+
+def test_demo_no_escribe_fuera_de_su_directorio(tmp_path):
+    # El data dir de OTRO tenant (acá, uno de mentira en tmp) no puede moverse
+    # por una escritura del demo — y el demo tampoco puede crear un `data/` en
+    # la raíz del repo (el layout viejo del piloto).
+    inv_otro = tmp_path / "inventory.json"
+    inv_otro.write_text("{}", encoding="utf-8")
+    antes = inv_otro.stat().st_mtime
+    # una operación de ESCRITURA en el demo (cobro a un cliente demo)
+    _en_demo(
+        "from core import cuentas, caja;"
+        "caja.abrir(0); cuentas.registrar_cobro('kiosco_la_terminal', 1000); caja.cerrar();"
+        "print('ok')"
+    )
+    assert inv_otro.stat().st_mtime == antes              # el otro tenant ni se enteró
+    assert not os.path.isdir(os.path.join(RAIZ, "data"))  # no apareció un data/ fantasma
+    # y lo que escribió quedó en data-demo (runtime, gitignored)
+    assert os.path.exists(os.path.join(DATA_DEMO, "cuentas.json"))
+    # limpiar el runtime del demo que generó el test
+    subprocess.run(["git", "checkout", "--", "data-demo/cuentas.json"], cwd=RAIZ,
+                   capture_output=True)
+    for f in ("caja.json",):
+        p = os.path.join(DATA_DEMO, f)
+        if os.path.exists(p):
+            os.remove(p)
+
+
+def test_dataset_demo_es_coherente():
+    """v2 (P7): empresa SANA — el dataset luce por coherencia, no por desastre."""
+    arts = json.load(open(os.path.join(DATA_DEMO, "inventory.json"), encoding="utf-8"))["articulos"]
+    assert len(arts) > 350
+    balanzas = [a for a in arts if a["venta_x_peso"]]
+    assert len(balanzas) >= 60
+    inmovilizado = sum(a["inmovilizado"] for a in arts)
+    # el inmovilizado cierra con stock × costo (coherencia, no números random)
+    for a in arts[:80]:
+        esperado = round(a["stock"] * a["costo_iva"], 2) if (a["stock"] or 0) > 0 and a["costo_iva"] else 0.0
+        assert a["inmovilizado"] == esperado
+
+    # NEGOCIO SANO: margen agregado positivo de distribuidora (15-30%)
+    con_precio = [a for a in arts if a["estado"] == "activo" and a.get("pvp") and a["costo_iva"]]
+    margen = sum(a["pvp"] - a["costo_iva"] for a in con_precio) / sum(a["costo_iva"] for a in con_precio)
+    assert 0.14 < margen < 0.30, f"margen agregado insano: {margen:.1%}"
+    # los "puntitos": POCOS problemas realistas, no un desastre
+    assert sum(1 for a in arts if a["estado"] == "activo" and not a.get("pvp")) <= 12
+    assert sum(1 for a in arts if a.get("pvp") and a["costo_iva"] > a["pvp"]) == 0  # nada a pérdida
+    assert sum(1 for a in arts if (a["stock"] or 0) < 0) <= 4
+
+    ap = json.load(open(os.path.join(DATA_DEMO, "apartados.json"), encoding="utf-8"))
+    filas = ap["venta"]["filas"]
+    por_mes = {}
+    for f in filas:
+        por_mes.setdefault(f["fecha"][:7], 0)
+        por_mes[f["fecha"][:7]] += f["cantidad"] * f["precio"]
+    # 10 años de historia para Evolución/estacionalidad decenal
+    assert len({m[:4] for m in por_mes}) >= 10
+    # facturación mensual en millones de distribuidora real + cobertura sana
+    hoy_mes = max(m for m in por_mes if len([f for f in filas if f["fecha"][:7] == m and f.get("codigo")]) > 100)
+    assert 450_000_000 < por_mes[hoy_mes] < 1_100_000_000
+    dias_cobertura = inmovilizado / (por_mes[hoy_mes] / 1.20 / 30)
+    assert 12 < dias_cobertura < 45, f"cobertura insana: {dias_cobertura:.0f} días"
+    # estacionalidad: diciembre factura más que enero (fiestas)
+    dic = [v for m, v in por_mes.items() if m.endswith("-12")]
+    ene = [v for m, v in por_mes.items() if m.endswith("-01")]
+    assert dic and ene and max(dic) > max(ene) * 1.15
+    # multi-sucursal visible en los datos recientes
+    assert len({f.get("boca") for f in filas if f.get("codigo")}) >= 3
+    # las recepciones existen y cruzan con el catálogo (lo comprado entró)
+    codigos = {a["codigo"] for a in arts}
+    rec = ap["recepciones"]["filas"]
+    assert len(rec) > 300 and all(r["codigo"] in codigos for r in rec[:50])
+
+
+def test_generador_es_determinista():
+    r1 = subprocess.run([sys.executable, "generar.py"], cwd=DATA_DEMO,
+                        capture_output=True, text=True, timeout=180,
+                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    assert r1.returncode == 0, r1.stderr[-500:]
+    hash1 = hash(open(os.path.join(DATA_DEMO, "inventory.json"), encoding="utf-8").read())
+    r2 = subprocess.run([sys.executable, "generar.py"], cwd=DATA_DEMO,
+                        capture_output=True, text=True, timeout=180,
+                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    assert r2.returncode == 0
+    hash2 = hash(open(os.path.join(DATA_DEMO, "inventory.json"), encoding="utf-8").read())
+    assert hash1 == hash2  # reproducible: correrlo dos veces da lo mismo

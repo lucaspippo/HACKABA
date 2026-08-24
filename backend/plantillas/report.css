@@ -1,0 +1,155 @@
+/* PDF de PolPilot — mismos tokens del reskin (index.css v2 "Aire").
+   Rutas de fuentes relativas a ESTE archivo (WeasyPrint las resuelve así). */
+
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-weight: 700;
+  src: url("../../frontend/public/fonts/schibsted-grotesk-v7-latin-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-weight: 800;
+  src: url("../../frontend/public/fonts/schibsted-grotesk-v7-latin-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-weight: 400;
+  src: url("../../frontend/public/fonts/hanken-grotesk-v12-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-weight: 600;
+  src: url("../../frontend/public/fonts/hanken-grotesk-v12-latin-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Mono";
+  font-weight: 500;
+  src: url("../../frontend/public/fonts/dm-mono-v16-latin-500.woff2") format("woff2");
+}
+
+@page {
+  size: A4;
+  margin: 2cm 1.6cm;
+  @top-center { content: element(corrida); }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-family: "DM Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 8pt;
+    color: #6e6a63;
+  }
+}
+@page :first {
+  @top-center { content: none; }
+  @bottom-right { content: ""; }
+}
+
+body {
+  font-family: "Hanken Grotesk", sans-serif;
+  font-size: 10pt;
+  color: #21201d;             /* tinta */
+  line-height: 1.45;
+}
+
+/* Header corrido (páginas 2+) */
+#corrida {
+  position: running(corrida);
+  width: 100%;
+  font-size: 8pt;
+  color: #6e6a63;             /* tinta-suave */
+  border-bottom: 0.5pt solid #e9e7e2;
+  padding-bottom: 4pt;
+}
+#corrida .corrida-doc { float: right; }
+
+/* 1 · Cabecera */
+.cabecera { border-bottom: 2pt solid #21201d; padding-bottom: 10pt; margin-bottom: 14pt; }
+.logo { height: 42pt; margin-bottom: 8pt; }
+.logo-texto {
+  font-family: "Schibsted Grotesk", sans-serif;
+  font-weight: 800; font-size: 14pt; margin-bottom: 8pt;
+}
+h1 {
+  font-family: "Schibsted Grotesk", sans-serif;
+  font-weight: 800; font-size: 20pt; margin: 0 0 4pt;
+}
+.meta { font-size: 8.5pt; color: #6e6a63; margin: 0; }
+
+/* 2 · Veredicto: la conclusión primero, con presencia */
+.veredicto {
+  font-size: 11.5pt; font-weight: 600; line-height: 1.4;
+  margin: 0 0 12pt; padding: 8pt 10pt;
+  background: #eaf0fd; border-left: 3pt solid #2a5cdf; /* violeta-suave / azul IA */
+}
+
+/* Hallazgos: párrafos que interpretan */
+.hallazgo { font-size: 10pt; margin: 0 0 7pt; }
+
+/* Para vigilar */
+.vigilar { font-size: 9.5pt; color: #6e6a63; padding-left: 12pt; }
+.vigilar li { margin-bottom: 3pt; }
+
+/* Anexo: separador claro — acá empiezan los datos crudos */
+h2.anexo {
+  margin-top: 20pt; padding-top: 10pt;
+  border-top: 1pt solid #e9e7e2; color: #6e6a63;
+  text-transform: uppercase; letter-spacing: 0.06em; font-size: 9pt;
+}
+h3 {
+  font-family: "Schibsted Grotesk", sans-serif;
+  font-weight: 700; font-size: 10pt; margin: 10pt 0 5pt;
+}
+
+/* Total de la orden */
+.tabla tfoot td { border-bottom: none; border-top: 1pt solid #21201d; padding-top: 4pt; }
+.tabla .total-label { text-align: right; font-weight: 600; font-size: 8.5pt; text-transform: uppercase; color: #6e6a63; }
+.tabla .total { font-weight: 500; font-size: 10.5pt; }
+
+/* 3 · KPIs: el primero es el número principal, grande y tranquilo */
+.kpis { margin: 0 0 14pt; }
+.kpi { display: inline-block; vertical-align: top; margin-right: 22pt; }
+.kpi-valor {
+  font-family: "DM Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13pt; font-weight: 500;
+}
+.kpi-principal .kpi-valor { font-size: 24pt; color: #2b7a8c; } /* hielo */
+.kpi-label { font-size: 8pt; color: #6e6a63; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Tablas */
+h2 {
+  font-family: "Schibsted Grotesk", sans-serif;
+  font-weight: 700; font-size: 11pt; margin: 14pt 0 6pt;
+}
+.tabla { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.tabla th {
+  text-align: left; font-weight: 600; font-size: 8pt; color: #6e6a63;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1pt solid #21201d; padding: 3pt 6pt;
+}
+.tabla td { border-bottom: 0.5pt solid #e9e7e2; padding: 3.5pt 6pt; }
+.tabla th.num, .tabla td.num {
+  text-align: right;
+  font-family: "DM Mono", monospace;
+  font-variant-numeric: tabular-nums;
+}
+.tabla td.critico { color: #d2372b; font-weight: 600; } /* rojo SOLO crítico */
+.tabla td.suave { color: #6e6a63; }
+.tabla tr { page-break-inside: avoid; }
+
+/* Orden / carta */
+.bloque-meta { font-size: 9.5pt; margin: 0 0 8pt; }
+.carta .destinatario { font-weight: 600; }
+.carta .cuerpo { white-space: pre-line; margin-top: 8pt; }
+
+/* 5 · Acciones */
+.acciones { font-size: 10pt; padding-left: 14pt; }
+.acciones li { margin-bottom: 4pt; }
+
+.nota { font-size: 8.5pt; color: #6e6a63; margin-top: 12pt; }
+
+/* 6 · Disclaimer al pie */
+.disclaimer {
+  font-size: 7.5pt; color: #6e6a63;
+  border-top: 0.5pt solid #e9e7e2; padding-top: 6pt; margin-top: 18pt;
+}

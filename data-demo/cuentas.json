@@ -1,0 +1,3036 @@
+[
+ {
+  "id": "autoservicio_9dejulio",
+  "nombre": "Autoservicio 9 de Julio",
+  "saldo": 42000000,
+  "limite_credito": 60000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 58,
+  "promedio_pago_dias": 29,
+  "movimientos": [
+   {
+    "fecha": "2025-02-02",
+    "tipo": "venta",
+    "monto": 22240000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-26",
+    "tipo": "pago",
+    "monto": 22240000,
+    "detalle": "Pago a 24 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-22",
+    "tipo": "venta",
+    "monto": 22460000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-15",
+    "tipo": "pago",
+    "monto": 22460000,
+    "detalle": "Pago a 24 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-27",
+    "tipo": "venta",
+    "monto": 38630000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-24",
+    "tipo": "pago",
+    "monto": 38630000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-30",
+    "tipo": "venta",
+    "monto": 19800000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-01",
+    "tipo": "pago",
+    "monto": 19800000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-09",
+    "tipo": "venta",
+    "monto": 38210000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-30",
+    "tipo": "pago",
+    "monto": 38210000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-31",
+    "tipo": "venta",
+    "monto": 20670000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-02",
+    "tipo": "pago",
+    "monto": 20670000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-11",
+    "tipo": "venta",
+    "monto": 20250000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-09",
+    "tipo": "pago",
+    "monto": 20250000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-09",
+    "tipo": "venta",
+    "monto": 19300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-10",
+    "tipo": "pago",
+    "monto": 19300000,
+    "detalle": "Pago a 31 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-20",
+    "tipo": "venta",
+    "monto": 14910000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-02",
+    "tipo": "pago",
+    "monto": 14910000,
+    "detalle": "Pago a 41 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-05-10",
+    "tipo": "venta",
+    "monto": 42000000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "super_el_puente",
+  "nombre": "Supermercado El Puente",
+  "saldo": 55000000,
+  "limite_credito": 80000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 17,
+  "promedio_pago_dias": 24,
+  "movimientos": [
+   {
+    "fecha": "2025-01-27",
+    "tipo": "venta",
+    "monto": 24110000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-16",
+    "tipo": "pago",
+    "monto": 24110000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-11",
+    "tipo": "venta",
+    "monto": 24020000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-03",
+    "tipo": "pago",
+    "monto": 24020000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-15",
+    "tipo": "venta",
+    "monto": 40170000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-03",
+    "tipo": "pago",
+    "monto": 40170000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-05",
+    "tipo": "venta",
+    "monto": 35840000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-27",
+    "tipo": "pago",
+    "monto": 35840000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-30",
+    "tipo": "venta",
+    "monto": 51660000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-25",
+    "tipo": "pago",
+    "monto": 51660000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-24",
+    "tipo": "venta",
+    "monto": 42590000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-14",
+    "tipo": "pago",
+    "monto": 42590000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-18",
+    "tipo": "venta",
+    "monto": 51160000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-13",
+    "tipo": "pago",
+    "monto": 51160000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-22",
+    "tipo": "venta",
+    "monto": 29080000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-21",
+    "tipo": "pago",
+    "monto": 29080000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-20",
+    "tipo": "venta",
+    "monto": 55000000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "almacen_sanmartin",
+  "nombre": "Almacén San Martín",
+  "saldo": 24500000,
+  "limite_credito": 30000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 49,
+  "promedio_pago_dias": 27,
+  "movimientos": [
+   {
+    "fecha": "2025-01-19",
+    "tipo": "venta",
+    "monto": 15280000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-18",
+    "tipo": "pago",
+    "monto": 15280000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-14",
+    "tipo": "venta",
+    "monto": 18820000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-08",
+    "tipo": "pago",
+    "monto": 18820000,
+    "detalle": "Pago a 25 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-13",
+    "tipo": "venta",
+    "monto": 8720000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-12",
+    "tipo": "pago",
+    "monto": 8720000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-19",
+    "tipo": "venta",
+    "monto": 21850000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-12",
+    "tipo": "pago",
+    "monto": 21850000,
+    "detalle": "Pago a 24 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-02",
+    "tipo": "venta",
+    "monto": 9210000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-30",
+    "tipo": "pago",
+    "monto": 9210000,
+    "detalle": "Pago a 28 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-21",
+    "tipo": "venta",
+    "monto": 21550000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-14",
+    "tipo": "pago",
+    "monto": 21550000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-22",
+    "tipo": "venta",
+    "monto": 17720000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-15",
+    "tipo": "pago",
+    "monto": 17720000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-02-01",
+    "tipo": "venta",
+    "monto": 15750000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-07",
+    "tipo": "pago",
+    "monto": 15750000,
+    "detalle": "Pago a 34 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-05-19",
+    "tipo": "venta",
+    "monto": 24500000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "mini_costanera",
+  "nombre": "Minimercado Costanera",
+  "saldo": 18900000,
+  "limite_credito": 25000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 21,
+  "promedio_pago_dias": 26,
+  "movimientos": [
+   {
+    "fecha": "2025-01-31",
+    "tipo": "venta",
+    "monto": 14150000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-26",
+    "tipo": "pago",
+    "monto": 14150000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-14",
+    "tipo": "venta",
+    "monto": 15140000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-15",
+    "tipo": "pago",
+    "monto": 15140000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-17",
+    "tipo": "venta",
+    "monto": 11400000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-14",
+    "tipo": "pago",
+    "monto": 11400000,
+    "detalle": "Pago a 28 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-06",
+    "tipo": "venta",
+    "monto": 12320000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-29",
+    "tipo": "pago",
+    "monto": 12320000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-23",
+    "tipo": "venta",
+    "monto": 9070000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-22",
+    "tipo": "pago",
+    "monto": 9070000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-29",
+    "tipo": "venta",
+    "monto": 14260000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-20",
+    "tipo": "pago",
+    "monto": 14260000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-22",
+    "tipo": "venta",
+    "monto": 13720000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-13",
+    "tipo": "pago",
+    "monto": 13720000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-16",
+    "tipo": "venta",
+    "monto": 18900000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "despensa_dona_elsa",
+  "nombre": "Despensa Doña Elsa",
+  "saldo": 19200000,
+  "limite_credito": 22000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 66,
+  "promedio_pago_dias": 31,
+  "movimientos": [
+   {
+    "fecha": "2025-02-03",
+    "tipo": "venta",
+    "monto": 10550000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-14",
+    "tipo": "pago",
+    "monto": 10550000,
+    "detalle": "Pago a 39 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-29",
+    "tipo": "venta",
+    "monto": 18130000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-05",
+    "tipo": "pago",
+    "monto": 18130000,
+    "detalle": "Pago a 37 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-02",
+    "tipo": "venta",
+    "monto": 9950000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-28",
+    "tipo": "pago",
+    "monto": 9950000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-12",
+    "tipo": "venta",
+    "monto": 13960000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-21",
+    "tipo": "pago",
+    "monto": 13960000,
+    "detalle": "Pago a 39 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-29",
+    "tipo": "venta",
+    "monto": 8070000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-31",
+    "tipo": "pago",
+    "monto": 8070000,
+    "detalle": "Pago a 33 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-21",
+    "tipo": "venta",
+    "monto": 7050000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-03",
+    "tipo": "pago",
+    "monto": 7050000,
+    "detalle": "Pago a 12 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-05-02",
+    "tipo": "venta",
+    "monto": 19200000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "hoteleria_del_sol",
+  "nombre": "Hotelería del Sol",
+  "saldo": 16800000,
+  "limite_credito": 25000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 19,
+  "promedio_pago_dias": 25,
+  "movimientos": [
+   {
+    "fecha": "2025-01-18",
+    "tipo": "venta",
+    "monto": 13690000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-13",
+    "tipo": "pago",
+    "monto": 13690000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-02",
+    "tipo": "venta",
+    "monto": 11520000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-24",
+    "tipo": "pago",
+    "monto": 11520000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-12",
+    "tipo": "venta",
+    "monto": 13890000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-11",
+    "tipo": "pago",
+    "monto": 13890000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-23",
+    "tipo": "venta",
+    "monto": 15100000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-18",
+    "tipo": "pago",
+    "monto": 15100000,
+    "detalle": "Pago a 25 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-23",
+    "tipo": "venta",
+    "monto": 11410000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-12",
+    "tipo": "pago",
+    "monto": 11410000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-01",
+    "tipo": "venta",
+    "monto": 7810000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-20",
+    "tipo": "pago",
+    "monto": 7810000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-21",
+    "tipo": "venta",
+    "monto": 9140000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-23",
+    "tipo": "pago",
+    "monto": 9140000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-22",
+    "tipo": "venta",
+    "monto": 9790000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-21",
+    "tipo": "pago",
+    "monto": 9790000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-02",
+    "tipo": "venta",
+    "monto": 5990000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-26",
+    "tipo": "pago",
+    "monto": 5990000,
+    "detalle": "Pago a 24 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-18",
+    "tipo": "venta",
+    "monto": 16800000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "comedor_escolar_12",
+  "nombre": "Comedor Escolar N°12",
+  "saldo": 12600000,
+  "limite_credito": 18000000,
+  "plazo_dias": 45,
+  "dias_sin_pagar": 28,
+  "promedio_pago_dias": 41,
+  "movimientos": [
+   {
+    "fecha": "2025-01-30",
+    "tipo": "venta",
+    "monto": 8360000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-13",
+    "tipo": "pago",
+    "monto": 8360000,
+    "detalle": "Pago a 42 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-17",
+    "tipo": "venta",
+    "monto": 9260000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-29",
+    "tipo": "pago",
+    "monto": 9260000,
+    "detalle": "Pago a 43 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-20",
+    "tipo": "venta",
+    "monto": 7510000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-26",
+    "tipo": "pago",
+    "monto": 7510000,
+    "detalle": "Pago a 37 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-29",
+    "tipo": "venta",
+    "monto": 7000000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-14",
+    "tipo": "pago",
+    "monto": 7000000,
+    "detalle": "Pago a 46 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-03",
+    "tipo": "venta",
+    "monto": 9110000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-14",
+    "tipo": "pago",
+    "monto": 9110000,
+    "detalle": "Pago a 41 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-07",
+    "tipo": "venta",
+    "monto": 7620000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-13",
+    "tipo": "pago",
+    "monto": 7620000,
+    "detalle": "Pago a 37 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-09",
+    "tipo": "venta",
+    "monto": 12600000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "super_dos_hermanos",
+  "nombre": "Súper Dos Hermanos",
+  "saldo": 21400000,
+  "limite_credito": 30000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 12,
+  "promedio_pago_dias": 22,
+  "movimientos": [
+   {
+    "fecha": "2025-01-31",
+    "tipo": "venta",
+    "monto": 10920000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-21",
+    "tipo": "pago",
+    "monto": 10920000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-20",
+    "tipo": "venta",
+    "monto": 16940000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-08",
+    "tipo": "pago",
+    "monto": 16940000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-23",
+    "tipo": "venta",
+    "monto": 17190000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-15",
+    "tipo": "pago",
+    "monto": 17190000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-18",
+    "tipo": "venta",
+    "monto": 18640000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-12",
+    "tipo": "pago",
+    "monto": 18640000,
+    "detalle": "Pago a 24 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-22",
+    "tipo": "venta",
+    "monto": 13750000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-08",
+    "tipo": "pago",
+    "monto": 13750000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-14",
+    "tipo": "venta",
+    "monto": 16850000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-03",
+    "tipo": "pago",
+    "monto": 16850000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-04",
+    "tipo": "venta",
+    "monto": 10540000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-18",
+    "tipo": "pago",
+    "monto": 10540000,
+    "detalle": "Pago a 14 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-21",
+    "tipo": "venta",
+    "monto": 10440000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-21",
+    "tipo": "pago",
+    "monto": 10440000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-09",
+    "tipo": "venta",
+    "monto": 11820000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-09",
+    "tipo": "pago",
+    "monto": 11820000,
+    "detalle": "Pago a 31 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-25",
+    "tipo": "venta",
+    "monto": 21400000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "autoservicio_belgrano",
+  "nombre": "Autoservicio Belgrano",
+  "saldo": 14300000,
+  "limite_credito": 20000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 9,
+  "promedio_pago_dias": 21,
+  "movimientos": [
+   {
+    "fecha": "2025-02-01",
+    "tipo": "venta",
+    "monto": 7460000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-24",
+    "tipo": "pago",
+    "monto": 7460000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-18",
+    "tipo": "venta",
+    "monto": 13530000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-07",
+    "tipo": "pago",
+    "monto": 13530000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-14",
+    "tipo": "venta",
+    "monto": 10900000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-10",
+    "tipo": "pago",
+    "monto": 10900000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-07",
+    "tipo": "venta",
+    "monto": 8360000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-06",
+    "tipo": "pago",
+    "monto": 8360000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-07",
+    "tipo": "venta",
+    "monto": 11570000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-29",
+    "tipo": "pago",
+    "monto": 11570000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-15",
+    "tipo": "venta",
+    "monto": 12150000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-31",
+    "tipo": "pago",
+    "monto": 12150000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-28",
+    "tipo": "venta",
+    "monto": 11400000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-15",
+    "tipo": "pago",
+    "monto": 11400000,
+    "detalle": "Pago a 18 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-31",
+    "tipo": "venta",
+    "monto": 6680000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-02-13",
+    "tipo": "pago",
+    "monto": 6680000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-28",
+    "tipo": "venta",
+    "monto": 14300000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "granja_los_alamos",
+  "nombre": "Granja Los Álamos",
+  "saldo": 8100000,
+  "limite_credito": 12000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 15,
+  "promedio_pago_dias": 23,
+  "movimientos": [
+   {
+    "fecha": "2025-01-19",
+    "tipo": "venta",
+    "monto": 5920000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-11",
+    "tipo": "pago",
+    "monto": 5920000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-07",
+    "tipo": "venta",
+    "monto": 6030000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-06",
+    "tipo": "pago",
+    "monto": 6030000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-13",
+    "tipo": "venta",
+    "monto": 5310000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-02",
+    "tipo": "pago",
+    "monto": 5310000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-30",
+    "tipo": "venta",
+    "monto": 5020000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-21",
+    "tipo": "pago",
+    "monto": 5020000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-20",
+    "tipo": "venta",
+    "monto": 3380000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-19",
+    "tipo": "pago",
+    "monto": 3380000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-06",
+    "tipo": "venta",
+    "monto": 6010000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-04",
+    "tipo": "pago",
+    "monto": 6010000,
+    "detalle": "Pago a 28 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-04",
+    "tipo": "venta",
+    "monto": 5680000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-15",
+    "tipo": "pago",
+    "monto": 5680000,
+    "detalle": "Pago a 11 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-22",
+    "tipo": "venta",
+    "monto": 8100000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "kiosco_la_terminal",
+  "nombre": "Kiosco La Terminal",
+  "saldo": 4200000,
+  "limite_credito": 5000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 11,
+  "promedio_pago_dias": 14,
+  "movimientos": [
+   {
+    "fecha": "2025-02-02",
+    "tipo": "venta",
+    "monto": 3140000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-22",
+    "tipo": "pago",
+    "monto": 3140000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-16",
+    "tipo": "venta",
+    "monto": 1730000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-04",
+    "tipo": "pago",
+    "monto": 1730000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-07",
+    "tipo": "venta",
+    "monto": 3390000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-25",
+    "tipo": "pago",
+    "monto": 3390000,
+    "detalle": "Pago a 18 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-27",
+    "tipo": "venta",
+    "monto": 3810000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-18",
+    "tipo": "pago",
+    "monto": 3810000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-20",
+    "tipo": "venta",
+    "monto": 2370000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-10",
+    "tipo": "pago",
+    "monto": 2370000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-30",
+    "tipo": "venta",
+    "monto": 2820000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-02",
+    "tipo": "pago",
+    "monto": 2820000,
+    "detalle": "Pago a 3 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-26",
+    "tipo": "venta",
+    "monto": 4200000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "rotiseria_avenida",
+  "nombre": "Rotisería Avenida",
+  "saldo": 3800000,
+  "limite_credito": 6000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 8,
+  "promedio_pago_dias": 12,
+  "movimientos": [
+   {
+    "fecha": "2025-01-30",
+    "tipo": "venta",
+    "monto": 2800000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-06",
+    "tipo": "pago",
+    "monto": 2800000,
+    "detalle": "Pago a 7 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-22",
+    "tipo": "venta",
+    "monto": 3580000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-07",
+    "tipo": "pago",
+    "monto": 3580000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-10",
+    "tipo": "venta",
+    "monto": 1460000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-23",
+    "tipo": "pago",
+    "monto": 1460000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-05",
+    "tipo": "venta",
+    "monto": 1570000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-15",
+    "tipo": "pago",
+    "monto": 1570000,
+    "detalle": "Pago a 10 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-14",
+    "tipo": "venta",
+    "monto": 3180000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-31",
+    "tipo": "pago",
+    "monto": 3180000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-23",
+    "tipo": "venta",
+    "monto": 3420000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-27",
+    "tipo": "pago",
+    "monto": 3420000,
+    "detalle": "Pago a 4 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-14",
+    "tipo": "venta",
+    "monto": 3060000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-04",
+    "tipo": "pago",
+    "monto": 3060000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-01",
+    "tipo": "venta",
+    "monto": 1860000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-10",
+    "tipo": "pago",
+    "monto": 1860000,
+    "detalle": "Pago a 9 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-29",
+    "tipo": "venta",
+    "monto": 3800000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "bar_el_muelle",
+  "nombre": "Bar El Muelle",
+  "saldo": 2900000,
+  "limite_credito": 4000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 6,
+  "promedio_pago_dias": 13,
+  "movimientos": [
+   {
+    "fecha": "2025-01-29",
+    "tipo": "venta",
+    "monto": 1690000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-09",
+    "tipo": "pago",
+    "monto": 1690000,
+    "detalle": "Pago a 11 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-16",
+    "tipo": "venta",
+    "monto": 2270000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-30",
+    "tipo": "pago",
+    "monto": 2270000,
+    "detalle": "Pago a 14 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-03",
+    "tipo": "venta",
+    "monto": 1940000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-10",
+    "tipo": "pago",
+    "monto": 1940000,
+    "detalle": "Pago a 7 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-10",
+    "tipo": "venta",
+    "monto": 1810000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-26",
+    "tipo": "pago",
+    "monto": 1810000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-13",
+    "tipo": "venta",
+    "monto": 2360000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-26",
+    "tipo": "pago",
+    "monto": 2360000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-26",
+    "tipo": "venta",
+    "monto": 2650000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-01",
+    "tipo": "pago",
+    "monto": 2650000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-02",
+    "tipo": "venta",
+    "monto": 1080000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-27",
+    "tipo": "pago",
+    "monto": 1080000,
+    "detalle": "Pago a 25 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-07-01",
+    "tipo": "venta",
+    "monto": 2900000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "panaderia_trigal",
+  "nombre": "Panadería El Trigal",
+  "saldo": 3400000,
+  "limite_credito": 5000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 5,
+  "promedio_pago_dias": 11,
+  "movimientos": [
+   {
+    "fecha": "2025-02-04",
+    "tipo": "venta",
+    "monto": 2100000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-19",
+    "tipo": "pago",
+    "monto": 2100000,
+    "detalle": "Pago a 15 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-17",
+    "tipo": "venta",
+    "monto": 2260000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-20",
+    "tipo": "pago",
+    "monto": 2260000,
+    "detalle": "Pago a 3 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-13",
+    "tipo": "venta",
+    "monto": 2050000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-29",
+    "tipo": "pago",
+    "monto": 2050000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-13",
+    "tipo": "venta",
+    "monto": 1460000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-29",
+    "tipo": "pago",
+    "monto": 1460000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-31",
+    "tipo": "venta",
+    "monto": 2990000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-11",
+    "tipo": "pago",
+    "monto": 2990000,
+    "detalle": "Pago a 11 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-22",
+    "tipo": "venta",
+    "monto": 1350000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-10",
+    "tipo": "pago",
+    "monto": 1350000,
+    "detalle": "Pago a 18 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-14",
+    "tipo": "venta",
+    "monto": 2770000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-19",
+    "tipo": "pago",
+    "monto": 2770000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-18",
+    "tipo": "venta",
+    "monto": 1860000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-22",
+    "tipo": "pago",
+    "monto": 1860000,
+    "detalle": "Pago a 4 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-07-02",
+    "tipo": "venta",
+    "monto": 3400000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "despensa_la_union",
+  "nombre": "Despensa La Unión",
+  "saldo": 6700000,
+  "limite_credito": 10000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 24,
+  "promedio_pago_dias": 27,
+  "movimientos": [
+   {
+    "fecha": "2025-01-18",
+    "tipo": "venta",
+    "monto": 2460000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-20",
+    "tipo": "pago",
+    "monto": 2460000,
+    "detalle": "Pago a 33 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-09",
+    "tipo": "venta",
+    "monto": 5100000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-01",
+    "tipo": "pago",
+    "monto": 5100000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-14",
+    "tipo": "venta",
+    "monto": 5300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-13",
+    "tipo": "pago",
+    "monto": 5300000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-17",
+    "tipo": "venta",
+    "monto": 4320000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-13",
+    "tipo": "pago",
+    "monto": 4320000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-26",
+    "tipo": "venta",
+    "monto": 6050000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-22",
+    "tipo": "pago",
+    "monto": 6050000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-20",
+    "tipo": "venta",
+    "monto": 5410000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-16",
+    "tipo": "pago",
+    "monto": 5410000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-08",
+    "tipo": "venta",
+    "monto": 3420000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-03",
+    "tipo": "pago",
+    "monto": 3420000,
+    "detalle": "Pago a 25 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-13",
+    "tipo": "venta",
+    "monto": 5900000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-08",
+    "tipo": "pago",
+    "monto": 5900000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-13",
+    "tipo": "venta",
+    "monto": 6700000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "super_avenida_norte",
+  "nombre": "Súper Avenida Norte",
+  "saldo": 17500000,
+  "limite_credito": 25000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 14,
+  "promedio_pago_dias": 23,
+  "movimientos": [
+   {
+    "fecha": "2025-01-31",
+    "tipo": "venta",
+    "monto": 7300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-18",
+    "tipo": "pago",
+    "monto": 7300000,
+    "detalle": "Pago a 18 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-23",
+    "tipo": "venta",
+    "monto": 10150000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-19",
+    "tipo": "pago",
+    "monto": 10150000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-21",
+    "tipo": "venta",
+    "monto": 9590000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-18",
+    "tipo": "pago",
+    "monto": 9590000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-09",
+    "tipo": "venta",
+    "monto": 10530000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-26",
+    "tipo": "pago",
+    "monto": 10530000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-10",
+    "tipo": "venta",
+    "monto": 9580000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-07",
+    "tipo": "pago",
+    "monto": 9580000,
+    "detalle": "Pago a 28 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-29",
+    "tipo": "venta",
+    "monto": 10360000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-18",
+    "tipo": "pago",
+    "monto": 10360000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-04",
+    "tipo": "venta",
+    "monto": 10570000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-31",
+    "tipo": "pago",
+    "monto": 10570000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-26",
+    "tipo": "venta",
+    "monto": 10960000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-18",
+    "tipo": "pago",
+    "monto": 10960000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-23",
+    "tipo": "venta",
+    "monto": 16470000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-04-12",
+    "tipo": "pago",
+    "monto": 16470000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-23",
+    "tipo": "venta",
+    "monto": 17500000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "almacen_donpedro",
+  "nombre": "Almacén Don Pedro",
+  "saldo": 5900000,
+  "limite_credito": 8000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 20,
+  "promedio_pago_dias": 25,
+  "movimientos": [
+   {
+    "fecha": "2025-01-30",
+    "tipo": "venta",
+    "monto": 4750000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-04",
+    "tipo": "pago",
+    "monto": 4750000,
+    "detalle": "Pago a 33 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-23",
+    "tipo": "venta",
+    "monto": 5320000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-09",
+    "tipo": "pago",
+    "monto": 5320000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-20",
+    "tipo": "venta",
+    "monto": 2300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-07",
+    "tipo": "pago",
+    "monto": 2300000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-11",
+    "tipo": "venta",
+    "monto": 4590000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-30",
+    "tipo": "pago",
+    "monto": 4590000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-03",
+    "tipo": "venta",
+    "monto": 4620000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-02",
+    "tipo": "pago",
+    "monto": 4620000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-07",
+    "tipo": "venta",
+    "monto": 2840000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-05",
+    "tipo": "pago",
+    "monto": 2840000,
+    "detalle": "Pago a 28 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-03",
+    "tipo": "venta",
+    "monto": 3130000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-30",
+    "tipo": "pago",
+    "monto": 3130000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-11",
+    "tipo": "venta",
+    "monto": 5430000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-06",
+    "tipo": "pago",
+    "monto": 5430000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-30",
+    "tipo": "venta",
+    "monto": 4390000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-04-28",
+    "tipo": "pago",
+    "monto": 4390000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-17",
+    "tipo": "venta",
+    "monto": 5900000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "mercadito_del_rio",
+  "nombre": "Mercadito del Río",
+  "saldo": 7800000,
+  "limite_credito": 10000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 26,
+  "promedio_pago_dias": 28,
+  "movimientos": [
+   {
+    "fecha": "2025-01-20",
+    "tipo": "venta",
+    "monto": 7070000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-18",
+    "tipo": "pago",
+    "monto": 7070000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-07",
+    "tipo": "venta",
+    "monto": 4540000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-12",
+    "tipo": "pago",
+    "monto": 4540000,
+    "detalle": "Pago a 36 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-14",
+    "tipo": "venta",
+    "monto": 5690000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-07",
+    "tipo": "pago",
+    "monto": 5690000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-07",
+    "tipo": "venta",
+    "monto": 5330000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-12",
+    "tipo": "pago",
+    "monto": 5330000,
+    "detalle": "Pago a 35 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-27",
+    "tipo": "venta",
+    "monto": 3870000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-18",
+    "tipo": "pago",
+    "monto": 3870000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-18",
+    "tipo": "venta",
+    "monto": 6370000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-16",
+    "tipo": "pago",
+    "monto": 6370000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-17",
+    "tipo": "venta",
+    "monto": 4820000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-18",
+    "tipo": "pago",
+    "monto": 4820000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-10",
+    "tipo": "venta",
+    "monto": 5850000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-28",
+    "tipo": "pago",
+    "monto": 5850000,
+    "detalle": "Pago a 18 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-11",
+    "tipo": "venta",
+    "monto": 7800000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "kiosco_plaza",
+  "nombre": "Kiosco Plaza",
+  "saldo": 1900000,
+  "limite_credito": 3000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 7,
+  "promedio_pago_dias": 12,
+  "movimientos": [
+   {
+    "fecha": "2025-01-23",
+    "tipo": "venta",
+    "monto": 1020000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-12",
+    "tipo": "pago",
+    "monto": 1020000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-15",
+    "tipo": "venta",
+    "monto": 820000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-27",
+    "tipo": "pago",
+    "monto": 820000,
+    "detalle": "Pago a 12 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-11",
+    "tipo": "venta",
+    "monto": 1550000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-16",
+    "tipo": "pago",
+    "monto": 1550000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-04",
+    "tipo": "venta",
+    "monto": 1220000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-09",
+    "tipo": "pago",
+    "monto": 1220000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-27",
+    "tipo": "venta",
+    "monto": 760000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-16",
+    "tipo": "pago",
+    "monto": 760000,
+    "detalle": "Pago a 20 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-15",
+    "tipo": "venta",
+    "monto": 1620000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-31",
+    "tipo": "pago",
+    "monto": 1620000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-19",
+    "tipo": "venta",
+    "monto": 980000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-27",
+    "tipo": "pago",
+    "monto": 980000,
+    "detalle": "Pago a 8 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-18",
+    "tipo": "venta",
+    "monto": 1400000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-28",
+    "tipo": "pago",
+    "monto": 1400000,
+    "detalle": "Pago a 10 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-30",
+    "tipo": "venta",
+    "monto": 1900000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "comidas_el_fogon",
+  "nombre": "Comidas El Fogón",
+  "saldo": 4600000,
+  "limite_credito": 7000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 10,
+  "promedio_pago_dias": 13,
+  "movimientos": [
+   {
+    "fecha": "2025-01-20",
+    "tipo": "venta",
+    "monto": 1740000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-01-29",
+    "tipo": "pago",
+    "monto": 1740000,
+    "detalle": "Pago a 9 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-28",
+    "tipo": "venta",
+    "monto": 2090000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-12",
+    "tipo": "pago",
+    "monto": 2090000,
+    "detalle": "Pago a 12 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-10",
+    "tipo": "venta",
+    "monto": 1830000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-16",
+    "tipo": "pago",
+    "monto": 1830000,
+    "detalle": "Pago a 6 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-19",
+    "tipo": "venta",
+    "monto": 3960000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-04",
+    "tipo": "pago",
+    "monto": 3960000,
+    "detalle": "Pago a 15 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-11",
+    "tipo": "venta",
+    "monto": 2300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-20",
+    "tipo": "pago",
+    "monto": 2300000,
+    "detalle": "Pago a 9 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-28",
+    "tipo": "venta",
+    "monto": 2050000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-14",
+    "tipo": "pago",
+    "monto": 2050000,
+    "detalle": "Pago a 17 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-22",
+    "tipo": "venta",
+    "monto": 2420000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-15",
+    "tipo": "pago",
+    "monto": 2420000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-27",
+    "tipo": "venta",
+    "monto": 4600000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "autoservicio_mitre",
+  "nombre": "Autoservicio Mitre",
+  "saldo": 11200000,
+  "limite_credito": 15000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 16,
+  "promedio_pago_dias": 24,
+  "movimientos": [
+   {
+    "fecha": "2025-02-04",
+    "tipo": "venta",
+    "monto": 8350000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-08",
+    "tipo": "pago",
+    "monto": 8350000,
+    "detalle": "Pago a 32 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-17",
+    "tipo": "venta",
+    "monto": 4130000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-12",
+    "tipo": "pago",
+    "monto": 4130000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-21",
+    "tipo": "venta",
+    "monto": 7950000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-13",
+    "tipo": "pago",
+    "monto": 7950000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-10",
+    "tipo": "venta",
+    "monto": 7640000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-06",
+    "tipo": "pago",
+    "monto": 7640000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-14",
+    "tipo": "venta",
+    "monto": 5980000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-04",
+    "tipo": "pago",
+    "monto": 5980000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-06",
+    "tipo": "venta",
+    "monto": 9600000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-03",
+    "tipo": "pago",
+    "monto": 9600000,
+    "detalle": "Pago a 27 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-31",
+    "tipo": "venta",
+    "monto": 7890000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-25",
+    "tipo": "pago",
+    "monto": 7890000,
+    "detalle": "Pago a 25 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-02-17",
+    "tipo": "venta",
+    "monto": 6350000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-03-05",
+    "tipo": "pago",
+    "monto": 6350000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-21",
+    "tipo": "venta",
+    "monto": 6980000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-09",
+    "tipo": "pago",
+    "monto": 6980000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-21",
+    "tipo": "venta",
+    "monto": 11200000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "hosteria_costanera",
+  "nombre": "Hostería Costanera",
+  "saldo": 6300000,
+  "limite_credito": 9000000,
+  "plazo_dias": 30,
+  "dias_sin_pagar": 13,
+  "promedio_pago_dias": 22,
+  "movimientos": [
+   {
+    "fecha": "2025-01-25",
+    "tipo": "venta",
+    "monto": 4260000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-24",
+    "tipo": "pago",
+    "monto": 4260000,
+    "detalle": "Pago a 30 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-08",
+    "tipo": "venta",
+    "monto": 4300000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-30",
+    "tipo": "pago",
+    "monto": 4300000,
+    "detalle": "Pago a 22 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-21",
+    "tipo": "venta",
+    "monto": 4420000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-07",
+    "tipo": "pago",
+    "monto": 4420000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-31",
+    "tipo": "venta",
+    "monto": 2690000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-29",
+    "tipo": "pago",
+    "monto": 2690000,
+    "detalle": "Pago a 29 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-09",
+    "tipo": "venta",
+    "monto": 4620000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-28",
+    "tipo": "pago",
+    "monto": 4620000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-07",
+    "tipo": "venta",
+    "monto": 4660000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-02",
+    "tipo": "pago",
+    "monto": 4660000,
+    "detalle": "Pago a 26 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-22",
+    "tipo": "venta",
+    "monto": 4430000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-07",
+    "tipo": "pago",
+    "monto": 4430000,
+    "detalle": "Pago a 16 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-13",
+    "tipo": "venta",
+    "monto": 2700000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-03",
+    "tipo": "pago",
+    "monto": 2700000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-27",
+    "tipo": "venta",
+    "monto": 2720000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-15",
+    "tipo": "pago",
+    "monto": 2720000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-06-24",
+    "tipo": "venta",
+    "monto": 6300000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ },
+ {
+  "id": "proveduria_la_rural",
+  "nombre": "Proveeduría La Rural",
+  "saldo": 0,
+  "limite_credito": 8000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 0,
+  "promedio_pago_dias": 14,
+  "movimientos": [
+   {
+    "fecha": "2025-01-22",
+    "tipo": "venta",
+    "monto": 3870000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-01-31",
+    "tipo": "pago",
+    "monto": 3870000,
+    "detalle": "Pago a 9 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-07",
+    "tipo": "venta",
+    "monto": 2320000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-20",
+    "tipo": "pago",
+    "monto": 2320000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-20",
+    "tipo": "venta",
+    "monto": 2920000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-29",
+    "tipo": "pago",
+    "monto": 2920000,
+    "detalle": "Pago a 9 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-05-28",
+    "tipo": "venta",
+    "monto": 1870000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-06-16",
+    "tipo": "pago",
+    "monto": 1870000,
+    "detalle": "Pago a 19 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-17",
+    "tipo": "venta",
+    "monto": 4240000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-01",
+    "tipo": "pago",
+    "monto": 4240000,
+    "detalle": "Pago a 15 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-04",
+    "tipo": "venta",
+    "monto": 2990000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-10-17",
+    "tipo": "pago",
+    "monto": 2990000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-06",
+    "tipo": "venta",
+    "monto": 2830000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-11-19",
+    "tipo": "pago",
+    "monto": 2830000,
+    "detalle": "Pago a 13 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-12-31",
+    "tipo": "venta",
+    "monto": 3670000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-01-21",
+    "tipo": "pago",
+    "monto": 3670000,
+    "detalle": "Pago a 21 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-02-10",
+    "tipo": "venta",
+    "monto": 3310000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2026-02-24",
+    "tipo": "pago",
+    "monto": 3310000,
+    "detalle": "Pago a 14 días",
+    "historico": true
+   }
+  ]
+ },
+ {
+  "id": "bufete_club_regatas",
+  "nombre": "Bufete Club Regatas",
+  "saldo": 2400000,
+  "limite_credito": 4000000,
+  "plazo_dias": 15,
+  "dias_sin_pagar": 4,
+  "promedio_pago_dias": 10,
+  "movimientos": [
+   {
+    "fecha": "2025-01-30",
+    "tipo": "venta",
+    "monto": 1100000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-02-04",
+    "tipo": "pago",
+    "monto": 1100000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-26",
+    "tipo": "venta",
+    "monto": 1930000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-03-31",
+    "tipo": "pago",
+    "monto": 1930000,
+    "detalle": "Pago a 5 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-16",
+    "tipo": "venta",
+    "monto": 1750000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-04-28",
+    "tipo": "pago",
+    "monto": 1750000,
+    "detalle": "Pago a 12 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-14",
+    "tipo": "venta",
+    "monto": 2250000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-07-26",
+    "tipo": "pago",
+    "monto": 2250000,
+    "detalle": "Pago a 12 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-06",
+    "tipo": "venta",
+    "monto": 2250000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-09",
+    "tipo": "pago",
+    "monto": 2250000,
+    "detalle": "Pago a 3 días",
+    "historico": true
+   },
+   {
+    "fecha": "2025-08-18",
+    "tipo": "venta",
+    "monto": 1230000,
+    "detalle": "Pedido mayorista",
+    "historico": true
+   },
+   {
+    "fecha": "2025-09-10",
+    "tipo": "pago",
+    "monto": 1230000,
+    "detalle": "Pago a 23 días",
+    "historico": true
+   },
+   {
+    "fecha": "2026-07-03",
+    "tipo": "venta",
+    "monto": 2400000,
+    "detalle": "Pedido mayorista"
+   }
+  ]
+ }
+]

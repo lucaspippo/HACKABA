@@ -1,0 +1,135 @@
+"""
+Plan 7 · Caja y tesorería simple.
+
+El dueño cierra caja todos los días. Sin esto, PolPilot no sabe cuánta plata
+hay hoy. Versión simple (no la complejidad de Tango): apertura, movimientos por
+medio de pago, cierre con diferencia, e historial. Ángela detecta diferencias
+inusuales comparando con el promedio de los últimos días.
+"""
+from __future__ import annotations
+
+import datetime
+import json
+import os
+import statistics
+
+from . import paths
+from . import fechas
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
+CAJA_JSON = os.path.join(DATA_DIR, "caja.json")
+
+MEDIOS = ["efectivo", "tarjeta", "transferencia", "mercadopago"]
+
+# Estado demo: caja abierta con movimientos del día + historial para el promedio.
+_SEED = {
+    "abierta": True,
+    "fecha": fechas.hoy().isoformat(),
+    "saldo_inicial": 50_000,
+    "movimientos": [
+        {"tipo": "ingreso", "medio": "efectivo", "monto": 145_000, "detalle": "Ventas mostrador"},
+        {"tipo": "ingreso", "medio": "tarjeta", "monto": 92_000, "detalle": "Ventas con tarjeta"},
+        {"tipo": "ingreso", "medio": "mercadopago", "monto": 68_000, "detalle": "QR Mercado Pago"},
+        {"tipo": "egreso", "medio": "efectivo", "monto": 40_000, "detalle": "Pago a proveedor de pan"},
+    ],
+    "historial": [
+        {"fecha": "2026-06-20", "total": 268_000, "diferencia": 0},
+        {"fecha": "2026-06-21", "total": 241_000, "diferencia": -1_200},
+        {"fecha": "2026-06-23", "total": 255_000, "diferencia": 0},
+        {"fecha": "2026-06-24", "total": 279_000, "diferencia": 800},
+        {"fecha": "2026-06-25", "total": 262_000, "diferencia": 0},
+        {"fecha": "2026-06-26", "total": 271_000, "diferencia": -500},
+    ],
+}
+
+
+def _load() -> dict:
+    if not os.path.exists(CAJA_JSON):
+        _save(_SEED)
+        return json.loads(json.dumps(_SEED))
+    try:
+        return json.load(open(CAJA_JSON, encoding="utf-8"))
+    except Exception:
+        return json.loads(json.dumps(_SEED))
+
+
+def _save(c: dict) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    json.dump(c, open(CAJA_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+
+
+def _totales(caja: dict) -> dict:
+    por_medio = {m: 0.0 for m in MEDIOS}
+    ingresos = egresos = 0.0
+    for mv in caja.get("movimientos", []):
+        signo = 1 if mv["tipo"] == "ingreso" else -1
+        por_medio[mv.get("medio", "efectivo")] = por_medio.get(mv.get("medio", "efectivo"), 0) + signo * mv["monto"]
+        if mv["tipo"] == "ingreso":
+            ingresos += mv["monto"]
+        else:
+            egresos += mv["monto"]
+    total = caja.get("saldo_inicial", 0) + ingresos - egresos
+    return {"por_medio": por_medio, "ingresos": ingresos, "egresos": egresos, "total": total}
+
+
+def estado() -> dict:
+    caja = _load()
+    return {**caja, "totales": _totales(caja), "medios": MEDIOS}
+
+
+def abrir(saldo_inicial: float) -> dict:
+    caja = _load()
+    caja.update({"abierta": True, "fecha": fechas.hoy().isoformat(),
+                 "saldo_inicial": saldo_inicial, "movimientos": []})
+    _save(caja)
+    return estado()
+
+
+def movimiento(tipo: str, medio: str, monto: float, detalle: str = "") -> dict:
+    caja = _load()
+    caja.setdefault("movimientos", []).append(
+        {"tipo": tipo, "medio": medio, "monto": float(monto), "detalle": detalle})
+    _save(caja)
+    return estado()
+
+
+def _promedio_historial(caja: dict) -> float | None:
+    tot = [h["total"] for h in caja.get("historial", [])][-7:]
+    return statistics.mean(tot) if tot else None
+
+
+def cerrar(declarado: float | None = None, lang: str | None = None) -> dict:
+    import i18n
+    caja = _load()
+    t = _totales(caja)
+    total = t["total"]
+    diferencia = round((declarado - total), 2) if declarado is not None else 0
+    prom = _promedio_historial(caja)
+
+    # Ángela: ¿la diferencia o el total es inusual respecto al promedio?
+    nota = None
+    if diferencia and abs(diferencia) > 5000:
+        nota = i18n.t("core.caja.nota_diferencia", lang,
+                      dif=i18n.pesos(diferencia, lang))
+    elif prom and abs(total - prom) > prom * 0.25:
+        signo = i18n.t("core.caja.por_encima" if total > prom
+                       else "core.caja.por_debajo", lang)
+        nota = i18n.t("core.caja.nota_promedio", lang, total=i18n.pesos(total, lang),
+                      signo=signo, prom=i18n.pesos(prom, lang))
+
+    caja.setdefault("historial", []).append(
+        {"fecha": caja.get("fecha"), "total": total, "diferencia": diferencia})
+    caja["abierta"] = False
+    _save(caja)
+    return {"total": total, "diferencia": diferencia, "por_medio": t["por_medio"],
+            "promedio_semana": round(prom) if prom else None, "nota_angela": nota}
+
+
+def historial() -> list[dict]:
+    return _load().get("historial", [])
+
+
+def resetear() -> None:
+    if os.path.exists(CAJA_JSON):
+        os.remove(CAJA_JSON)
