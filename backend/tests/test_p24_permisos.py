@@ -5,7 +5,6 @@ los objetivos asignados LLEGAN al empleado y su avance vuelve al dueño.
 from __future__ import annotations
 
 import json
-import os
 
 import pytest
 from fastapi.testclient import TestClient
@@ -82,15 +81,10 @@ def test_pdf_empleado_no_ve_a_otro_empleado(indice_tmp):
 
 @pytest.fixture()
 def objetivos_limpios():
-    from core import objetivos
-    backup = None
-    if os.path.exists(objetivos.OBJETIVOS_JSON):
-        backup = open(objetivos.OBJETIVOS_JSON, encoding="utf-8").read()
+    from tests.conftest import limpiar_tabla_tenant
+    limpiar_tabla_tenant("team_goals")
     yield
-    if backup is not None:
-        open(objetivos.OBJETIVOS_JSON, "w", encoding="utf-8").write(backup)
-    elif os.path.exists(objetivos.OBJETIVOS_JSON):
-        os.remove(objetivos.OBJETIVOS_JSON)
+    limpiar_tabla_tenant("team_goals")
 
 
 def test_objetivo_e2e_dueno_empleada(clientes, objetivos_limpios):
