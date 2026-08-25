@@ -4,7 +4,7 @@ import json
 
 from sqlalchemy import text
 
-from core.db.engine import tenant_connection
+from core.db.engine import tenant_connection, to_local_iso
 
 
 def save(tenant_id: str, data: dict, *, reason: str, author: str = "sistema") -> dict:
@@ -21,7 +21,7 @@ def save(tenant_id: str, data: dict, *, reason: str, author: str = "sistema") ->
         "id": row["id"],
         "motivo": row["reason"],
         "autor": row["author"],
-        "creado": row["created_at"].isoformat(timespec="seconds"),
+        "creado": to_local_iso(row["created_at"]),
     }
 
 
@@ -35,7 +35,7 @@ def list_versions(tenant_id: str) -> list[dict]:
             "id": r["id"],
             "motivo": r["reason"],
             "autor": r["author"],
-            "creado": r["created_at"].isoformat(timespec="seconds"),
+            "creado": to_local_iso(r["created_at"]),
         }
         for r in rows
     ]

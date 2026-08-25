@@ -87,6 +87,28 @@ its Postgres container can and do drift — an observed ~9s drift between a
 dev machine and its local Docker/WSL2 Postgres broke exactly this kind of
 check during the `sessions` migration.
 
+**A `now()`-generated timestamp is UTC. Convert it before handing it back
+to code that compares a date prefix against `core/fechas.py`'s `hoy()`.**
+`hoy()` returns naive *local* `datetime.date.today()`. A row's `created_at`
+(or any `server_default=now()` column) is a correct UTC instant — but
+formatting it straight to ISO and slicing `[:10]` for a `<= hoy_iso` check
+breaks near a UTC midnight boundary, which is routine for any timezone
+behind UTC (Argentina's UTC-3 included — this broke `/api/actividad`'s
+"today's corrections" filter within hours of writing the `audit_events`
+migration, not in some rare edge case). Use `core.db.engine.to_local_iso(dt)`
+on every timestamp read back from Postgres that used to come from
+`datetime.datetime.now().isoformat()` — it converts to local wall-clock
+time and drops the tzinfo, reproducing the old naive-string format exactly.
+The mirror bug exists on the way *in* too: if a naive local-time string
+(from a seed file, or computed in the calling `core/*.py` module before
+being handed to the repo) is inserted into a `TIMESTAMP(timezone=True)`
+column as-is, Postgres interprets it using the *session's* timezone (UTC
+here), silently storing the wrong instant. Fix on write with
+`datetime.datetime.fromisoformat(s).astimezone()` (calling `.astimezone()`
+on a naive datetime attaches the correct local offset) before passing it as
+the parameter — see `audit_repo.seed_if_empty()` and
+`purchase_orders_repo.create()` for both directions of this fix.
+
 ## 5. Rewire the module's `_load`/`_save`
 
 `_load` calls the repo's list function (seeding first if empty via
@@ -113,6 +135,19 @@ storage. Two things reliably need updating:
   connection only shows up at full-suite scale, not in isolation. Run it
   **twice** to catch anything that only breaks on a second pass (a stale
   cache, a non-idempotent seed).
+- **Add the new table to `conftest.py`'s `PILOTO_MUTABLE_TABLES` reset
+  list.** The old JSON-file suite got a fresh "piloto" tenant for free —
+  every `pytest` invocation started from a brand-new temp scratch directory
+  (see the comment at the top of `conftest.py`). Postgres rows don't: they
+  persist across *separate* suite runs, not just within one run. Skipping
+  this step doesn't fail on the first `pytest` invocation after migrating a
+  module — it fails on a *later, separate* one, once enough leftover rows
+  from earlier runs accumulate to break a count/feed/limit-based assertion.
+  Run the full suite **at least twice as two genuinely separate `pytest`
+  invocations** (not just twice in a row within one process) to catch this
+  — a single process, even run twice via `-q ... && -q ...` in the same
+  shell command, won't reproduce it if nothing reset piloto's tables at
+  that process's own conftest bootstrap.
 
 **When a module's whole state is one blob (not per-entity rows)** — `core/
 caja.py`'s single dict (`abierta`/`movimientos`/`historial`), `core/store.py`'s

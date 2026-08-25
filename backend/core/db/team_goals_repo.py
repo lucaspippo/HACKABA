@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from core.db.engine import tenant_connection
+from core.db.engine import tenant_connection, to_local_iso
 
 _COLS = "id, name, owner, target_date, status, created_by, created_at"
 
@@ -15,7 +15,7 @@ def _to_goal(row) -> dict:
         "fecha": row["target_date"],
         "estado": row["status"],
         "creado_por": row["created_by"],
-        "creado": row["created_at"].isoformat(timespec="seconds"),
+        "creado": to_local_iso(row["created_at"]),
     }
 
 

@@ -55,18 +55,42 @@ with _get_admin_engine().begin() as _conn:
     # (not just a Python global) because subprocess calls below build their env
     # from **os.environ, so the flag propagates to any subprocess spawned after
     # this point without needing to be threaded through explicitly.
-    if not os.environ.get("_POLPILOT_TEST_CREDS_RESET"):
-        for _slug in ("piloto", "demo"):
-            _tid = _conn.execute(_text_bootstrap(
-                "SELECT id FROM tenants WHERE slug = :slug"
-            ), {"slug": _slug}).scalar_one()
+    #
+    # PILOTO_MUTABLE_TABLES: every tenant-scoped table any core/*.py module
+    # has moved to Postgres so far. Add a new one here whenever a new module
+    # gets migrated (see core/db/MIGRATING_A_MODULE.md) — piloto's whole point
+    # is to behave like a freshly-mounted tenant with no history (per the
+    # comment at the top of this file), which the old JSON-file suite got for
+    # free from a brand-new temp scratch directory every `pytest` invocation.
+    # Postgres rows don't get that for free — they persist across separate
+    # suite runs, not just within one run, unless explicitly reset here.
+    if not os.environ.get("_POLPILOT_TEST_TENANT_RESET"):
+        _piloto_id = _conn.execute(_text_bootstrap(
+            "SELECT id FROM tenants WHERE slug = 'piloto'"
+        )).scalar_one()
+        for _tabla in (
+            "auth_credentials", "sessions",
+            "account_movements", "customer_accounts",
+            "audit_events", "data_versions",
+            "inventory_working", "caja_state", "organization_config",
+            "purchase_orders", "team_goals", "supplier_conditions",
+        ):
             _conn.execute(_text_bootstrap(
-                "DELETE FROM auth_credentials WHERE tenant_id = :tid"
-            ), {"tid": _tid})
+                f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
+            ), {"tid": _piloto_id})
+
+        # "demo" only needs its credentials reset (same reasoning as above) —
+        # its business data is the REAL seeded dataset (data-demo/*.json) that
+        # canonical-number tests assert against, so it must NOT be wiped here.
+        _demo_id = _conn.execute(_text_bootstrap(
+            "SELECT id FROM tenants WHERE slug = 'demo'"
+        )).scalar_one()
+        for _tabla in ("auth_credentials", "sessions"):
             _conn.execute(_text_bootstrap(
-                "DELETE FROM sessions WHERE tenant_id = :tid"
-            ), {"tid": _tid})
-        os.environ["_POLPILOT_TEST_CREDS_RESET"] = "1"
+                f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
+            ), {"tid": _demo_id})
+
+        os.environ["_POLPILOT_TEST_TENANT_RESET"] = "1"
 
 DEMO_TEST_PASSWORD = "polpilot-suite-test-password"
 
