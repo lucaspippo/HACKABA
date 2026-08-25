@@ -155,3 +155,25 @@ def test_supplier_conditions_table_has_rls_enabled():
         )).mappings().all()
         assert len(rows) == 1
         assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
+
+
+def test_team_notes_table_has_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = 'team_notes'"
+        )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
+
+
+def test_notifications_table_has_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = 'notifications'"
+        )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]

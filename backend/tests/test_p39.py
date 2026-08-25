@@ -22,23 +22,26 @@ from fastapi.testclient import TestClient
 import auth
 import main
 from core import perfiles, notificaciones
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
     """Las solicitudes/notificaciones se persisten: backup y restore siempre."""
-    files = [perfiles.PERFILES_JSON, notificaciones.NOTIFICACIONES_JSON]
+    files = [perfiles.PERFILES_JSON]
     backup = {}
     for f in files:
         if os.path.exists(f):
             backup[f] = open(f, encoding="utf-8").read()
             os.remove(f)
+    limpiar_tabla_tenant("notifications")
     yield
     for f in files:
         if os.path.exists(f):
             os.remove(f)
         if f in backup:
             open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("notifications")
 
 
 @pytest.fixture()
