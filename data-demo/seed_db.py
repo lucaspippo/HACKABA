@@ -53,12 +53,13 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     os.environ["POLPILOT_TENANT"] = tenant_slug
     from core.db import credentials_repo
 
-    if tenant_slug == "demo":
-        import usuarios_demo
-        roster = usuarios_demo.USUARIOS
-    else:
-        import auth
-        roster = auth.USUARIOS
+    # auth.USUARIOS is lazy and Postgres-backed (core/db/users_repo.py): the
+    # first touch seeds the `users` table from the right in-code roster for
+    # this tenant (usuarios_demo.USUARIOS for "demo", the Horizonte seed
+    # otherwise — see auth._seed_roster()), so this one access covers both
+    # "what usernames need a credential" below AND seeding `users` itself.
+    import auth
+    roster = auth.USUARIOS
 
     for username in roster:
         if credentials_repo.get(tid, username) is None:
@@ -83,6 +84,11 @@ def seed_domains() -> None:
     (which resolved its own tenant at boot) calls this directly to re-seed
     after core.db.reset.truncate_business_data() (see main.py's
     admin_reset_demo)."""
+    import auth
+    auth.reload_usuarios()  # users table — reload_usuarios() (not usuarios())
+    # so a mid-process call after core.db.reset.truncate_business_data()
+    # actually re-seeds instead of returning the stale in-process cache.
+
     from core import cuentas as core_cuentas
     core_cuentas.listar()  # customer_accounts / account_movements
 

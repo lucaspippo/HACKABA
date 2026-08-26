@@ -199,6 +199,7 @@ def test_notifications_table_has_rls_enabled():
     "user_profiles",
     "supplier_accounts",
     "floor_reports",
+    "users",
 ])
 def test_blob_tables_have_rls_enabled(table_name):
     engine = get_engine()

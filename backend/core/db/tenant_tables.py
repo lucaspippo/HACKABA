@@ -30,6 +30,7 @@ BUSINESS_DATA_TABLES = (
     "collection_actions", "business_knowledge", "data_sections",
     "sales_validation",
     "floor_reports", "staging_batches", "user_profiles", "supplier_accounts",
+    "users",
 )
 
 TENANT_SCOPED_TABLES = AUTH_TABLES + BUSINESS_DATA_TABLES
