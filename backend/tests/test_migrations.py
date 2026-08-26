@@ -195,6 +195,10 @@ def test_notifications_table_has_rls_enabled():
     "business_knowledge",
     "data_sections",
     "sales_validation",
+    "staging_batches",
+    "user_profiles",
+    "supplier_accounts",
+    "floor_reports",
 ])
 def test_blob_tables_have_rls_enabled(table_name):
     engine = get_engine()

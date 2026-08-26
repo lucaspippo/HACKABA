@@ -89,13 +89,7 @@ def _aislar():
     """Apartados/proveedores/cuentas como estaban + inventario restaurado."""
     from core import caja as caja_mod
     from tests.conftest import limpiar_cuentas_db, limpiar_tabla_tenant
-    files = [comprobantes.PROVEEDORES_JSON]
-    backup, existia = {}, set()
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            existia.add(f)
-            os.remove(f)
+    limpiar_tabla_tenant("supplier_accounts")
     limpiar_cuentas_db()
     caja_mod.resetear()
     limpiar_tabla_tenant("notifications")
@@ -107,11 +101,7 @@ def _aislar():
     caja_mod.resetear()
     limpiar_tabla_tenant("notifications")
     limpiar_tabla_tenant("data_sections")
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("supplier_accounts")
 
 
 # --- chequeos automáticos -------------------------------------------------------

@@ -16,22 +16,14 @@ import auth
 import i18n
 import main
 from core import paths, perfiles
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [perfiles.PERFILES_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    limpiar_tabla_tenant("user_profiles")
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("user_profiles")
 
 
 @pytest.fixture()

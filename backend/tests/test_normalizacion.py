@@ -5,22 +5,19 @@ comercial, SIEMPRE con el dueño. Ante la duda → Nivel 2 (con test).
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from core import normalizacion as nz
 from core import staging, store
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
     yield
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
 
 

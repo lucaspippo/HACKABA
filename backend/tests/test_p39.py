@@ -27,20 +27,11 @@ from tests.conftest import limpiar_tabla_tenant
 
 @pytest.fixture(autouse=True)
 def limpio():
-    """Las solicitudes/notificaciones se persisten: backup y restore siempre."""
-    files = [perfiles.PERFILES_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    """Las solicitudes/notificaciones se persisten: reset siempre."""
+    limpiar_tabla_tenant("user_profiles")
     limpiar_tabla_tenant("notifications")
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("user_profiles")
     limpiar_tabla_tenant("notifications")
 
 
@@ -265,17 +256,10 @@ print("OK")
 
 @pytest.fixture(autouse=True)
 def piso_limpio():
-    """piso.json es estado vivo: backup y restore, como con perfiles."""
-    from core import piso as _piso
-    path = _piso.PISO_JSON
-    backup = open(path, encoding="utf-8").read() if os.path.exists(path) else None
-    if backup is not None:
-        os.remove(path)
+    """El estado vivo de piso: reset siempre."""
+    limpiar_tabla_tenant("floor_reports")
     yield
-    if os.path.exists(path):
-        os.remove(path)
-    if backup is not None:
-        open(path, "w", encoding="utf-8").write(backup)
+    limpiar_tabla_tenant("floor_reports")
 
 
 def test_reportar_no_toca_el_stock():

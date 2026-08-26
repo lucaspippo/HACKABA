@@ -5,8 +5,6 @@ autoaprueba por ningún camino) y el evento de notificación con WhatsApp inacti
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -19,22 +17,13 @@ from tests.conftest import limpiar_tabla_tenant
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [perfiles.PERFILES_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    limpiar_tabla_tenant("user_profiles")
     limpiar_tabla_tenant("notifications")
     # los tests de Ángela mutan los globals de sesión: restaurarlos siempre
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     yield
     angela._set_sesion(usuario=usuario, rol=rol)
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("user_profiles")
     limpiar_tabla_tenant("notifications")
 
 
