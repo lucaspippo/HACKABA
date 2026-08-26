@@ -79,15 +79,20 @@ const CATALOGO = {
 
 // El sidebar agrupado en bloques con sentido para un dueño (no 16 ítems planos).
 // Presentación pura: mismos permisos, mismo CATALOGO; sólo cambia el orden visual.
-// P17·E2a — jerarquía AI-first: lo que Ángela detectó y necesita acción va
-// ARRIBA (Alertas/Oportunidades/Evolución), sin label de grupo.
+// Cada bloque es un concepto, no un cajón: "tu día" (landing), "lo que Ángela
+// detectó" (requiere una decisión), "la plata", "la operación", "sistema".
+// "Perfil" NO vive acá: ya se llega por el chip de cuenta en el header
+// (evita el mismo destino con dos entradas). "Equipo" se sumó a Operación
+// (dejar de sostener un grupo de un solo ítem).
 const BLOQUES_NAV = [
-  // P28 — "El mapa de tu negocio" vive entre Home y Alertas (el pedido literal).
-  { lk: null, ids: ["panel", "mapa", "alertas", "oportunidades", "evolucion"] },
+  // Landing: dónde aterriza cualquiera al abrir PolPilot.
+  { lk: null, ids: ["panel", "mapa"] },
+  // P17·E2a — jerarquía AI-first: lo que Ángela detectó y necesita una
+  // decisión, agrupado y nombrado como tal (antes mezclado sin label con el landing).
+  { lk: "nav.grupo_senales", ids: ["alertas", "oportunidades", "evolucion"] },
   { lk: "nav.grupo_plata", ids: ["finanzas", "caja", "cuentas", "cobranzas"] },
-  { lk: "nav.grupo_operacion", ids: ["inventario", "saneamiento", "deposito", "administracion"] },
-  { lk: "nav.grupo_equipo", ids: ["equipo"] },
-  { lk: "nav.grupo_sistema", ids: ["cargar", "documentos", "auditoria", "admin_contexto", "perfil"] },
+  { lk: "nav.grupo_operacion", ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"] },
+  { lk: "nav.grupo_sistema", ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
 ];
 
 export default function DesktopApp(props) {
@@ -291,22 +296,25 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
         </nav>
 
         <div className="space-y-1.5 border-t border-linea p-3">
-          {/* Ángela siempre presente: si hay decisiones esperando, la tarjeta
-              lleva a la cola del Home (el estado es verdadero Y navegable,
-              P15·E6); si no, abre el panel de chat. */}
-          <button
-            onClick={() => (stagingCount > 0 ? navegar("panel", "decisiones") : setAngelaOpen(true))}
-            className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2 text-left sombra-papel transition-colors hover:border-violeta/40"
-          >
-            <AngelaMark size={30} estado={stagingCount > 0 ? "esperando" : "idle"} />
-            <div className="min-w-0 flex-1">
-              <p className="text-[0.85rem] font-semibold">Ángela</p>
-              <p className="flex items-center gap-1.5 truncate text-[0.72rem] text-tinta-suave">
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${stagingCount > 0 ? "bg-oro" : "bg-salvia"}`} />
-                {stagingCount > 0 ? t("decision.espera_ok") : t("nav.angela_activa")}
-              </p>
-            </div>
-          </button>
+          {/* La entrada genérica a Ángela vive UNA sola vez, en el header
+              (botón "Ángela" arriba a la derecha) — esta tarjeta ya no la
+              duplica en estado idle. Sólo aparece cuando hay algo real y
+              distinto para mostrar: una decisión esperando (P15·E6). */}
+          {stagingCount > 0 && (
+            <button
+              onClick={() => navegar("panel", "decisiones")}
+              className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2 text-left sombra-papel transition-colors hover:border-violeta/40"
+            >
+              <AngelaMark size={30} estado="esperando" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.85rem] font-semibold">Ángela</p>
+                <p className="flex items-center gap-1.5 truncate text-[0.72rem] text-tinta-suave">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-oro" />
+                  {t("decision.espera_ok")}
+                </p>
+              </div>
+            </button>
+          )}
           <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
             <Avatar persona={user} size={36} />
             <div className="min-w-0 flex-1">
