@@ -327,7 +327,26 @@ already relied on, just pointed at the new storage.
   change yet).
 - Redis-backed sessions, if/when Postgres session-table latency actually
   becomes a bottleneck (not expected at pilot scale).
-- A DB-backed replacement for the demo "reset" endpoint that the
-  `POLPILOT_CANONICAL_DIR` file-copy mechanism provides for the still-JSON
-  domains — `seed_db.py` covers the migrated domains (tenant, auth, cuentas)
-  but there's no unified reset across both storage layers yet.
+
+## Fixed: the demo reset endpoint (`/api/admin/reset-demo`)
+
+Once every domain had moved to Postgres, the reset endpoint's original
+`POLPILOT_CANONICAL_DIR` file-copy mechanism silently stopped resetting
+anything that mattered — it only restored on-disk files (photos, PDF
+documents, attachments), never the Postgres rows visitors actually mutate.
+No test caught this because none existed for the endpoint.
+
+Fixed by adding a second half to the reset, alongside the still-needed file
+copy: `core/db/tenant_tables.py` is now the single source of truth for
+which tables are tenant-scoped (`AUTH_TABLES` vs `BUSINESS_DATA_TABLES` —
+also used by `tests/conftest.py`'s piloto reset, replacing what used to be
+a separately hand-maintained list, itself the cause of an earlier bug
+where two migrated tables were forgotten from it). `core/db/reset.py`
+truncates `BUSINESS_DATA_TABLES` for a tenant; `data-demo/seed_db.py`'s
+former `run()` body was split so its "trigger every domain's own first-read
+seed" half is now the standalone `seed_domains()`, callable both from a
+fresh process (`run()`) and from within an already-running server process
+for its own tenant (`main.admin_reset_demo`, after truncating). Never
+touches `AUTH_TABLES` — resetting those would log out every visitor and
+rotate their already-known password. See `tests/test_db_reset.py` and
+`tests/test_admin_reset_demo.py`.
