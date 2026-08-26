@@ -65,6 +65,16 @@ jobs:
         working-directory: backend
         run: python -m alembic upgrade head
 
+      # MUST run before generar.py, not after — generar.py calls directly
+      # into Postgres-backed core modules (core.staging, core.perfiles,
+      # core.comprobantes) partway through its own seeding, and those
+      # raise if the tenant has no row yet. See deploy/boot.py and
+      # data-demo/seed_db.ensure_tenant()'s docstring for the full story
+      # (a real production-first-boot bug this step exists to catch).
+      - name: Ensure the demo tenant row exists
+        working-directory: data-demo
+        run: python -c "import seed_db; seed_db.ensure_tenant('demo')"
+
       # The same generator deploy/boot.py runs before every server start —
       # regenerates data-demo/'s full dataset (including the gitignored
       # files, e.g. audit.json) deterministically, so the demo tenant's

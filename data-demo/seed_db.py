@@ -14,6 +14,13 @@ retarget just because POLPILOT_TENANT changes later in that same process.
 seed_domains() alone is safe to call from within an already-running process
 for its OWN tenant — see its docstring.
 
+ensure_tenant() must run BEFORE data-demo/generar.py, not after — generar.py
+calls directly into Postgres-backed core modules (core.staging,
+core.perfiles, core.comprobantes) partway through, which need the tenant
+row to already exist. See deploy/boot.py for the full correct order:
+Alembic -> ensure_tenant() -> generar.py -> run() (or just seed_domains()
++ credentials, since ensure_tenant() already ran).
+
 Usage: python seed_db.py [tenant_slug]   (default: demo)
 """
 from __future__ import annotations
@@ -28,8 +35,16 @@ from sqlalchemy import text  # noqa: E402
 from core.db.engine import get_admin_engine  # noqa: E402
 
 
-def run(tenant_slug: str = "demo", *, name: str | None = None,
-        short_name: str | None = None, source: str | None = None) -> None:
+def ensure_tenant(tenant_slug: str = "demo", *, name: str | None = None,
+                   short_name: str | None = None, source: str | None = None) -> str:
+    """Idempotent: creates the `tenants` row if missing, returns its id.
+    Split out of run() because it has to happen BEFORE generar.py runs —
+    generar.py's sembrar_staging()/sembrar_auditoria()/etc. call directly
+    into now-Postgres-backed core modules (core.staging, core.perfiles,
+    core.comprobantes), which raise if the tenant has no row yet. A tenant
+    that already has a row from an earlier boot masked this for months;
+    a genuinely fresh Postgres (first-ever boot, or CI) hit it immediately
+    — see deploy/boot.py's step ordering and the CI workflow."""
     admin = get_admin_engine()
     with admin.begin() as conn:
         tid = conn.execute(
@@ -48,9 +63,13 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
                     "source": source or "ERP de la distribuidora - nucleo de verdad PolPilot (DEMO)",
                 },
             ).scalar_one()
-    tid = str(tid)
-
     os.environ["POLPILOT_TENANT"] = tenant_slug
+    return str(tid)
+
+
+def run(tenant_slug: str = "demo", *, name: str | None = None,
+        short_name: str | None = None, source: str | None = None) -> None:
+    tid = ensure_tenant(tenant_slug, name=name, short_name=short_name, source=source)
     from core.db import credentials_repo
 
     # auth.USUARIOS is lazy and Postgres-backed (core/db/users_repo.py): the

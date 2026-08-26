@@ -421,3 +421,47 @@ provisions and tears down) is the only safe target for a destructive
 operation, the same way `tests/conftest.py`'s own destructive resets are
 scoped to "piloto"/"demo" specifically and never to some tenant a
 developer might be interactively using in another terminal.
+
+## Fixed: a real first-boot ordering bug (generar.py before the tenant existed)
+
+`data-demo/generar.py`'s `sembrar_staging()`, `sembrar_auditoria()`,
+`sembrar_solicitud()`, `sembrar_notificaciones()`, and `sembrar_fotos()`
+call directly into Postgres-backed core modules (`core.staging`,
+`core.perfiles`, `core.comprobantes`) as a side effect of writing their
+disk seed files — a leftover of the JSON-to-Postgres migration: those core
+functions used to be pure file writers, so calling them from `generar.py`
+was always safe regardless of Postgres state. Once they moved to Postgres,
+those same calls started requiring `current_tenant_id()` to resolve — i.e.
+a `tenants` row to already exist.
+
+`deploy/boot.py`'s original order ran `generar.py` (step 2) *before*
+`seed_db.run()` (step 3), which is what actually creates that row. This
+was invisible on every real boot because the row already existed from an
+earlier one (Render's Postgres, and a local dev's docker-compose volume,
+both persist across restarts) — **a genuinely first-ever boot against a
+fresh Postgres (a brand-new production database, or CI) would have failed
+immediately**, caught only when the CI workflow above ran against its
+disposable fresh Postgres for the first time.
+
+Fixed by splitting `seed_db.run()`'s tenant-row upsert into a standalone
+`ensure_tenant()`, called *before* `generar.py` (both in `deploy/boot.py`
+and the CI workflow) — `run()` still calls it too, so nothing else that
+already calls `run()` needed to change. See
+`tests/test_seed_db.py::test_ensure_tenant_must_run_before_postgres_backed_core_calls`
+for the root-cause regression test (uses a throwaway tenant — running
+`generar.py` itself always targets the real "demo" tenant, since its
+`sembrar_*()` functions hardcode `POLPILOT_TENANT=demo` internally, so it
+can never safely be used to test this in isolation).
+
+**This bug was found by re-running `generar.py` locally against a
+throwaway tenant slug to reproduce it — which itself corrupted the real
+shared "demo" tenant a second time**, because of that same hardcoded
+`POLPILOT_TENANT=demo` override inside `sembrar_staging()`: the external
+env var got silently overwritten before `core.paths.TENANT` ever resolved
+it. Remediated the same way as the first corruption (truncate + reseed
+from a checkout with valid seed files). The lesson from both incidents
+compounds: **never invoke `data-demo/generar.py` directly against a
+Postgres you care about** — its `sembrar_*()` functions are hardwired to
+the real "demo" tenant no matter what `POLPILOT_TENANT` says. Test its
+behavior indirectly (as the regression test above does, exercising the
+same core functions it calls) rather than by running it.
