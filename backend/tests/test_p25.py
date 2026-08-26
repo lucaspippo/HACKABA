@@ -13,6 +13,7 @@ import pytest
 import angela
 from core import memoria, oportunidades_neg, saneamiento, store
 from core import evolucion
+from tests.conftest import limpiar_tabla_tenant
 
 
 def _hash() -> str:
@@ -22,14 +23,12 @@ def _hash() -> str:
 @pytest.fixture(autouse=True)
 def limpio():
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     yield
     angela._set_sesion(usuario=usuario, rol=rol)
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
 
 
 # --- A · las tarjetas: cada una con plata + acción + drill honesto -------------

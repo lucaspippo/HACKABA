@@ -1,20 +1,17 @@
-import os
-
 import pytest
 
 from core import store, saneamiento, memoria
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def estado_limpio():
     """Cada test arranca y termina con la copia de trabajo en el original."""
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     yield
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
 
 
 # ---- Task 1: estado de trabajo ----

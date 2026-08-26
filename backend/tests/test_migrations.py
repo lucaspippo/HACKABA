@@ -186,6 +186,11 @@ def test_notifications_table_has_rls_enabled():
     "internal_transfers",
     "inventory_baseline",
     "sample_extractions",
+    "reminders",
+    "user_memory",
+    "macro_cache",
+    "finance_data",
+    "client_sales_data",
 ])
 def test_blob_tables_have_rls_enabled(table_name):
     engine = get_engine()

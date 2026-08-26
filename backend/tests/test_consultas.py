@@ -23,6 +23,7 @@ import pytest
 
 import angela
 from core import consultas, memoria, store
+from tests.conftest import limpiar_tabla_tenant
 
 
 def _hash_dataset() -> str:
@@ -32,16 +33,14 @@ def _hash_dataset() -> str:
 
 @pytest.fixture(autouse=True)
 def limpio():
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     antes = _hash_dataset()
     yield
     # regla 1 del prompt: esto es LECTURA — nada puede modificar datos
     assert _hash_dataset() == antes, "una consulta MUTÓ el dataset"
     angela._set_sesion(usuario=usuario, rol=rol)
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
 
 
 # --- fixture de ventas: los productos REALES del demo, 24 meses ----------------

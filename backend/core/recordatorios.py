@@ -25,17 +25,10 @@ Condiciones soportadas (extensibles):
 from __future__ import annotations
 
 import datetime
-import json
-import os
 import secrets
 import unicodedata
 
-from . import paths
 from . import deposito, logistica
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-RECORDATORIOS_JSON = os.path.join(DATA_DIR, "recordatorios.json")
 
 
 def _norm(s: str) -> str:
@@ -48,16 +41,15 @@ def _ahora() -> str:
 
 
 def _load() -> list[dict]:
-    try:
-        return json.load(open(RECORDATORIOS_JSON, encoding="utf-8"))
-    except Exception:
-        return []
+    from core.db import reminders_repo
+    from core.db import tenant as _tenant
+    return reminders_repo.list_all(_tenant.current_tenant_id())
 
 
 def _save(items: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(items, open(RECORDATORIOS_JSON, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=2)
+    from core.db import reminders_repo
+    from core.db import tenant as _tenant
+    reminders_repo.save_all(_tenant.current_tenant_id(), items)
 
 
 def crear(texto: str, para: str | None = None, creado_por: str | None = None,

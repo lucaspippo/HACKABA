@@ -5,8 +5,6 @@ Condición no cumplida → silencio.
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from core import notificaciones, recordatorios
@@ -15,20 +13,10 @@ from tests.conftest import limpiar_tabla_tenant
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [recordatorios.RECORDATORIOS_JSON if hasattr(recordatorios, "RECORDATORIOS_JSON")
-             else os.path.join(recordatorios.DATA_DIR, "recordatorios.json")]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    limpiar_tabla_tenant("reminders")
     limpiar_tabla_tenant("notifications")
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("reminders")
     limpiar_tabla_tenant("notifications")
 
 

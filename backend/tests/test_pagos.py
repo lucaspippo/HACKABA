@@ -8,28 +8,20 @@ inventado. Con datos, los totales salen YA calculados por el core (regla B12).
 from __future__ import annotations
 
 import datetime
-import json
-import os
 
 import pytest
 
 from core import pagos
 from core.fechas import hoy
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def sin_residuos():
-    """Aísla finanzas.json: guarda lo que hubiera y lo restaura."""
-    f = pagos._path()
-    backup = None
-    if os.path.exists(f):
-        backup = open(f, encoding="utf-8").read()
-        os.remove(f)
+    """Aísla finance_data: cada test arranca sin fila para el tenant activo."""
+    limpiar_tabla_tenant("finance_data")
     yield
-    if os.path.exists(f):
-        os.remove(f)
-    if backup is not None:
-        open(f, "w", encoding="utf-8").write(backup)
+    limpiar_tabla_tenant("finance_data")
 
 
 def _d(n: int) -> str:
@@ -37,7 +29,9 @@ def _d(n: int) -> str:
 
 
 def _sembrar():
-    json.dump({
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("finance_data", _tenant.current_tenant_id(), {
         "pagos_proveedores": [
             {"proveedor": "Alimentos del Paraná SA", "numero": "FC-A-00001",
              "emision": _d(-28), "vencimiento": _d(2), "monto": 5_000_000, "estado": "pendiente"},
@@ -54,7 +48,7 @@ def _sembrar():
             {"cliente": "Supermercado El Puente", "numero": "31234567", "banco": "Banco Nación",
              "recibido": _d(-3), "cobro": _d(10), "monto": 4_000_000},
         ],
-    }, open(pagos._path(), "w", encoding="utf-8"))
+    })
 
 
 def test_sin_archivo_todo_vacio_y_honesto():
