@@ -86,7 +86,7 @@ def _verifica(pw: str, hash_guardado: str) -> bool:
 # Las contraseñas plaintext se generan abajo (generar_credenciales) y se le
 # pasan a Lucas; acá guardamos sólo el hash.
 # ---------------------------------------------------------------------------
-USUARIOS = {
+_SEED_HORIZONTE = {
     "emilio": {
         "username": "emilio",
         "nombre": "Emilio",
@@ -171,11 +171,171 @@ USUARIOS = {
     },
 }
 
-# El tenant demo (Distribuidora del Litoral, ficticia) usa SU equipo. El seed
-# de Horizonte queda intacto arriba: sin env, nada cambia para el piloto.
-if _paths.TENANT == "demo":
-    from usuarios_demo import USUARIOS as _USUARIOS_DEMO
-    USUARIOS = _USUARIOS_DEMO
+
+def _seed_roster() -> dict:
+    """El roster de arranque para un tenant que TODAVÍA no tiene filas en
+    `users` — el equipo demo (Distribuidora del Litoral) usa el suyo; el
+    resto (piloto/producción) arranca con el seed de Horizonte. Sólo se lee
+    la PRIMERA vez que se ve un tenant (ver usuarios())."""
+    if _paths.TENANT == "demo":
+        from usuarios_demo import USUARIOS as _USUARIOS_DEMO
+        return _USUARIOS_DEMO
+    return _SEED_HORIZONTE
+
+
+# El roster vivo del tenant — Postgres, sembrado una vez desde _seed_roster()
+# la primera vez que se ve el tenant (ver usuarios()/reload_usuarios()).
+# Deliberadamente NO se carga acá arriba, a nivel de módulo: importar auth.py
+# no debe requerir una conexión a Postgres ya viva (mismo criterio "lazy" que
+# todo core/*.py módulo migrado — ver core/db/MIGRATING_A_MODULE.md). El
+# acceso vía `auth.USUARIOS` (atributo del módulo) sigue funcionando para
+# TODO el código existente gracias al __getattr__ de más abajo (PEP 562):
+# no hace falta tocar ninguno de los call sites.
+_USUARIOS_CACHE: dict | None = None
+
+
+def usuarios() -> dict:
+    """El roster vivo del tenant, {username: perfil}. Lazy: la primera
+    llamada de este proceso lo carga (y lo siembra si el tenant no tiene
+    filas todavía) desde Postgres."""
+    global _USUARIOS_CACHE
+    if _USUARIOS_CACHE is None:
+        _USUARIOS_CACHE = {}
+        reload_usuarios()
+    return _USUARIOS_CACHE
+
+
+def reload_usuarios() -> None:
+    """Refresca el cache en-proceso desde Postgres — llamar después de
+    crear_usuario/editar_usuario/desactivar_usuario para que `auth.USUARIOS`
+    quede al día en el resto de ESTE proceso (mismo patrón que
+    core.store.reload() y demás módulos migrados)."""
+    global _USUARIOS_CACHE
+    if _USUARIOS_CACHE is None:
+        _USUARIOS_CACHE = {}
+    from core.db import users_repo
+    tid = _tenant.current_tenant_id()
+    filas = users_repo.list_all(tid)
+    if not filas:
+        seed = _seed_roster()
+        for username, u in seed.items():
+            users_repo.create(tid, {**u, "username": username})
+        filas = users_repo.list_all(tid)
+    _USUARIOS_CACHE.clear()
+    _USUARIOS_CACHE.update({u["username"]: u for u in filas})
+
+
+def __getattr__(name: str):
+    # PEP 562 — hace que `auth.USUARIOS` siga funcionando como el dict de
+    # siempre para TODO el código existente (angela.py, main.py,
+    # core/perfiles.py, core/piso.py, core/onboarding.py, ...), pero
+    # respaldado por Postgres y cargado perezosamente.
+    if name == "USUARIOS":
+        return usuarios()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+class UsuarioInvalido(ValueError):
+    """Un campo de alta/edición no valida."""
+
+
+def crear_usuario(*, username: str, nombre: str, rol: str, es_admin: bool = False,
+                   color: str | None = None, telefono: str | None = None,
+                   descripcion: str | None = None, descripcion_en: str | None = None,
+                   features: list[str] | None = None,
+                   superficies: list[str] | None = None,
+                   actor: str = "admin") -> dict:
+    """Alta de un empleado real (scope organización — sólo la llama un
+    endpoint ya validado como dueño). No genera contraseña acá: el primer
+    llamado a cargar_o_generar_credenciales() (login o /api/admin/usuarios)
+    le crea una, siguiendo el mismo camino que el roster sembrado."""
+    username = (username or "").strip().lower()
+    if not username or not username.replace("_", "").isalnum():
+        raise UsuarioInvalido("el usuario tiene que ser alfanumérico (guión bajo permitido)")
+    if not (nombre or "").strip():
+        raise UsuarioInvalido("falta el nombre")
+    if not (rol or "").strip():
+        raise UsuarioInvalido("falta el rol")
+    tid = _tenant.current_tenant_id()
+    from core.db import users_repo
+    if users_repo.get(tid, username, include_inactive=True) is not None:
+        raise UsuarioInvalido(f"ya existe un usuario «{username}»")
+    usuario = {
+        "username": username, "nombre": nombre.strip(), "rol": rol.strip(),
+        "es_admin": bool(es_admin), "color": color, "telefono": telefono,
+        "descripcion": descripcion, "descripcion_en": descripcion_en,
+        "features": features or [], "superficies": superficies or ["desktop", "mobile"],
+    }
+    users_repo.create(tid, usuario)
+    reload_usuarios()
+    from core import store
+    store.audit.record(actor=actor, accion="crear_usuario",
+                       despues={"username": username, "nombre": usuario["nombre"],
+                                "rol": usuario["rol"], "es_admin": usuario["es_admin"]})
+    return usuarios()[username]
+
+
+_CAMPOS_EDITABLES = ("nombre", "rol", "es_admin", "color", "telefono",
+                     "descripcion", "descripcion_en", "features", "superficies",
+                     "ingreso", "puesto")
+
+
+def editar_usuario(username: str, cambios: dict, actor: str = "admin") -> dict:
+    """Edita los campos base del perfil (scope organización — sólo dueño).
+    Ver core/perfiles.py para lo que el propio empleado puede editarse."""
+    username = (username or "").strip().lower()
+    tid = _tenant.current_tenant_id()
+    from core.db import users_repo
+    antes = users_repo.get(tid, username, include_inactive=True)
+    if not antes:
+        raise KeyError(f"usuario inexistente: {username!r}")
+    campos = {k: v for k, v in cambios.items() if k in _CAMPOS_EDITABLES and v is not None}
+    if not campos:
+        return antes
+    users_repo.update(tid, username, campos)
+    reload_usuarios()
+    from core import store
+    store.audit.record(actor=actor, accion="editar_usuario",
+                       antes={"username": username},
+                       despues={"username": username, "campos": list(campos)})
+    return users_repo.get(tid, username, include_inactive=True)
+
+
+def desactivar_usuario(username: str, actor: str = "admin") -> dict:
+    """Desactiva a un empleado: no puede loguearse más, y sus sesiones vivas
+    se purgan YA (no esperan a que venza el token)."""
+    username = (username or "").strip().lower()
+    tid = _tenant.current_tenant_id()
+    from core.db import users_repo
+    u = users_repo.get(tid, username, include_inactive=True)
+    if not u:
+        raise KeyError(f"usuario inexistente: {username!r}")
+    if u.get("es_admin") and username == dueno()["username"]:
+        raise UsuarioInvalido("no se puede desactivar al dueño")
+    users_repo.set_active(tid, username, False)
+    sessions_repo.delete_for_user(tid, username)
+    reload_usuarios()
+    from core import store
+    store.audit.record(actor=actor, accion="desactivar_usuario",
+                       antes={"username": username, "activo": True},
+                       despues={"username": username, "activo": False})
+    return users_repo.get(tid, username, include_inactive=True)
+
+
+def reactivar_usuario(username: str, actor: str = "admin") -> dict:
+    username = (username or "").strip().lower()
+    tid = _tenant.current_tenant_id()
+    from core.db import users_repo
+    u = users_repo.get(tid, username, include_inactive=True)
+    if not u:
+        raise KeyError(f"usuario inexistente: {username!r}")
+    users_repo.set_active(tid, username, True)
+    reload_usuarios()
+    from core import store
+    store.audit.record(actor=actor, accion="reactivar_usuario",
+                       antes={"username": username, "activo": False},
+                       despues={"username": username, "activo": True})
+    return users_repo.get(tid, username, include_inactive=True)
 
 # --- Antigüedad: quién recién entró (P·onboarding) ----------------------------
 # La rotación en trabajo físico es alta y el que entra tarda semanas en aprender
@@ -188,7 +348,7 @@ UMBRAL_NUEVO_DIAS = 90   # los primeros tres meses: el período de prueba real
 
 def antiguedad(username: str) -> dict | None:
     """Cuánto hace que esta persona trabaja acá. None si no declara ingreso."""
-    u = USUARIOS.get((username or "").strip().lower())
+    u = usuarios().get((username or "").strip().lower())
     if not u or not u.get("ingreso"):
         return None
     from core.fechas import hoy, parse_fecha
@@ -211,12 +371,12 @@ def puesto(username: str) -> dict | None:
 
     Los campos con sufijo `_en` (sector_en, turno_en, contrato_en) viajan tal
     cual: la vista elige el idioma. El nombre del mentor NO se traduce."""
-    u = USUARIOS.get((username or "").strip().lower())
+    u = usuarios().get((username or "").strip().lower())
     p = (u or {}).get("puesto")
     if not p:
         return None
     out = {k: v for k, v in p.items() if k != "mentor"}
-    m = USUARIOS.get(p.get("mentor") or "")
+    m = usuarios().get(p.get("mentor") or "")
     if m:
         out["mentor"] = {"username": m["username"], "nombre": m["nombre"], "rol": m["rol"]}
     return out
@@ -225,10 +385,10 @@ def puesto(username: str) -> dict | None:
 def dueno() -> dict:
     """El dueño del TENANT actual (emilio en el piloto, aldo en el demo).
     Para saludos, notificaciones y derivaciones — nada de nombres hardcodeados."""
-    for u in USUARIOS.values():
+    for u in usuarios().values():
         if u.get("rol") == "Dueño":
             return u
-    return next(iter(USUARIOS.values()))
+    return next(iter(usuarios().values()))
 
 
 def nombre_dueno() -> str:
@@ -253,7 +413,7 @@ def cargar_o_generar_credenciales() -> dict[str, str]:
     generó hasta ahora (para reportarlo — nunca se persiste en claro)."""
     tid = _tenant.current_tenant_id()
     palabras = ["pilar", "manteca", "cheddar", "fiambre", "remito", "gondola", "balanza"]
-    for user in USUARIOS:
+    for user in usuarios():
         if user in _GENERADAS_ESTE_PROCESO:
             continue
         if credentials_repo.get(tid, user) is not None:
@@ -274,7 +434,7 @@ def perfil_publico(username: str, lang: str | None = None) -> dict | None:
     LABELS de módulos: cuando el dueño mira la ficha de un empleado, los módulos
     se leen en el idioma DEL QUE MIRA — un panel en español no puede listar
     "Main panel / Daily register" porque el otro tenga el suyo en inglés (P39·1)."""
-    u = USUARIOS.get(username)
+    u = usuarios().get(username)
     if not u:
         return None
     # El seed vive en código; el estado vivo (descripción propia, foto, módulos
@@ -313,7 +473,7 @@ def perfil_publico(username: str, lang: str | None = None) -> dict | None:
 def login(username: str, password: str) -> dict | None:
     username = (username or "").strip().lower()
     tid = _tenant.current_tenant_id()
-    u = USUARIOS.get(username)
+    u = usuarios().get(username)
     # Comparación en TIEMPO CONSTANTE y sin return temprano (P9·C6, M10): la
     # demora de la respuesta no revela si el usuario existe (enumeración por
     # timing). Usuario inexistente → se compara igual contra un hash señuelo.
@@ -355,7 +515,7 @@ def sesion_para(username: str) -> dict | None:
     """Emite una sesión LEGÍTIMA del usuario destino (mismo shape que login).
     La llama ÚNICAMENTE el endpoint /api/demo/ver-como, detrás del feature
     flag de tenant y de una sesión ya válida."""
-    u = USUARIOS.get((username or "").strip().lower())
+    u = usuarios().get((username or "").strip().lower())
     if not u or u.get("interno"):
         return None
     tid = _tenant.current_tenant_id()
@@ -369,7 +529,7 @@ def usuario_por_numero(telefono: str) -> dict | None:
     """WhatsApp: asocia un número de teléfono a su cuenta de empleado (con su rol).
     Lo que cada uno hace por WhatsApp queda trackeado con su cuenta."""
     tel = (telefono or "").strip()
-    for u, v in USUARIOS.items():
+    for u, v in usuarios().items():
         if v.get("telefono") == tel:
             return perfil_publico(u)
     return None
@@ -378,4 +538,4 @@ def usuario_por_numero(telefono: str) -> dict | None:
 def listar_perfiles(lang: str | None = None) -> list[dict]:
     """Vista maestra (sólo el dueño): los perfiles del equipo del tenant
     (excluye usuarios internos de PolPilot). `lang` = idioma del que MIRA."""
-    return [perfil_publico(u, lang) for u, v in USUARIOS.items() if not v.get("interno")]
+    return [perfil_publico(u, lang) for u, v in usuarios().items() if not v.get("interno")]

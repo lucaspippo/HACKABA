@@ -39,3 +39,11 @@ def get(tenant_id: str, token: str) -> dict | None:
 def purge_expired(tenant_id: str) -> None:
     with tenant_connection(tenant_id) as conn:
         conn.execute(text("DELETE FROM sessions WHERE expires_at <= now()"))
+
+
+def delete_for_user(tenant_id: str, username: str) -> None:
+    """Invalidates every live session of one user — used when deactivating
+    them, so the deactivation takes effect immediately instead of waiting
+    for their current token to expire (see auth.desactivar_usuario)."""
+    with tenant_connection(tenant_id) as conn:
+        conn.execute(text("DELETE FROM sessions WHERE username = :u"), {"u": username})

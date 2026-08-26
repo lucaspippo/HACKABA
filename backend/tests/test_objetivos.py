@@ -5,8 +5,6 @@ la mezcla local↔server es idempotente por id.
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,6 +12,7 @@ import angela
 import auth
 import main
 from core import objetivos
+from tests.conftest import limpiar_tabla_tenant
 
 
 client = TestClient(main.app)
@@ -21,11 +20,9 @@ client = TestClient(main.app)
 
 @pytest.fixture(autouse=True)
 def _limpio():
-    if os.path.exists(objetivos.OBJETIVOS_JSON):
-        os.remove(objetivos.OBJETIVOS_JSON)
+    limpiar_tabla_tenant("team_goals")
     yield
-    if os.path.exists(objetivos.OBJETIVOS_JSON):
-        os.remove(objetivos.OBJETIVOS_JSON)
+    limpiar_tabla_tenant("team_goals")
     angela._set_sesion()  # la sesión de Ángela vuelve a los defaults
 
 

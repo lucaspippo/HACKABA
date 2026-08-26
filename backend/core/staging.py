@@ -13,18 +13,11 @@ from __future__ import annotations
 import csv
 import datetime
 import io
-import json
-import os
 import secrets
 import unicodedata
 
-from . import paths
 from . import store, importer, esquema, recordatorios, normalizacion
 from .fechas import parse_fecha, hoy
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-STAGING_JSON = os.path.join(DATA_DIR, "staging.json")
 
 OUTLIER_STOCK = 10000  # umbral simple de "stock anormalmente alto"
 
@@ -50,17 +43,15 @@ def _t(key: str, lang: str | None = None, **params) -> str:
 
 
 def _load() -> list[dict]:
-    if not os.path.exists(STAGING_JSON):
-        return []
-    try:
-        return json.load(open(STAGING_JSON, encoding="utf-8"))
-    except Exception:
-        return []
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("staging_batches", _tenant.current_tenant_id()) or []
 
 
 def _save(batches: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(batches, open(STAGING_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("staging_batches", _tenant.current_tenant_id(), batches)
 
 
 def _coerce_producto(mapeo: dict, fila_dict: dict) -> dict:

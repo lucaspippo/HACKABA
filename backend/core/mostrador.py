@@ -33,12 +33,25 @@ MOSTRADOR_JSON = os.path.join(paths.DATA_DIR, "mostrador.json")
 DIAS_HABILES_ANIO = 313
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    if not os.path.exists(MOSTRADOR_JSON):
+        return {}
     try:
         with open(MOSTRADOR_JSON, encoding="utf-8") as f:
             return json.load(f) or {}
     except Exception:  # noqa: BLE001
         return {}
+
+
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("retail_counter_data", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("retail_counter_data", tid, data)
+    return data
 
 
 def hay_datos() -> bool:

@@ -25,18 +25,11 @@ from __future__ import annotations
 
 import datetime
 import itertools
-import json
 import math
-import os
 import unicodedata
 
-from . import paths
-from . import cuentas, deposito, esquema, store
+from . import cuentas, deposito, esquema, pagos, store, traslados
 from .fechas import hoy, parse_fecha
-
-DATA_DIR = paths.DATA_DIR
-FINANZAS_JSON = os.path.join(DATA_DIR, "finanzas.json")
-TRASLADOS_JSON = os.path.join(DATA_DIR, "traslados_internos.json")
 
 # --- parámetros del cruce (explícitos, no mágicos) ---------------------------
 VENTANA_MESES = 12          # de cuánto atrás se agrega la facturación por entidad
@@ -84,14 +77,6 @@ def _rubros_afines(nombre_cliente: str, rubros: dict[str, str]) -> list[str]:
 def _norm(s) -> str:
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
     return "".join(c if c.isalnum() else "_" for c in s.lower()).strip("_")
-
-
-def _json(ruta: str, default):
-    try:
-        with open(ruta, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
 
 
 # =============================================================================
@@ -186,7 +171,7 @@ def _coventa(canastas: dict) -> list[tuple[int, int, int, float]]:
 
 def _proveedores_riesgo() -> dict[str, dict]:
     """Pagos a proveedor vencidos / de la semana — la MISMA fuente que Alertas."""
-    fin = _json(FINANZAS_JSON, {}) or {}
+    fin = pagos._load()
     ref = hoy()
     out: dict[str, dict] = {}
     for p in fin.get("pagos_proveedores", []):
@@ -426,7 +411,7 @@ def construir() -> dict:
             add_arista(s, t, "provee", recibido=cant)
 
     # --- traslados a locales propios ------------------------------------------
-    tras = _json(TRASLADOS_JSON, {}) or {}
+    tras = traslados._load()
     mov: dict[tuple[str, int], float] = {}
     for f in tras.get("filas", []):
         cod, dest = f.get("codigo"), (f.get("destino") or "").strip()

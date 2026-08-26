@@ -31,6 +31,7 @@ if "POLPILOT_DATA_DIR" not in os.environ:
 # "piloto" tenant needs a row in `tenants` before any test that touches
 # login/credentials runs — idempotent, so re-running the suite is a no-op.
 from core.db.engine import get_admin_engine as _get_admin_engine  # noqa: E402
+from core.db.tenant_tables import TENANT_SCOPED_TABLES as _TENANT_SCOPED_TABLES  # noqa: E402
 from sqlalchemy import text as _text_bootstrap  # noqa: E402
 
 with _get_admin_engine().begin() as _conn:
@@ -55,18 +56,38 @@ with _get_admin_engine().begin() as _conn:
     # (not just a Python global) because subprocess calls below build their env
     # from **os.environ, so the flag propagates to any subprocess spawned after
     # this point without needing to be threaded through explicitly.
-    if not os.environ.get("_POLPILOT_TEST_CREDS_RESET"):
-        for _slug in ("piloto", "demo"):
-            _tid = _conn.execute(_text_bootstrap(
-                "SELECT id FROM tenants WHERE slug = :slug"
-            ), {"slug": _slug}).scalar_one()
+    #
+    # Every tenant-scoped table any core/*.py module has moved to Postgres so
+    # far (core.db.tenant_tables.TENANT_SCOPED_TABLES — add a new one there,
+    # not here, whenever a module gets migrated; see core/db/MIGRATING_A_MODULE.md).
+    # piloto's whole point is to behave like a freshly-mounted tenant with no
+    # history (per the comment at the top of this file), which the old
+    # JSON-file suite got for free from a brand-new temp scratch directory
+    # every `pytest` invocation. Postgres rows don't get that for free — they
+    # persist across separate suite runs, not just within one run, unless
+    # explicitly reset here.
+    if not os.environ.get("_POLPILOT_TEST_TENANT_RESET"):
+        _piloto_id = _conn.execute(_text_bootstrap(
+            "SELECT id FROM tenants WHERE slug = 'piloto'"
+        )).scalar_one()
+        for _tabla in _TENANT_SCOPED_TABLES:
             _conn.execute(_text_bootstrap(
-                "DELETE FROM auth_credentials WHERE tenant_id = :tid"
-            ), {"tid": _tid})
+                f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
+            ), {"tid": _piloto_id})
+
+        # "demo" only needs its credentials reset (same reasoning as above) —
+        # its business data is the REAL seeded dataset (data-demo/*.json) that
+        # canonical-number tests assert against, so it must NOT be wiped here.
+        _demo_id = _conn.execute(_text_bootstrap(
+            "SELECT id FROM tenants WHERE slug = 'demo'"
+        )).scalar_one()
+        from core.db.tenant_tables import AUTH_TABLES as _AUTH_TABLES
+        for _tabla in _AUTH_TABLES:
             _conn.execute(_text_bootstrap(
-                "DELETE FROM sessions WHERE tenant_id = :tid"
-            ), {"tid": _tid})
-        os.environ["_POLPILOT_TEST_CREDS_RESET"] = "1"
+                f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
+            ), {"tid": _demo_id})
+
+        os.environ["_POLPILOT_TEST_TENANT_RESET"] = "1"
 
 DEMO_TEST_PASSWORD = "polpilot-suite-test-password"
 
@@ -127,6 +148,19 @@ def limpiar_cuentas_db() -> None:
     with tenant_connection(tid) as conn:
         conn.execute(_text("DELETE FROM account_movements"))
         conn.execute(_text("DELETE FROM customer_accounts"))
+
+
+def limpiar_tabla_tenant(tabla: str) -> None:
+    """Vacía UNA tabla (una fila o varias) para el tenant activo — el
+    equivalente DB genérico de "borrar el .json de este módulo", para los
+    módulos de una sola fila por tenant (organization_config, caja_state,
+    inventory_working, ...)."""
+    from core.db import tenant as _tenant_mod
+    from core.db.engine import tenant_connection
+
+    tid = _tenant_mod.current_tenant_id()
+    with tenant_connection(tid) as conn:
+        conn.execute(_text(f"DELETE FROM {tabla}"))
 
 
 @pytest.fixture(autouse=True)

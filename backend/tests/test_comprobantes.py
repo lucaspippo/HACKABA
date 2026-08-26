@@ -88,26 +88,20 @@ def h():
 def _aislar():
     """Apartados/proveedores/cuentas como estaban + inventario restaurado."""
     from core import caja as caja_mod
-    from core import notificaciones as notif_mod
-    from tests.conftest import limpiar_cuentas_db
-    files = [esquema.APARTADOS_JSON, comprobantes.PROVEEDORES_JSON,
-             caja_mod.CAJA_JSON, notif_mod.NOTIFICACIONES_JSON]
-    backup, existia = {}, set()
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            existia.add(f)
-            os.remove(f)
+    from tests.conftest import limpiar_cuentas_db, limpiar_tabla_tenant
+    limpiar_tabla_tenant("supplier_accounts")
     limpiar_cuentas_db()
+    caja_mod.resetear()
+    limpiar_tabla_tenant("notifications")
+    limpiar_tabla_tenant("data_sections")
     snapshot = copy.deepcopy(store.raw_actual())
     yield
     store.guardar(snapshot)
     limpiar_cuentas_db()
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    caja_mod.resetear()
+    limpiar_tabla_tenant("notifications")
+    limpiar_tabla_tenant("data_sections")
+    limpiar_tabla_tenant("supplier_accounts")
 
 
 # --- chequeos automáticos -------------------------------------------------------

@@ -19,6 +19,7 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
 
@@ -779,6 +780,37 @@ class FeatureRequest(BaseModel):
     habilitar: bool
 
 
+class UsuarioCrearRequest(BaseModel):
+    token: str
+    username: str
+    nombre: str
+    rol: str
+    es_admin: bool = False
+    color: str | None = None
+    telefono: str | None = None
+    descripcion: str | None = None
+    descripcion_en: str | None = None
+    features: list[str] = []
+    superficies: list[str] | None = None
+
+
+class UsuarioEditarRequest(BaseModel):
+    token: str
+    nombre: str | None = None
+    rol: str | None = None
+    es_admin: bool | None = None
+    color: str | None = None
+    telefono: str | None = None
+    descripcion: str | None = None
+    descripcion_en: str | None = None
+    features: list[str] | None = None
+    superficies: list[str] | None = None
+
+
+class UsuarioEstadoRequest(BaseModel):
+    token: str
+
+
 # Módulos de fábrica: no se piden ni se tildan (son parte del piso mínimo o del
 # equipo PolPilot). Mismo criterio que las columnas de la matriz «Quién ve qué».
 _MODULOS_NO_PEDIBLES = {"angela", "perfil", "admin_contexto", "gestion_equipo",
@@ -915,6 +947,59 @@ def admin_feature(req: FeatureRequest):
         return perfiles.set_feature(req.usuario, req.modulo, req.habilitar, actor=dueno["username"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/usuarios")
+def admin_usuarios_crear(req: UsuarioCrearRequest):
+    """Alta de un empleado real — sólo el dueño. Devuelve una contraseña
+    inicial generada (nunca persistida en claro) para pasarle a la persona;
+    la puede cambiar su cuenta más adelante."""
+    dueno = _admin_de(req.token)
+    try:
+        u = auth.crear_usuario(
+            username=req.username, nombre=req.nombre, rol=req.rol,
+            es_admin=req.es_admin, color=req.color, telefono=req.telefono,
+            descripcion=req.descripcion, descripcion_en=req.descripcion_en,
+            features=req.features, superficies=req.superficies,
+            actor=dueno["username"],
+        )
+    except auth.UsuarioInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    creds = auth.cargar_o_generar_credenciales()
+    return {"usuario": u, "password_inicial": creds.get(req.username)}
+
+
+@app.patch("/api/admin/usuarios/{usuario}")
+def admin_usuarios_editar(usuario: str, req: UsuarioEditarRequest):
+    dueno = _admin_de(req.token)
+    cambios = req.model_dump(exclude={"token"}, exclude_none=True)
+    try:
+        return auth.editar_usuario(usuario, cambios, actor=dueno["username"])
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.usuario_inexistente", _lang(dueno)))
+
+
+@app.post("/api/admin/usuarios/{usuario}/desactivar")
+def admin_usuarios_desactivar(usuario: str, req: UsuarioEstadoRequest):
+    dueno = _admin_de(req.token)
+    try:
+        return auth.desactivar_usuario(usuario, actor=dueno["username"])
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.usuario_inexistente", _lang(dueno)))
+    except auth.UsuarioInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/usuarios/{usuario}/reactivar")
+def admin_usuarios_reactivar(usuario: str, req: UsuarioEstadoRequest):
+    dueno = _admin_de(req.token)
+    try:
+        return auth.reactivar_usuario(usuario, actor=dueno["username"])
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.usuario_inexistente", _lang(dueno)))
 
 
 class AvisoRequest(BaseModel):
@@ -2220,7 +2305,17 @@ def admin_reset_demo(token: str):
     """Vuelve el demo público al estado canónico SIN reiniciar el contenedor.
     Protegido por POLPILOT_RESET_TOKEN (secret de Render, no es una credencial
     de usuario): sin el token exacto, 404 — el endpoint ni se revela. Además,
-    el filesystem de Render es efímero: cada restart/redeploy resetea solo."""
+    el filesystem de Render es efímero: cada restart/redeploy resetea solo.
+
+    Dos mitades, porque el estado vivo del demo vive en dos lugares:
+      1. Archivos (fotos de perfil, adjuntos de piso, documentos generados,
+         audios de muestra) — se restauran copiando de POLPILOT_CANONICAL_DIR,
+         como siempre.
+      2. Postgres (TODO lo demás — inventario, cuentas, caja, auditoría,
+         staging, perfiles, etc., ver core/db/MIGRATING_A_MODULE.md) — se
+         vacía para este tenant y se re-siembra desde el dataset real en
+         disco (seed_db.seed_domains(), el mismo camino que un tenant recién
+         montado)."""
     import shutil
     esperado = os.environ.get("POLPILOT_RESET_TOKEN")
     canonical = os.environ.get("POLPILOT_CANONICAL_DIR")
@@ -2241,6 +2336,17 @@ def admin_reset_demo(token: str):
         if not os.path.exists(os.path.join(canonical, nombre)):
             ruta = os.path.join(data_dir, nombre)
             (shutil.rmtree if os.path.isdir(ruta) else os.remove)(ruta)
+
+    from core.db import reset as db_reset
+    from core.db import tenant as db_tenant
+    tid = db_tenant.current_tenant_id()
+    db_reset.truncate_business_data(tid)
+
+    if data_dir not in sys.path:
+        sys.path.insert(0, data_dir)
+    import seed_db
+    seed_db.seed_domains()
+
     from core import analisis_cache
     store.reload()
     ds.reload_data()

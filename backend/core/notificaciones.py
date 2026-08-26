@@ -13,40 +13,18 @@ leida, fecha}. El panel las persiste por destinatario.
 from __future__ import annotations
 
 import datetime
-import json
-import os
 import secrets
-
-from . import paths
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-NOTIFICACIONES_JSON = os.path.join(DATA_DIR, "notificaciones.json")
 
 
 def _ahora() -> str:
     return datetime.datetime.now().isoformat(timespec="seconds")
 
 
-def _load() -> list[dict]:
-    try:
-        return json.load(open(NOTIFICACIONES_JSON, encoding="utf-8"))
-    except Exception:
-        return []
-
-
-def _save(items: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(items, open(NOTIFICACIONES_JSON, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=2)
-
-
 # --- Destinos -----------------------------------------------------------------
 
 def _destino_panel(evento: dict) -> None:
-    items = _load()
-    items.append(evento)
-    _save(items)
+    from core.db import notifications_repo, tenant as _tenant
+    notifications_repo.create(_tenant.current_tenant_id(), evento)
 
 
 def _destino_whatsapp(evento: dict) -> None:
@@ -90,25 +68,16 @@ def total_emitidas(hasta_iso: str | None = None) -> int:
     de actividad de Inicio — un conteo real, no un número inventado).
     P36·E1 — `hasta_iso` (YYYY-MM-DD): cuenta SOLO avisos con fecha ≤ ese día
     (la fecha congelada del demo), mismo filtro que el feed. Sin arg, todas."""
-    items = _load()
-    if hasta_iso:
-        items = [n for n in items if (n.get("fecha") or "")[:10] <= hasta_iso]
-    return len(items)
+    from core.db import notifications_repo, tenant as _tenant
+    return notifications_repo.total_emitidas(_tenant.current_tenant_id(), hasta_iso)
 
 
 def listar(para: str, solo_no_leidas: bool = False) -> list[dict]:
+    from core.db import notifications_repo, tenant as _tenant
     p = (para or "").strip().lower()
-    items = [n for n in _load() if n["para"] == p]
-    if solo_no_leidas:
-        items = [n for n in items if not n["leida"]]
-    return sorted(items, key=lambda n: n["fecha"], reverse=True)
+    return notifications_repo.list_for(_tenant.current_tenant_id(), p, solo_no_leidas)
 
 
 def marcar_leida(nid: str) -> dict:
-    items = _load()
-    n = next((x for x in items if x["id"] == nid), None)
-    if not n:
-        raise KeyError("notificación inexistente")
-    n["leida"] = True
-    _save(items)
-    return n
+    from core.db import notifications_repo, tenant as _tenant
+    return notifications_repo.mark_read(_tenant.current_tenant_id(), nid)

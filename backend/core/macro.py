@@ -15,17 +15,10 @@ from __future__ import annotations
 
 import datetime
 import json
-import os
 import ssl
 import unicodedata
 import urllib.error
 import urllib.request
-
-from . import paths
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-CACHE_JSON = os.path.join(DATA_DIR, "macro_cache.json")
 
 BCRA_USD = "https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/USD"
 # Fallback de cotización oficial (SOLO si el BCRA falla): API pública estable,
@@ -53,15 +46,15 @@ def _hoy() -> str:
 
 
 def _cache_load() -> dict:
-    try:
-        return json.load(open(CACHE_JSON, encoding="utf-8"))
-    except Exception:
-        return {}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("macro_cache", _tenant.current_tenant_id()) or {}
 
 
 def _cache_save(c: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(c, open(CACHE_JSON, "w", encoding="utf-8"), ensure_ascii=False)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("macro_cache", _tenant.current_tenant_id(), c)
 
 
 def _fetch(url: str, ctx):

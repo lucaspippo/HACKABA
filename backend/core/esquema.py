@@ -120,16 +120,30 @@ def detectar_tipo(headers: list[str]) -> dict:
 
 # --- Apartados activos (qué secciones de datos existen en el tenant) ---
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    if not os.path.exists(APARTADOS_JSON):
+        return {}
     try:
         return json.load(open(APARTADOS_JSON, encoding="utf-8"))
     except Exception:
         return {}
 
 
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("data_sections", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("data_sections", tid, data)
+    return data
+
+
 def _save(d: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(d, open(APARTADOS_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("data_sections", _tenant.current_tenant_id(), d)
     # P11·B4: cualquier escritura de apartados (recepciones, compras, ventas,
     # staging integrado) invalida los análisis cacheados.
     from . import analisis_cache

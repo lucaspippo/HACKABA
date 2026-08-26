@@ -1,20 +1,17 @@
-import os
-
 import pytest
 
 import data_store as ds
-from core import store, saneamiento, memoria
+from core import store, saneamiento
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def estado_limpio():
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     yield
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
 
 
 def test_data_store_coincide_con_original():

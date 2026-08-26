@@ -1,8 +1,7 @@
-import os
-
 import pytest
 
 from core import staging, store
+from tests.conftest import limpiar_tabla_tenant
 
 CSV = (
     "Codigo,Producto,Stock,Costo,Precio\n"
@@ -15,12 +14,10 @@ CSV = (
 
 @pytest.fixture(autouse=True)
 def limpio():
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
     yield
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
 
 

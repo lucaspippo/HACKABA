@@ -19,12 +19,10 @@ from tests.conftest import limpiar_cuentas_db
 @pytest.fixture(autouse=True)
 def _reset_datos():
     limpiar_cuentas_db()
-    if os.path.exists(caja.CAJA_JSON):
-        os.remove(caja.CAJA_JSON)
+    caja.resetear()
     yield
     limpiar_cuentas_db()
-    if os.path.exists(caja.CAJA_JSON):
-        os.remove(caja.CAJA_JSON)
+    caja.resetear()
 
 
 # --- A4: el grafo propaga (cobro de cuenta corriente → ingreso en caja) ---

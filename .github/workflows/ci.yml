@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend tests (pytest + Alembic)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: polpilot
+          POSTGRES_PASSWORD: polpilot
+          POSTGRES_DB: polpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U polpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Mirrors backend/.env.example and docker-compose.yml's local roles —
+      # DATABASE_URL is the admin/superuser connection (Alembic, tenant
+      # rows); APP_DATABASE_URL is the restricted role every tenant-scoped
+      # query goes through. Reusing DATABASE_URL for both would make Row-
+      # Level Security silently do nothing (superusers bypass RLS) — see
+      # docker/init-app-role.sql and backend/core/db/MIGRATING_A_MODULE.md.
+      DATABASE_URL: postgresql+psycopg://polpilot:polpilot@localhost:5432/polpilot
+      APP_DATABASE_URL: postgresql+psycopg://polpilot_app:polpilot_app@localhost:5432/polpilot
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      # WeasyPrint (PDF rendering, core/pdf.py) needs these at runtime, not
+      # import time — tests that need it skip cleanly if they're missing
+      # (see tests/test_pdf_documentos.py's skipif), but installing them
+      # keeps that suite actually running instead of always skipping.
+      - name: Install WeasyPrint system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 libcairo2 \
+            libgdk-pixbuf2.0-0 libffi-dev libharfbuzz0b libglib2.0-0
+
+      - name: Install Python dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Create the restricted RLS role (docker/init-app-role.sql)
+        run: psql "$DATABASE_URL_PLAIN" -f docker/init-app-role.sql
+        env:
+          DATABASE_URL_PLAIN: postgresql://polpilot:polpilot@localhost:5432/polpilot
+
+      - name: Apply migrations
+        working-directory: backend
+        run: python -m alembic upgrade head
+
+      # MUST run before generar.py, not after — generar.py calls directly
+      # into Postgres-backed core modules (core.staging, core.perfiles,
+      # core.comprobantes) partway through its own seeding, and those
+      # raise if the tenant has no row yet. See deploy/boot.py and
+      # data-demo/seed_db.ensure_tenant()'s docstring for the full story
+      # (a real production-first-boot bug this step exists to catch).
+      - name: Ensure the demo tenant row exists
+        working-directory: data-demo
+        run: python -c "import seed_db; seed_db.ensure_tenant('demo')"
+
+      # The same generator deploy/boot.py runs before every server start —
+      # regenerates data-demo/'s full dataset (including the gitignored
+      # files, e.g. audit.json) deterministically, so the demo tenant's
+      # Postgres seed — and the canonical-number tests that assert against
+      # it — don't depend on whatever happens to already be on disk.
+      - name: Regenerate the demo dataset (Postgres seed source)
+        working-directory: data-demo
+        run: python generar.py
+
+      - name: Run backend test suite
+        working-directory: backend
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  docker-build:
+    name: Docker image build (privacy guard + full multi-stage build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No secrets needed to build — ANTHROPIC_API_KEY etc. are only read
+      # at container *run* time (see Dockerfile's ENV block), never at
+      # build time. This also exercises the privacy guard RUN step (fails
+      # the build if piloto data/assets or a .env leaked into the image —
+      # see the Dockerfile comment above it for the P37 incident it guards
+      # against).
+      - name: Build the production image
+        run: docker build -t polpilot-demo:ci .

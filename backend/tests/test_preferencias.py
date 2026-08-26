@@ -9,8 +9,6 @@ en memoria.json, no en el navegador).
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,21 +16,16 @@ import angela
 import auth
 import main
 from core import memoria
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
-    backup = None
-    if os.path.exists(memoria.MEMORIA_JSON):
-        backup = open(memoria.MEMORIA_JSON, encoding="utf-8").read()
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     yield
     angela._set_sesion(usuario=usuario, rol=rol)
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
-    if backup is not None:
-        open(memoria.MEMORIA_JSON, "w", encoding="utf-8").write(backup)
+    limpiar_tabla_tenant("user_memory")
 
 
 @pytest.fixture()

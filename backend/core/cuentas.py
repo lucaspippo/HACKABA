@@ -52,11 +52,12 @@ _SEED = [
 
 
 def _seed_inicial() -> list[dict]:
-    """El dataset REAL del tenant si existe en disco (p.ej. data-demo/cuentas.json,
-    generado por data-demo/generar.py — la fuente de los números canónicos del
-    demo), usado SOLO para la siembra inicial en Postgres (una vez por tenant,
-    ver customer_accounts_repo.seed_if_empty). _SEED de más arriba es el
-    fallback de un tenant sin dataset propio todavía (piloto de test)."""
+    """The tenant's REAL dataset if it exists on disk (e.g. data-demo/
+    cuentas.json, produced by data-demo/generar.py — the source of the
+    demo's canonical numbers), used ONLY to seed Postgres the first time
+    (once per tenant, see customer_accounts_repo.seed_if_empty). The _SEED
+    above is the fallback for a tenant with no dataset of its own yet
+    (the test "piloto" tenant)."""
     cuentas_json = os.path.join(paths.DATA_DIR, "cuentas.json")
     if not os.path.exists(cuentas_json):
         return _SEED

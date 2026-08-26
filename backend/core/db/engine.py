@@ -16,6 +16,7 @@ Two engines, two roles, on purpose:
 """
 from __future__ import annotations
 
+import datetime
 import os
 from contextlib import contextmanager
 from typing import Iterator
@@ -48,6 +49,22 @@ def get_admin_engine() -> Engine:
         url = os.environ["DATABASE_URL"]
         _ADMIN_ENGINE = create_engine(url, pool_pre_ping=True)
     return _ADMIN_ENGINE
+
+
+def to_local_iso(dt: datetime.datetime, timespec: str = "seconds") -> str:
+    """Formats a timezone-aware Postgres timestamp (always UTC internally,
+    regardless of session timezone) as the naive local-time ISO string
+    `datetime.datetime.now().isoformat()` would have produced — the format
+    every core/*.py module used before its timestamps moved to Postgres.
+
+    Why this matters: `now()`-generated columns are correct UTC instants,
+    but core/fechas.py's hoy() (and anything comparing a `[:10]` date
+    prefix against it) uses naive *local* time. Near a UTC midnight
+    boundary — routine for any timezone behind UTC, Argentina's UTC-3
+    included — the UTC date and the local date differ, so leaving a
+    timestamp in UTC breaks those comparisons. Convert on the way out,
+    not by changing what "today" means everywhere else."""
+    return dt.astimezone().replace(tzinfo=None).isoformat(timespec=timespec)
 
 
 @contextmanager
