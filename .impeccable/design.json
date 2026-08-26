@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-26T21:55:21Z",
+  "title": "Design System: PolPilot",
+  "extensions": {
+    "colorMeta": {
+      "papel": { "role": "neutral", "displayName": "Papel", "canonical": "#fbfbfa", "tonalRamp": ["#111110", "#21201d", "#3a3833", "#57544d", "#6e6a63", "#a5a199", "#d3d0c8", "#fbfbfa"] },
+      "tinta": { "role": "neutral", "displayName": "Tinta", "canonical": "#21201d", "tonalRamp": ["#111110", "#21201d", "#3a3833", "#57544d", "#6e6a63", "#a5a199", "#d3d0c8", "#fbfbfa"] },
+      "angela-blue": { "role": "primary", "displayName": "Ángela Blue", "canonical": "#2a5cdf", "tonalRamp": ["#0a1442", "#122769", "#1d3fae", "#2a5cdf", "#5a80e8", "#8aa5ef", "#c3d3f8", "#eaf0fd"] },
+      "rojo": { "role": "secondary", "displayName": "Rojo (Real Problem)", "canonical": "#d2372b", "tonalRamp": ["#3d0d09", "#641511", "#a82a20", "#d2372b", "#e06a5f", "#ec9890", "#f5c2bc", "#fbe4e1"] },
+      "oro": { "role": "secondary", "displayName": "Oro (Pending Decision)", "canonical": "#de7c1a", "tonalRamp": ["#4a2708", "#7a4110", "#96560a", "#de7c1a", "#eba24f", "#f3c085", "#f8dbb8", "#fcefd9"] },
+      "salvia": { "role": "secondary", "displayName": "Salvia (Success)", "canonical": "#2f7d5b", "tonalRamp": ["#0e2a1d", "#194a33", "#22633f", "#2f7d5b", "#5a9d7c", "#87bda3", "#b7dcc9", "#e2f2ea"] },
+      "hielo": { "role": "secondary", "displayName": "Hielo (Frozen Capital)", "canonical": "#2b7a8c", "tonalRamp": ["#0d2830", "#154451", "#1e5e6f", "#2b7a8c", "#5aa0ae", "#8cc0c9", "#c2dfe4", "#e9f1f4"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Card titles, section titles, short high-confidence labels. Never long-form headlines." },
+      "body": { "displayName": "Body", "purpose": "Descriptive copy, form labels, general UI text." },
+      "label": { "displayName": "Label", "purpose": "Chips, nav labels, field labels, status pills; often uppercase with wide tracking at the smallest sizes." },
+      "mono": { "displayName": "Money", "purpose": "Every peso figure in the app, always with tabular-nums. Never used decoratively." }
+    },
+    "shadows": [
+      { "name": "sombra-papel", "value": "0 1px 2px rgba(33,32,29,.03), 0 6px 20px -14px rgba(33,32,29,.1)", "purpose": "Resting elevation for cards on the base background." },
+      { "name": "sombra-alta", "value": "0 1px 3px rgba(33,32,29,.04), 0 14px 40px -20px rgba(33,32,29,.16)", "purpose": "Elevated/floating sheets, e.g. the login card." },
+      { "name": "card-hover", "value": "0 2px 4px rgba(33,32,29,.05), 0 12px 32px -14px rgba(33,32,29,.16)", "purpose": "Interactive card hover state, paired with translateY(-2px)." }
+    ],
+    "motion": [
+      { "name": "esfera-idle", "value": "scale 1 -> 1.035, 6s ease-in-out infinite", "purpose": "Ángela sphere breathing at rest." },
+      { "name": "esfera-pensando", "value": "scale 1 -> 1.07 + brightness 1 -> 1.18, 1.4s ease-in-out infinite", "purpose": "Ángela sphere while actively thinking/working." },
+      { "name": "esfera-esperando", "value": "gold ring pulse 0 -> 4px rgba(222,124,26,.35), 1.6s ease-in-out infinite", "purpose": "A decision is pending the owner — the one place gold appears on a blue element." },
+      { "name": "press-scale", "value": "active:scale(0.99)", "purpose": "Standard tactile feedback on button press." },
+      { "name": "focus-ring", "value": "0 0 0 2px var(--color-papel), 0 0 0 4px rgba(42,92,223,.4)", "purpose": "Keyboard-navigation-only focus-visible ring, using Ángela Blue." }
+    ],
+    "breakpoints": [
+      { "name": "3xl", "value": "85rem" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The confident-action button: dark ink fill, white text, press feedback.",
+      "html": "<button class=\"ds-btn-primary\"><svg class=\"ds-icon\" width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4\"/><polyline points=\"10 17 15 12 10 7\"/><line x1=\"15\" y1=\"12\" x2=\"3\" y2=\"12\"/></svg>Entrar</button>",
+      "css": ".ds-btn-primary { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; border-radius: 12px; background: #21201d; color: #fbfbfa; padding: 10px 16px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 0.95rem; font-weight: 600; border: none; cursor: pointer; transition: transform 150ms ease-out, opacity 150ms ease-out; } .ds-btn-primary:hover { opacity: 0.92; } .ds-btn-primary:active { transform: scale(0.99); } .ds-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; } .ds-icon { flex-shrink: 0; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Standard form field: hairline border, soft focus shift to ink.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"usuario\" />",
+      "css": ".ds-input { width: 100%; border-radius: 12px; border: 1px solid #e9e7e2; background: #fbfbfa; color: #21201d; padding: 10px 14px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 0.95rem; outline: none; transition: border-color 150ms ease-out; } .ds-input::placeholder { color: #6e6a63; } .ds-input:focus { border-color: rgba(33,32,29,0.4); }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "Ring + dot state indicator, never a filled block. Three fixed states: requiere_accion, atencion, en_orden.",
+      "html": "<span class=\"ds-pill ds-pill--atencion\"><span class=\"ds-pill-dot\"></span>Atención</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 8px; border-radius: 9999px; background: #ffffff; padding: 4px 12px; font-family: 'Hanken Grotesk', system-ui, sans-serif; font-size: 0.8rem; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(222,124,26,0.25); color: #96560a; } .ds-pill-dot { width: 8px; height: 8px; border-radius: 9999px; background: #de7c1a; } .ds-pill--requiere_accion { box-shadow: inset 0 0 0 1px rgba(210,55,43,0.2); color: #a82a20; } .ds-pill--requiere_accion .ds-pill-dot { background: #d2372b; } .ds-pill--en_orden { box-shadow: inset 0 0 0 1px rgba(47,125,91,0.2); color: #2f7d5b; } .ds-pill--en_orden .ds-pill-dot { background: #2f7d5b; }"
+    },
+    {
+      "name": "Business Card (CardNegocio)",
+      "kind": "card",
+      "refersTo": "card-negocio",
+      "description": "The one card anatomy reused across Alerts and Opportunities: chip, title, data line, large figure, sources, action.",
+      "html": "<button class=\"ds-card\"><span class=\"ds-card-chip\">Riesgo</span><p class=\"ds-card-title\">Cliente moroso hace 60 días</p><p class=\"ds-card-data\">Doña Elsa superó el límite de crédito</p><p class=\"ds-card-figure\">$85,7M</p><p class=\"ds-card-sources\">Crucé: cuentas corrientes · cobranza</p><span class=\"ds-card-action\">Ver por qué<svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"/><polyline points=\"12 5 19 12 12 19\"/></svg></span></button>",
+      "css": ".ds-card { display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%; max-width: 320px; border-radius: 20px; border: 1px solid #e9e7e2; background: #ffffff; padding: 20px; box-shadow: 0 1px 2px rgba(33,32,29,.03), 0 6px 20px -14px rgba(33,32,29,.1); cursor: pointer; transition: box-shadow 200ms ease-out, transform 200ms ease-out; font-family: 'Hanken Grotesk', system-ui, sans-serif; } .ds-card:hover { box-shadow: 0 2px 4px rgba(33,32,29,.05), 0 12px 32px -14px rgba(33,32,29,.16); transform: translateY(-2px); } .ds-card-chip { border-radius: 9999px; background: rgba(210,55,43,0.1); color: #d2372b; padding: 4px 10px; font-size: 0.7rem; font-weight: 600; } .ds-card-title { margin-top: 10px; font-family: 'Schibsted Grotesk', system-ui, sans-serif; font-size: 1.05rem; font-weight: 700; line-height: 1.2; color: #21201d; } .ds-card-data { margin-top: 4px; font-size: 0.82rem; line-height: 1.35; color: #6e6a63; } .ds-card-figure { margin-top: 12px; font-family: 'DM Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-size: 1.5rem; font-weight: 500; color: #d2372b; } .ds-card-sources { margin-top: 8px; font-size: 0.7rem; color: rgba(110,106,99,0.8); } .ds-card-action { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 600; color: #21201d; }"
+    },
+    {
+      "name": "Ángela Sphere",
+      "kind": "custom",
+      "refersTo": "angela-sphere",
+      "description": "The one deliberately expressive element in an otherwise restrained system: radial-gradient orb with idle/thinking/waiting animation states.",
+      "html": "<div class=\"ds-sphere ds-sphere--idle\"></div>",
+      "css": ".ds-sphere { width: 44px; height: 44px; border-radius: 9999px; background: radial-gradient(circle at 30% 24%, rgba(255,255,255,.92) 0%, rgba(255,255,255,0) 24%), radial-gradient(circle at 35% 30%, #7ea6f2 0%, #2a5cdf 52%, #14257a 100%); box-shadow: 0 0 0 1px rgba(251,251,250,.45), 0 1px 3px rgba(33,32,29,.18), inset 0 -2px 4px rgba(20,37,122,.35); } .ds-sphere--idle { animation: dsEsferaRespira 6s ease-in-out infinite; } @keyframes dsEsferaRespira { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Aire",
+    "overview": "Aire (\"Air\") is a white-based system built on an unusual amount of negative space for a business-operations product. Where most ERP-adjacent dashboards compress dense data into boxes and borders, PolPilot spaces things out and lets weight and air carry hierarchy instead. The system is calm on purpose: it exists to deliver bad news (overdue debt, broken data, stock-outs) and pending decisions clearly, without visual noise competing for the owner's attention.\n\nThe organizing law of the palette is one color, one meaning, no exceptions. Red is never decorative — it only ever means an active, real problem. Gold only ever means a decision waiting on the owner. Green only ever means something is in order. Ángela Blue only ever means the AI agent — its sphere, its actions, its highlights — because in this product the brand and the agent are treated as the same thing. This is a deliberate constraint the codebase enforces in comments; new work must not borrow a semantic color for decoration or for an unrelated state.\n\nNumbers get the same discipline: every peso in the app renders in DM Mono with tabular figures, so digits never visually shift as values update — a financial-grade detail invisible until it's missing.",
+    "keyCharacteristics": [
+      "White-and-space first; color is reserved and meaningful, never ambient decoration.",
+      "Restrained, precise component language — dark-ink primary actions, soft hairline borders, near-flat elevation.",
+      "Money is always monospaced with tabular figures; it's the one place typography breaks from the humanist sans.",
+      "Desktop and mobile are two tuned experiences of the same tokens, not one responsive layout."
+    ],
+    "rules": [
+      { "name": "The One Meaning Rule", "body": "Every semantic color (rojo, oro, salvia, hielo, Ángela Blue) has exactly one meaning across the entire product. A component must never reuse red for something that isn't an active problem, or blue for something the agent didn't do — even when a different meaning would \"look right\" in isolation.", "section": "colors" },
+      { "name": "The Silver Rule", "body": "Money (.plata) is always DM Mono with tabular figures, never the sans body font — the digits must never visually shift as values change.", "section": "colors" },
+      { "name": "The Tabular Numbers Rule", "body": "body sets font-variant-numeric: tabular-nums globally — every digit in the app, not just money, holds its column width so KPIs, tables, and axis labels never jitter as numbers update.", "section": "typography" },
+      { "name": "The Ambient-Only Rule", "body": "Shadows are diffuse and low-contrast at every step; there is no hard-edged or high-contrast drop shadow anywhere in the system. Depth reads as atmosphere, not as a UI chrome effect.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every semantic color (rojo, oro, salvia, hielo, Ángela Blue) to its single fixed meaning — check index.css's color comments before introducing a new use.",
+      "Do render money in DM Mono with tabular figures via the .plata class, never in the body sans font.",
+      "Do reuse the CardNegocio anatomy (chip → title → data line → figure → sources → action) for any new business-finding surface rather than inventing a new card layout.",
+      "Do keep shadows soft and ambient (sombra-papel / sombra-alta / card-hover); depth is atmosphere, not chrome.",
+      "Do design desktop and mobile as separate tuned experiences of the same tokens (frontend/src/desktop, frontend/src/mobile), not one responsive layout."
+    ],
+    "donts": [
+      "Don't use red, gold, green, or Ángela Blue decoratively or for a state outside their fixed meaning — no \"error red\" buttons, no gold-as-warning-brand accents.",
+      "Don't introduce a second border weight or a hard-edged shadow; the system has exactly one hairline border and only diffuse, low-contrast shadows.",
+      "Don't style the Ángela sphere's motion states as generic loading spinners — idle/thinking/waiting are named, purposeful states, not decoration.",
+      "Don't collapse the mobile bottom nav's fixed five-slot, equal-width grid into a scrolling or variable-width tab bar."
+    ]
+  }
+}
