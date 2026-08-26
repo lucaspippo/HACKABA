@@ -18,6 +18,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -1670,6 +1671,75 @@ def chat(req: ChatRequest, request: Request):
     if _es_demo():
         raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
     return angela.responder(req.mensaje, historial, rol="invitado", nombre=None, features=[])
+
+
+@app.post("/api/angela/stream")
+def chat_stream(req: ChatRequest, request: Request):
+    """Same as /api/angela but streaming (NDJSON: one line = one JSON event)
+    for the assistant-ui chat — live text and each tool call visible as soon
+    as it runs. Same identity/auth/cap as /api/angela; only the transport
+    changes."""
+    from fastapi.responses import StreamingResponse
+
+    history = [t.model_dump() for t in (req.historial or [])]
+
+    def line(event: dict) -> str:
+        return json.dumps(event, ensure_ascii=False, default=str) + "\n"
+
+    def cap_event(u) -> str:
+        return line({"type": "done", "result": {
+            "respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
+            "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": [],
+        }})
+
+    if _ip_excedido(_client_ip(request), _cap_ip()):
+        u = auth.usuario_por_token(req.token) if req.token else None
+        return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
+
+    if req.token:
+        u = auth.usuario_por_token(req.token)
+        if not u:
+            raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
+        cap = _cap_mensajes()
+        if cap > 0:
+            used = _CHAT_POR_SESION.get(req.token, 0)
+            if used >= cap:
+                return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
+            _CHAT_POR_SESION[req.token] = used + 1
+
+        def generate():
+            import time as _time
+            _t0 = _time.monotonic()
+            result = None
+            for ev in angela.stream_response(
+                req.mensaje, history, role=u.get("rol"),
+                name=u.get("username"), features=u.get("features"),
+            ):
+                if ev.get("type") == "done":
+                    result = ev.get("result") or {}
+                yield line(ev)
+            _ms = round((_time.monotonic() - _t0) * 1000)
+            result = result or {}
+            print(f"[angela/stream] {_ms}ms tools={','.join(result.get('tools_usadas') or []) or '-'} "
+                  f"user={u['username']}", flush=True)
+            try:
+                store.audit.record(actor=u["username"], accion="consulta_angela",
+                                   despues={"tools": (result.get("tools_usadas") or [])[:4],
+                                            "ms": _ms})
+            except Exception:  # noqa: BLE001
+                pass
+
+        return StreamingResponse(generate(), media_type="application/x-ndjson")
+
+    if _es_demo():
+        raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
+
+    def generate_guest():
+        for ev in angela.stream_response(req.mensaje, history, role="invitado",
+                                         name=None, features=[]):
+            yield line(ev)
+
+    return StreamingResponse(generate_guest(), media_type="application/x-ndjson")
 
 
 @app.get("/api/oportunidades")

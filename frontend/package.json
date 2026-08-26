@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@assistant-ui/core": "^0.3.15",
+    "@assistant-ui/react": "^0.15.16",
     "@xyflow/react": "^12.11.2",
     "d3-force-3d": "^3.0.6",
     "framer-motion": "^11.15.0",

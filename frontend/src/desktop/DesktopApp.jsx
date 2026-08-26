@@ -7,7 +7,9 @@ import {
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
-import AngelaView from "../views/AngelaView";
+import ChatPanel from "../views/ChatPanel";
+import ChatFullscreen from "../views/ChatFullscreen";
+import { ChatRuntimeProvider, useChatDock } from "../lib/chatRuntimeProvider";
 import Inicio from "./sections/Inicio";
 import { InsightNodo } from "./sections/MapaNegocio";
 // La sección del mapa tiene dos vistas (árbol de fuentes / cerebro de
@@ -88,9 +90,18 @@ const BLOQUES_NAV = [
   { lk: "nav.grupo_sistema", ids: ["cargar", "documentos", "auditoria", "admin_contexto", "perfil"] },
 ];
 
-export default function DesktopApp({ data, oportunidades, fase, user, onRecargar }) {
+export default function DesktopApp(props) {
+  return (
+    <ChatRuntimeProvider>
+      <DesktopAppInner {...props} />
+    </ChatRuntimeProvider>
+  );
+}
+
+function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const t = useT();
   const session = useSession();
+  const { fullscreen, setFullscreen } = useChatDock();
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
@@ -356,6 +367,17 @@ export default function DesktopApp({ data, oportunidades, fase, user, onRecargar
         </header>
 
         <div className="flex min-h-0 flex-1">
+          {fullscreen ? (
+            <div className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
+              <ChatFullscreen
+                onNavigate={navegar}
+                user={user}
+                onDatosCambiaron={onRecargar}
+                placeholderChips={chipsPorRol(user)}
+                onCollapse={() => setFullscreen(false)}
+              />
+            </div>
+          ) : (
           <main className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
             {/* Banner de fase: SOLO en el Inicio — en el resto de las secciones es
                 ruido que come pantalla y su CTA no aplica (auditoría UX P5).
@@ -424,9 +446,10 @@ export default function DesktopApp({ data, oportunidades, fase, user, onRecargar
               </motion.div>
             </AnimatePresence>
           </main>
+          )}
 
           <AnimatePresence>
-            {angelaOpen && (
+            {angelaOpen && !fullscreen && (
               <motion.aside
                 initial={{ x: 380, opacity: 0.4 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -434,15 +457,15 @@ export default function DesktopApp({ data, oportunidades, fase, user, onRecargar
                 transition={{ type: "spring", stiffness: 320, damping: 34 }}
                 className="flex w-[23.75rem] shrink-0 flex-col border-l border-linea bg-papel"
               >
-                <div className="flex items-center justify-between border-b border-linea px-4 py-2.5">
-                  <span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("angela.eyebrow")}</span>
+                <div className="flex justify-end border-b border-linea px-4 py-1.5">
                   <button onClick={() => setAngelaOpen(false)} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
-                  {/* El panel del mapa vive en el aside, FUERA del boundary de la
-                      sección: un error acá tumbaba toda la vista (pantalla en
-                      blanco). Red de seguridad propia, con key por insight para
-                      que al elegir otro nodo se resetee y muestre el nuevo panel. */}
+                  {/* The map insight panel lives in the aside, OUTSIDE the
+                      section's error boundary: an error there used to take
+                      down the whole view (blank screen). Its own safety net,
+                      keyed by insight so picking another node resets it and
+                      shows the new panel. */}
                   {section === "mapa" && mapaInsight && (
                     <ErrorBoundary key={"insight:" + (mapaInsight.esMemory ? "mem"
                       : mapaInsight.esHallazgo ? "hall:" + (mapaInsight.h?.id || "")
@@ -452,7 +475,15 @@ export default function DesktopApp({ data, oportunidades, fase, user, onRecargar
                     </ErrorBoundary>
                   )}
                   <div className="min-h-0 flex-1 overflow-hidden">
-                    <AngelaView onNavigate={navegar} inputInicial={consultaAngela} user={user} onDatosCambiaron={onRecargar} placeholderChips={chipsPorRol(user)} />
+                    <ChatPanel
+                      variant="dock"
+                      onExpand={() => setFullscreen(true)}
+                      onNavigate={navegar}
+                      inputInicial={consultaAngela}
+                      user={user}
+                      onDatosCambiaron={onRecargar}
+                      placeholderChips={chipsPorRol(user)}
+                    />
                   </div>
                 </div>
               </motion.aside>

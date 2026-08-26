@@ -3217,3 +3217,189 @@ def responder(
         fb = _fallback(mensaje)
         fb["error_tecnico"] = str(e)
         return fb
+
+
+def _prepare_turn(message, history, role, name, features, language):
+    """Builds exactly what responder() builds before the tool-use loop:
+    language, request-scoped session, system prompt and the message history.
+    One shared place for both entry points (one-shot JSON and streaming) so
+    they never diverge on identity, leakage guards or system prompt."""
+    if language not in paths.IDIOMAS:
+        from core import perfiles
+        language = perfiles.idioma_de(name) if name else paths.DEFAULT_LANG
+    _set_sesion(usuario=name, rol=role, features=features, idioma=language)
+
+    who = ""
+    if name or role:
+        who = (
+            f"\n\nESTÁS HABLANDO CON: {name or 'un usuario'} ({role or 'rol no especificado'}). "
+            f"Adaptá lo que mostrás a lo que esta persona necesita en su rol; no le ofrezcas "
+            f"cosas que no le corresponden."
+        )
+    try:
+        import auth as _auth
+        _seniority = _auth.antiguedad(name) if name else None
+        if _seniority and _seniority["nuevo"]:
+            who += (
+                f"\n\nESTA PERSONA ES NUEVA: entró hace {_seniority['dias']} días. Todavía no "
+                f"sabe dónde está cada cosa ni cómo se hace cada trámite acá. Explicá "
+                f"con paciencia y sin jerga, un paso por vez, y cuando la pregunta sea "
+                f"de cómo se trabaja en este negocio usá 'consultar_manual' antes de "
+                f"contestar. No le pidas que sepa nombres de proveedores, códigos ni "
+                f"secciones: guiala."
+            )
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        _mem = memoria.get(name) if name else {}
+        _prefs = {k: v for k, v in (_mem.get("vista") or {}).items() if k != "widgets"}
+        _notes = _mem.get("preferencias") or {}
+        if _prefs or _notes:
+            who += "\n\nLO QUE RECORDÁS DE ESTA PERSONA (aplicalo sin que te lo repita):"
+            if _prefs.get("sin_torta"):
+                who += "\n- No quiere gráficos de torta/donut NUNCA. Elegí siempre otra forma."
+            if _prefs.get("margen_pin_umbral") is not None:
+                who += (f"\n- Quiere los productos con margen teórico menor a "
+                        f"{_prefs['margen_pin_umbral']:g}% fijados arriba donde se listan márgenes "
+                        "(la interfaz ya lo hace sola).")
+            if _prefs.get("orden_home"):
+                who += f"\n- Ordenó los bloques de su Inicio así: {', '.join(_prefs['orden_home'])}."
+            for k, v in list(_notes.items())[:6]:
+                who += f"\n- Nota: {k} = {v}"
+    except Exception:  # noqa: BLE001
+        pass
+    business_context = _resumen_para_prompt() if _tiene_feature("inventario") else (
+        "El resumen general del inventario no corresponde al rol de esta persona. "
+        "No cites cifras globales del negocio (plata inmovilizada, catálogo) ni datos "
+        "de módulos que no maneja; contestá sólo lo de su área."
+    )
+    if language == "en":
+        language_directive = (
+            "\n\nLANGUAGE: Reply ALWAYS in English — plain-spoken business English, "
+            "warm and direct, same personality as ever (never stiff corporate). "
+            "Product, customer and supplier names stay in Spanish exactly as they "
+            "appear in the data (quote them naturally). Format money with en-US "
+            "grouping: $1,234,567 (they are Argentine pesos, ARS)."
+        )
+    else:
+        language_directive = (
+            "\n\nIDIOMA: Respondé SIEMPRE en castellano rioplatense, como siempre. "
+            "La plata en formato argentino: $1.234.567."
+        )
+    system_text = (SYSTEM_PROMPT.format(contexto=business_context) + _contexto_externo()
+                   + who + language_directive)
+    if config.PROMPT_CACHE:
+        system = [{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}]
+    else:
+        system = system_text
+
+    model = config.modelo_para()
+    available_tools = tools_para(_features_actuales())
+
+    messages: list[dict] = []
+    for turn in (history or [])[-6:]:
+        if turn.get("role") in ("user", "assistant") and turn.get("content"):
+            messages.append({"role": turn["role"], "content": turn["content"]})
+    messages.append({"role": "user", "content": message})
+
+    return system, model, available_tools, messages
+
+
+def stream_response(
+    message: str,
+    history: list[dict] | None = None,
+    role: str | None = None,
+    name: str | None = None,
+    features: list[str] | None = None,
+    language: str | None = None,
+):
+    """Like responder(), but as a generator: emits events as they happen so
+    the assistant-ui chat can stream text and show each tool call with its
+    result as soon as it runs, instead of waiting for the whole reply. The
+    final `done` event carries the SAME shape responder() has always
+    returned (respuesta/modo/tools_usadas/acciones), so nothing reading that
+    result (audit log, telemetry) has to change.
+
+    Events: {"type": "text", "text": <accumulated>}
+            {"type": "tool_call", "id", "name", "input"}
+            {"type": "tool_result", "id", "name", "input", "result"}
+            {"type": "done", "result": {...}}
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        fb = _fallback(message)
+        if fb.get("respuesta"):
+            yield {"type": "text", "text": fb["respuesta"]}
+        yield {"type": "done", "result": fb}
+        return
+
+    try:
+        import anthropic
+    except ImportError:
+        fb = _fallback(message)
+        if fb.get("respuesta"):
+            yield {"type": "text", "text": fb["respuesta"]}
+        yield {"type": "done", "result": fb}
+        return
+
+    client = anthropic.Anthropic(api_key=api_key)
+    system, model, available_tools, messages = _prepare_turn(
+        message, history, role, name, features, language)
+
+    tools_used: list[str] = []
+    actions: list[dict] = []
+    try:
+        for _ in range(MAX_TOOL_TURNS):
+            accumulated_text = ""
+            with client.messages.stream(
+                model=model, max_tokens=MAX_TOKENS, system=system,
+                tools=available_tools, messages=messages,
+            ) as stream:
+                for event in stream:
+                    if (event.type == "content_block_delta"
+                            and event.delta.type == "text_delta"):
+                        accumulated_text += event.delta.text
+                        yield {"type": "text", "text": accumulated_text}
+                resp = stream.get_final_message()
+
+            if resp.stop_reason == "tool_use":
+                messages.append({"role": "assistant", "content": resp.content})
+                tool_results = []
+                for block in resp.content:
+                    if block.type == "tool_use":
+                        tools_used.append(block.name)
+                        yield {"type": "tool_call", "id": block.id,
+                               "name": block.name, "input": block.input or {}}
+                        result, action = _run_tool(block.name, block.input or {})
+                        if action:
+                            actions.append(action)
+                        yield {"type": "tool_result", "id": block.id,
+                               "name": block.name, "input": block.input or {},
+                               "result": result}
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": json.dumps(_con_pesos(result), ensure_ascii=False),
+                        })
+                messages.append({"role": "user", "content": tool_results})
+                continue
+
+            text = "".join(b.text for b in resp.content if b.type == "text").strip()
+            yield {"type": "done", "result": {
+                "respuesta": text, "modo": "claude",
+                "tools_usadas": tools_used, "acciones": actions,
+            }}
+            return
+
+        stuck_text = "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?"
+        yield {"type": "text", "text": stuck_text}
+        yield {"type": "done", "result": {
+            "respuesta": stuck_text,
+            "modo": "claude", "tools_usadas": tools_used, "acciones": actions,
+        }}
+    except Exception as e:  # noqa: BLE001 — degrading gracefully never crashes the chat
+        fb = _fallback(message)
+        fb["error_tecnico"] = str(e)
+        if fb.get("respuesta"):
+            yield {"type": "text", "text": fb["respuesta"]}
+        yield {"type": "done", "result": fb}
