@@ -22,29 +22,29 @@ function UserMessage() {
   );
 }
 
-// Los "extras" de un mensaje de Ángela (checklist de plan, card de documento)
-// NO son content parts — viajan en metadata.custom.acciones (el mismo shape
-// que /api/angela siempre devolvió). Se leen acá, con el mensaje ya en scope
-// por MessagePrimitive.Root.
-function ExtrasDelMensaje({ onEjecutando }) {
+// A message's "extras" (plan checklist, document card) are NOT content
+// parts — they travel in metadata.custom.acciones (the same shape /api/angela
+// has always returned). Read here, with the message already in scope via
+// MessagePrimitive.Root.
+function MessageExtras({ onExecutingChange }) {
   const t = useT();
   const aui = useAui();
-  const acciones = useAuiState((s) => s.message.metadata?.custom?.acciones) || [];
-  const opciones = useAuiState((s) => s.message.metadata?.custom?.opciones) || [];
-  const corriendo = useAuiState((s) => s.thread.isRunning);
-  const plan = acciones.find((a) => a.type === "plan_progreso");
-  const docAccion = acciones.find((a) => a.type === "documento");
+  const actions = useAuiState((s) => s.message.metadata?.custom?.acciones) || [];
+  const options = useAuiState((s) => s.message.metadata?.custom?.opciones) || [];
+  const isRunning = useAuiState((s) => s.thread.isRunning);
+  const plan = actions.find((a) => a.type === "plan_progreso");
+  const docAction = actions.find((a) => a.type === "documento");
   return (
     <>
-      {plan && <PlanChecklist plan={{ pasos: plan.pasos, resumen: plan.resumen }} onEjecutando={onEjecutando} />}
-      {docAccion?.documento && <DocCard documento={docAccion.documento} t={t} />}
-      {opciones.length > 0 && (
+      {plan && <PlanChecklist plan={{ pasos: plan.pasos, resumen: plan.resumen }} onExecutingChange={onExecutingChange} />}
+      {docAction?.documento && <DocCard documento={docAction.documento} t={t} />}
+      {options.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
-          {opciones.map((op, k) => (
+          {options.map((op, k) => (
             <button
               key={k}
               onClick={() => aui.thread.append(op.enviar)}
-              disabled={corriendo}
+              disabled={isRunning}
               className="rounded-xl border border-violeta/30 bg-crema px-3 py-2 text-left text-[0.86rem] font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema disabled:opacity-50"
             >
               {op.label}
@@ -56,9 +56,9 @@ function ExtrasDelMensaje({ onEjecutando }) {
   );
 }
 
-// Puntitos de "pensando": sólo mientras el mensaje está corriendo y todavía
-// no llegó ni un token ni un tool-call (apenas se manda la pregunta).
-function Puntitos() {
+// "Thinking" dots: only while the message is running and neither a token nor
+// a tool call has arrived yet (right after the question is sent).
+function ThinkingDots() {
   return (
     <span className="flex gap-1 px-0.5 py-1">
       {[0, 1, 2].map((d) => (
@@ -72,8 +72,8 @@ function Puntitos() {
   );
 }
 
-function AssistantMessage({ onEjecutando }) {
-  const sinNadaAun = useAuiState(
+function AssistantMessage({ onExecutingChange }) {
+  const noContentYet = useAuiState(
     (s) => s.message.status?.type === "running" && (s.message.content?.length ?? 0) === 0
   );
   return (
@@ -81,8 +81,8 @@ function AssistantMessage({ onEjecutando }) {
       <AngelaMark size={28} />
       <div className="max-w-[88%]">
         <div className="whitespace-pre-line rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-[0.95rem] leading-snug text-tinta sombra-papel">
-          {sinNadaAun ? (
-            <Puntitos />
+          {noContentYet ? (
+            <ThinkingDots />
           ) : (
             <MessagePrimitive.Parts>
               {({ part }) => {
@@ -92,7 +92,7 @@ function AssistantMessage({ onEjecutando }) {
               }}
             </MessagePrimitive.Parts>
           )}
-          <ExtrasDelMensaje onEjecutando={onEjecutando} />
+          <MessageExtras onExecutingChange={onExecutingChange} />
         </div>
       </div>
     </MessagePrimitive.Root>
@@ -122,16 +122,16 @@ function Composer({ leading }) {
   );
 }
 
-// El Thread: assistant-ui maneja el streaming/estado; el look calca el chat
-// previo (bg-crema, sombra-papel, burbujas redondeadas) para que el cambio de
-// motor no se note en la superficie visible.
-export default function AngelaThread({ onEjecutando, composerLeading }) {
+// The Thread: assistant-ui handles streaming/state; the look mirrors the
+// previous chat (bg-crema, sombra-papel, rounded bubbles) so switching engines
+// doesn't show on the visible surface.
+export default function ChatThread({ onExecutingChange, composerLeading }) {
   return (
     <ThreadPrimitive.Root className="flex h-full flex-col">
       <ThreadPrimitive.Viewport className="flex-1 space-y-3 overflow-y-auto pb-2">
         <ThreadPrimitive.Messages>
           {({ message }) =>
-            message.role === "user" ? <UserMessage /> : <AssistantMessage onEjecutando={onEjecutando} />
+            message.role === "user" ? <UserMessage /> : <AssistantMessage onExecutingChange={onExecutingChange} />
           }
         </ThreadPrimitive.Messages>
       </ThreadPrimitive.Viewport>
