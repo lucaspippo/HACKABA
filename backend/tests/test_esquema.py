@@ -3,6 +3,7 @@ import os
 import pytest
 
 from core import esquema, staging, store
+from tests.conftest import limpiar_tabla_tenant
 
 VENTAS_CSV = (
     "Fecha,Producto,Cantidad,Precio\n"
@@ -13,14 +14,14 @@ VENTAS_CSV = (
 
 @pytest.fixture(autouse=True)
 def limpio():
-    for f in (staging.STAGING_JSON, esquema.APARTADOS_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    if os.path.exists(staging.STAGING_JSON):
+        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
     yield
-    for f in (staging.STAGING_JSON, esquema.APARTADOS_JSON):
-        if os.path.exists(f):
-            os.remove(f)
+    if os.path.exists(staging.STAGING_JSON):
+        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
 
 

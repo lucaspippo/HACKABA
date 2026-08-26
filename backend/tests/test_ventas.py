@@ -11,6 +11,7 @@ import os
 import pytest
 
 from core import esquema, evolucion, staging, store, ventas
+from tests.conftest import limpiar_tabla_tenant
 
 HOY = datetime.date.today()
 
@@ -21,19 +22,16 @@ def d(n):
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [esquema.APARTADOS_JSON, staging.STAGING_JSON, ventas.VALIDACION_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    if os.path.exists(staging.STAGING_JSON):
+        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("data_sections")
+    limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    if os.path.exists(staging.STAGING_JSON):
+        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("data_sections")
+    limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()
 
 

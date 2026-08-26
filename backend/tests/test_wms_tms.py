@@ -31,20 +31,20 @@ def d(n: int) -> str:
 @pytest.fixture(autouse=True)
 def limpio():
     """Aísla apartados/recordatorios/staging: guarda lo que hubiera y lo restaura."""
-    files = [esquema.APARTADOS_JSON, staging.STAGING_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    if os.path.exists(staging.STAGING_JSON):
+        backup = open(staging.STAGING_JSON, encoding="utf-8").read()
+        os.remove(staging.STAGING_JSON)
+    else:
+        backup = None
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
     limpiar_tabla_tenant("reminders")
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    if os.path.exists(staging.STAGING_JSON):
+        os.remove(staging.STAGING_JSON)
+    if backup is not None:
+        open(staging.STAGING_JSON, "w", encoding="utf-8").write(backup)
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
     limpiar_tabla_tenant("reminders")
 

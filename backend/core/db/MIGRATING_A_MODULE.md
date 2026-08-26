@@ -235,6 +235,44 @@ tenant-switching tests in this suite already use.
   read-only reference); repo `core/db/blob_repo.py` (generic)
 - `core/ventas_cliente.py` → table `client_sales_data` (one JSONB row per
   tenant, read-only reference); repo `core/db/blob_repo.py` (generic)
+- `core/cobranza.py` → table `collection_actions` (one JSONB row per
+  tenant, the `{cliente_id: {...}}` map); repo `core/db/blob_repo.py` (generic)
+- `core/conocimiento.py` → table `business_knowledge` (one JSONB row per
+  tenant, the `{"piezas": [...]}` list); repo `core/db/blob_repo.py` (generic)
+- `core/esquema.py` → table `data_sections` (one JSONB row per tenant, the
+  `{tipo: {nombre, filas}}` map — the "apartados" backing ventas/depósito/
+  etc.); repo `core/db/blob_repo.py` (generic)
+- `core/ventas.py` → table `sales_validation` (one JSONB row per tenant,
+  the monto-validator state); repo `core/db/blob_repo.py` (generic)
+
+**Forgetting a module's `_seed_inicial()` is a silent, cascading bug, not a
+loud one.** Migrating `core/ventas.py`'s `_val_load()` straight onto
+`blob_repo.get_blob(...) or {"estado": "sin_datos"}` — skipping the
+disk-seed step step 1 calls for — didn't fail immediately. It broke ~30
+unrelated demo-canonical-number tests across `test_kpis.py`, `test_p27.py`,
+`test_p38.py`, `test_p45.py`, `test_analisis.py`, etc., because the demo
+tenant's real `ventas_validacion.json` (`estado: "confirmado"`) never made
+it into Postgres — every consumer downstream of `ventas.montos_confirmados()`
+silently returned "not available" instead of an error. **Every module with
+an on-disk seed file needs the `_seed_inicial()` + "seed once from disk,
+fall back to the in-code default" step, even ones that look like simple
+key-value state** — check `data-demo/<file>.json` for a real one before
+assuming a blob module starts empty.
+
+**A fixture that isolates a migrated module by deleting its old JSON file
+is a silent no-op once that module is on Postgres — worse, it can leak
+state INTO other test files, not just fail its own.** `esquema.py`'s
+`APARTADOS_JSON` was referenced by four different test files
+(`test_esquema.py`, `test_ventas.py`, `test_wms_tms.py`,
+`test_comprobantes.py`), each assuming per-test file deletion reset the
+piloto tenant's apartados to empty. Once migrated, deleting the file did
+nothing — whichever of those tests ran first each session left real
+"venta" rows in `data_sections` for piloto, and every *other* test file
+checking piloto's honest "no ventas loaded" behavior (in `test_analisis.py`,
+`test_kpis.py`, `test_p27.py`, `test_p38.py`, `test_p45.py`, none of which
+touch `esquema` directly) started failing too — the cross-file pollution is
+the trap, not just the fixture's own test. Grep every test file for the
+constant being removed, not just the ones in the module's own test file.
 
 **`core/db/blob_repo.py`**: once a module's whole state is a single JSONB
 blob per tenant (the pattern described two sections up), don't write a new
