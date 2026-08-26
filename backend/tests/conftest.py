@@ -74,6 +74,9 @@ with _get_admin_engine().begin() as _conn:
             "audit_events", "data_versions",
             "inventory_working", "caja_state", "organization_config",
             "purchase_orders", "team_goals", "supplier_conditions",
+            "team_notes", "notifications",
+            "automation_policies", "retail_counter_data", "internal_transfers",
+            "inventory_baseline", "sample_extractions",
         ):
             _conn.execute(_text_bootstrap(
                 f"DELETE FROM {_tabla} WHERE tenant_id = :tid"

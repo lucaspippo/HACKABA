@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import text
 
 from core.db.engine import get_engine
@@ -175,5 +176,23 @@ def test_notifications_table_has_rls_enabled():
             "SELECT relname, relrowsecurity, relforcerowsecurity "
             "FROM pg_class WHERE relname = 'notifications'"
         )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
+
+
+@pytest.mark.parametrize("table_name", [
+    "automation_policies",
+    "retail_counter_data",
+    "internal_transfers",
+    "inventory_baseline",
+    "sample_extractions",
+])
+def test_blob_tables_have_rls_enabled(table_name):
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = :table_name"
+        ), {"table_name": table_name}).mappings().all()
         assert len(rows) == 1
         assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]

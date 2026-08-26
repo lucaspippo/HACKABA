@@ -90,6 +90,18 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     from core import notas as core_notas
     core_notas.listar()  # team_notes
 
+    from core import mostrador as core_mostrador
+    core_mostrador._load()  # retail_counter_data
+
+    from core import traslados as core_traslados
+    core_traslados._load()  # internal_transfers
+
+    from core import sync as core_sync
+    core_sync._baseline()  # inventory_baseline
+
+    from core import extraccion as core_extraccion
+    core_extraccion._muestras()  # sample_extractions
+
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
 

@@ -198,6 +198,38 @@ tenant-switching tests in this suite already use.
   tenant); repo `core/db/inventory_repo.py`
 - `core/caja.py` → table `caja_state` (one JSONB row per tenant); repo
   `core/db/caja_repo.py`
+- `core/organizacion.py` → table `organization_config` (one JSONB row per
+  tenant); repo `core/db/organization_repo.py`
+- `core/ordenes.py` → table `purchase_orders`; repo
+  `core/db/purchase_orders_repo.py`
+- `core/objetivos.py` → table `team_goals`; repo `core/db/team_goals_repo.py`
+- `core/reposicion.py` → table `supplier_conditions` (read-only reference);
+  repo `core/db/supplier_conditions_repo.py`
+- `core/notas.py` → table `team_notes` (read-only reference); repo
+  `core/db/team_notes_repo.py`
+- `core/notificaciones.py` → table `notifications`; repo
+  `core/db/notifications_repo.py`
+- `core/autonomia.py` → table `automation_policies` (one JSONB row per
+  tenant); repo `core/db/blob_repo.py` (generic)
+- `core/mostrador.py` → table `retail_counter_data` (one JSONB row per
+  tenant, read-only reference); repo `core/db/blob_repo.py` (generic)
+- `core/traslados.py` → table `internal_transfers` (one JSONB row per
+  tenant, read-only reference); repo `core/db/blob_repo.py` (generic)
+- `core/sync.py` → table `inventory_baseline` (one JSONB row per tenant,
+  read-only snapshot of the pre-correction catalog, seeded from the same
+  source as `inventory_working`); repo `core/db/blob_repo.py` (generic)
+- `core/extraccion.py` → table `sample_extractions` (one JSONB row per
+  tenant, `{sha256: extraccion}` map, read-only reference — replaces the old
+  mtime-based file hot-reload with a one-time Postgres seed, same tradeoff
+  every other read-only reference module already made); repo
+  `core/db/blob_repo.py` (generic)
+
+**`core/db/blob_repo.py`**: once a module's whole state is a single JSONB
+blob per tenant (the pattern described two sections up), don't write a new
+`<domain>_repo.py` for it — the five most recent migrations above share
+`blob_repo.get_blob(table, tenant_id)` / `save_blob(table, tenant_id, data)`,
+parametrized by table name. `table` must always be a literal from the
+caller's own code, never a value derived from user input.
 
 ## Known follow-ups not covered by this playbook
 
