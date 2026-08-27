@@ -170,7 +170,8 @@ def plan_integracion(tipo: str, lang: str | None = None) -> dict:
     `lang` traduce lo VISIBLE (nombre, lista de qué activa); el tipo y las
     relaciones son IDs y no cambian. ES byte-igual a TIPOS (la fuente histórica)."""
     import i18n
-    tkey = tipo if tipo in TIPOS else "producto"
+    lookup = "ordenes_compra" if tipo == "orden_compra" else tipo
+    tkey = lookup if lookup in TIPOS else "producto"
     d = TIPOS[tkey]
     activos = apartados_activos()
     relaciones = [r for r in d["relaciona_con"] if r in activos]

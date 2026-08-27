@@ -8,7 +8,8 @@ from sqlalchemy import text
 from core.db.engine import tenant_connection, to_local_iso
 
 _COLS = ("number", "date", "supplier", "status", "origin", "reason",
-         "prepared_by", "approved_by", "prepared_at", "items", "location")
+         "prepared_by", "approved_by", "prepared_at", "items", "location",
+         "source", "source_id", "source_status")
 
 
 def _to_orden(row) -> dict:
@@ -24,6 +25,9 @@ def _to_orden(row) -> dict:
         "preparada": to_local_iso(row["prepared_at"]),
         "items": row["items"],
         "ubicacion_entrega": row["location"],
+        "source": row["source"],
+        "source_id": row["source_id"],
+        "source_status": row["source_status"],
     }
 
 
@@ -86,6 +90,56 @@ def create(tenant_id: str, orden: dict) -> None:
                 "prepared_at": datetime.datetime.fromisoformat(orden["preparada"]).astimezone(),
                 "items": json.dumps(orden["items"]),
                 "location": orden.get("ubicacion_entrega"),
+            },
+        )
+
+
+def find_by_number(tenant_id: str, number: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(f"SELECT {', '.join(_COLS)} FROM purchase_orders WHERE number = :number"),
+            {"number": number},
+        ).mappings().first()
+    return _to_orden(row) if row else None
+
+
+def upsert_from_odoo(tenant_id: str, orden: dict) -> None:
+    """Create-or-update a purchase order by its number — Odoo ingestion
+    (core/odoo_ingest.py) uses this to stay idempotent across re-syncs.
+    (tenant_id, number) is already this table's primary key (0009), and
+    Odoo's own PO numbers (e.g. "P00006") never collide with
+    PolPilot-originated ones (e.g. "OC-2026-0901"), so no extra index or
+    lookup by source_id is needed — ON CONFLICT on number is enough."""
+    with tenant_connection(tenant_id) as conn:
+        conn.execute(
+            text(
+                "INSERT INTO purchase_orders "
+                "(tenant_id, number, date, supplier, status, origin, reason, "
+                "prepared_by, approved_by, prepared_at, items, location, "
+                "source, source_id, source_status) "
+                "VALUES (:tid, :number, :date, :supplier, :status, :origin, :reason, "
+                ":prepared_by, :approved_by, :prepared_at, :items, :location, "
+                ":source, :source_id, :source_status) "
+                "ON CONFLICT (tenant_id, number) DO UPDATE SET "
+                "status = EXCLUDED.status, source_status = EXCLUDED.source_status, "
+                "supplier = EXCLUDED.supplier, items = EXCLUDED.items, date = EXCLUDED.date"
+            ),
+            {
+                "tid": tenant_id,
+                "number": orden["numero"],
+                "date": orden["fecha"],
+                "supplier": orden["proveedor"],
+                "status": orden["estado"],
+                "origin": "odoo",
+                "reason": None,
+                "prepared_by": "Odoo",
+                "approved_by": "Odoo",
+                "prepared_at": datetime.datetime.now().astimezone(),
+                "items": json.dumps(orden["items"]),
+                "location": None,
+                "source": "odoo",
+                "source_id": orden["source_id"],
+                "source_status": orden["source_status"],
             },
         )
 

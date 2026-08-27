@@ -42,6 +42,11 @@ def _t(key: str, lang: str | None = None, **params) -> str:
     return i18n.t(key, lang, **params)
 
 
+def _tenant_id_actual() -> str:
+    from core.db import tenant as _tenant
+    return _tenant.current_tenant_id()
+
+
 def _load() -> list[dict]:
     from core.db import blob_repo
     from core.db import tenant as _tenant
@@ -103,6 +108,118 @@ def _coerce_logistica(mapeo: dict, fila_dict: dict) -> dict:
     }
 
 
+def coerce_producto_odoo(p: dict) -> dict:
+    # `costo_iva` is deliberately OMITTED: Odoo's product.template read
+    # (core/conectores.py's pull_productos) never supplies a cost, only
+    # `list_price` (-> pvp). Emitting the key at all — even as None — would
+    # let store.upsert_desde_conector's "if campo in fila" update clause
+    # overwrite a dueño-entered cost with None on every re-sync. On INSERT
+    # (first-time link, no prior dueño data to lose), the missing key just
+    # falls back to None there too, so nothing is lost either way.
+    return {
+        "codigo": None,
+        "descripcion": str(p.get("nombre") or "").strip(),
+        "estado": "activo",
+        "stock": p.get("stock") or 0.0,
+        "pvp": p.get("precio"),
+        "venta_x_peso": False,
+        "sku": p.get("codigo") or None,
+        "source": "odoo",
+        "source_id": str(p["id"]),
+    }
+
+
+def coerce_proveedor_odoo(p: dict) -> dict:
+    # `contacto`/`notas` are deliberately OMITTED: Odoo's res.partner read
+    # (core/conectores.py's pull_proveedores) never supplies them — they are
+    # PolPilot-native fields the dueño fills in by hand. Emitting them (even
+    # as "") would let proveedores.upsert_desde_conector's per-field update
+    # blank a dueño-entered value on every re-sync. On INSERT (first-time
+    # link), the missing keys fall back to "" there too, same as before.
+    return {
+        "nombre": str(p.get("nombre") or "").strip(),
+        "telefono": p.get("telefono") or "",
+        "email": p.get("email") or "",
+        "cuit": p.get("cuit") or "",
+        "source": "odoo",
+        "source_id": str(p["id"]),
+    }
+
+
+def _analizar_proveedores(filas: list[dict], lang: str | None = None) -> list[dict]:
+    from . import proveedores as proveedores_mod
+    existentes = {_norm(p["nombre"]) for p in proveedores_mod.listar() if not p.get("source")}
+    dups = [i for i, f in enumerate(filas) if _norm(f["nombre"]) in existentes]
+    if not dups:
+        return []
+    return [{
+        "id": "duplicado", "tipo": "duplicado",
+        "titulo": _t("core.staging.obs_duplicado", lang),
+        "descripcion": f"{len(dups)} proveedores parecen ya existir en tu sistema con el mismo nombre.",
+        "items": len(dups), "indices": dups, "impacto_pesos": 0,
+        "opciones": [{"label": "No agregarlos (ya existen)", "accion": "unificar", "params": {}},
+                     {"label": "Agregarlos igual (son distintos)", "accion": "mantener", "params": {}}],
+        "resuelta": False, "resolucion": None,
+    }]
+
+
+def coerce_cliente_odoo(c: dict) -> dict:
+    return {
+        "id": f"odoo-{c['id']}",
+        "nombre": str(c.get("nombre") or "").strip(),
+        "saldo": 0, "limite_credito": 0, "plazo_dias": 30,
+        "dias_sin_pagar": 0, "promedio_pago_dias": None,
+        "vat": c.get("cuit") or "", "city": c.get("localidad") or "",
+        "phone": c.get("telefono") or "", "email": c.get("email") or "",
+        "source": "odoo", "source_id": str(c["id"]),
+    }
+
+
+def _analizar_clientes(filas: list[dict], lang: str | None = None) -> list[dict]:
+    from . import cuentas as cuentas_mod
+    existentes = {_norm(c["nombre"]) for c in cuentas_mod.listar() if not c.get("source")}
+    dups = [i for i, f in enumerate(filas) if _norm(f["nombre"]) in existentes]
+    if not dups:
+        return []
+    return [{
+        "id": "duplicado", "tipo": "duplicado",
+        "titulo": _t("core.staging.obs_duplicado", lang),
+        "descripcion": f"{len(dups)} clientes parecen ya existir en tu sistema con el mismo nombre.",
+        "items": len(dups), "indices": dups, "impacto_pesos": 0,
+        "opciones": [{"label": "No agregarlos (ya existen)", "accion": "unificar", "params": {}},
+                     {"label": "Agregarlos igual (son distintos)", "accion": "mantener", "params": {}}],
+        "resuelta": False, "resolucion": None,
+    }]
+
+
+_ESTADO_ORDEN_COMPRA_ODOO = {
+    "borrador": "borrador", "enviada": "borrador",
+    "confirmada": "aprobada", "cerrada": "recibida", "cancelada": "cancelada",
+}
+
+
+def coerce_orden_compra_odoo(o: dict) -> dict:
+    estado_odoo = o.get("estado") or "borrador"
+    return {
+        "numero": o.get("numero") or "",
+        "proveedor": o.get("proveedor") or "",
+        "fecha": o.get("fecha") or "",
+        "total": o.get("total") or 0,
+        "items": o.get("items") or [],
+        "estado": _ESTADO_ORDEN_COMPRA_ODOO.get(estado_odoo, "borrador"),
+        "source": "odoo",
+        "source_id": str(o["id"]),
+        "source_status": estado_odoo,
+    }
+
+
+def _analizar_ordenes_compra(filas: list[dict], lang: str | None = None) -> list[dict]:
+    # No duplicate heuristic: an Odoo purchase order never collides by name
+    # with a hand-entered one — Odoo's own id (source_id) is already the key,
+    # and crear_batch_odoo only ever receives rows that are not linked yet.
+    return []
+
+
 # ---------------------------------------------------------------------------
 # P24·G4 — la pantalla de revisión habla el idioma del USUARIO QUE MIRA, no el
 # del que creó el batch: descripciones y opciones se re-localizan AL LEER, por
@@ -119,6 +236,11 @@ _DESC_KEY = {
     ("*", "numero_ambiguo"): "core.staging.d_numero_ambiguo",
     ("*", "precio_perdida"): "core.staging.d_precio_perdida",
     ("*", "sin_precio"): "core.staging.d_sin_precio",
+    # Odoo-sourced cliente/proveedor batches reuse the "duplicado" card, so
+    # they need their own noun — otherwise the generic ("*", "duplicado")
+    # entry re-localizes them as "N products …" on read.
+    ("cliente", "duplicado"): "core.staging.d_duplicado_clientes",
+    ("proveedor", "duplicado"): "core.staging.d_duplicado_proveedores",
     ("*", "duplicado"): "core.staging.d_duplicado",
     ("*", "stock_outlier"): "core.staging.d_stock_outlier",
 }
@@ -494,8 +616,37 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
     tipo = b.get("tipo", "producto")
     a_integrar = [f for f in b["filas"] if not f.get("_descartar")]
 
+    if tipo == "proveedor" and b.get("fuente") == "odoo":
+        from . import proveedores as proveedores_mod
+        res = proveedores_mod.upsert_desde_conector(a_integrar, actor)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": res["nuevos"], "tipo": tipo,
+                "mensaje": f"{res['nuevos']} proveedores nuevos, {res['actualizados']} actualizados."}
+
+    if tipo == "cliente" and b.get("fuente") == "odoo":
+        from core.db import customer_accounts_repo
+        for f in a_integrar:
+            customer_accounts_repo.upsert_account(_tenant_id_actual(), f)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} clientes nuevos."}
+
+    if tipo == "orden_compra" and b.get("fuente") == "odoo":
+        from core.db import purchase_orders_repo
+        tid = _tenant_id_actual()
+        for f in a_integrar:
+            purchase_orders_repo.upsert_from_odoo(tid, f)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} órdenes de compra nuevas."}
+
     if tipo != "producto":
-        # Tipo nuevo (ventas, clientes, …): crea el apartado y arma las relaciones.
+        # Generic CSV/apartado path (ventas, depósito, logística, …): creates
+        # the apartado and wires up its relations. Odoo-sourced batches never
+        # reach here — they early-return in the branches above.
         res = esquema.crear_apartado(tipo, a_integrar)
         plan = b.get("plan", {})
         store.audit.record(actor=actor, accion="crear_apartado",
@@ -523,22 +674,29 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
                               nombre=plan.get("nombre", tipo), n=res["nuevas"],
                               rel=rel, activado=activado, extra=extra)}
 
-    # Productos: se suman al inventario oficial.
+    # Products: they join the official inventory. Connector-sourced rows
+    # (b["fuente"] == "odoo") go through upsert_desde_conector so they keep
+    # sku/source/source_id; CSV-sourced rows follow the original path.
     raw = store.raw_actual()
     backup = store.versiones.save({"articulos": raw}, motivo=f"Backup antes de integrar «{b['nombre']}»", autor=actor)
-    siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
-    nuevos = 0
-    for f in a_integrar:
-        codigo = f["codigo"] or siguiente
-        siguiente = max(siguiente, codigo) + 1
-        inmov = round((f["stock"] or 0) * (f["costo_iva"] or 0), 2) if (f["stock"] or 0) > 0 else 0.0
-        raw.append({
-            "codigo": codigo, "descripcion": f["descripcion"], "estado": f.get("estado", "activo"),
-            "stock": f["stock"], "costo_iva": f.get("costo_iva"), "pvp": f.get("pvp"),
-            "venta_x_peso": f.get("venta_x_peso", False), "inmovilizado": inmov,
-        })
-        nuevos += 1
-    store.guardar(raw)
+    if b.get("fuente") == "odoo":
+        for f in a_integrar:
+            store.upsert_desde_conector(f, actor)
+        nuevos = len(a_integrar)
+    else:
+        siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
+        nuevos = 0
+        for f in a_integrar:
+            codigo = f["codigo"] or siguiente
+            siguiente = max(siguiente, codigo) + 1
+            inmov = round((f["stock"] or 0) * (f["costo_iva"] or 0), 2) if (f["stock"] or 0) > 0 else 0.0
+            raw.append({
+                "codigo": codigo, "descripcion": f["descripcion"], "estado": f.get("estado", "activo"),
+                "stock": f["stock"], "costo_iva": f.get("costo_iva"), "pvp": f.get("pvp"),
+                "venta_x_peso": f.get("venta_x_peso", False), "inmovilizado": inmov,
+            })
+            nuevos += 1
+        store.guardar(raw)
     store.audit.record(actor=actor, accion="integrar_staging",
                        antes={"batch": b["nombre"]}, despues={"nuevos": nuevos, "version_backup": backup["id"]})
     batches = [x for x in batches if x["id"] != batch_id]
@@ -573,3 +731,61 @@ def descartar(batch_id: str) -> dict:
     batches = [x for x in _load() if x["id"] != batch_id]
     _save(batches)
     return {"ok": True}
+
+
+_COERCERS_ODOO = {
+    "producto": coerce_producto_odoo,
+    "proveedor": coerce_proveedor_odoo,
+    "cliente": coerce_cliente_odoo,
+    "orden_compra": coerce_orden_compra_odoo,
+}
+
+# Which field makes a coerced row "usable", per tipo — an Odoo row missing it
+# (e.g. a contact with no name) is dropped instead of creating an empty
+# record; same criterion as the CSV filtering in _coerce_y_analizar
+# (the "filas = [f for f in filas if f[...]]" lines).
+_REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
+                    "cliente": "nombre", "orden_compra": "numero"}
+
+
+def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
+                      lang: str | None = None) -> dict:
+    """Like crear_batch(), but for rows that already arrive structured from a
+    connector (Odoo) instead of a raw CSV: no parsing, no Nivel-1
+    normalization (that exists for ambiguous hand-typed text; the connector
+    already delivers correct types). It must only receive rows that are NOT
+    linked yet — core/odoo_ingest.py filters out the ones whose source_id is
+    already known, and those are updated directly without coming through
+    here."""
+    coerce = _COERCERS_ODOO[tipo]
+    filas = [coerce(f) for f in filas_odoo]
+    filas = [f for f in filas if f.get(_REQUERIDO_ODOO[tipo])]
+    if tipo == "producto":
+        observaciones = _analizar(filas)
+    elif tipo == "proveedor":
+        observaciones = _analizar_proveedores(filas, lang)
+    elif tipo == "cliente":
+        observaciones = _analizar_clientes(filas, lang)
+    elif tipo == "orden_compra":
+        observaciones = _analizar_ordenes_compra(filas, lang)
+    else:
+        raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
+    batch = {
+        "id": "b" + secrets.token_hex(3),
+        "nombre": nombre or f"Odoo · {tipo}",
+        "fecha": datetime.datetime.now().isoformat(timespec="seconds"),
+        "estado": "revision",
+        "tipo": tipo,
+        "fuente": "odoo",
+        "plan": esquema.plan_integracion(tipo, lang),
+        "mapeo": {},
+        "filas": filas,
+        "observaciones": observaciones,
+        "normalizaciones": None,
+        "ambiguos": [],
+        "crudo": None,
+    }
+    batches = _load()
+    batches.append(batch)
+    _save(batches)
+    return _resumen(batch)

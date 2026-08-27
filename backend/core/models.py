@@ -60,6 +60,9 @@ class Articulo:
     valor_peso: float | None = None
     antiguedad_costo_dias: float | None = None
     inmovilizado: float = 0.0
+    sku: str | None = None
+    source: str | None = None
+    source_id: str | None = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "Articulo":
@@ -76,6 +79,9 @@ class Articulo:
             valor_peso=d.get("valor_peso"),
             antiguedad_costo_dias=d.get("antiguedad_costo_dias"),
             inmovilizado=d.get("inmovilizado") or 0.0,
+            sku=d.get("sku"),
+            source=d.get("source"),
+            source_id=d.get("source_id"),
         )
 
 
