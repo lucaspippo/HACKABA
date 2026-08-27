@@ -86,6 +86,13 @@ ACCIONES: dict[str, dict] = {
     "actualizar_articulo_conector": {"clase": "datos", "gate": "propia"},
     "crear_orden_compra":            {"clase": "stock", "gate": "propia"},
     "cambiar_estado_orden_compra":   {"clase": "stock", "gate": "propia"},
+    # Odoo-synced purchase orders bypass core/ordenes.py's approval workflow
+    # entirely (core/odoo_ingest.py writes straight to purchase_orders_repo),
+    # so they need their own audited entry point — matching
+    # crear_articulo_conector/upsert_proveedores_conector's "datos"/"propia"
+    # shape rather than the "stock" class used by ordenes.py's own audited
+    # actions above (this is a data sync, not a stock movement decision).
+    "upsert_ordenes_compra_conector": {"clase": "datos", "gate": "propia"},
     "reportar_faltante":  {"clase": "stock", "gate": "propia"},
     "marcar_conteo":      {"clase": "stock", "gate": "propia"},
     "confirmar_entrega":  {"clase": "stock", "gate": "propia"},

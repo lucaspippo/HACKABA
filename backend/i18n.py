@@ -3015,6 +3015,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                      "en": "Created a manual purchase order"},
     "audit.acc.cambiar_estado_orden_compra": {"es": "Cambió el estado de una orden de compra",
                                               "en": "Changed a purchase order's status"},
+    "audit.acc.upsert_ordenes_compra_conector": {"es": "Actualizó órdenes de compra desde un conector",
+                                                 "en": "Updated purchase orders from a connector"},
     "audit.acc.reportar_faltante": {"es": "Reportó un faltante en el depósito",
                                     "en": "Reported a shortage in the warehouse"},
     "audit.acc.marcar_conteo": {"es": "Cargó un conteo de stock",

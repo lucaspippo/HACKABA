@@ -109,12 +109,18 @@ def _coerce_logistica(mapeo: dict, fila_dict: dict) -> dict:
 
 
 def coerce_producto_odoo(p: dict) -> dict:
+    # `costo_iva` is deliberately OMITTED: Odoo's product.template read
+    # (core/conectores.py's pull_productos) never supplies a cost, only
+    # `list_price` (-> pvp). Emitting the key at all — even as None — would
+    # let store.upsert_desde_conector's "if campo in fila" update clause
+    # overwrite a dueño-entered cost with None on every re-sync. On INSERT
+    # (first-time link, no prior dueño data to lose), the missing key just
+    # falls back to None there too, so nothing is lost either way.
     return {
         "codigo": None,
         "descripcion": str(p.get("nombre") or "").strip(),
         "estado": "activo",
         "stock": p.get("stock") or 0.0,
-        "costo_iva": None,
         "pvp": p.get("precio"),
         "venta_x_peso": False,
         "sku": p.get("codigo") or None,
@@ -124,12 +130,16 @@ def coerce_producto_odoo(p: dict) -> dict:
 
 
 def coerce_proveedor_odoo(p: dict) -> dict:
+    # `contacto`/`notas` are deliberately OMITTED: Odoo's res.partner read
+    # (core/conectores.py's pull_proveedores) never supplies them — they are
+    # PolPilot-native fields the dueño fills in by hand. Emitting them (even
+    # as "") would let proveedores.upsert_desde_conector's per-field update
+    # blank a dueño-entered value on every re-sync. On INSERT (first-time
+    # link), the missing keys fall back to "" there too, same as before.
     return {
         "nombre": str(p.get("nombre") or "").strip(),
-        "contacto": "",
         "telefono": p.get("telefono") or "",
         "email": p.get("email") or "",
-        "notas": "",
         "cuit": p.get("cuit") or "",
         "source": "odoo",
         "source_id": str(p["id"]),
