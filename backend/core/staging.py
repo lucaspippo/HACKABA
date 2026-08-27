@@ -182,6 +182,34 @@ def _analizar_clientes(filas: list[dict], lang: str | None = None) -> list[dict]
     }]
 
 
+_ESTADO_ORDEN_COMPRA_ODOO = {
+    "borrador": "borrador", "enviada": "borrador",
+    "confirmada": "aprobada", "cerrada": "recibida", "cancelada": "cancelada",
+}
+
+
+def coerce_orden_compra_odoo(o: dict) -> dict:
+    estado_odoo = o.get("estado") or "borrador"
+    return {
+        "numero": o.get("numero") or "",
+        "proveedor": o.get("proveedor") or "",
+        "fecha": o.get("fecha") or "",
+        "total": o.get("total") or 0,
+        "items": o.get("items") or [],
+        "estado": _ESTADO_ORDEN_COMPRA_ODOO.get(estado_odoo, "borrador"),
+        "source": "odoo",
+        "source_id": str(o["id"]),
+        "source_status": estado_odoo,
+    }
+
+
+def _analizar_ordenes_compra(filas: list[dict], lang: str | None = None) -> list[dict]:
+    # Sin heurística de duplicado: una orden de compra de Odoo no colisiona
+    # por nombre con nada hand-entered — el número de Odoo (source_id) ya es
+    # la clave, y crear_batch_odoo sólo recibe filas sin ese vínculo todavía.
+    return []
+
+
 # ---------------------------------------------------------------------------
 # P24·G4 — la pantalla de revisión habla el idioma del USUARIO QUE MIRA, no el
 # del que creó el batch: descripciones y opciones se re-localizan AL LEER, por
@@ -590,6 +618,16 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
         return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
                 "mensaje": f"{len(a_integrar)} clientes nuevos."}
 
+    if tipo == "orden_compra" and b.get("fuente") == "odoo":
+        from core.db import purchase_orders_repo
+        tid = _tenant_id_actual()
+        for f in a_integrar:
+            purchase_orders_repo.upsert_from_odoo(tid, f)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} órdenes de compra nuevas."}
+
     if tipo != "producto":
         # Tipo nuevo (ventas, clientes, …): crea el apartado y arma las relaciones.
         res = esquema.crear_apartado(tipo, a_integrar)
@@ -682,6 +720,7 @@ _COERCERS_ODOO = {
     "producto": coerce_producto_odoo,
     "proveedor": coerce_proveedor_odoo,
     "cliente": coerce_cliente_odoo,
+    "orden_compra": coerce_orden_compra_odoo,
 }
 
 # Qué campo identifica una fila coercionada como "utilizable" por tipo — una
@@ -709,6 +748,8 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
         observaciones = _analizar_proveedores(filas, lang)
     elif tipo == "cliente":
         observaciones = _analizar_clientes(filas, lang)
+    elif tipo == "orden_compra":
+        observaciones = _analizar_ordenes_compra(filas, lang)
     else:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
     batch = {
