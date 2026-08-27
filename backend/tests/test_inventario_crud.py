@@ -40,6 +40,27 @@ def test_proveedores_crud():
     assert proveedores.listar() == []
 
 
+def test_upsert_desde_conector_crea_y_luego_actualiza():
+    r1 = proveedores.upsert_desde_conector([
+        {"nombre": "Proveedor Odoo Uno", "cuit": "30-1-1", "contacto": "",
+         "telefono": "11-0000", "email": "uno@example.com",
+         "source": "odoo", "source_id": "701"},
+    ], actor="test")
+    assert r1 == {"nuevos": 1, "actualizados": 0}
+    listado = proveedores.listar()
+    creado = next(p for p in listado if p.get("source_id") == "701")
+    assert creado["nombre"] == "Proveedor Odoo Uno"
+
+    r2 = proveedores.upsert_desde_conector([
+        {"nombre": "Proveedor Odoo Uno", "cuit": "30-1-1", "contacto": "",
+         "telefono": "11-9999", "email": "uno@example.com",
+         "source": "odoo", "source_id": "701"},
+    ], actor="test")
+    assert r2 == {"nuevos": 0, "actualizados": 1}
+    actualizado = next(p for p in proveedores.listar() if p.get("source_id") == "701")
+    assert actualizado["telefono"] == "11-9999"
+
+
 def test_lotes_crud():
     creado = lotes.crear(
         {"codigo": 1, "producto": "Harina", "ubicacion": "Rack A", "lote": "L-001",
