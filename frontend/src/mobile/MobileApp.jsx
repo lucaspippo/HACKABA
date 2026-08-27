@@ -46,10 +46,8 @@ const MCAT = {
 // Nombres "de dueño" que Ángela usa para navegar → vista mobile real.
 const MALIAS = { inicio: "panel", home: "panel", principal: "panel", hoy: "panel" };
 
-// Resolves a raw URL segment into a valid mobile view id, applying the same
-// role-permission and alias rules as navegarMobile — but silently (no toast):
-// this only decides what to render for the current URL, not a user click.
-// Returns null when the segment doesn't resolve to anything the user can see.
+// Same alias/permission rules as navegarMobile, but silent (no toast) since
+// this only decides what to render for the current URL. Null if invalid.
 function resolveView(raw, { piso, user, navIds }) {
   const destino = MALIAS[raw] || raw;
   if (!destino) return null;
@@ -186,10 +184,20 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     const Icon = slot.icon;
     const activo = view === slot.id;
     return (
-      <button onClick={() => setView(slot.id)} className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5">
+      // Real <a href> so right-click "open in new tab" works; modified
+      // clicks fall through to native browser handling.
+      <Link
+        to={`/${slot.id}`}
+        onClick={(e) => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          setView(slot.id);
+        }}
+        className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5"
+      >
         <Icon size={21} className={activo ? "text-violeta" : "text-tinta-suave"} strokeWidth={activo ? 2.4 : 2} />
         <span className={`text-[0.62rem] font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
-      </button>
+      </Link>
     );
   };
 
