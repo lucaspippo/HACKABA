@@ -396,11 +396,12 @@ export const EN = {
   "nav.deposito": "Warehouse",
   "nav.admin_contexto": "External context",
   "nav.perfil": "My profile",
-  "nav.grupo_senales": "Detected by Ángela",
-  "nav.grupo_plata": "The money",
-  "nav.grupo_operacion": "Operations",
-  "nav.grupo_operacion_equipo": "Team and office",
-  "nav.grupo_sistema": "System",
+  "nav.grupo_senales": "Alerts and opportunities",
+  "nav.grupo_tesoreria": "Treasury",
+  "nav.grupo_cobrar": "Receivables",
+  "nav.grupo_inventario": "Inventory and warehouse",
+  "nav.grupo_equipo": "Team",
+  "nav.grupo_sistema": "Settings",
   "nav.pendientes": "Pending data",
   "nav.angela_activa": "Active",
   "angela.ultimo": "What I did recently",
@@ -600,6 +601,8 @@ export const EN = {
 
   // --- trend ---
   "evolucion.titulo": "Trend",
+  "evolucion.tab_resumen": "Summary",
+  "evolucion.tab_estacionalidad": "Seasonality and mix",
   "evolucion.subtitulo": "Your business over time, adjusted for inflation.",
   "evolucion.dormida_1": "Once you load your",
   "evolucion.dormida_ventas": "sales history",
@@ -1043,6 +1046,8 @@ export const EN = {
 
   // --- warehouse ---
   "deposito.titulo": "Warehouse",
+  "deposito.tab_vencimientos": "Expirations and stock",
+  "deposito.tab_corregir": "Data to fix",
   "deposito.subtitulo": "What needs sorting out in the shed.",
   "deposito.cargar_remito": "Load delivery note by photo",
 
@@ -1274,6 +1279,7 @@ export const EN = {
   "equipo.sub_admin": "Who's who, what each person sees, and what's going on.",
   "equipo.sub_empleado": "Who does what and what's going on — without calling anyone.",
   "equipo.tab_equipo": "The team",
+  "equipo.tab_objetivos": "Goals",
   "equipo.tab_solicitudes": "Requests",
   "equipo.toast_tarea_asignada": "Done: {quien} sees it in today's tasks.",
   "equipo.toast_tarea_error": "It's on the board, but I couldn't send it to {quien}.",
@@ -2082,6 +2088,7 @@ export const EN = {
   "cobranzas.angela_intro_dueno": "I lined up everyone who owes you by how much they're financing off you — balance times the days they went past THEIR own habit, not the terms on paper. Up top is what comes in if you collect all of it. You set the strategy; I leave the reminder written and it goes out when you say so.",
   "cobranzas.orden_titulo_dueno": "Where to press",
   "cobranzas.la_trabaja": "{quien} is on it",
+  "cobranzas.ver_cuenta": "See account →",
   "cobranzas.pan_concentracion": "Concentration",
   "cobranzas.pan_concentracion_det": "{n} customers account for that share of your exposure: {monto} between {nombres}. Settle with them and you've settled collections.",
   "cobranzas.pan_sin_tocar": "Not worked yet",

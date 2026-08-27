@@ -51,6 +51,11 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
   const [meses, setMeses] = useState(12);
   const [analisis, setAnalisis] = useState(null);
   const [verNominal, setVerNominal] = useState(true);
+  // P44 — resumen/estacionalidad/composición vivían las 3 apiladas siempre:
+  // eran 13 construcciones visuales en una sola pantalla. "Resumen" (KPIs +
+  // interanual/YTD + tendencia) es lo que se mira todos los días; el resto
+  // queda a una pestaña, no borrado.
+  const [tab, setTab] = useState("resumen");
 
   // `data` cambia de identidad en cada recarga global (una lista de precios
   // aplicada/revertida, un saneo): los KPIs se re-piden y el número CAMBIA a la
@@ -202,6 +207,18 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
         </div>
       ))}
 
+      <div className="flex gap-1.5 border-b border-linea">
+        {[["resumen", "evolucion.tab_resumen"], ["estacionalidad", "evolucion.tab_estacionalidad"]].map(([id, lk]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`-mb-px border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
+              tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
+            }`}>
+            {t(lk)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "resumen" && <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <CardComparacion
           titulo={d.interanual ? `${d.interanual.mes} vs ${d.interanual.mes_anterior}` : t("evolucion.interanual_fallback")}
@@ -273,7 +290,9 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           {t("evolucion.grafico_nota", { base: d.etiqueta_base })}
         </p>
       </div>
+      </>}
 
+      {tab === "estacionalidad" && <>
       {/* P19·E — el chart YoY mismo-mes se OCULTA a propósito: los pares
           tempranos (2025-07 vs 2024-07) dan +32% real porque la inflación
           sintética del dataset le gana al IPC en ese tramo — un número
@@ -355,6 +374,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           <Widget key={w.id} widget={w} onQuitar={(id) => vistaStore.quitarWidget("evolucion", id)} />
         ))}
       </div>
+      </>}
     </div>
   );
 }

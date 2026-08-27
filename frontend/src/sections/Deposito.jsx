@@ -131,6 +131,10 @@ export default function Deposito({ data, onPreguntar }) {
   const [wms, setWms] = useState(null);
   const [fotoAbierta, setFotoAbierta] = useState(false);
   const [vozAbierta, setVozAbierta] = useState(false);
+  // P44 — vencimientos/discrepancias y datos-a-corregir son dos tareas
+  // distintas (qué se vence vs. qué está mal cargado) que vivían apiladas en
+  // la misma pantalla, siempre las dos visibles. Separadas en pestañas.
+  const [tab, setTab] = useState("vencimientos");
 
   useEffect(() => {
     setErrorCarga(false);
@@ -223,6 +227,18 @@ export default function Deposito({ data, onPreguntar }) {
         </div>
       )}
 
+      <div className="flex gap-1.5 border-b border-linea">
+        {[["vencimientos", "deposito.tab_vencimientos"], ["corregir", "deposito.tab_corregir"]].map(([id, lk]) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`-mb-px border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
+              tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
+            }`}>
+            {t(lk)}
+          </button>
+        ))}
+      </div>
+
+      {tab === "vencimientos" && <>
       {/* P38·H — el apartado de vencimientos GESTIONADOS: no "vence en 12 días"
           (eso no decide nada) sino "vence en 12 días y NO llegás a venderlo". */}
       <Vencimientos onPreguntar={onPreguntar} />
@@ -265,6 +281,23 @@ export default function Deposito({ data, onPreguntar }) {
         </div>
       )}
 
+      {/* FIFO / vencimientos: el placeholder sólo donde el dato NO está (piloto).
+          P32·1 — solo cuando la respuesta YA llegó (wms): sin esto flasheaba el
+          placeholder mientras cargaba (wms=null → !hayWms=true). */}
+      {wms && !hayWms && (
+        <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
+          <div className="flex items-center gap-2 text-tinta-suave">
+            <Lock size={15} />
+            <p className="text-[0.9rem] font-semibold">{t("deposito.fifo_titulo")}</p>
+          </div>
+          <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">
+            {t("deposito.fifo_detalle")}
+          </p>
+        </div>
+      )}
+      </>}
+
+      {tab === "corregir" && <>
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => setGrupo("fantasmas")}
@@ -300,21 +333,7 @@ export default function Deposito({ data, onPreguntar }) {
           </div>
         ))}
       </div>
-
-      {/* FIFO / vencimientos: el placeholder sólo donde el dato NO está (piloto).
-          P32·1 — solo cuando la respuesta YA llegó (wms): sin esto flasheaba el
-          placeholder mientras cargaba (wms=null → !hayWms=true). */}
-      {wms && !hayWms && (
-        <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
-          <div className="flex items-center gap-2 text-tinta-suave">
-            <Lock size={15} />
-            <p className="text-[0.9rem] font-semibold">{t("deposito.fifo_titulo")}</p>
-          </div>
-          <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">
-            {t("deposito.fifo_detalle")}
-          </p>
-        </div>
-      )}
+      </>}
     </div>
   );
 }

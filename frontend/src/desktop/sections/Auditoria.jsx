@@ -77,63 +77,73 @@ export default function Auditoria() {
 
       {d === false && <p className="text-[0.9rem] text-rojo">{t("audit.error")}</p>}
 
-      {/* LA FRANJA DE CONFIANZA. El tercer número es el que importa: de todo lo
-          que tocó plata, stock o permisos, cuánto se ejecutó sin un sí humano.
-          Tiene que decir 0, y tiene que poder verificarse acá abajo. */}
-      {r && (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Tile valor={num(r.total)} label={t("audit.tile_total")} tono="text-tinta" />
-          <Tile valor={num(r.aprobadas)} label={t("audit.tile_aprobadas")} tono="text-salvia" />
-          <Tile
-            valor={num(r.sensibles_sin_aprobacion)}
-            label={t("audit.tile_sin_ok", { n: num(r.sensibles) })}
-            tono={r.sensibles_sin_aprobacion ? "text-rojo" : "text-salvia"}
-            icono={r.sensibles_sin_aprobacion ? null : ShieldCheck}
-          />
-        </div>
-      )}
+      {/* P44 — resumen de confianza, la perilla y los filtros vivían como 3
+          bloques sueltos apilados antes de llegar al registro. Un solo panel
+          los junta: se leen como "los controles de esta pantalla", no como 3
+          pantallas distintas antes del contenido real. */}
+      <div className="space-y-4 rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
+        {/* LA FRANJA DE CONFIANZA. El tercer número es el que importa: de todo
+            lo que tocó plata, stock o permisos, cuánto se ejecutó sin un sí
+            humano. Tiene que decir 0, y tiene que poder verificarse acá abajo. */}
+        {r && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Tile valor={num(r.total)} label={t("audit.tile_total")} tono="text-tinta" />
+            <Tile valor={num(r.aprobadas)} label={t("audit.tile_aprobadas")} tono="text-salvia" />
+            <Tile
+              valor={num(r.sensibles_sin_aprobacion)}
+              label={t("audit.tile_sin_ok", { n: num(r.sensibles) })}
+              tono={r.sensibles_sin_aprobacion ? "text-rojo" : "text-salvia"}
+              icono={r.sensibles_sin_aprobacion ? null : ShieldCheck}
+            />
+          </div>
+        )}
 
-      {/* QUÉ PUEDE HACER ÁNGELA SOLA — la perilla, con los candados a la vista. */}
-      {aut && <PanelAutonomia aut={aut} onCambio={(x) => { setAut(x); recargar(); }} />}
+        {/* QUÉ PUEDE HACER ÁNGELA SOLA — la perilla, con los candados a la vista. */}
+        {aut && (
+          <div className="border-t border-linea pt-4">
+            <PanelAutonomia aut={aut} onCambio={(x) => { setAut(x); recargar(); }} />
+          </div>
+        )}
 
-      {/* --- filtros ------------------------------------------------------- */}
-      <div className="space-y-2.5">
-        <div className="flex flex-wrap gap-1.5">
-          {ORDEN_CLASES.filter((c) => (r?.por_clase?.[c] || 0) > 0).map((c) => {
-            const { Icon } = ICONO_CLASE[c];
-            const on = clase === c;
-            return (
-              <button key={c} onClick={() => setClase(on ? null : c)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ${
-                  on ? "border-violeta bg-violeta/[0.06] text-violeta"
-                     : "border-linea text-tinta-suave hover:text-tinta"}`}>
-                <Icon size={12} /> {t(`audit.clase_${c}`)}
-                <span className="text-tinta-suave/70">{num(r.por_clase[c])}</span>
+        {/* --- filtros ------------------------------------------------------- */}
+        <div className="space-y-2.5 border-t border-linea pt-4">
+          <div className="flex flex-wrap gap-1.5">
+            {ORDEN_CLASES.filter((c) => (r?.por_clase?.[c] || 0) > 0).map((c) => {
+              const { Icon } = ICONO_CLASE[c];
+              const on = clase === c;
+              return (
+                <button key={c} onClick={() => setClase(on ? null : c)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ${
+                    on ? "border-violeta bg-violeta/[0.06] text-violeta"
+                       : "border-linea text-tinta-suave hover:text-tinta"}`}>
+                  <Icon size={12} /> {t(`audit.clase_${c}`)}
+                  <span className="text-tinta-suave/70">{num(r.por_clase[c])}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 rounded-full border border-linea bg-papel px-3 py-1.5">
+              <Search size={13} className="text-tinta-suave" />
+              <input value={q} onChange={(e) => setQ(e.target.value)}
+                placeholder={t("audit.buscar")} aria-label={t("audit.buscar")}
+                className="w-52 bg-transparent text-[0.82rem] text-tinta outline-none" />
+            </label>
+            {(r?.actores || []).length > 1 && (
+              <select value={actor} onChange={(e) => setActor(e.target.value)}
+                aria-label={t("audit.quien")}
+                className="rounded-full border border-linea bg-papel px-3 py-1.5 text-[0.82rem] text-tinta">
+                <option value="">{t("audit.todos")}</option>
+                {r.actores.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            )}
+            {filtrando && (
+              <button onClick={() => { setClase(null); setActor(""); setQ(""); }}
+                className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+                <X size={12} /> {t("audit.limpiar")}
               </button>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-full border border-linea bg-crema px-3 py-1.5">
-            <Search size={13} className="text-tinta-suave" />
-            <input value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder={t("audit.buscar")} aria-label={t("audit.buscar")}
-              className="w-52 bg-transparent text-[0.82rem] text-tinta outline-none" />
-          </label>
-          {(r?.actores || []).length > 1 && (
-            <select value={actor} onChange={(e) => setActor(e.target.value)}
-              aria-label={t("audit.quien")}
-              className="rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.82rem] text-tinta">
-              <option value="">{t("audit.todos")}</option>
-              {r.actores.map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          )}
-          {filtrando && (
-            <button onClick={() => { setClase(null); setActor(""); setQ(""); }}
-              className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
-              <X size={12} /> {t("audit.limpiar")}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -367,7 +377,7 @@ function PanelAutonomia({ aut, onCambio }) {
   };
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
+    <div>
       <button onClick={() => setAbierto((v) => !v)}
         className="flex w-full items-center gap-3 text-left">
         <ShieldCheck size={17} className="shrink-0 text-violeta" />
