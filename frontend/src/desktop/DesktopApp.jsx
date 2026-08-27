@@ -6,7 +6,7 @@ import {
   HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
   Sparkles, Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
-  ShoppingCart,
+  ShoppingCart, Link2,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -41,6 +41,7 @@ import CuentasCorrientes from "./sections/CuentasCorrientes";
 import Caja from "./sections/Caja";
 import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
+import Conectores from "./sections/Conectores";
 import Ubicaciones from "./sections/Ubicaciones";
 import Lotes from "./sections/Lotes";
 import Proveedores from "./sections/Proveedores";
@@ -82,6 +83,8 @@ const CATALOGO = {
   deposito: { lk: "nav.deposito", icon: PackageX },
   // Bloque F — el registro de auditoría: scope organización, sólo el dueño.
   auditoria: { lk: "nav.auditoria", icon: ShieldCheck },
+  // Plan 11 — sistemas externos (CSV/BCRA/Odoo/MCP): mismo scope que auditoría.
+  conectores: { lk: "nav.conectores", icon: Link2 },
   admin_contexto: { lk: "nav.admin_contexto", icon: Globe },
   perfil: { lk: "nav.perfil", icon: UserCircle },
   ubicaciones: { lk: "nav.ubicaciones", icon: MapPin },
@@ -104,7 +107,7 @@ const GRUPOS_NAV = [
   { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito", "ubicaciones", "lotes"] },
   { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
-  { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
+  { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "conectores", "admin_contexto"] },
 ];
 
 // A qué grupo pertenece una sección hoja (null si es ella misma un grupo o no existe).
@@ -499,6 +502,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "deposito" && <Deposito data={data} onPreguntar={preguntar} />}
                 {section === "evolucion" && <Evolucion data={data} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "auditoria" && <Auditoria />}
+                {section === "conectores" && <Conectores />}
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}

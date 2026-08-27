@@ -43,6 +43,22 @@ async function post(path, body) {
   return res.json();
 }
 
+async function put(path, body) {
+  const res = await fetch(path, {
+    method: "PUT",
+    headers: _headers({ "Content-Type": "application/json" }),
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw _error(path, res);
+  return res.json();
+}
+
+async function del(path) {
+  const res = await fetch(path, { method: "DELETE", headers: _headers() });
+  if (!res.ok) throw _error(path, res);
+  return res.json();
+}
+
 export const api = {
   inventario: () => get("/api/inventario"),
   actividad: () => get("/api/actividad"),
@@ -124,6 +140,13 @@ export const api = {
   auditoriaHilo: (sujeto) => get(`/api/auditoria/hilo?sujeto=${encodeURIComponent(sujeto)}`),
   autonomia: () => get("/api/autonomia"),
   autonomiaSet: (clase, nivel) => post("/api/autonomia", { clase, nivel }),
+  // Plan 11 · Conectores con sistemas externos.
+  conectores: () => get("/api/conectores"),
+  odooConfig: () => get("/api/conectores/odoo"),
+  odooConfigGuardar: (config) => put("/api/conectores/odoo", config),
+  odooConfigBorrar: () => del("/api/conectores/odoo"),
+  odooSync: () => post("/api/conectores/odoo/sync", {}),
+  odooSyncProductos: () => post("/api/conectores/odoo/sync-productos", {}),
   cobranza: () => get("/api/cobranza"),
   cobranzaPropuesta: (id) => get(`/api/cobranza/${id}/propuesta`),
   cobranzaRegistrar: (cliente_id, estado, extra = {}) =>
