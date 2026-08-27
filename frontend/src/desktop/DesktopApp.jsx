@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Boxes, Wallet, Banknote, Bell, Users, Upload, TrendingUp,
@@ -150,11 +151,36 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const inicial = vistaHerramienta
     ? (secciones.includes("panel") ? "panel" : (secciones[0] || "perfil"))
     : (fase?.foco && user.features.includes(fase.foco) ? fase.foco : (secciones[0] || "perfil"));
-  const [section, setSection] = useState(inicial);
+  // Ángela usa nombres "de dueño" para las secciones; acá los mapeamos a las keys reales
+  // del CATALOGO para que "te llevo al inicio" no sea un callejón sin salida (inicio≠panel).
+  const ALIAS_SECCION = {
+    inicio: "panel", home: "panel", principal: "panel",
+    "datos a corregir": "saneamiento", corregir: "saneamiento",
+    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
+    logistica: "deposito", reparto: "deposito", envios: "deposito",
+    // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
+    // Ángela, la campanita y cualquier link viejo.
+    gestion_equipo: "equipo", "gestion de equipo": "equipo",
+  };
+  // The active section lives in the URL (/:section) instead of a useState:
+  // deep links, browser back/forward, and sharing a link to a specific
+  // screen work for free. Re-validated on every load (role permission
+  // included) so a stale or hand-typed URL never leaves a broken screen.
+  const navigate = useNavigate();
+  const { section: sectionParam } = useParams();
+  const resolvedSection = ALIAS_SECCION[sectionParam] || sectionParam;
+  const sectionIsValid = !!resolvedSection && !!CATALOGO[resolvedSection]
+    && (featuresEfectivas.includes(resolvedSection) || (resolvedSection === "panel" && vistaHerramienta));
+  // Redirect target when the URL segment is invalid or an unresolved alias —
+  // rendered declaratively below via <Navigate>. Doing this in the render
+  // itself (rather than an imperative useEffect + navigate()) sidesteps a
+  // StrictMode double-effect race where the redirect could silently lose.
+  const redirectTo = !sectionIsValid ? inicial : (resolvedSection !== sectionParam ? resolvedSection : null);
+  const section = sectionIsValid ? resolvedSection : inicial;
   // Acordeón exclusivo: un solo grupo abierto a la vez, sincronizado con la
   // sección activa (si Ángela o el command palette navegan a otro grupo, ese
   // pasa a ser el abierto).
-  const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(inicial));
+  const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(section));
   const [highlight, setHighlight] = useState(null);
   const [consultaAngela, setConsultaAngela] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -204,17 +230,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const clienteLogo = marca?.logo || null;
   const marcaResuelta = !!marca;
 
-  // Ángela usa nombres "de dueño" para las secciones; acá los mapeamos a las keys reales
-  // del CATALOGO para que "te llevo al inicio" no sea un callejón sin salida (inicio≠panel).
-  const ALIAS_SECCION = {
-    inicio: "panel", home: "panel", principal: "panel",
-    "datos a corregir": "saneamiento", corregir: "saneamiento",
-    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
-    logistica: "deposito", reparto: "deposito", envios: "deposito",
-    // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
-    // Ángela, la campanita y cualquier link viejo.
-    gestion_equipo: "equipo", "gestion de equipo": "equipo",
-  };
   // 'pendientes' no es una feature de rol: es transversal (aparece si hay datos en revisión).
   // El highlight se limpia y se re-setea con un tick de por medio: navegar dos
   // veces al MISMO ancla (mismo string de estado) también tiene que titilar (P15·E6).
@@ -234,7 +249,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     // se navega igual aunque no tenga esa feature (ver `secciones`, arriba).
     if (destino && (featuresEfectivas.includes(destino)
                     || (destino === "panel" && vistaHerramienta))) {
-      setSection(destino);
+      navigate(`/${destino}`);
       setHighlightRobusto(hl);
       return;
     }
@@ -283,6 +298,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     if (!highlight) return;
     return resaltarPorId(highlight);
   }, [highlight, section]);
+
+  if (redirectTo) return <Navigate to={`/${redirectTo}`} replace />;
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-papel text-tinta">
