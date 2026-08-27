@@ -4,7 +4,7 @@ import pytest
 
 from core import odoo_ingest, store
 from core.db import odoo_connections_repo, tenant as _tenant
-from tests.conftest import limpiar_cuentas_db
+from tests.conftest import limpiar_cuentas_db, limpiar_tabla_tenant
 
 
 class _FakeCommon:
@@ -32,6 +32,18 @@ class _FakeModels:
             {"id": 6, "name": "Cliente Nuevo De Odoo", "vat": False, "city": False,
              "phone": False, "email": False},
         ]
+        self.ordenes = [
+            {"id": 10, "name": "P00010", "partner_id": [1, "Proveedor Ya Vinculado"],
+             "state": "draft", "date_order": "2026-08-01", "amount_total": 100.0},
+            {"id": 11, "name": "P00011", "partner_id": [1, "Proveedor Nuevo De Odoo"],
+             "state": "purchase", "date_order": "2026-08-02", "amount_total": 200.0},
+        ]
+        self.lineas_orden = [
+            {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Producto"],
+             "name": "Producto", "product_qty": 1.0, "price_unit": 100.0},
+            {"id": 101, "order_id": [11, "P00011"], "product_id": [1, "Producto"],
+             "name": "Producto", "product_qty": 2.0, "price_unit": 100.0},
+        ]
 
     def execute_kw(self, db, uid, pwd, model, method, args, kwargs):
         if model == "product.template":
@@ -54,6 +66,16 @@ class _FakeModels:
                 if ids <= {p["id"] for p in self.proveedores}:
                     return self.proveedores
                 return self.clientes
+        if model == "purchase.order":
+            if method == "search":
+                return [o["id"] for o in self.ordenes]
+            if method == "read":
+                return self.ordenes
+        if model == "purchase.order.line":
+            if method == "search":
+                return [l["id"] for l in self.lineas_orden]
+            if method == "read":
+                return self.lineas_orden
         raise NotImplementedError((model, method))
 
 
@@ -72,10 +94,12 @@ def _setup(tenant_id, monkeypatch):
     odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
     store.resetear_actual()
     limpiar_cuentas_db()
+    limpiar_tabla_tenant("purchase_orders")
     yield
     odoo_connections_repo.delete(tenant_id)
     store.resetear_actual()
     limpiar_cuentas_db()
+    limpiar_tabla_tenant("purchase_orders")
 
 
 def test_ingest_productos_primera_vez_todo_va_a_revision():
@@ -125,6 +149,24 @@ def test_ingest_clientes_segunda_vez_actualiza_sin_batch():
     staging.integrar(r1["batch_id"], actor="test")
 
     r2 = odoo_ingest.ingest_clientes(actor="test")
+    assert r2["actualizados"] == 2
+    assert r2["nuevos_para_revisar"] == 0
+    assert r2["batch_id"] is None
+
+
+def test_ingest_ordenes_compra_primera_vez_todo_va_a_revision():
+    r = odoo_ingest.ingest_ordenes_compra(actor="test")
+    assert r["actualizados"] == 0
+    assert r["nuevos_para_revisar"] == 2
+    assert r["batch_id"] is not None
+
+
+def test_ingest_ordenes_compra_segunda_vez_actualiza_sin_batch():
+    r1 = odoo_ingest.ingest_ordenes_compra(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    r2 = odoo_ingest.ingest_ordenes_compra(actor="test")
     assert r2["actualizados"] == 2
     assert r2["nuevos_para_revisar"] == 0
     assert r2["batch_id"] is None

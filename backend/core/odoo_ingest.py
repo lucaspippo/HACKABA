@@ -90,3 +90,28 @@ def ingest_clientes(actor: str = "dueño") -> dict:
         batch_id = r["id"]
 
     return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}
+
+
+def ingest_ordenes_compra(actor: str = "dueño") -> dict:
+    from core.db import purchase_orders_repo
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_ordenes_compra()
+
+    vinculadas = {o["source_id"] for o in purchase_orders_repo.list_orders(tenant_id)
+                  if o.get("source") == "odoo"}
+    nuevas, actualizadas = [], 0
+    for o in pull["ordenes"]:
+        if str(o["id"]) in vinculadas:
+            purchase_orders_repo.upsert_from_odoo(tenant_id, staging.coerce_orden_compra_odoo(o))
+            actualizadas += 1
+        else:
+            nuevas.append(o)
+
+    batch_id = None
+    if nuevas:
+        r = staging.crear_batch_odoo("orden_compra", nuevas, nombre="Odoo · órdenes de compra")
+        batch_id = r["id"]
+
+    return {"actualizados": actualizadas, "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}

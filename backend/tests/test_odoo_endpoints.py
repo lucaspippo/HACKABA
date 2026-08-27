@@ -210,3 +210,20 @@ def test_ingest_contactos_primera_vez_crea_batch(admin_token, monkeypatch):
 def test_ingest_contactos_sin_conexion_da_400(admin_token):
     r = client.post("/api/conectores/odoo/ingest-contactos", headers=_h(admin_token))
     assert r.status_code == 400
+
+
+def test_ingest_ordenes_compra_primera_vez_crea_batch(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/ingest-ordenes-compra", headers=_h(admin_token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["nuevos_para_revisar"] == 1
+    assert body["batch_id"] is not None
+
+
+def test_ingest_ordenes_compra_sin_conexion_da_400(admin_token):
+    r = client.post("/api/conectores/odoo/ingest-ordenes-compra", headers=_h(admin_token))
+    assert r.status_code == 400
