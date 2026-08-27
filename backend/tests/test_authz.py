@@ -54,6 +54,9 @@ CASOS_ADMIN = [
     ("sync_delta", "GET", "/api/sync/delta"),
     ("sync_config", "GET", "/api/sync/config"),
     ("conectores", "GET", "/api/conectores"),
+    ("odoo_config_ver", "GET", "/api/conectores/odoo"),
+    ("odoo_sync", "POST", "/api/conectores/odoo/sync"),
+    ("odoo_sync_productos", "POST", "/api/conectores/odoo/sync-productos"),
 ]
 
 

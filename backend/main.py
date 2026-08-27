@@ -815,9 +815,10 @@ class UsuarioEstadoRequest(BaseModel):
 # Módulos de fábrica: no se piden ni se tildan (son parte del piso mínimo o del
 # equipo PolPilot). Mismo criterio que las columnas de la matriz «Quién ve qué».
 _MODULOS_NO_PEDIBLES = {"angela", "perfil", "admin_contexto", "gestion_equipo",
-                        # el registro de auditoría es scope organización, como
-                        # gestion_equipo: no se pide, se tiene por ser dueño.
-                        "auditoria"}
+                        # el registro de auditoría y los conectores son scope
+                        # organización, como gestion_equipo: no se piden, se
+                        # tienen por ser dueño.
+                        "auditoria", "conectores"}
 
 
 @app.get("/api/perfil/{usuario}")
@@ -1477,8 +1478,75 @@ def sync_config(_u: dict = Depends(require_admin)):
 
 @app.get("/api/conectores")
 def conectores_listar(_u: dict = Depends(require_admin)):
-    """Plan 11: conectores disponibles (CSV/BCRA activos, MCP slot pendiente)."""
-    return {"conectores": conectores.disponibles()}
+    """Plan 11: conectores disponibles (CSV/BCRA activos, Odoo según config del
+    tenant, MCP slot pendiente)."""
+    from core.db import tenant as _tenant
+    return {"conectores": conectores.disponibles(_tenant.current_tenant_id())}
+
+
+class OdooConexionRequest(BaseModel):
+    url: str
+    database: str
+    username: str
+    api_key: str
+
+
+@app.get("/api/conectores/odoo")
+def odoo_config_ver(_u: dict = Depends(require_admin)):
+    """Config de Odoo guardada para este tenant. La api_key nunca vuelve al
+    frontend (write-only una vez guardada)."""
+    from core.db import odoo_connections_repo, tenant as _tenant
+    c = odoo_connections_repo.get(_tenant.current_tenant_id())
+    if not c:
+        return {"conectado": False}
+    return {"conectado": True, "url": c["url"], "database": c["database"],
+            "username": c["username"], "actualizado": c["updated_at"]}
+
+
+@app.put("/api/conectores/odoo")
+def odoo_config_guardar(req: OdooConexionRequest, _u: dict = Depends(require_admin)):
+    """Prueba la conexión contra Odoo (autenticación real) antes de guardar —
+    nunca persiste credenciales que no sirven."""
+    from core.db import odoo_connections_repo, tenant as _tenant
+    try:
+        conectores.probar_conexion_odoo(req.url, req.database, req.username, req.api_key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    odoo_connections_repo.save(_tenant.current_tenant_id(), req.url, req.database,
+                                req.username, req.api_key)
+    return {"ok": True}
+
+
+@app.delete("/api/conectores/odoo")
+def odoo_config_borrar(_u: dict = Depends(require_admin)):
+    from core.db import odoo_connections_repo, tenant as _tenant
+    odoo_connections_repo.delete(_tenant.current_tenant_id())
+    return {"ok": True}
+
+
+@app.post("/api/conectores/odoo/sync")
+def odoo_sync(_u: dict = Depends(require_admin)):
+    """Trae los contactos-cliente de Odoo (res.partner) como preview de sólo
+    lectura — ver core/conectores.ConectorOdoo para por qué todavía no se
+    integra directo a la Staging Area."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_data()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-productos")
+def odoo_sync_productos(_u: dict = Depends(require_admin)):
+    """Trae el catálogo de productos de Odoo (product.template) con su stock
+    disponible, como preview de sólo lectura — mismo criterio que odoo_sync()."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_productos()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.

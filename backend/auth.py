@@ -47,6 +47,7 @@ MODULOS = {
     "gestion_equipo": "Gestión de equipo (maestro)",
     "cobranzas": "Cobranzas",
     "auditoria": "Registro de auditoría",
+    "conectores": "Conectores",
     "administracion": "Administración",
     "deposito": "Depósito",
     "logistica": "Logística y reparto",
@@ -104,7 +105,7 @@ _SEED_HORIZONTE = {
         "features": [
             "panel", "mapa", "inventario", "saneamiento", "finanzas", "cuentas", "caja", "deposito",
             "logistica", "evolucion", "alertas", "oportunidades", "equipo", "gestion_equipo",
-            "cargar", "documentos", "cobranzas", "auditoria", "perfil", "angela",
+            "cargar", "documentos", "cobranzas", "auditoria", "conectores", "perfil", "angela",
         ],
     },
     "paula": {
