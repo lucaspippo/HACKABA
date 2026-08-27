@@ -81,6 +81,8 @@ ACCIONES: dict[str, dict] = {
     "eliminar_lote":      {"clase": "stock", "gate": "propia"},
     "crear_articulo":     {"clase": "datos", "gate": "propia"},
     "editar_articulo":    {"clase": "datos", "gate": "propia"},
+    "crear_articulo_conector":      {"clase": "datos", "gate": "propia"},
+    "actualizar_articulo_conector": {"clase": "datos", "gate": "propia"},
     "crear_orden_compra":            {"clase": "stock", "gate": "propia"},
     "cambiar_estado_orden_compra":   {"clase": "stock", "gate": "propia"},
     "reportar_faltante":  {"clase": "stock", "gate": "propia"},
