@@ -30,6 +30,20 @@ def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
     r = staging.crear_batch_odoo("producto", filas_odoo)
     assert r["tipo"] == "producto"
     assert r["total_filas"] == 1
+    tipos = {o["tipo"] for o in r["observaciones"]}
+    assert "precio_a_perdida" not in tipos
+    assert "sin_precio" not in tipos
+
+
+def test_coerce_producto_odoo_emite_costo_y_omite_venta_x_peso():
+    fila = staging.coerce_producto_odoo({
+        "id": 1, "nombre": "X", "codigo": "SKU", "stock": 4, "precio": 10,
+        "costo": 8, "free_qty": 3, "incoming_qty": 1, "outgoing_qty": 0, "activo": True,
+    })
+    assert fila["costo_iva"] == 8
+    assert fila["free_qty"] == 3
+    assert "venta_x_peso" not in fila
+    assert fila["estado"] == "activo"
 
 
 def test_crear_batch_odoo_producto_detecta_duplicado_por_nombre():

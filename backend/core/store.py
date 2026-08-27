@@ -136,7 +136,8 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
                        and d.get("source_id") == fila["source_id"]), None)
     if existente:
         antes = dict(existente)
-        for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp"):
+        for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp",
+                      "free_qty", "incoming_qty", "outgoing_qty", "estado"):
             if campo in fila:
                 existente[campo] = fila[campo]
         _recalcular_inmovilizado(existente)
@@ -145,10 +146,14 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
         return existente
     siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
     nuevo = {
-        "codigo": siguiente, "descripcion": fila["descripcion"], "estado": "activo",
+        "codigo": siguiente, "descripcion": fila["descripcion"],
+        "estado": fila.get("estado") or "activo",
         "stock": fila.get("stock") or 0, "costo_iva": fila.get("costo_iva"),
         "pvp": fila.get("pvp"), "venta_x_peso": False,
         "sku": fila.get("sku"), "source": fila["source"], "source_id": fila["source_id"],
+        "free_qty": fila.get("free_qty"),
+        "incoming_qty": fila.get("incoming_qty"),
+        "outgoing_qty": fila.get("outgoing_qty"),
     }
     _recalcular_inmovilizado(nuevo)
     raw.append(nuevo)
