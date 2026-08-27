@@ -36,3 +36,29 @@ def ingest_productos(actor: str = "dueño") -> dict:
         batch_id = r["id"]
 
     return {"actualizados": actualizadas, "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}
+
+
+def ingest_proveedores(actor: str = "dueño") -> dict:
+    from . import proveedores as proveedores_mod
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_proveedores()
+
+    vinculados = {p["source_id"] for p in proveedores_mod.listar() if p.get("source") == "odoo"}
+    nuevas, actualizadas_filas = [], []
+    for p in pull["proveedores"]:
+        if str(p["id"]) in vinculados:
+            actualizadas_filas.append(staging.coerce_proveedor_odoo(p))
+        else:
+            nuevas.append(p)
+
+    if actualizadas_filas:
+        proveedores_mod.upsert_desde_conector(actualizadas_filas, actor)
+
+    batch_id = None
+    if nuevas:
+        r = staging.crear_batch_odoo("proveedor", nuevas, nombre="Odoo · proveedores")
+        batch_id = r["id"]
+
+    return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}
