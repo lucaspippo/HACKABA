@@ -245,8 +245,8 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
 
   return (
     <div className="border-b border-linea/60 last:border-0">
-      {/* P44 — div en vez de button: el "ver cuenta" necesita ser un botón
-          real y anidado, y HTML no permite <button> dentro de <button>. */}
+      {/* div en vez de button: "ver cuenta" necesita ser un botón real y
+          anidado, y HTML no permite <button> dentro de <button>. */}
       <div role="button" tabIndex={0} onClick={onAbrir}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(); } }}
         className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-papel-hondo/40">

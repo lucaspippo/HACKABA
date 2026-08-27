@@ -15,10 +15,10 @@ const SCORE = {
 };
 
 // Plan 6: cuentas corrientes de clientes deudores, con scoring e IA.
-// P44 — drill-through: cualquier pantalla que mencione un cliente (Cobranzas,
-// el mapa de negocio) puede mandar acá con highlight=`cliente-${id}` y el
-// modal de detalle se abre solo — el scroll/pulse ya lo hacía resaltarPorId
-// via data-nav-id; esto agrega la mitad que faltaba (abrir el modal).
+// Drill-through: cualquier pantalla que mencione un cliente (Cobranzas, el
+// mapa de negocio) puede mandar acá con highlight=`cliente-${id}` y el modal
+// de detalle se abre solo — el scroll/pulse ya lo hacía resaltarPorId via
+// data-nav-id; esto agrega la mitad que faltaba (abrir el modal).
 export default function CuentasCorrientes({ onPreguntar, highlight }) {
   const t = useT();
   const [clientes, setClientes] = useState(null);

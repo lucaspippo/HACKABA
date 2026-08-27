@@ -77,10 +77,9 @@ export default function Auditoria() {
 
       {d === false && <p className="text-[0.9rem] text-rojo">{t("audit.error")}</p>}
 
-      {/* P44 — resumen de confianza, la perilla y los filtros vivían como 3
-          bloques sueltos apilados antes de llegar al registro. Un solo panel
-          los junta: se leen como "los controles de esta pantalla", no como 3
-          pantallas distintas antes del contenido real. */}
+      {/* Resumen de confianza, perilla y filtros en un solo panel: se leen
+          como "los controles de esta pantalla", no como bloques sueltos
+          antes del contenido real. */}
       <div className="space-y-4 rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
         {/* LA FRANJA DE CONFIANZA. El tercer número es el que importa: de todo
             lo que tocó plata, stock o permisos, cuánto se ejecutó sin un sí

@@ -3,11 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search, MessageCircle, CornerDownLeft } from "lucide-react";
 import { useT } from "../lib/i18n";
 
-// P43 — la barra del header ya no es un input que dispara un submit: es el
-// disparador de un command palette (patrón "Ctrl+K"). "Ir a X" reemplaza la
-// necesidad de escanear el sidebar entero para saltar de sección, y la fila
-// de Ángela al final es la MISMA acción que antes hacía el submit del form
-// (preguntar(texto)) — no se pierde nada, se reorganiza.
+// "Ir a X" reemplaza la necesidad de escanear el sidebar entero para saltar
+// de sección; la fila de Ángela al final es la misma acción que antes hacía
+// el submit del form (preguntar(texto)) — no se pierde, se reorganiza.
 export default function CommandPalette({ open, onClose, secciones, catalogo, vistaHerramienta, onNavegar, onPreguntar }) {
   const t = useT();
   const [q, setQ] = useState("");

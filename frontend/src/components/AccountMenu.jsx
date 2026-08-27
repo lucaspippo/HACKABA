@@ -5,11 +5,9 @@ import LangSwitch from "./LangSwitch";
 import { authStore } from "../lib/auth";
 import { useT, tRol } from "../lib/i18n";
 
-// P43 — reemplaza la chip grande "empresa + rol" que llevaba de un click a
-// /perfil (destino único, sin opciones). Un avatar chico abre un menú corto
-// con lo que de verdad es "de la cuenta" (idioma, cerrar sesión) y un link
-// al perfil completo para lo que es demasiado grande para un dropdown
-// (Qué hacés, Lo mío, Pedir acceso, Preferencias — ver MiPerfil.jsx).
+// Menú corto con lo que de verdad es "de la cuenta" (idioma, cerrar sesión)
+// y un link al perfil completo para lo que es demasiado grande para un
+// dropdown (Qué hacés, Lo mío, Pedir acceso, Preferencias — ver MiPerfil.jsx).
 export default function AccountMenu({ user, onVerPerfil }) {
   const t = useT();
   const [abierto, setAbierto] = useState(false);

@@ -464,10 +464,8 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
 // tres veces (el tablero, "lo que pasó" y la matriz) y "Ver como" era una cuarta
 // lista. Ahora: "Equipo" = UNA lista, con todo lo de cada persona al expandir
 // (incluido Ver como); "Permisos" = la matriz + los pedidos que la alimentan.
-// P44 — "Equipo" apilaba roster + objetivos + propuestas + tablero, los 4
-// siempre visibles: demasiado para una sola pantalla. "Objetivos" se separó
-// como su propia pestaña — el roster (ya colapsado fila por fila) queda solo
-// en "Equipo", y lo que Ángela mide/propone vive en su propio lugar.
+// "Objetivos" es su propia pestaña, separada del roster: propuestas y
+// tablero no compiten con la lista de gente por la misma pantalla.
 const TABS = [
   { id: "equipo", lk: "equipo.tab_equipo" },
   { id: "objetivos", lk: "equipo.tab_objetivos" },
@@ -992,9 +990,6 @@ export default function GestionEquipo({ data, user, highlight }) {
               onVerPerfil={(u) => cambiarA(u, t)} />
           )}
 
-          {/* P44 — objetivos/propuestas/tablero se movieron a su propia
-              pestaña: compartían pantalla con el roster y hacían que "Equipo"
-              tuviera 4 secciones siempre visibles. Acá respiran solas. */}
           {tab === "objetivos" && (
             <>
               {/* P36·E4 — los objetivos que Ángela mide sola (el dueño ve todos) */}

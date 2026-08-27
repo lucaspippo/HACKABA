@@ -1980,9 +1980,8 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
 
   // Click en un sub-nodo: sus conclusiones al panel (entidades reales).
   const seleccionarSub = (sid, data) => {
-    // P44 — `hl` viaja hasta el botón "ver más" para que el drill-through
-    // abra la ENTIDAD puntual (el modal de este cliente) y no sólo la
-    // sección genérica de cuentas corrientes.
+    // `hl` viaja hasta el botón "ver más" para que el drill-through abra la
+    // entidad puntual (el modal de este cliente), no sólo la sección genérica.
     let conclusiones = [], titulo = data.label, prompt = null, seccion = null, hl = null;
     if (data.kind === "cliente" || (data.kind === "segmento" && false)) {
       const c = data.cliente;

@@ -51,10 +51,8 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
   const [meses, setMeses] = useState(12);
   const [analisis, setAnalisis] = useState(null);
   const [verNominal, setVerNominal] = useState(true);
-  // P44 — resumen/estacionalidad/composición vivían las 3 apiladas siempre:
-  // eran 13 construcciones visuales en una sola pantalla. "Resumen" (KPIs +
-  // interanual/YTD + tendencia) es lo que se mira todos los días; el resto
-  // queda a una pestaña, no borrado.
+  // "Resumen" (KPIs + interanual/YTD + tendencia) es lo que se mira todos
+  // los días; estacionalidad/composición quedan a una pestaña, no borradas.
   const [tab, setTab] = useState("resumen");
 
   // `data` cambia de identidad en cada recarga global (una lista de precios

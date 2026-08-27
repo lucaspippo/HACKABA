@@ -70,6 +70,55 @@ def guardar(raw: list[dict]) -> None:
     analisis_cache.datos_cambiaron()
 
 
+_CAMPOS_ARTICULO = ("descripcion", "estado", "tipo", "proveedor", "um",
+                     "venta_x_peso", "cota_inf", "cota_sup", "valor_peso",
+                     "stock", "costo_iva", "pvp")
+
+
+def _recalcular_inmovilizado(d: dict) -> None:
+    """`inmovilizado` no se deriva al leer (queda guardado en la fila, como lo
+    dejó generar.py) — cualquier escritura manual de stock/costo tiene que
+    recalcularlo ella misma o el número queda mintiendo silenciosamente."""
+    d["inmovilizado"] = round((d.get("stock") or 0) * (d.get("costo_iva") or 0), 2)
+
+
+def crear_articulo(datos: dict, actor: str) -> dict:
+    """Alta manual de un producto (no viene de un CSV ni de una foto)."""
+    codigo = datos.get("codigo")
+    if not codigo:
+        raise ValueError("codigo_requerido")
+    if not datos.get("descripcion"):
+        raise ValueError("descripcion_requerida")
+    raw = raw_actual()
+    if any(d.get("codigo") == codigo for d in raw):
+        raise ValueError("codigo_duplicado")
+    nuevo = {"codigo": codigo, "estado": "activo", **{k: datos.get(k) for k in _CAMPOS_ARTICULO}}
+    nuevo["descripcion"] = datos["descripcion"]
+    _recalcular_inmovilizado(nuevo)
+    raw.append(nuevo)
+    guardar(raw)
+    audit.record(actor, "crear_articulo", None,
+                  {"codigo": codigo, "descripcion": nuevo["descripcion"]})
+    return nuevo
+
+
+def actualizar_articulo(codigo: int, cambios: dict, actor: str) -> dict:
+    """Edición manual de campos existentes (precio, costo, categoría,
+    proveedor...) — distinto del saneamiento automático, que sólo corrige las
+    dos categorías auto-aplicables (fantasma, balanza)."""
+    raw = raw_actual()
+    for d in raw:
+        if d.get("codigo") == codigo:
+            antes = dict(d)
+            d.update({k: v for k, v in cambios.items() if k in _CAMPOS_ARTICULO})
+            if "stock" in cambios or "costo_iva" in cambios:
+                _recalcular_inmovilizado(d)
+            guardar(raw)
+            audit.record(actor, "editar_articulo", antes, d)
+            return d
+    raise KeyError(codigo)
+
+
 def resetear_actual() -> None:
     """Descarta las correcciones y vuelve al inventory.json original."""
     global _panorama_cache
