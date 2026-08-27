@@ -727,8 +727,8 @@ def sembrar_staging():
     if os.path.exists(os.path.join(HERE, "staging.json")):
         return False
     import sys
-    os.environ["POLPILOT_TENANT"] = "demo"
-    os.environ["POLPILOT_DATA_DIR"] = HERE
+    os.environ.setdefault("POLPILOT_TENANT", "demo")
+    os.environ.setdefault("POLPILOT_DATA_DIR", HERE)
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "backend"))
     from core import staging
     staging.crear_batch("altas_proveedores_semana.csv", CSV_STAGING)
@@ -806,8 +806,8 @@ def sembrar_solicitud():
     persiste y notifica al dueño en su idioma. El motivo va en inglés porque
     es el idioma default del tenant demo (los reviewers de YC)."""
     import sys
-    os.environ["POLPILOT_TENANT"] = "demo"
-    os.environ["POLPILOT_DATA_DIR"] = HERE
+    os.environ.setdefault("POLPILOT_TENANT", "demo")
+    os.environ.setdefault("POLPILOT_DATA_DIR", HERE)
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "backend"))
     from core import perfiles
     if perfiles.solicitudes(estado="pendiente"):
@@ -918,8 +918,8 @@ def sembrar_fotos():
         return False
     import base64
     import sys
-    os.environ["POLPILOT_TENANT"] = "demo"
-    os.environ["POLPILOT_DATA_DIR"] = HERE
+    os.environ.setdefault("POLPILOT_TENANT", "demo")
+    os.environ.setdefault("POLPILOT_DATA_DIR", HERE)
     sys.path.insert(0, os.path.join(os.path.dirname(HERE), "backend"))
     from core import perfiles
     sembradas = 0
