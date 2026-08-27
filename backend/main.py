@@ -1572,6 +1572,17 @@ def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/ingest-proveedores")
+def odoo_ingest_proveedores(_u: dict = Depends(require_admin)):
+    """Ingesta real: los proveedores de Odoo ya vinculados se actualizan
+    directo; los nuevos quedan en un batch de Staging para revisión."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_proveedores(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/conectores/odoo/sync-ordenes-compra")
 def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
     """Trae las órdenes de compra de Odoo (purchase.order) con sus líneas,

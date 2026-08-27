@@ -320,6 +320,9 @@ function OdooTabProveedores({ t }) {
   const [sync, setSync] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
 
   const sincronizar = async () => {
     setSincronizando(true);
@@ -333,14 +336,44 @@ function OdooTabProveedores({ t }) {
     }
   };
 
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestProveedores());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
   return (
     <div className="space-y-3 pt-1">
-      <button onClick={sincronizar} disabled={sincronizando}
-        className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                   font-semibold text-crema disabled:opacity-50">
-        {sincronizando ? t("odoo.sincronizando_proveedores") : t("odoo.traer_proveedores")}
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_proveedores") : t("odoo.traer_proveedores")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_proveedores") : t("odoo.ingestar_proveedores")}
+        </button>
+      </div>
       {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_proveedores_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_proveedores_sin_novedades")}
+          {ingesta.batch_id && (
+            <> · <a href="/cargar" className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</a></>
+          )}
+        </p>
+      )}
       {sync && (
         <p className="text-[0.82rem] text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_proveedores_resultado", { n: sync.total }) : t("odoo.sync_proveedores_vacio")}
