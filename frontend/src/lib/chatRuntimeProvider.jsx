@@ -52,7 +52,10 @@ export function ChatRuntimeProvider({ children, storagePrefix = "polpilot.angela
     adapter: threadListAdapter,
   });
 
-  const [open, setOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1280);
+  // Cerrado por defecto (P43): Ángela es un panel a pedido, no un tercio de
+  // pantalla reservado de entrada — el usuario la abre desde el header cuando
+  // la necesita, en vez de perder ancho en cada página por defecto.
+  const [open, setOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const toggle = useCallback(() => setOpen((v) => !v), []);
   const dock = useMemo(

@@ -1,15 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Boxes, Wallet, Banknote, Bell, Users, Upload, TrendingUp,
-  HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen, LogOut, Sparkles, Globe, Inbox, FileText, ChevronDown, Waypoints, ShieldCheck,
+  HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
+  Sparkles, Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
+  PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
 import ChatPanel from "../views/ChatPanel";
 import ChatFullscreen from "../views/ChatFullscreen";
+import CommandPalette from "../components/CommandPalette";
+import AccountMenu from "../components/AccountMenu";
 import { ChatRuntimeProvider, useChatDock } from "../lib/chatRuntimeProvider";
+import { useVista, vistaStore } from "../lib/vistaStore";
 import Inicio from "./sections/Inicio";
 import { InsightNodo } from "./sections/MapaNegocio";
 // La sección del mapa tiene dos vistas (árbol de fuentes / cerebro de
@@ -34,7 +39,6 @@ import CuentasCorrientes from "./sections/CuentasCorrientes";
 import Caja from "./sections/Caja";
 import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
-import Avatar from "../components/Avatar";
 import MiDia from "../mobile/MiDia";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { tieneVistaHerramienta } from "../lib/roles";
@@ -43,9 +47,8 @@ import { cargarSenales, contarAlertas } from "../lib/centroAlertas";
 import { useDocNuevo } from "../lib/docStore";
 import { resaltarPorId } from "../lib/navGuiada";
 import Campanita from "../components/Campanita";
-import LangSwitch from "../components/LangSwitch";
 import { VerComoChip } from "../components/VerComo";
-import { useT, tRol } from "../lib/i18n";
+import { useT } from "../lib/i18n";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
 
@@ -77,26 +80,27 @@ const CATALOGO = {
   perfil: { lk: "nav.perfil", icon: UserCircle },
 };
 
-// El sidebar agrupado en bloques con sentido para un dueño (no 16 ítems planos).
-// Presentación pura: mismos permisos, mismo CATALOGO; sólo cambia el orden visual.
-// Cada bloque es un concepto, no un cajón: "tu día" (landing), "lo que Ángela
-// detectó" (requiere una decisión), "la plata", "la operación", "sistema".
-// "Perfil" NO vive acá: ya se llega por el chip de cuenta en el header
-// (evita el mismo destino con dos entradas). "Equipo" se sumó a Operación
-// (dejar de sostener un grupo de un solo ítem).
-const BLOQUES_NAV = [
-  // Landing: dónde aterriza cualquiera al abrir PolPilot.
-  { lk: null, ids: ["panel", "mapa"] },
-  // P17·E2a — jerarquía AI-first: lo que Ángela detectó y necesita una
-  // decisión, agrupado y nombrado como tal (antes mezclado sin label con el landing).
-  { lk: "nav.grupo_senales", ids: ["alertas", "oportunidades", "evolucion"] },
-  { lk: "nav.grupo_plata", ids: ["finanzas", "caja", "cuentas", "cobranzas"] },
-  // 5 ítems supera el techo de ≤4 por grupo (carga cognitiva) — se resuelve
-  // con un subdivisor visual, no con una ruta/grupo nuevo: "administracion" y
-  // "equipo" son la mitad de personas/oficina del mismo concepto operativo.
-  { lk: "nav.grupo_operacion", ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"], subAt: { administracion: "nav.grupo_operacion_equipo" } },
-  { lk: "nav.grupo_sistema", ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
+// P43 — el sidebar dejó de ser bloques de color siempre abiertos: es una
+// lista plana donde "panel"/"mapa" son hojas (navegan directo) y el resto
+// vive detrás de 4 padres tipo acordeón (uno abierto a la vez). Mismos
+// permisos, mismo CATALOGO — sólo cambia cómo se presenta y cuánto ocupa en
+// pantalla en un momento dado. "Perfil" sigue sin vivir acá: se llega desde
+// el menú de cuenta en el header (evita el mismo destino con dos entradas).
+const GRUPOS_NAV = [
+  { id: "panel", leaf: true },
+  { id: "mapa", leaf: true },
+  // P17·E2a — jerarquía AI-first: lo que Ángela detectó y necesita una decisión.
+  { id: "senales", lk: "nav.grupo_senales", icon: Radar, ids: ["alertas", "oportunidades", "evolucion"] },
+  { id: "plata", lk: "nav.grupo_plata", icon: Wallet, ids: ["finanzas", "caja", "cuentas", "cobranzas"] },
+  { id: "operacion", lk: "nav.grupo_operacion", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"] },
+  { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
 ];
+
+// A qué grupo pertenece una sección hoja (null si es ella misma un grupo o no existe).
+function grupoDe(seccionId) {
+  for (const g of GRUPOS_NAV) if (!g.leaf && g.ids.includes(seccionId)) return g.id;
+  return null;
+}
 
 export default function DesktopApp(props) {
   return (
@@ -109,7 +113,9 @@ export default function DesktopApp(props) {
 function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const t = useT();
   const session = useSession();
-  const { fullscreen, setFullscreen } = useChatDock();
+  const { open: angelaOpen, setOpen: setAngelaOpen, fullscreen, setFullscreen } = useChatDock();
+  const vista = useVista();
+  const sidebarColapsado = vista.sidebarColapsado;
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
@@ -121,20 +127,21 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // Mismo componente y mismos permisos: MiDia sólo muestra lo que sus features
   // permiten. El dueño no se entera: él sí tiene "panel" y ve su Inicio.
   if (vistaHerramienta && !secciones.includes("panel")) secciones.unshift("panel");
-  const bloques = BLOQUES_NAV
-    .map((b) => ({ ...b, ids: b.ids.filter((id) => secciones.includes(id)) }))
-    .filter((b) => b.ids.length > 0);
+  const grupos = GRUPOS_NAV
+    .map((g) => (g.leaf ? g : { ...g, ids: g.ids.filter((id) => secciones.includes(id)) }))
+    .filter((g) => g.leaf ? secciones.includes(g.id) : g.ids.length > 0);
   // El sistema define el foco de la fase: el dueño aterriza donde importa hoy.
   const inicial = vistaHerramienta
     ? (secciones.includes("panel") ? "panel" : (secciones[0] || "perfil"))
     : (fase?.foco && user.features.includes(fase.foco) ? fase.foco : (secciones[0] || "perfil"));
   const [section, setSection] = useState(inicial);
+  // P43 — acordeón EXCLUSIVO: un solo grupo abierto a la vez, sincronizado
+  // con la sección activa (si Ángela o el command palette navegan adentro de
+  // un grupo distinto, ese grupo pasa a ser el abierto).
+  const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(inicial));
   const [highlight, setHighlight] = useState(null);
-  // El panel de Ángela vive abierto por defecto cuando la pantalla lo banca
-  // (la referencia de diseño: Ángela siempre presente a la derecha).
-  const [angelaOpen, setAngelaOpen] = useState(() => window.innerWidth >= 1280);
   const [consultaAngela, setConsultaAngela] = useState(null);
-  const [busqueda, setBusqueda] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [faseVisible, setFaseVisible] = useState(true);
   const [stagingCount, setStagingCount] = useState(0);
   // P28·C2 — el insight del nodo clickeado en el mapa: vive ARRIBA del chat,
@@ -223,6 +230,30 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     api.stagingListar().then((d) => setStagingCount(d.batches.length)).catch(() => {});
     navegar("saneamiento", "revision");
   };
+  // El acordeón sigue a la sección activa, venga de donde venga el click
+  // (sidebar, command palette, un link guiado de Ángela).
+  useEffect(() => { setGrupoAbierto(grupoDe(section)); }, [section]);
+  // Click en el PADRE de un grupo: si ya está abierto, sólo se cierra (no
+  // navega — deja ocultar la lista sin abandonar la página); si está cerrado,
+  // navega a su primer hijo y se abre, cerrando implícitamente cualquier otro
+  // (un solo `grupoAbierto` a la vez == acordeón exclusivo).
+  const clickGrupo = (g) => {
+    if (grupoAbierto === g.id) { setGrupoAbierto(null); return; }
+    navegar(g.ids[0], null);
+  };
+  // P43 — Ctrl+K / Cmd+K abre el command palette desde cualquier pantalla,
+  // como el buscador que reemplaza (único precedente de shortcut global en
+  // el código: CerebroNegocio.jsx usa el mismo patrón con "/").
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const preguntar = (texto) => {
     setConsultaAngela(texto);
     setAngelaOpen(true);
@@ -241,126 +272,121 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-papel text-tinta">
       <Toasts />
-      {/* SIDEBAR */}
-      <aside className="flex w-64 shrink-0 flex-col border-r border-linea bg-crema/70">
-        <div className="border-b border-linea px-5 py-5">
-          <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto" draggable="false" />
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("nav.cliente")}</span>
-            {!marcaResuelta ? (
-              <span className="h-7 w-24 animate-pulse rounded bg-papel-hondo" />
-            ) : clienteLogo ? (
-              <img src={clienteLogo} alt={empresa || ""} className="h-8 w-auto" draggable="false" />
-            ) : (
-              <span className="font-display text-[0.95rem] font-bold leading-tight text-hielo">{empresa}</span>
-            )}
-          </div>
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        secciones={secciones}
+        catalogo={CATALOGO}
+        vistaHerramienta={vistaHerramienta}
+        onNavegar={navegar}
+        onPreguntar={preguntar}
+      />
+      {/* SIDEBAR — P43: lista plana + acordeón exclusivo, colapsable a riel de íconos. */}
+      <aside className={`flex shrink-0 flex-col border-r border-linea bg-crema/70 transition-[width] duration-200 ${sidebarColapsado ? "w-16" : "w-64"}`}>
+        <div className={`flex items-center border-b border-linea py-5 ${sidebarColapsado ? "justify-center px-2" : "justify-between px-5"}`}>
+          {!sidebarColapsado && (
+            <div className="min-w-0">
+              <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto" draggable="false" />
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("nav.cliente")}</span>
+                {!marcaResuelta ? (
+                  <span className="h-7 w-24 animate-pulse rounded bg-papel-hondo" />
+                ) : clienteLogo ? (
+                  <img src={clienteLogo} alt={empresa || ""} className="h-8 w-auto" draggable="false" />
+                ) : (
+                  <span className="font-display text-[0.95rem] font-bold leading-tight text-hielo">{empresa}</span>
+                )}
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => vistaStore.aplicar({ sidebarColapsado: !sidebarColapsado })}
+            title={t(sidebarColapsado ? "nav.expandir_sidebar" : "nav.colapsar_sidebar")}
+            className="shrink-0 rounded-lg p-1.5 text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"
+          >
+            {sidebarColapsado ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {bloques.map((b, bi) => (
-            <div key={b.lk || "inicio"} className={bi > 0 ? "pt-2" : ""}>
-              {b.lk && (
-                <p className="plata px-3 pb-1 text-[0.88rem] font-semibold uppercase tracking-[0.16em] text-tinta-suave">
-                  {t(b.lk)}
-                </p>
-              )}
-              {b.ids.map((id) => {
-                const c = CATALOGO[id];
-                const Icon = c.icon;
-                const activo = section === id;
-                const subLk = b.subAt?.[id];
-                return (
-                  <div key={id}>
-                    {subLk && (
-                      <p className="px-3 pb-1 pt-2 text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave/60">
-                        {t(subLk)}
-                      </p>
-                    )}
-                    <button
-                      onClick={() => navegar(id, null)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
-                        activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"
-                      }`}
+          {grupos.map((g) => {
+            if (g.leaf) {
+              const c = CATALOGO[g.id];
+              const Icon = c.icon;
+              const activo = section === g.id;
+              return (
+                <ItemNav key={g.id} icon={Icon} activo={activo} colapsado={sidebarColapsado} badge={BADGES[g.id]}
+                  dot={g.id === "documentos" && docNuevo}
+                  label={t(g.id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk)}
+                  onClick={() => navegar(g.id, null)} />
+              );
+            }
+            const abierto = grupoAbierto === g.id;
+            const badgeGrupo = g.ids.reduce((s, id) => s + (BADGES[id] || 0), 0);
+            return (
+              <div key={g.id}>
+                <ItemNav icon={g.icon} activo={abierto} colapsado={sidebarColapsado} badge={badgeGrupo}
+                  label={t(g.lk)} chevron={!sidebarColapsado} chevronAbierto={abierto}
+                  onClick={() => clickGrupo(g)} />
+                <AnimatePresence initial={false}>
+                  {abierto && !sidebarColapsado && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.18 }} className="overflow-hidden pl-4"
                     >
-                      <Icon size={18} className={activo ? "text-violeta" : ""} />
-                      {/* Para el de a pie ese slot no es "Inicio": es "Mi día" —
-                          el mismo nombre que ya tiene en el celular. */}
-                      <span className="flex-1">
-                        {t(id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk)}
-                      </span>
-                      {BADGES[id] > 0 && (
-                        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.88rem] font-bold text-crema">{BADGES[id]}</span>
-                      )}
-                      {id === "documentos" && docNuevo && (
-                        <span className="h-2 w-2 rounded-full bg-violeta" />
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-          {/* P24·G2 — "Pending data" ya no es sección aparte: vive DENTRO de
-              "Datos a corregir" (badge sumado en BADGES.saneamiento). */}
+                      {g.ids.map((id) => {
+                        const c = CATALOGO[id];
+                        const Icon = c.icon;
+                        return (
+                          <ItemNav key={id} icon={Icon} activo={section === id} colapsado={false} badge={BADGES[id]}
+                            dot={id === "documentos" && docNuevo} label={t(c.lk)} onClick={() => navegar(id, null)} />
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </nav>
 
-        <div className="space-y-1.5 border-t border-linea p-3">
-          {/* La entrada genérica a Ángela vive UNA sola vez, en el header
-              (botón "Ángela" arriba a la derecha) — esta tarjeta ya no la
-              duplica en estado idle. Sólo aparece cuando hay algo real y
-              distinto para mostrar: una decisión esperando (P15·E6). */}
+        <div className="border-t border-linea p-3">
+          {/* La entrada genérica a Ángela vive en el header — esta tarjeta ya
+              no la duplica en estado idle. Sólo aparece cuando hay algo real
+              y distinto para mostrar: una decisión esperando (P15·E6). */}
           {stagingCount > 0 && (
             <button
               onClick={() => navegar("panel", "decisiones")}
-              className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2 text-left sombra-papel transition-colors hover:border-violeta/40"
+              title={t("decision.espera_ok")}
+              className={`flex w-full items-center gap-3 rounded-xl border border-linea bg-crema text-left sombra-papel transition-colors hover:border-violeta/40 ${sidebarColapsado ? "justify-center p-2" : "px-3 py-2"}`}
             >
-              <AngelaMark size={30} estado="esperando" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.88rem] font-semibold">Ángela</p>
-                <p className="flex items-center gap-1.5 truncate text-[0.88rem] text-tinta-suave">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-oro" />
-                  {t("decision.espera_ok")}
-                </p>
-              </div>
+              <AngelaMark size={sidebarColapsado ? 26 : 30} estado="esperando" />
+              {!sidebarColapsado && (
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.88rem] font-semibold">Ángela</p>
+                  <p className="flex items-center gap-1.5 truncate text-[0.88rem] text-tinta-suave">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-oro" />
+                    {t("decision.espera_ok")}
+                  </p>
+                </div>
+              )}
             </button>
           )}
-          <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-            <Avatar persona={user} size={36} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.88rem] font-semibold">{user.nombre}</p>
-              <p className="truncate text-[0.8rem] text-tinta-suave">{tRol(user.rol)}</p>
-            </div>
-            <button onClick={() => authStore.logout({ manual: true })} title={t("nav.salir")} className="text-tinta-suave hover:text-tinta">
-              <LogOut size={17} />
-            </button>
-          </div>
         </div>
       </aside>
 
       {/* COLUMNA PRINCIPAL */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-4 border-b border-linea bg-papel/80 px-6 py-3 backdrop-blur">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (busqueda.trim()) {
-                preguntar(busqueda.trim());
-                setBusqueda("");
-              }
-            }}
-            className="flex flex-1 items-center gap-3 rounded-full border border-linea bg-crema px-4 py-2 sombra-papel focus-within:border-violeta/40"
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex flex-1 items-center gap-3 rounded-full border border-linea bg-crema px-4 py-2 text-left sombra-papel transition-colors hover:border-violeta/40"
           >
             <Search size={17} className="shrink-0 text-tinta-suave" />
-            <input
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder={t("nav.buscador")}
-              className="flex-1 bg-transparent text-[0.9rem] outline-none placeholder:text-tinta-suave/80"
-            />
-          </form>
+            <span className="flex-1 text-[0.9rem] text-tinta-suave/80">{t("nav.buscador")}</span>
+            <kbd className="hidden shrink-0 rounded-md border border-linea px-1.5 py-0.5 text-[0.7rem] font-semibold text-tinta-suave sm:block">Ctrl K</kbd>
+          </button>
           <VerComoChip />
-          <LangSwitch />
           <Campanita
             token={session?.token}
             esAdmin={user.es_admin}
@@ -369,19 +395,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           <button onClick={() => setAngelaOpen((v) => !v)} className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-[0.88rem] font-semibold text-crema transition-transform active:scale-95">
             <AngelaMark size={22} estado={stagingCount > 0 ? "esperando" : "idle"} /> Ángela <PanelRightOpen size={15} />
           </button>
-          {/* Empresa + rol, arriba a la derecha (patrón de la referencia). Lleva al perfil,
-              donde vive el selector "Ver como". */}
-          <button
-            onClick={() => navegar("perfil", null)}
-            className="flex items-center gap-2.5 rounded-full border border-linea bg-crema py-1.5 pl-1.5 pr-3 sombra-papel transition-colors hover:border-tinta/25"
-          >
-            <Avatar persona={user} size={28} />
-            <span className="hidden min-w-0 text-left xl:block">
-              <span className="block max-w-40 truncate text-[0.8rem] font-semibold leading-tight">{empresa || ""}</span>
-              <span className="block text-[0.88rem] leading-tight text-tinta-suave">{tRol(user.rol)}</span>
-            </span>
-            <ChevronDown size={14} className="text-tinta-suave" />
-          </button>
+          <AccountMenu user={user} onVerPerfil={() => navegar("perfil", null)} />
         </header>
 
         <div className="flex min-h-0 flex-1">
@@ -509,6 +523,62 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           </AnimatePresence>
         </div>
       </div>
+    </div>
+  );
+}
+
+// P43 — una fila del sidebar, para hoja o para padre de grupo. En modo riel
+// (colapsado) esconde el label y el badge se reduce a un puntito; un tooltip
+// propio (no sólo `title`) lo compensa, porque en ese modo no hay texto en
+// pantalla que lo reemplace.
+function ItemNav({ icon: Icon, label, activo, colapsado, onClick, badge, dot, chevron, chevronAbierto }) {
+  // `position: fixed` (medido con getBoundingClientRect) en vez de un
+  // `absolute` normal: el <nav> del sidebar tiene overflow-y-auto, y por regla
+  // de CSS eso fuerza su overflow-x a "auto" también — cualquier tooltip
+  // absoluto que sobresalga del riel colapsado queda recortado. `fixed` no
+  // respeta el overflow de ese ancestro (no hay transform/filter en el medio).
+  const [rect, setRect] = useState(null);
+  const btnRef = useRef(null);
+  return (
+    <div
+      className="relative"
+      onMouseEnter={() => colapsado && setRect(btnRef.current?.getBoundingClientRect())}
+      onMouseLeave={() => setRect(null)}
+    >
+      <button
+        ref={btnRef}
+        onClick={onClick}
+        className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
+          colapsado ? "justify-center px-2" : "px-3"
+        } ${activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"}`}
+      >
+        <span className="relative shrink-0">
+          <Icon size={18} className={activo ? "text-violeta" : ""} />
+          {colapsado && (badge > 0 || dot) && (
+            <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-oro" />
+          )}
+        </span>
+        {!colapsado && (
+          <>
+            <span className="flex-1">{label}</span>
+            {badge > 0 && (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.88rem] font-bold text-crema">{badge}</span>
+            )}
+            {dot && <span className="h-2 w-2 rounded-full bg-violeta" />}
+            {chevron && (
+              <ChevronRight size={15} className={`shrink-0 text-tinta-suave transition-transform ${chevronAbierto ? "rotate-90" : ""}`} />
+            )}
+          </>
+        )}
+      </button>
+      {rect && (
+        <span
+          style={{ position: "fixed", left: rect.right + 8, top: rect.top + rect.height / 2, transform: "translateY(-50%)" }}
+          className="z-30 whitespace-nowrap rounded-lg bg-tinta px-2.5 py-1.5 text-[0.8rem] font-medium text-crema sombra-alta"
+        >
+          {label}
+        </span>
+      )}
     </div>
   );
 }
