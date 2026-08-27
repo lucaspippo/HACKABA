@@ -147,6 +147,7 @@ export const api = {
   odooConfigBorrar: () => del("/api/conectores/odoo"),
   odooSync: () => post("/api/conectores/odoo/sync", {}),
   odooSyncProductos: () => post("/api/conectores/odoo/sync-productos", {}),
+  odooIngestProductos: () => post("/api/conectores/odoo/ingest-productos", {}),
   odooSyncProveedores: () => post("/api/conectores/odoo/sync-proveedores", {}),
   odooSyncOrdenesCompra: () => post("/api/conectores/odoo/sync-ordenes-compra", {}),
   cobranza: () => get("/api/cobranza"),
