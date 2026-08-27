@@ -146,6 +146,7 @@ export const api = {
   odooConfigGuardar: (config) => put("/api/conectores/odoo", config),
   odooConfigBorrar: () => del("/api/conectores/odoo"),
   odooSync: () => post("/api/conectores/odoo/sync", {}),
+  odooIngestContactos: () => post("/api/conectores/odoo/ingest-contactos", {}),
   odooSyncProductos: () => post("/api/conectores/odoo/sync-productos", {}),
   odooIngestProductos: () => post("/api/conectores/odoo/ingest-productos", {}),
   odooSyncProveedores: () => post("/api/conectores/odoo/sync-proveedores", {}),
