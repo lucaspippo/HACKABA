@@ -12,7 +12,7 @@ import { useT } from "../../lib/i18n";
 // por sistema desperdigado en otras pantallas.
 const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Link2, mcp: Waypoints };
 
-export default function Conectores() {
+export default function Conectores({ onNavigate }) {
   const t = useT();
   const [lista, setLista] = useState(null); // null=cargando, false=error
 
@@ -36,7 +36,7 @@ export default function Conectores() {
         <div className="space-y-4">
           {lista.map((c) => (
             c.nombre === "odoo"
-              ? <PanelOdoo key={c.nombre} estado={c.estado} />
+              ? <PanelOdoo key={c.nombre} estado={c.estado} onNavigate={onNavigate} />
               : <TarjetaConector key={c.nombre} nombre={c.nombre} estado={c.estado} />
           ))}
         </div>
@@ -72,7 +72,7 @@ function TarjetaConector({ nombre, estado }) {
 // (res.partner) y catálogo de productos con stock (product.template) de la
 // cuenta Odoo propia del dueño, para previsualizarlos. Integrarlos al
 // catálogo/cuentas reales de PolPilot es trabajo futuro — ver core/conectores.py.
-function PanelOdoo({ estado }) {
+function PanelOdoo({ estado, onNavigate }) {
   const t = useT();
   const [abierto, setAbierto] = useState(estado === "activo");
   const [cfg, setCfg] = useState(null);
@@ -146,10 +146,10 @@ function PanelOdoo({ estado }) {
                   {t("odoo.tab_compras")}
                 </button>
               </div>
-              {tab === "contactos" && <OdooTabContactos t={t} />}
-              {tab === "productos" && <OdooTabProductos t={t} />}
-              {tab === "proveedores" && <OdooTabProveedores t={t} />}
-              {tab === "compras" && <OdooTabCompras t={t} />}
+              {tab === "contactos" && <OdooTabContactos t={t} onNavigate={onNavigate} />}
+              {tab === "productos" && <OdooTabProductos t={t} onNavigate={onNavigate} />}
+              {tab === "proveedores" && <OdooTabProveedores t={t} onNavigate={onNavigate} />}
+              {tab === "compras" && <OdooTabCompras t={t} onNavigate={onNavigate} />}
               <button onClick={desconectar}
                 className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
                            text-tinta-suave hover:text-tinta">
@@ -184,7 +184,7 @@ function PanelOdoo({ estado }) {
 
 // Pestaña Contactos: mismo comportamiento que la versión original de PanelOdoo,
 // ahora aislado para convivir con la pestaña Productos.
-function OdooTabContactos({ t }) {
+function OdooTabContactos({ t, onNavigate }) {
   const [sync, setSync] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
@@ -238,7 +238,8 @@ function OdooTabContactos({ t }) {
             ? t("odoo.ingesta_contactos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_contactos_sin_novedades")}
           {ingesta.batch_id && (
-            <> · <a href="/cargar" className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</a></>
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
           )}
         </p>
       )}
@@ -263,7 +264,7 @@ function OdooTabContactos({ t }) {
 
 // Pestaña Productos: catálogo con stock (product.template.qty_available).
 // Mismo patrón que Contactos — sólo lectura, preview.
-function OdooTabProductos({ t }) {
+function OdooTabProductos({ t, onNavigate }) {
   const [sync, setSync] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
@@ -317,7 +318,8 @@ function OdooTabProductos({ t }) {
             ? t("odoo.ingesta_productos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_productos_sin_novedades")}
           {ingesta.batch_id && (
-            <> · <a href="/cargar" className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</a></>
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
           )}
         </p>
       )}
@@ -349,7 +351,7 @@ function OdooTabProductos({ t }) {
 
 // Pestaña Proveedores: contactos-proveedor (supplier_rank > 0), la
 // contraparte de Contactos del lado compras. Mismo patrón: sólo lectura, preview.
-function OdooTabProveedores({ t }) {
+function OdooTabProveedores({ t, onNavigate }) {
   const [sync, setSync] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
@@ -403,7 +405,8 @@ function OdooTabProveedores({ t }) {
             ? t("odoo.ingesta_proveedores_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_proveedores_sin_novedades")}
           {ingesta.batch_id && (
-            <> · <a href="/cargar" className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</a></>
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
           )}
         </p>
       )}
@@ -428,7 +431,7 @@ function OdooTabProveedores({ t }) {
 
 // Pestaña Compras: órdenes de compra (purchase.order) con sus líneas, la
 // contraparte de Productos del lado compras. Mismo patrón: sólo lectura, preview.
-function OdooTabCompras({ t }) {
+function OdooTabCompras({ t, onNavigate }) {
   const [sync, setSync] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
@@ -482,7 +485,8 @@ function OdooTabCompras({ t }) {
             ? t("odoo.ingesta_compras_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_compras_sin_novedades")}
           {ingesta.batch_id && (
-            <> · <a href="/cargar" className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</a></>
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
           )}
         </p>
       )}

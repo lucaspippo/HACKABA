@@ -502,7 +502,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "deposito" && <Deposito data={data} onPreguntar={preguntar} />}
                 {section === "evolucion" && <Evolucion data={data} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "auditoria" && <Auditoria />}
-                {section === "conectores" && <Conectores />}
+                {section === "conectores" && <Conectores onNavigate={navegar} />}
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
