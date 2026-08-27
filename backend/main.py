@@ -1549,6 +1549,30 @@ def odoo_sync_productos(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/sync-proveedores")
+def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
+    """Trae los contactos-proveedor de Odoo (res.partner, supplier_rank > 0)
+    como preview de sólo lectura — mismo criterio que odoo_sync()."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_proveedores()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-ordenes-compra")
+def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
+    """Trae las órdenes de compra de Odoo (purchase.order) con sus líneas,
+    como preview de sólo lectura — mismo criterio que odoo_sync()."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_ordenes_compra()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
 # EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
 # sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/

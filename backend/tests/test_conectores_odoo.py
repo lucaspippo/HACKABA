@@ -14,9 +14,19 @@ class _FakeCommon:
 class _FakeModels:
     def execute_kw(self, db, uid, pwd, model, method, args, kwargs):
         if model == "res.partner":
+            domain = args[0] if method == "search" else None
+            es_proveedores = domain is not None and any(d[0] == "supplier_rank" for d in domain)
             if method == "search":
-                return [1, 2]
+                return [3, 4] if es_proveedores else [1, 2]
             if method == "read":
+                ids = args[0]
+                if 3 in ids or 4 in ids:
+                    return [
+                        {"id": 3, "name": "Distribuidora del Sur", "vat": "30-11111111-1", "city": "Córdoba",
+                         "phone": "351-000-0000", "email": "ventas@distsur.example"},
+                        {"id": 4, "name": "Proveedor Genérico SRL", "vat": False, "city": False,
+                         "phone": False, "email": False},
+                    ]
                 return [
                     {"id": 1, "name": "Almacén Don Pérez", "vat": "20-12345678-9", "city": "Rosario",
                      "phone": "341-000-0000", "email": "perez@example.com"},
@@ -33,6 +43,30 @@ class _FakeModels:
                      "categ_id": [4, "Electronics"], "list_price": 1200.0, "qty_available": 45.0},
                     {"id": 2, "name": "Standing Desk", "default_code": "FURN-002",
                      "categ_id": [5, "Furniture"], "list_price": 350.0, "qty_available": 0.0},
+                ]
+            raise NotImplementedError(method)
+        if model == "purchase.order":
+            if method == "search":
+                return [10, 11]
+            if method == "read":
+                return [
+                    {"id": 10, "name": "P00010", "partner_id": [3, "Distribuidora del Sur"],
+                     "state": "purchase", "date_order": "2026-08-05 10:00:00", "amount_total": 3800.0},
+                    {"id": 11, "name": "P00011", "partner_id": [4, "Proveedor Genérico SRL"],
+                     "state": "draft", "date_order": "2026-08-20 09:00:00", "amount_total": 810.0},
+                ]
+            raise NotImplementedError(method)
+        if model == "purchase.order.line":
+            if method == "search":
+                return [100, 101, 102]
+            if method == "read":
+                return [
+                    {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Office Chair Ergo"],
+                     "name": "Office Chair Ergo", "product_qty": 20.0, "price_unit": 120.0},
+                    {"id": 101, "order_id": [10, "P00010"], "product_id": [2, "Filing Cabinet"],
+                     "name": "Filing Cabinet", "product_qty": 10.0, "price_unit": 140.0},
+                    {"id": 102, "order_id": [11, "P00011"], "product_id": False,
+                     "name": "Printer Paper A4 (Box)", "product_qty": 100.0, "price_unit": 6.5},
                 ]
             raise NotImplementedError(method)
         raise NotImplementedError(model)
@@ -130,3 +164,57 @@ def test_pull_productos_credenciales_guardadas_invalidas(tenant_id, monkeypatch)
     odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "bad-key")
     with pytest.raises(ValueError):
         conectores.ConectorOdoo(tenant_id).pull_productos()
+
+
+def test_pull_proveedores_sin_conexion_configurada(tenant_id):
+    with pytest.raises(ValueError):
+        conectores.ConectorOdoo(tenant_id).pull_proveedores()
+
+
+def test_pull_proveedores_trae_contactos_proveedor(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
+    r = conectores.ConectorOdoo(tenant_id).pull_proveedores()
+    assert r["origen"] == "odoo"
+    assert r["modulo"] == "res.partner"
+    assert r["total"] == 2
+    assert r["proveedores"][0]["nombre"] == "Distribuidora del Sur"
+    assert r["proveedores"][0]["cuit"] == "30-11111111-1"
+    assert r["proveedores"][1]["cuit"] == ""
+
+
+def test_pull_proveedores_credenciales_guardadas_invalidas(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "bad-key")
+    with pytest.raises(ValueError):
+        conectores.ConectorOdoo(tenant_id).pull_proveedores()
+
+
+def test_pull_ordenes_compra_sin_conexion_configurada(tenant_id):
+    with pytest.raises(ValueError):
+        conectores.ConectorOdoo(tenant_id).pull_ordenes_compra()
+
+
+def test_pull_ordenes_compra_trae_ordenes_con_items(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
+    r = conectores.ConectorOdoo(tenant_id).pull_ordenes_compra()
+    assert r["origen"] == "odoo"
+    assert r["modulo"] == "purchase.order"
+    assert r["total"] == 2
+    orden_1 = next(o for o in r["ordenes"] if o["numero"] == "P00010")
+    assert orden_1["proveedor"] == "Distribuidora del Sur"
+    assert orden_1["estado"] == "confirmada"
+    assert len(orden_1["items"]) == 2
+    assert orden_1["items"][0]["producto"] == "Office Chair Ergo"
+    orden_2 = next(o for o in r["ordenes"] if o["numero"] == "P00011")
+    assert orden_2["estado"] == "borrador"
+    # línea sin product_id resuelto (product_id=False) cae al nombre de la línea
+    assert orden_2["items"][0]["producto"] == "Printer Paper A4 (Box)"
+
+
+def test_pull_ordenes_compra_credenciales_guardadas_invalidas(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "bad-key")
+    with pytest.raises(ValueError):
+        conectores.ConectorOdoo(tenant_id).pull_ordenes_compra()

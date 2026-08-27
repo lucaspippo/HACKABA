@@ -23,6 +23,12 @@ class _FakeModels:
             if model == "product.template":
                 return [{"id": 1, "name": "Producto Odoo", "default_code": "X-1",
                           "categ_id": [1, "General"], "list_price": 10.0, "qty_available": 7.0}]
+            if model == "purchase.order":
+                return [{"id": 1, "name": "P00001", "partner_id": [1, "Proveedor Odoo"],
+                          "state": "purchase", "date_order": "2026-08-05 10:00:00", "amount_total": 500.0}]
+            if model == "purchase.order.line":
+                return [{"id": 1, "order_id": [1, "P00001"], "product_id": [1, "Producto Odoo"],
+                          "name": "Producto Odoo", "product_qty": 5.0, "price_unit": 100.0}]
             return [{"id": 1, "name": "Cliente Odoo", "vat": "20-1-9", "city": "CABA",
                       "phone": "11-0000", "email": "c@example.com"}]
         raise NotImplementedError(method)
@@ -115,4 +121,41 @@ def test_sync_productos_trae_catalogo(admin_token, monkeypatch):
 
 def test_sync_productos_sin_conexion_da_400(admin_token):
     r = client.post("/api/conectores/odoo/sync-productos", headers=_h(admin_token))
+    assert r.status_code == 400
+
+
+def test_sync_proveedores_trae_contactos(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/sync-proveedores", headers=_h(admin_token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["proveedores"][0]["nombre"] == "Cliente Odoo"
+
+
+def test_sync_proveedores_sin_conexion_da_400(admin_token):
+    r = client.post("/api/conectores/odoo/sync-proveedores", headers=_h(admin_token))
+    assert r.status_code == 400
+
+
+def test_sync_ordenes_compra_trae_ordenes(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/sync-ordenes-compra", headers=_h(admin_token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["ordenes"][0]["numero"] == "P00001"
+    assert body["ordenes"][0]["proveedor"] == "Proveedor Odoo"
+    assert body["ordenes"][0]["estado"] == "confirmada"
+    assert body["ordenes"][0]["items"][0]["producto"] == "Producto Odoo"
+
+
+def test_sync_ordenes_compra_sin_conexion_da_400(admin_token):
+    r = client.post("/api/conectores/odoo/sync-ordenes-compra", headers=_h(admin_token))
     assert r.status_code == 400
