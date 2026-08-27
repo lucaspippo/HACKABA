@@ -91,7 +91,10 @@ const BLOQUES_NAV = [
   // decisión, agrupado y nombrado como tal (antes mezclado sin label con el landing).
   { lk: "nav.grupo_senales", ids: ["alertas", "oportunidades", "evolucion"] },
   { lk: "nav.grupo_plata", ids: ["finanzas", "caja", "cuentas", "cobranzas"] },
-  { lk: "nav.grupo_operacion", ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"] },
+  // 5 ítems supera el techo de ≤4 por grupo (carga cognitiva) — se resuelve
+  // con un subdivisor visual, no con una ruta/grupo nuevo: "administracion" y
+  // "equipo" son la mitad de personas/oficina del mismo concepto operativo.
+  { lk: "nav.grupo_operacion", ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"], subAt: { administracion: "nav.grupo_operacion_equipo" } },
   { lk: "nav.grupo_sistema", ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
 ];
 
@@ -243,7 +246,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
         <div className="border-b border-linea px-5 py-5">
           <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto" draggable="false" />
           <div className="mt-3 flex items-center gap-2">
-            <span className="text-[0.64rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("nav.cliente")}</span>
+            <span className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("nav.cliente")}</span>
             {!marcaResuelta ? (
               <span className="h-7 w-24 animate-pulse rounded bg-papel-hondo" />
             ) : clienteLogo ? (
@@ -258,7 +261,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           {bloques.map((b, bi) => (
             <div key={b.lk || "inicio"} className={bi > 0 ? "pt-2" : ""}>
               {b.lk && (
-                <p className="plata px-3 pb-1 text-[0.6rem] font-medium uppercase tracking-[0.18em] text-tinta-suave/70">
+                <p className="plata px-3 pb-1 text-[0.88rem] font-semibold uppercase tracking-[0.16em] text-tinta-suave">
                   {t(b.lk)}
                 </p>
               )}
@@ -266,27 +269,34 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 const c = CATALOGO[id];
                 const Icon = c.icon;
                 const activo = section === id;
+                const subLk = b.subAt?.[id];
                 return (
-                  <button
-                    key={id}
-                    onClick={() => navegar(id, null)}
-                    className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
-                      activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"
-                    }`}
-                  >
-                    <Icon size={18} className={activo ? "text-violeta" : ""} />
-                    {/* Para el de a pie ese slot no es "Inicio": es "Mi día" —
-                        el mismo nombre que ya tiene en el celular. */}
-                    <span className="flex-1">
-                      {t(id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk)}
-                    </span>
-                    {BADGES[id] > 0 && (
-                      <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.7rem] font-bold text-crema">{BADGES[id]}</span>
+                  <div key={id}>
+                    {subLk && (
+                      <p className="px-3 pb-1 pt-2 text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave/60">
+                        {t(subLk)}
+                      </p>
                     )}
-                    {id === "documentos" && docNuevo && (
-                      <span className="h-2 w-2 rounded-full bg-violeta" />
-                    )}
-                  </button>
+                    <button
+                      onClick={() => navegar(id, null)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
+                        activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"
+                      }`}
+                    >
+                      <Icon size={18} className={activo ? "text-violeta" : ""} />
+                      {/* Para el de a pie ese slot no es "Inicio": es "Mi día" —
+                          el mismo nombre que ya tiene en el celular. */}
+                      <span className="flex-1">
+                        {t(id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk)}
+                      </span>
+                      {BADGES[id] > 0 && (
+                        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.88rem] font-bold text-crema">{BADGES[id]}</span>
+                      )}
+                      {id === "documentos" && docNuevo && (
+                        <span className="h-2 w-2 rounded-full bg-violeta" />
+                      )}
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -307,8 +317,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             >
               <AngelaMark size={30} estado="esperando" />
               <div className="min-w-0 flex-1">
-                <p className="text-[0.85rem] font-semibold">Ángela</p>
-                <p className="flex items-center gap-1.5 truncate text-[0.72rem] text-tinta-suave">
+                <p className="text-[0.88rem] font-semibold">Ángela</p>
+                <p className="flex items-center gap-1.5 truncate text-[0.88rem] text-tinta-suave">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-oro" />
                   {t("decision.espera_ok")}
                 </p>
@@ -318,8 +328,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
             <Avatar persona={user} size={36} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.85rem] font-semibold">{user.nombre}</p>
-              <p className="truncate text-[0.74rem] text-tinta-suave">{tRol(user.rol)}</p>
+              <p className="truncate text-[0.88rem] font-semibold">{user.nombre}</p>
+              <p className="truncate text-[0.8rem] text-tinta-suave">{tRol(user.rol)}</p>
             </div>
             <button onClick={() => authStore.logout({ manual: true })} title={t("nav.salir")} className="text-tinta-suave hover:text-tinta">
               <LogOut size={17} />
@@ -356,7 +366,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             esAdmin={user.es_admin}
             onVerSolicitud={() => navegar("equipo", "solicitudes")}
           />
-          <button onClick={() => setAngelaOpen((v) => !v)} className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95">
+          <button onClick={() => setAngelaOpen((v) => !v)} className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-[0.88rem] font-semibold text-crema transition-transform active:scale-95">
             <AngelaMark size={22} estado={stagingCount > 0 ? "esperando" : "idle"} /> Ángela <PanelRightOpen size={15} />
           </button>
           {/* Empresa + rol, arriba a la derecha (patrón de la referencia). Lleva al perfil,
@@ -368,7 +378,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             <Avatar persona={user} size={28} />
             <span className="hidden min-w-0 text-left xl:block">
               <span className="block max-w-40 truncate text-[0.8rem] font-semibold leading-tight">{empresa || ""}</span>
-              <span className="block text-[0.68rem] leading-tight text-tinta-suave">{tRol(user.rol)}</span>
+              <span className="block text-[0.88rem] leading-tight text-tinta-suave">{tRol(user.rol)}</span>
             </span>
             <ChevronDown size={14} className="text-tinta-suave" />
           </button>
@@ -402,7 +412,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   {fase.foco && user.features.includes(fase.foco) && CATALOGO[fase.foco] && (
                     <button
                       onClick={() => navegar(fase.foco, null)}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.82rem] font-semibold text-crema"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema"
                     >
                       {t("nav.ir_a")} {t(CATALOGO[fase.foco].lk)}
                     </button>
@@ -435,7 +445,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   onInsight={(i) => { setMapaInsight(i); if (i) setAngelaOpen(true); }} />}
                 {section === "inventario" && <Inventario data={data} highlight={highlight} onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "saneamiento" && <Saneamiento user={user} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} onRecargar={onRecargar} onStagingCambio={setStagingCount} />}
-                {section === "finanzas" && <Finanzas data={data} onPreguntar={preguntar} datos={fase?.datos} />}
+                {section === "finanzas" && <Finanzas data={data} onPreguntar={preguntar} datos={fase?.datos} onNavegar={navegar} />}
                 {section === "alertas" && <AlertasNegocio onPreguntar={preguntar} onNavegar={navegar} datos={fase?.datos} />}
                 {section === "oportunidades" && <OportunidadesNegocio onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "equipo" && <GestionEquipo data={data} user={user} highlight={highlight} />}
