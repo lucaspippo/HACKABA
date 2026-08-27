@@ -2240,7 +2240,7 @@ export const ES = {
   "odoo.ingestando_contactos": "Ingestando…",
   "odoo.ingesta_contactos_resultado": "{actualizados} actualizados, {nuevos} nuevos para revisar en Staging.",
   "odoo.ingesta_contactos_sin_novedades": "Todos tus clientes de Odoo ya están al día en PolPilot.",
-  "odoo.nota": "Por ahora es de sólo lectura: traemos tus contactos, tu catálogo de productos, tus proveedores y tus órdenes de compra de Odoo para que los veas acá. Sumarlos a tus cuentas, tu inventario y tus órdenes reales es el próximo paso.",
+  "odoo.nota": "«Traer» es sólo lectura: te muestra acá tus contactos, tu catálogo de productos, tus proveedores y tus órdenes de compra de Odoo. «Ingestar a PolPilot» los suma a tus datos reales: lo que ya está vinculado se actualiza solo, y lo nuevo queda en Staging para que lo revises antes de crearlo.",
   "odoo.tab_contactos": "Contactos",
   "odoo.tab_productos": "Productos",
   "odoo.traer_productos": "Traer productos",

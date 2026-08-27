@@ -1797,6 +1797,14 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "{n} productos llegan sin precio. ¿Les pongo uno según el costo?",
         "en": "{n} products arrive without a price. Want me to set one from cost?",
     },
+    "core.staging.d_duplicado_clientes": {
+        "es": "{n} clientes parecen ya existir en tu sistema con el mismo nombre.",
+        "en": "{n} customers seem to already exist in your system under the same name.",
+    },
+    "core.staging.d_duplicado_proveedores": {
+        "es": "{n} proveedores parecen ya existir en tu sistema con el mismo nombre.",
+        "en": "{n} vendors seem to already exist in your system under the same name.",
+    },
     "core.staging.d_duplicado": {
         "es": "{n} productos parecen ya existir en tu sistema con el mismo nombre.",
         "en": "{n} products seem to already exist in your system under the same name.",

@@ -120,9 +120,27 @@ def test_ingest_productos_segunda_vez_actualiza_sin_batch():
     assert r2["batch_id"] is None
 
 
+def test_ingest_productos_mixto_actualiza_vinculado_y_stagea_nuevo():
+    """One pulled row already linked, one brand new, in a single call — the
+    two tiers are otherwise only exercised in separate calls."""
+    store.upsert_desde_conector(
+        {"descripcion": "Producto Ya Vinculado", "sku": "SKU-1", "stock": 1.0,
+         "costo_iva": None, "pvp": 10.0, "source": "odoo", "source_id": "1"},
+        actor="test")
+
+    r = odoo_ingest.ingest_productos(actor="test")
+    assert r["actualizados"] == 1
+    assert r["nuevos_para_revisar"] == 1
+    assert r["batch_id"] is not None
+    vinculado = next(d for d in store.raw_actual() if d.get("source_id") == "1")
+    assert vinculado["pvp"] == 100.0
+    assert not any(d.get("source_id") == "2" for d in store.raw_actual())
+
+
 def test_ingest_proveedores_primera_vez_todo_va_a_revision():
     r = odoo_ingest.ingest_proveedores(actor="test")
-    assert r["nuevos_para_revisar"] >= 1
+    assert r["actualizados"] == 0
+    assert r["nuevos_para_revisar"] == 2
     assert r["batch_id"] is not None
 
 
@@ -139,7 +157,8 @@ def test_ingest_proveedores_segunda_vez_actualiza_sin_batch():
 
 def test_ingest_clientes_primera_vez_todo_va_a_revision():
     r = odoo_ingest.ingest_clientes(actor="test")
-    assert r["nuevos_para_revisar"] >= 1
+    assert r["actualizados"] == 0
+    assert r["nuevos_para_revisar"] == 2
     assert r["batch_id"] is not None
 
 
