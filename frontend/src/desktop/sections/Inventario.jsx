@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Treemap, Tooltip } from "recharts";
-import { Search, Sparkles, Lock, X } from "lucide-react";
+import { Search, Sparkles, Lock, X, Plus, Pencil } from "lucide-react";
+import { toast } from "../../lib/toastStore";
 import AngelaMark from "../../components/AngelaMark";
 import AngelaSays from "../../components/AngelaSays";
 import { useCountUp } from "../../lib/useCountUp";
@@ -56,6 +57,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
   const [grupoSel, setGrupoSel] = useState("fantasmas");
   const [detalle, setDetalle] = useState(null); // producto seleccionado (modal)
   const [tablaFiltro, setTablaFiltro] = useState(null); // filtro pedido desde afuera
+  const [reloadKey, setReloadKey] = useState(0); // fuerza refetch de Panorama tras crear/editar un producto
   const vista = useVista();
   const foco = useFoco();
 
@@ -112,7 +114,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       </div>
 
       {sub === "foco" && <FocoView foco={foco} onSelect={setDetalle} onPreguntar={onPreguntar} onSalir={() => { focoStore.clear(); setSub("panorama"); }} />}
-      {sub === "panorama" && <Panorama data={data} onSelect={setDetalle} onNavegar={onNavegar} tablaFiltro={tablaFiltro} />}
+      {sub === "panorama" && <Panorama key={reloadKey} data={data} onSelect={setDetalle} onNavegar={onNavegar} tablaFiltro={tablaFiltro} />}
       {sub === "margenes" && <Margenes onPreguntar={onPreguntar} />}
       {sub === "reponer" && <Reponer onPreguntar={onPreguntar} />}
       {sub === "problemas" && (
@@ -120,7 +122,10 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       )}
       {pestActiva && <PestanaCustom pestana={pestActiva} onSelect={setDetalle} />}
 
-      {detalle && <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar} />}
+      {detalle && (
+        <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar}
+          onGuardado={() => { setDetalle(null); setReloadKey((k) => k + 1); }} />
+      )}
     </div>
   );
 }
@@ -140,11 +145,11 @@ function BalanzaPropuesta({ onVer }) {
         </p>
         <div className="mt-3 flex gap-2">
           <button onClick={() => { vistaStore.aplicar({ balanzaEsquemaOk: true }); onVer(); }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
+            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema">
             {t("inventario.balanza_prop_si")}
           </button>
           <button onClick={() => vistaStore.aplicar({ balanzaEsquemaOk: true })}
-            className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+            className="rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta-suave">
             {t("inventario.balanza_prop_no")}
           </button>
         </div>
@@ -169,13 +174,13 @@ function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
       <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-rojo/[0.04] p-4">
         <AngelaMark size={28} />
         <p className="flex-1 text-[0.92rem] text-tinta"><b>{num(filt.length)}</b> {t("inventario.foco_senalados")} {foco.titulo}</p>
-        <button onClick={() => onPreguntar?.(`¿cómo corrijo ${foco.titulo.toLowerCase()}?`)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.82rem] font-semibold text-crema">
+        <button onClick={() => onPreguntar?.(`¿cómo corrijo ${foco.titulo.toLowerCase()}?`)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema">
           <Sparkles size={14} /> {t("inventario.arreglar_angela")}
         </button>
-        <button onClick={onSalir} className="rounded-full border border-linea px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta-suave hover:text-tinta">{t("inventario.salir")}</button>
+        <button onClick={onSalir} className="rounded-full border border-linea px-3.5 py-1.5 text-[0.88rem] font-semibold text-tinta-suave hover:text-tinta">{t("inventario.salir")}</button>
       </div>
       <div className="overflow-x-auto rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
-        <table className="w-full text-[0.86rem]">
+        <table className="w-full text-[0.88rem]">
           <thead>
             <tr className="border-b border-linea text-left text-tinta-suave">
               <th className="px-4 py-2.5 font-semibold">{t("inventario.col_producto")}</th>
@@ -217,7 +222,7 @@ function PestanaCustom({ pestana, onSelect }) {
         {t("inventario.pestana_custom_1")} <b>{num(filt.length)}</b> {t("inventario.pestana_custom_2")}
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
-        <table className="w-full text-[0.86rem]">
+        <table className="w-full text-[0.88rem]">
           <thead>
             <tr className="border-b border-linea text-left text-tinta-suave">
               <th className="px-4 py-2.5 font-semibold">{t("inventario.col_producto")}</th>
@@ -277,7 +282,7 @@ function Panorama({ data, onSelect, onNavegar, tablaFiltro }) {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-hielo/20 bg-hielo-claro p-6 sombra-alta lg:col-span-2">
           <div className="relative">
-            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-hielo">{t("inventario.plata_parada_mercaderia")}</p>
+            <p className="text-[0.88rem] font-semibold uppercase tracking-[0.16em] text-hielo">{t("inventario.plata_parada_mercaderia")}</p>
             <p className="plata mt-2 text-5xl font-medium leading-none text-hielo">{peso(contado)}</p>
             <p className="mt-3 max-w-md text-[0.92rem] leading-snug text-tinta">
               {t("inventario.plata_parada_detalle")}
@@ -285,7 +290,7 @@ function Panorama({ data, onSelect, onNavegar, tablaFiltro }) {
           </div>
         </div>
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-papel">
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.plata_por_cat")}</p>
+          <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.plata_por_cat")}</p>
           <div className="mt-3 space-y-1.5">
             {plataCat.length === 0 && <div className="skeleton h-36 w-full" />}
             {plataCat.map((p) => {
@@ -312,7 +317,7 @@ function Panorama({ data, onSelect, onNavegar, tablaFiltro }) {
               <div className={`mb-2 h-1.5 w-8 rounded-full ${ind.urgente ? "bg-rojo" : "bg-oro"}`} />
               <p className="plata text-3xl font-medium leading-none">{num(ind.valor)}</p>
               <p className="mt-1.5 font-display text-[0.92rem] font-bold leading-tight">{t(def.titulo)}</p>
-              <p className="mt-0.5 text-[0.78rem] text-tinta-suave">{ind.sub}</p>
+              <p className="mt-0.5 text-[0.88rem] text-tinta-suave">{ind.sub}</p>
             </div>
           );
         })}
@@ -369,8 +374,8 @@ function TreemapPlata({ data, onSelect }) {
 
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.donde_plata")}</p>
-      <p className="mt-0.5 text-[0.84rem] text-tinta-suave">{t("inventario.donde_plata_detalle")}</p>
+      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.donde_plata")}</p>
+      <p className="mt-0.5 text-[0.88rem] text-tinta-suave">{t("inventario.donde_plata_detalle")}</p>
       {total > 0 && sumaTop > 0 && (
         <p className="mt-0.5 text-[0.8rem] text-tinta-suave">
           {t("inventario.donde_plata_top", { n: num(top.length), pct, monto: pesoCorto(sumaTop), total: pesoCorto(total) })}
@@ -395,7 +400,7 @@ function TreemapTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const n = payload[0].payload;
   return (
-    <div className="rounded-xl border border-linea bg-crema p-3 text-[0.82rem] sombra-alta">
+    <div className="rounded-xl border border-linea bg-crema p-3 text-[0.88rem] sombra-alta">
       <p className="font-semibold text-tinta">{n.name}</p>
       {!n.resto && (
         <div className="mt-1 space-y-0.5 text-tinta-suave">
@@ -446,19 +451,19 @@ function SaludCatalogo({ data }) {
   ];
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.salud_titulo")}</p>
+      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.salud_titulo")}</p>
       <div className="mt-3 flex h-4 overflow-hidden rounded-full">
         {segs.map((s) => <div key={s.label} style={{ width: `${(s.value / total) * 100}%`, background: s.color }} title={`${s.label}: ${s.value}`} />)}
       </div>
       <div className="mt-3 space-y-1">
         {segs.map((s) => (
-          <div key={s.label} className="flex items-center justify-between text-[0.82rem]">
+          <div key={s.label} className="flex items-center justify-between text-[0.88rem]">
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />{s.label}</span>
             <span className="plata font-medium">{num(s.value)}</span>
           </div>
         ))}
       </div>
-      <p className="mt-2 text-[0.76rem] text-tinta-suave">{t("inventario.salud_ademas", { n: num(alertas.negativos.cantidad), m: num(alertas.balanza.cantidad) })}</p>
+      <p className="mt-2 text-[0.88rem] text-tinta-suave">{t("inventario.salud_ademas", { n: num(alertas.negativos.cantidad), m: num(alertas.balanza.cantidad) })}</p>
     </div>
   );
 }
@@ -474,7 +479,7 @@ function ConcentracionTop10({ data }) {
   const concentrada = pct >= 25;
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.conc_titulo")}</p>
+      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.conc_titulo")}</p>
       <p className="mt-2 text-[0.9rem] text-tinta">
         {concentrada ? (
           <>
@@ -489,7 +494,7 @@ function ConcentracionTop10({ data }) {
       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-papel-hondo">
         <div style={{ width: `${pct}%` }} className="bg-hielo" />
       </div>
-      <div className="mt-1.5 flex justify-between text-[0.74rem] text-tinta-suave">
+      <div className="mt-1.5 flex justify-between text-[0.88rem] text-tinta-suave">
         <span>{t("inventario.conc_top", { monto: pesoCorto(sumaTop) })}</span><span>{t("inventario.conc_resto", { monto: pesoCorto(total - sumaTop) })}</span>
       </div>
     </div>
@@ -506,10 +511,12 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
   const [errSel, setErrSel] = useState("todos"); // sub-filtro dentro de "Datos a corregir"
+  const [crearAbierto, setCrearAbierto] = useState(false);
   const vista = useVista();
   const margen = (p) => (p.pvp && p.costo_iva ? Math.round(((p.pvp - p.costo_iva) / p.pvp) * 100) : null);
 
-  useEffect(() => { api.articulos().then((r) => setItems(r.items)).catch(() => {}); }, []);
+  const cargarItems = () => api.articulos().then((r) => setItems(r.items)).catch(() => {});
+  useEffect(() => { cargarItems(); }, []);
   // Navegación guiada ("mostrame las balanzas"): activa el filtro desde afuera.
   useEffect(() => { if (filtroInicial) setFiltro(filtroInicial); }, [filtroInicial]);
 
@@ -583,13 +590,21 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
         <div className="relative ml-auto">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-tinta-suave" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("inventario.tabla_buscar")}
-            className="w-64 rounded-full border border-linea bg-papel py-2 pl-9 pr-3 text-[0.86rem] outline-none focus:border-tinta/40" />
+            className="w-64 rounded-full border border-linea bg-papel py-2 pl-9 pr-3 text-[0.88rem] outline-none focus:border-tinta/40" />
         </div>
+        <button onClick={() => setCrearAbierto(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-2 text-[0.86rem] font-semibold text-crema">
+          <Plus size={15} /> {t("inventario.nuevo_producto")}
+        </button>
       </div>
+      {crearAbierto && (
+        <ModalArticulo onClose={() => setCrearAbierto(false)}
+          onGuardado={() => { setCrearAbierto(false); cargarItems(); }} />
+      )}
       <div className="flex flex-wrap gap-2 border-b border-linea px-4 py-2.5">
         {FILTROS.map((f) => (
           <button key={f.id} onClick={() => { setFiltro(f.id); setErrSel("todos"); }}
-            className={`rounded-full px-3 py-1 text-[0.78rem] font-semibold ${
+            className={`rounded-full px-3 py-1 text-[0.88rem] font-semibold ${
               filtro === f.id
                 ? f.id === "a_corregir" ? "bg-rojo text-crema" : "bg-tinta text-crema"
                 : f.id === "a_corregir" && nACorregir > 0
@@ -598,7 +613,7 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
           </button>
         ))}
         {pinUmbral != null && (
-          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-oro/15 px-3 py-1 text-[0.76rem] font-semibold text-oro-tinta">
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-oro/15 px-3 py-1 text-[0.88rem] font-semibold text-oro-tinta">
             {t("inventario.pin_margen", { umbral: pinUmbral, n: num(nPineados) })}
           </span>
         )}
@@ -607,21 +622,21 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
           Siguen apareciendo en "Todos" en rojo: acá se concentran para resolverlos. */}
       {filtro === "a_corregir" && (
         <div className="border-b border-linea bg-rojo/[0.03] px-4 py-3">
-          <p className="text-[0.84rem] leading-snug text-tinta">{t("inventario.corregir_intro")}</p>
+          <p className="text-[0.88rem] leading-snug text-tinta">{t("inventario.corregir_intro")}</p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <button onClick={() => setErrSel("todos")}
-              className={`rounded-full px-3 py-1 text-[0.76rem] font-semibold ${errSel === "todos" ? "bg-rojo text-crema" : "border border-rojo/30 text-rojo"}`}>
+              className={`rounded-full px-3 py-1 text-[0.88rem] font-semibold ${errSel === "todos" ? "bg-rojo text-crema" : "border border-rojo/30 text-rojo"}`}>
               {t("inventario.corregir_todos", { n: num(nACorregir) })}
             </button>
             {ERRORES_DATO.filter((e) => porError[e]).map((e) => (
               <button key={e} onClick={() => setErrSel(e)}
-                className={`rounded-full px-3 py-1 text-[0.76rem] font-semibold ${errSel === e ? "bg-rojo text-crema" : "border border-rojo/30 text-rojo"}`}>
+                className={`rounded-full px-3 py-1 text-[0.88rem] font-semibold ${errSel === e ? "bg-rojo text-crema" : "border border-rojo/30 text-rojo"}`}>
                 {t(ESTADO_CAL[e].lk)} · {num(porError[e])}
               </button>
             ))}
             {onNavegar && (
               <button onClick={() => onNavegar("saneamiento", errSel === "todos" ? undefined : errSel)}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.78rem] font-semibold text-crema">
+                className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema">
                 <AngelaMark size={14} /> {t("inventario.corregir_resolver")}
               </button>
             )}
@@ -642,16 +657,16 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
           </div>
           <p className="mt-2.5 text-[0.8rem] leading-snug text-tinta-suave">{t("inventario.bal_tres_cosas")}</p>
           {kgStats.negativos > 0 && (
-            <p className="mt-2.5 rounded-xl border border-rojo/20 bg-rojo/[0.04] px-3 py-2 text-[0.82rem] text-tinta">
+            <p className="mt-2.5 rounded-xl border border-rojo/20 bg-rojo/[0.04] px-3 py-2 text-[0.88rem] text-tinta">
               ⚠️ {num(kgStats.negativos)} {t("inventario.bal_neg_1")} <b>{t("inventario.bal_neg_2")}</b> {t("inventario.bal_neg_3")} <b>{t("inventario.bal_neg_4")}</b>.
             </p>
           )}
         </div>
       )}
       <div className="max-h-[26rem] overflow-y-auto">
-        <table className="w-full text-left text-[0.86rem]">
+        <table className="w-full text-left text-[0.88rem]">
           <thead className="sticky top-0 bg-crema">
-            <tr className="border-b border-linea text-[0.72rem] uppercase tracking-wide text-tinta-suave">
+            <tr className="border-b border-linea text-[0.88rem] uppercase tracking-wide text-tinta-suave">
               <th className="px-4 py-2.5 font-semibold">{t("inventario.col_producto")}</th>
               <th className="px-4 py-2.5 text-right font-semibold">{t("inventario.col_stock")}</th>
               {!vista.invOcultarCosto && <th className="px-4 py-2.5 text-right font-semibold">{t("inventario.col_costo_iva")}</th>}
@@ -677,15 +692,15 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
                     <p className={`font-medium ${problema ? "text-rojo-hondo" : ""}`}>
                       {p.descripcion}
                       {p.unidad_pricing === "kg" && (
-                        <span className="ml-2 rounded-full bg-hielo/15 px-1.5 py-0.5 text-[0.64rem] font-semibold text-hielo align-middle">{t("inventario.por_kg")}</span>
+                        <span className="ml-2 rounded-full bg-hielo/15 px-1.5 py-0.5 text-[0.88rem] font-semibold text-hielo align-middle">{t("inventario.por_kg")}</span>
                       )}
                     </p>
-                    <p className="text-[0.72rem] text-tinta-suave">{problema ? t("inventario.cod_toca", { codigo: p.codigo }) : t("inventario.cod", { codigo: p.codigo })}</p>
+                    <p className="text-[0.88rem] text-tinta-suave">{problema ? t("inventario.cod_toca", { codigo: p.codigo }) : t("inventario.cod", { codigo: p.codigo })}</p>
                   </td>
                   <td className={`plata px-4 py-2 text-right ${p.stock < 0 ? "font-semibold text-rojo" : ""}`}>
                     {num(p.stock)}{p.unidad_pricing === "kg" ? " kg" : ""}
                     {p.unidades != null && (
-                      <span className="block text-[0.72rem] font-normal text-tinta-suave">
+                      <span className="block text-[0.88rem] font-normal text-tinta-suave">
                         {t("inventario.n_piezas", { n: num(p.unidades) })}
                       </span>
                     )}
@@ -696,7 +711,7 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
                     <td className="plata px-4 py-2 text-right text-tinta-suave">
                       {p.precio_por_unidad ? peso(p.precio_por_unidad) : "—"}
                       {p.peso_por_unidad != null && (
-                        <span className="block text-[0.72rem] font-normal text-tinta-suave/80">
+                        <span className="block text-[0.88rem] font-normal text-tinta-suave/80">
                           {t("inventario.pieza_de", { kg: num(p.peso_por_unidad) })}
                         </span>
                       )}
@@ -704,7 +719,7 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
                   )}
                   {conMargen && <td className={`plata px-4 py-2 text-right ${pineado(p) ? "font-semibold text-oro-tinta" : "text-tinta-suave"}`}>{margen(p) != null ? `${margen(p)}%` : "—"}</td>}
                   <td className="plata px-4 py-2 text-right font-medium text-hielo">{p.inmovilizado ? peso(p.inmovilizado) : "—"}</td>
-                  <td className="px-4 py-2"><span className={`rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${e.cls}`}>{t(e.lk)}</span></td>
+                  <td className="px-4 py-2"><span className={`rounded-full px-2 py-0.5 text-[0.88rem] font-semibold ${e.cls}`}>{t(e.lk)}</span></td>
                 </tr>
               );
             })}
@@ -728,15 +743,15 @@ function RotacionPlaceholder({ data }) {
       <div className="rounded-[var(--radius-card)] border border-salvia/30 bg-salvia/[0.05] p-6">
         <p className="font-display text-[1.05rem] font-bold">{t("inventario.rot_titulo")}</p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div><p className="text-[0.74rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_parado_total")}</p>
+          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_parado_total")}</p>
             <p className="plata text-2xl font-medium text-hielo">{pesoCorto(rot.inmovilizado_total)}</p></div>
-          <div><p className="text-[0.74rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_excedente")}</p>
+          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_excedente")}</p>
             <p className="plata text-2xl font-medium text-salvia">{pesoCorto(rot.plata_excedente)}</p></div>
-          <div><p className="text-[0.74rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_necesario")}</p>
+          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_necesario")}</p>
             <p className="plata text-2xl font-medium">{pesoCorto(rot.plata_necesaria)}</p></div>
         </div>
         {v.quiebre?.cantidad > 0 && (
-          <p className="mt-3 text-[0.86rem] text-rojo">
+          <p className="mt-3 text-[0.88rem] text-rojo">
             {t("inventario.rot_quiebre", { n: v.quiebre.cantidad })}
           </p>
         )}
@@ -766,7 +781,7 @@ function RotacionPlaceholder({ data }) {
 
 function Leyenda({ color, label, value }) {
   return (
-    <div className="flex items-center justify-between text-[0.85rem]">
+    <div className="flex items-center justify-between text-[0.88rem]">
       <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />{label}</span>
       <span className="plata font-medium">{num(value)}</span>
     </div>
@@ -774,21 +789,32 @@ function Leyenda({ color, label, value }) {
 }
 
 /* Modal de detalle de un producto */
-function ProductoDetalle({ p, onClose, onPreguntar }) {
+function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
   const t = useT();
+  const [editando, setEditando] = useState(false);
   const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
+
+  if (editando) {
+    return <ModalArticulo inicial={p} onClose={() => setEditando(false)} onGuardado={onGuardado} />;
+  }
+
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-tinta/40 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-display text-[1.2rem] font-bold leading-tight">{p.descripcion || p.name}</p>
-            <p className="text-[0.78rem] text-tinta-suave">{t("inventario.det_codigo", { codigo: p.codigo })}</p>
+            <p className="text-[0.88rem] text-tinta-suave">{t("inventario.det_codigo", { codigo: p.codigo })}</p>
           </div>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <div className="flex shrink-0 items-center gap-3">
+            {onGuardado && (
+              <button onClick={() => setEditando(true)} className="text-tinta-suave hover:text-tinta"><Pencil size={18} /></button>
+            )}
+            <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          </div>
         </div>
         {p.estado_calidad && (
-          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>
+          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[0.88rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>
         )}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Dato label={t("inventario.col_stock")} valor={`${num(p.stock)}${p.unidad_pricing === "kg" ? " kg" : ""}`} alerta={p.stock < 0} />
@@ -809,7 +835,7 @@ function ProductoDetalle({ p, onClose, onPreguntar }) {
         </div>
         <button
           onClick={() => { onClose(); onPreguntar?.(`Contame sobre el producto ${p.descripcion || p.name} (código ${p.codigo})`); }}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema"
+          className="mt-5 inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema"
         >
           <AngelaMark size={18} /> {t("inventario.det_preguntar")}
         </button>
@@ -818,10 +844,87 @@ function ProductoDetalle({ p, onClose, onPreguntar }) {
   );
 }
 
+const CAMPOS_ARTICULO = [
+  ["codigo", "inventario.form_codigo", "number"],
+  ["descripcion", "inventario.form_descripcion", "text"],
+  ["tipo", "inventario.form_categoria", "text"],
+  ["proveedor", "inventario.form_proveedor", "text"],
+  ["stock", "inventario.form_stock", "number"],
+  ["costo_iva", "inventario.form_costo", "number"],
+  ["pvp", "inventario.form_pvp", "number"],
+];
+
+function ModalArticulo({ inicial, onClose, onGuardado }) {
+  const t = useT();
+  const [form, setForm] = useState({
+    codigo: inicial?.codigo ?? "", descripcion: inicial?.descripcion || "",
+    tipo: inicial?.tipo || "", proveedor: inicial?.proveedor || "",
+    stock: inicial?.stock ?? "", costo_iva: inicial?.costo_iva ?? "", pvp: inicial?.pvp ?? "",
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const guardar = async () => {
+    setGuardando(true);
+    setError(null);
+    const payload = {
+      ...form,
+      codigo: Number(form.codigo),
+      stock: form.stock === "" ? 0 : Number(form.stock),
+      costo_iva: form.costo_iva === "" ? null : Number(form.costo_iva),
+      pvp: form.pvp === "" ? null : Number(form.pvp),
+    };
+    try {
+      if (inicial) {
+        const { codigo, ...cambios } = payload;
+        await api.articuloActualizar(inicial.codigo, cambios);
+      } else {
+        await api.articuloCrear(payload);
+      }
+      toast(t(inicial ? "inventario.producto_actualizado" : "inventario.producto_creado"));
+      onGuardado();
+    } catch (e) {
+      setError(e.criollo || t("inventario.form_error"));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <h2 className="font-display text-xl font-bold">{t(inicial ? "inventario.form_editar" : "inventario.nuevo_producto")}</h2>
+          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+        </div>
+        {CAMPOS_ARTICULO.map(([campo, lk, tipo]) => (
+          <div key={campo}>
+            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <input type={tipo} value={form[campo]} disabled={campo === "codigo" && !!inicial}
+              onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
+              autoFocus={campo === "codigo"}
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40 disabled:opacity-60" />
+          </div>
+        ))}
+        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+            {t("inventario.form_cancelar")}
+          </button>
+          <button onClick={guardar} disabled={!form.codigo || !form.descripcion.trim() || guardando}
+            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            {t("inventario.form_guardar")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Dato({ label, valor, alerta }) {
   return (
     <div className="rounded-xl border border-linea bg-papel p-3">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-tinta-suave">{label}</p>
+      <p className="text-[0.88rem] font-semibold uppercase tracking-wide text-tinta-suave">{label}</p>
       <p className={`plata mt-0.5 text-[1.05rem] font-medium ${alerta ? "text-rojo" : "text-tinta"}`}>{valor}</p>
     </div>
   );
@@ -848,7 +951,7 @@ function Problemas({ data, grupoSel, setGrupoSel, highlight }) {
           const pulse = highlight === g;
           return (
             <button key={g} onClick={() => setGrupoSel(g)}
-              className={`rounded-full px-4 py-2 text-[0.85rem] font-semibold transition-all ${activo ? "bg-tinta text-crema" : "border border-linea bg-crema text-tinta-suave hover:text-tinta"} ${pulse && !activo ? "ring-2 ring-violeta ring-offset-2 ring-offset-papel" : ""}`}>
+              className={`rounded-full px-4 py-2 text-[0.88rem] font-semibold transition-all ${activo ? "bg-tinta text-crema" : "border border-linea bg-crema text-tinta-suave hover:text-tinta"} ${pulse && !activo ? "ring-2 ring-violeta ring-offset-2 ring-offset-papel" : ""}`}>
               {t(d.titulo)} · {num(data.alertas[g].cantidad)}
             </button>
           );
@@ -861,7 +964,7 @@ function Problemas({ data, grupoSel, setGrupoSel, highlight }) {
         ) : (
           <table className="w-full text-left text-[0.88rem]">
             <thead>
-              <tr className="border-b border-linea text-[0.74rem] uppercase tracking-wide text-tinta-suave">
+              <tr className="border-b border-linea text-[0.88rem] uppercase tracking-wide text-tinta-suave">
                 <th className="px-4 py-3 font-semibold">{t("inventario.col_producto")}</th>
                 <th className="px-4 py-3 text-right font-semibold">{grupoSel === "negativos" || grupoSel === "fantasmas" ? t("inventario.col_stock") : grupoSel === "balanza" ? t("inventario.col_peso_teorico") : t("inventario.plata_parada")}</th>
               </tr>
@@ -869,7 +972,7 @@ function Problemas({ data, grupoSel, setGrupoSel, highlight }) {
             <tbody>
               {items.map((p, i) => (
                 <tr key={`${p.codigo}-${i}`} className="border-b border-linea/70 last:border-0 hover:bg-papel-hondo/30">
-                  <td className="px-4 py-2.5"><p className="font-medium">{p.descripcion}</p><p className="text-[0.74rem] text-tinta-suave">{t("inventario.cod", { codigo: p.codigo })}</p></td>
+                  <td className="px-4 py-2.5"><p className="font-medium">{p.descripcion}</p><p className="text-[0.88rem] text-tinta-suave">{t("inventario.cod", { codigo: p.codigo })}</p></td>
                   <td className={`plata px-4 py-2.5 text-right font-medium ${grupoSel === "negativos" ? "text-rojo" : "text-tinta"}`}>
                     {grupoSel === "balanza" ? p.valor_peso : grupoSel === "sin_pvp" ? pesoCorto(p.inmovilizado) : num(p.stock)}
                   </td>

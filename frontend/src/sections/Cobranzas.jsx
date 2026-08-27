@@ -32,7 +32,7 @@ import { useT } from "../lib/i18n";
 //                   hay sin tocar, quién está trabajando cada cuenta.
 // El orden, los montos y la liquidez son los MISMOS números para los dos: el
 // backend calcula una vez (core/cobranza.py) y acá sólo cambia qué se destaca.
-export default function Cobranzas({ onPreguntar, datos, user }) {
+export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
   const t = useT();
   const hayCuentas = !!datos?.cuentas;
   const esDueno = !!user?.es_admin;
@@ -86,7 +86,7 @@ export default function Cobranzas({ onPreguntar, datos, user }) {
                 abierto={abierto === c.id}
                 onAbrir={() => setAbierto(abierto === c.id ? null : c.id)}
                 onHecho={() => { setAbierto(null); recargar(); }}
-                onPreguntar={onPreguntar} />
+                onPreguntar={onPreguntar} onNavegar={onNavegar} />
             ))}
 
             <p className="border-t border-linea px-4 py-2.5 text-[0.76rem] leading-snug text-tinta-suave">
@@ -218,7 +218,7 @@ function Panorama({ p, t }) {
   );
 }
 
-function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar }) {
+function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNavegar }) {
   const [prop, setProp] = useState(null);
   const [texto, setTexto] = useState("");
   const [editando, setEditando] = useState(false);
@@ -245,11 +245,24 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar }) {
 
   return (
     <div className="border-b border-linea/60 last:border-0">
-      <button onClick={onAbrir}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-papel-hondo/40">
+      {/* div en vez de button: "ver cuenta" necesita ser un botón real y
+          anidado, y HTML no permite <button> dentro de <button>. */}
+      <div role="button" tabIndex={0} onClick={onAbrir}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(); } }}
+        className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-papel-hondo/40">
         <span className="plata w-5 shrink-0 text-[0.9rem] font-semibold text-tinta-suave">{pos}</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.95rem] font-semibold">{c.cliente}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="block text-[0.95rem] font-semibold">{c.cliente}</span>
+            {onNavegar && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onNavegar("cuentas", `cliente-${c.id}`); }}
+                className="shrink-0 text-[0.74rem] font-semibold text-hielo hover:underline"
+              >
+                {t("cobranzas.ver_cuenta")}
+              </button>
+            )}
+          </span>
           {/* el par que produce el orden, dicho como lo diría una persona */}
           <span className="block text-[0.8rem] text-tinta-suave">
             {t("cobranzas.fuera_de_lo_suyo", {
@@ -268,7 +281,7 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar }) {
           {t(`cobranzas.estado_${est}`)}
         </span>
         <span className="plata w-32 shrink-0 text-right text-[0.98rem] font-medium">{peso(c.saldo)}</span>
-      </button>
+      </div>
 
       {abierto && (
         <div className="border-t border-linea/60 bg-papel-hondo/30 px-4 py-4">

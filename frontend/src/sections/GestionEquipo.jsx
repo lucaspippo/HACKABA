@@ -464,8 +464,11 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
 // tres veces (el tablero, "lo que pasó" y la matriz) y "Ver como" era una cuarta
 // lista. Ahora: "Equipo" = UNA lista, con todo lo de cada persona al expandir
 // (incluido Ver como); "Permisos" = la matriz + los pedidos que la alimentan.
+// "Objetivos" es su propia pestaña, separada del roster: propuestas y
+// tablero no compiten con la lista de gente por la misma pantalla.
 const TABS = [
   { id: "equipo", lk: "equipo.tab_equipo" },
+  { id: "objetivos", lk: "equipo.tab_objetivos" },
   { id: "permisos", lk: "equipo.tab_permisos" },
 ];
 
@@ -947,6 +950,11 @@ export default function GestionEquipo({ data, user, highlight }) {
                 {tb.id === "permisos" && pendientes > 0 && (
                   <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-[0.66rem] font-bold text-crema">{pendientes}</span>
                 )}
+                {tb.id === "objetivos" && propuestas.filter((p) => !cancelados[p.id]).length > 0 && (
+                  <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-[0.66rem] font-bold text-crema">
+                    {propuestas.filter((p) => !cancelados[p.id]).length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -982,11 +990,11 @@ export default function GestionEquipo({ data, user, highlight }) {
               onVerPerfil={(u) => cambiarA(u, t)} />
           )}
 
-          {/* P36·E4 — los objetivos que Ángela mide sola (el dueño ve todos) */}
-          {tab === "equipo" && <ObjetivosPanel />}
-
-          {tab === "equipo" && (
+          {tab === "objetivos" && (
             <>
+              {/* P36·E4 — los objetivos que Ángela mide sola (el dueño ve todos) */}
+              <ObjetivosPanel />
+
               {/* P41·3.4 — los "heads-up" de Ángela, AGRUPADOS. Antes eran 3
                   tarjetas grandes apiladas que se leían como spam. Ahora es UN
                   bloque con una fila compacta por aviso: quién, qué le diría, y
@@ -1033,13 +1041,7 @@ export default function GestionEquipo({ data, user, highlight }) {
                 </section>
               )}
 
-              {/* Objetivos y recordatorios ANTES de la lista de gente: primero
-                  qué está pasando, después quién es quién (pedido de Lucas). */}
               <TableroEquipo />
-
-              {/* P41·3.1 — acá vivía la TERCERA lista de las mismas 13 personas
-                  (PerfilCard). Se fue: la descripción "en sus palabras" y su
-                  edición se mudaron adentro de cada fila de la lista única. */}
 
               <AngelaSays>
                 {t("equipo.angela_admin")}

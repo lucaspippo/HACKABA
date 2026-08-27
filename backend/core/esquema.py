@@ -195,6 +195,16 @@ def crear_apartado(tipo: str, filas: list[dict]) -> dict:
     return {"tipo": tipo, "total": len(data[tipo]["filas"]), "nuevas": len(filas)}
 
 
+def reemplazar_filas(tipo: str, filas: list[dict]) -> None:
+    """Reemplaza TODAS las filas de un apartado (a diferencia de crear_apartado,
+    que sólo agrega). Lo usan los CRUD reales (ubicaciones, proveedores, lotes):
+    leen con `filas(tipo)`, mutan la lista en Python (agregar/editar/borrar por
+    id) y la vuelven a guardar entera acá — mismo patrón que store.guardar()."""
+    data = _load()
+    data[tipo] = {"nombre": TIPOS.get(tipo, {}).get("nombre", tipo), "filas": filas}
+    _save(data)
+
+
 def validar_referencias_producto(filas: list[dict]) -> dict:
     """Integridad referencial: cada fila debe referenciar un producto que exista
     (por código o por nombre). Las huérfanas se marcan (no se integran ciegas).

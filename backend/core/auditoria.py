@@ -68,6 +68,21 @@ ACCIONES: dict[str, dict] = {
     "crear_apartado":       {"clase": "datos", "gate": "sistema"},
     # --- stock y piso --------------------------------------------------------
     "preparar_orden_compra": {"clase": "stock", "gate": "aprobacion"},
+    # El dueño/staff da de alta o edita a mano, sin pasar por Ángela — gate
+    # "propia" como reportar_faltante/marcar_conteo.
+    "crear_ubicacion":    {"clase": "datos", "gate": "propia"},
+    "editar_ubicacion":   {"clase": "datos", "gate": "propia"},
+    "eliminar_ubicacion": {"clase": "datos", "gate": "propia"},
+    "crear_proveedor":    {"clase": "datos", "gate": "propia"},
+    "editar_proveedor":   {"clase": "datos", "gate": "propia"},
+    "eliminar_proveedor": {"clase": "datos", "gate": "propia"},
+    "crear_lote":         {"clase": "stock", "gate": "propia"},
+    "editar_lote":        {"clase": "stock", "gate": "propia"},
+    "eliminar_lote":      {"clase": "stock", "gate": "propia"},
+    "crear_articulo":     {"clase": "datos", "gate": "propia"},
+    "editar_articulo":    {"clase": "datos", "gate": "propia"},
+    "crear_orden_compra":            {"clase": "stock", "gate": "propia"},
+    "cambiar_estado_orden_compra":   {"clase": "stock", "gate": "propia"},
     "reportar_faltante":  {"clase": "stock", "gate": "propia"},
     "marcar_conteo":      {"clase": "stock", "gate": "propia"},
     "confirmar_entrega":  {"clase": "stock", "gate": "propia"},

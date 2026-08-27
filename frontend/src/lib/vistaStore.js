@@ -20,6 +20,7 @@ const DEFAULT = {
   widgets: {},            // { seccion: [ {id, tipo, datos_fuente, titulo} ] } — creados por Ángela
   pestanas: [],           // [ {id, nombre, filtro} ] — pestañas del inventario creadas por Ángela
   balanzaEsquemaOk: false, // el dueño aceptó gestionar las balanzas como categoría aparte
+  sidebarColapsado: false, // sidebar desktop en modo riel de íconos (solo local, no cruza dispositivo)
   // P19 — espejo local de las preferencias del server (fuente: memoria.json)
   sinTorta: false,         // no quiere gráficos de torta/donut
   margenPinUmbral: null,   // margen teórico < N% fijado arriba donde se listan márgenes

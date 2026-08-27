@@ -15,7 +15,11 @@ const SCORE = {
 };
 
 // Plan 6: cuentas corrientes de clientes deudores, con scoring e IA.
-export default function CuentasCorrientes({ onPreguntar }) {
+// Drill-through: cualquier pantalla que mencione un cliente (Cobranzas, el
+// mapa de negocio) puede mandar acá con highlight=`cliente-${id}` y el modal
+// de detalle se abre solo — el scroll/pulse ya lo hacía resaltarPorId via
+// data-nav-id; esto agrega la mitad que faltaba (abrir el modal).
+export default function CuentasCorrientes({ onPreguntar, highlight }) {
   const t = useT();
   const [clientes, setClientes] = useState(null);
   const [alertas, setAlertas] = useState({ cantidad: 0, impacto_pesos: 0 });
@@ -25,6 +29,13 @@ export default function CuentasCorrientes({ onPreguntar }) {
   useEffect(() => {
     api.cuentas().then((d) => { setClientes(d.clientes); setAlertas(d.alertas); }).catch(setError);
   }, []);
+
+  useEffect(() => {
+    if (!highlight?.startsWith("cliente-") || !clientes) return;
+    const id = highlight.slice("cliente-".length);
+    const c = clientes.find((x) => String(x.id) === id);
+    if (c) setSel(c);
+  }, [highlight, clientes]);
 
   if (!clientes) return <div className="pt-2"><Cargando error={error} /></div>;
 
