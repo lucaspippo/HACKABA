@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Boxes, Wallet, Banknote, Bell, Users, Upload, TrendingUp,
@@ -150,11 +151,31 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const inicial = vistaHerramienta
     ? (secciones.includes("panel") ? "panel" : (secciones[0] || "perfil"))
     : (fase?.foco && user.features.includes(fase.foco) ? fase.foco : (secciones[0] || "perfil"));
-  const [section, setSection] = useState(inicial);
+  // Ángela usa nombres "de dueño" para las secciones; acá los mapeamos a las keys reales
+  // del CATALOGO para que "te llevo al inicio" no sea un callejón sin salida (inicio≠panel).
+  const ALIAS_SECCION = {
+    inicio: "panel", home: "panel", principal: "panel",
+    "datos a corregir": "saneamiento", corregir: "saneamiento",
+    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
+    logistica: "deposito", reparto: "deposito", envios: "deposito",
+    // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
+    // Ángela, la campanita y cualquier link viejo.
+    gestion_equipo: "equipo", "gestion de equipo": "equipo",
+  };
+  // The active section lives in the URL (/:section) instead of a useState.
+  const navigate = useNavigate();
+  const { section: sectionParam } = useParams();
+  const resolvedSection = ALIAS_SECCION[sectionParam] || sectionParam;
+  const sectionIsValid = !!resolvedSection && !!CATALOGO[resolvedSection]
+    && (featuresEfectivas.includes(resolvedSection) || (resolvedSection === "panel" && vistaHerramienta));
+  // Rendered declaratively via <Navigate> below rather than an imperative
+  // useEffect + navigate(), which raced under StrictMode's double-effect.
+  const redirectTo = !sectionIsValid ? inicial : (resolvedSection !== sectionParam ? resolvedSection : null);
+  const section = sectionIsValid ? resolvedSection : inicial;
   // Acordeón exclusivo: un solo grupo abierto a la vez, sincronizado con la
   // sección activa (si Ángela o el command palette navegan a otro grupo, ese
   // pasa a ser el abierto).
-  const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(inicial));
+  const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(section));
   const [highlight, setHighlight] = useState(null);
   const [consultaAngela, setConsultaAngela] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -204,17 +225,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const clienteLogo = marca?.logo || null;
   const marcaResuelta = !!marca;
 
-  // Ángela usa nombres "de dueño" para las secciones; acá los mapeamos a las keys reales
-  // del CATALOGO para que "te llevo al inicio" no sea un callejón sin salida (inicio≠panel).
-  const ALIAS_SECCION = {
-    inicio: "panel", home: "panel", principal: "panel",
-    "datos a corregir": "saneamiento", corregir: "saneamiento",
-    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
-    logistica: "deposito", reparto: "deposito", envios: "deposito",
-    // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
-    // Ángela, la campanita y cualquier link viejo.
-    gestion_equipo: "equipo", "gestion de equipo": "equipo",
-  };
   // 'pendientes' no es una feature de rol: es transversal (aparece si hay datos en revisión).
   // El highlight se limpia y se re-setea con un tick de por medio: navegar dos
   // veces al MISMO ancla (mismo string de estado) también tiene que titilar (P15·E6).
@@ -234,7 +244,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     // se navega igual aunque no tenga esa feature (ver `secciones`, arriba).
     if (destino && (featuresEfectivas.includes(destino)
                     || (destino === "panel" && vistaHerramienta))) {
-      setSection(destino);
+      navigate(`/${destino}`);
       setHighlightRobusto(hl);
       return;
     }
@@ -284,6 +294,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     return resaltarPorId(highlight);
   }, [highlight, section]);
 
+  if (redirectTo) return <Navigate to={`/${redirectTo}`} replace />;
+
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-papel text-tinta">
       <Toasts />
@@ -332,7 +344,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 <ItemNav key={g.id} icon={Icon} activo={activo} colapsado={sidebarColapsado} badge={BADGES[g.id]}
                   dot={g.id === "documentos" && docNuevo}
                   label={t(g.id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk)}
-                  onClick={() => navegar(g.id, null)} />
+                  to={`/${g.id}`} onClick={() => navegar(g.id, null)} />
               );
             }
             const abierto = grupoAbierto === g.id;
@@ -341,7 +353,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               <div key={g.id}>
                 <ItemNav icon={g.icon} activo={abierto} colapsado={sidebarColapsado} badge={badgeGrupo}
                   label={t(g.lk)} chevron={!sidebarColapsado} chevronAbierto={abierto}
-                  onClick={() => clickGrupo(g)} />
+                  to={`/${g.ids[0]}`} onClick={() => clickGrupo(g)} />
                 <AnimatePresence initial={false}>
                   {abierto && !sidebarColapsado && (
                     <motion.div
@@ -353,7 +365,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                         const Icon = c.icon;
                         return (
                           <ItemNav key={id} icon={Icon} activo={section === id} colapsado={false} badge={BADGES[id]}
-                            dot={id === "documentos" && docNuevo} label={t(c.lk)} onClick={() => navegar(id, null)} />
+                            dot={id === "documentos" && docNuevo} label={t(c.lk)}
+                            to={`/${id}`} onClick={() => navegar(id, null)} />
                         );
                       })}
                     </motion.div>
@@ -548,7 +561,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
 // En modo riel (colapsado) esconde el label y el badge se reduce a un
 // puntito; un tooltip propio (no sólo `title`) lo compensa, porque en ese
 // modo no hay texto en pantalla que lo reemplace.
-function ItemNav({ icon: Icon, label, activo, colapsado, onClick, badge, dot, chevron, chevronAbierto }) {
+function ItemNav({ icon: Icon, label, activo, colapsado, to, onClick, badge, dot, chevron, chevronAbierto }) {
   // `position: fixed` (medido con getBoundingClientRect) en vez de un
   // `absolute` normal: el <nav> del sidebar tiene overflow-y-auto, y por regla
   // de CSS eso fuerza su overflow-x a "auto" también — cualquier tooltip
@@ -562,9 +575,16 @@ function ItemNav({ icon: Icon, label, activo, colapsado, onClick, badge, dot, ch
       onMouseEnter={() => colapsado && setRect(btnRef.current?.getBoundingClientRect())}
       onMouseLeave={() => setRect(null)}
     >
-      <button
+      <Link
         ref={btnRef}
-        onClick={onClick}
+        to={to}
+        // Real <a href> so right-click "open in new tab" works; modified
+        // clicks fall through to native browser handling.
+        onClick={(e) => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          onClick();
+        }}
         className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
           colapsado ? "justify-center px-2" : "px-3"
         } ${activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"}`}
@@ -587,7 +607,7 @@ function ItemNav({ icon: Icon, label, activo, colapsado, onClick, badge, dot, ch
             )}
           </>
         )}
-      </button>
+      </Link>
       {rect && (
         <span
           style={{ position: "fixed", left: rect.right + 8, top: rect.top + rect.height / 2, transform: "translateY(-50%)" }}

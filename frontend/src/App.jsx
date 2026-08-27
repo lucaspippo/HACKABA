@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Route, Routes } from "react-router-dom";
 import AngelaMark from "./components/AngelaMark";
 import Login from "./components/Login";
 import MobileApp from "./mobile/MobileApp";
@@ -143,10 +144,19 @@ export default function App() {
   // key por usuario: al cambiar de identidad ("View as" del demo, P9·E) el
   // árbol entero se rearma — features, secciones, chat de Ángela — CERO
   // arrastre del usuario anterior.
-  return isDesktop ? (
-    <DesktopApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
-  ) : (
-    <MobileApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
+  // The active section lives in the URL (/:section) — deep links,
+  // back/forward, and sharing a link to a specific screen work for free.
+  return (
+    <Routes>
+      <Route
+        path="/:section?"
+        element={isDesktop ? (
+          <DesktopApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
+        ) : (
+          <MobileApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
+        )}
+      />
+    </Routes>
   );
 }
 
