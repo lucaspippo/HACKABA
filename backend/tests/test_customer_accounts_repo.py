@@ -36,3 +36,16 @@ def test_add_movement_and_upsert_account(db_tenant):
     account = customer_accounts_repo.list_accounts(db_tenant)[0]
     assert account["saldo"] == 12_000_000
     assert len(account["movimientos"]) == 2
+
+
+def test_upsert_account_persiste_campos_de_contacto_y_source(db_tenant):
+    customer_accounts_repo.upsert_account(db_tenant, {
+        "id": "odoo-901", "nombre": "Cliente Odoo", "saldo": 0, "limite_credito": 0,
+        "plazo_dias": 30, "dias_sin_pagar": 0, "promedio_pago_dias": None,
+        "vat": "20-1-1", "city": "CABA", "phone": "11-0000", "email": "c@example.com",
+        "source": "odoo", "source_id": "901",
+    })
+    cuentas = customer_accounts_repo.list_accounts(db_tenant)
+    c = next(x for x in cuentas if x["id"] == "odoo-901")
+    assert c["vat"] == "20-1-1"
+    assert c["source"] == "odoo" and c["source_id"] == "901"

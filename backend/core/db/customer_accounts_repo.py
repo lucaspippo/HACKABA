@@ -4,7 +4,8 @@ from sqlalchemy import text
 
 from core.db.engine import tenant_connection
 
-_ACCOUNT_COLS = "id, name, balance, credit_limit, payment_term_days, days_overdue, average_payment_days"
+_ACCOUNT_COLS = ("id, name, balance, credit_limit, payment_term_days, days_overdue, "
+                  "average_payment_days, vat, city, phone, email, source, source_id")
 
 
 def list_accounts(tenant_id: str) -> list[dict]:
@@ -34,6 +35,12 @@ def list_accounts(tenant_id: str) -> list[dict]:
             "plazo_dias": a["payment_term_days"],
             "dias_sin_pagar": a["days_overdue"],
             "promedio_pago_dias": a["average_payment_days"],
+            "vat": a["vat"],
+            "city": a["city"],
+            "phone": a["phone"],
+            "email": a["email"],
+            "source": a["source"],
+            "source_id": a["source_id"],
             "movimientos": by_account.get(a["id"], []),
         }
         for a in accounts
@@ -45,12 +52,16 @@ def upsert_account(tenant_id: str, account: dict) -> None:
         conn.execute(
             text(
                 "INSERT INTO customer_accounts "
-                "(tenant_id, id, name, balance, credit_limit, payment_term_days, days_overdue, average_payment_days) "
-                "VALUES (:tid, :id, :name, :balance, :credit_limit, :payment_term_days, :days_overdue, :average_payment_days) "
+                "(tenant_id, id, name, balance, credit_limit, payment_term_days, days_overdue, "
+                "average_payment_days, vat, city, phone, email, source, source_id) "
+                "VALUES (:tid, :id, :name, :balance, :credit_limit, :payment_term_days, :days_overdue, "
+                ":average_payment_days, :vat, :city, :phone, :email, :source, :source_id) "
                 "ON CONFLICT (tenant_id, id) DO UPDATE SET "
                 "name = EXCLUDED.name, balance = EXCLUDED.balance, credit_limit = EXCLUDED.credit_limit, "
                 "payment_term_days = EXCLUDED.payment_term_days, days_overdue = EXCLUDED.days_overdue, "
-                "average_payment_days = EXCLUDED.average_payment_days"
+                "average_payment_days = EXCLUDED.average_payment_days, "
+                "vat = EXCLUDED.vat, city = EXCLUDED.city, phone = EXCLUDED.phone, "
+                "email = EXCLUDED.email, source = EXCLUDED.source, source_id = EXCLUDED.source_id"
             ),
             {
                 "tid": tenant_id,
@@ -61,6 +72,12 @@ def upsert_account(tenant_id: str, account: dict) -> None:
                 "payment_term_days": account.get("plazo_dias", 30),
                 "days_overdue": account.get("dias_sin_pagar", 0),
                 "average_payment_days": account.get("promedio_pago_dias"),
+                "vat": account.get("vat"),
+                "city": account.get("city"),
+                "phone": account.get("phone"),
+                "email": account.get("email"),
+                "source": account.get("source"),
+                "source_id": account.get("source_id"),
             },
         )
 
