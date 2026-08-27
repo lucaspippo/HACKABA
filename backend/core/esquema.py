@@ -206,6 +206,51 @@ def reemplazar_filas(tipo: str, filas: list[dict]) -> None:
     _save(data)
 
 
+def upsert_filas(tipo: str, filas: list[dict]) -> dict:
+    """Create-or-update rows of an apartado by (source, source_id).
+    Rows without provenance are appended (CSV path)."""
+    data = _load()
+    bucket = data.setdefault(
+        tipo, {"nombre": TIPOS.get(tipo, {}).get("nombre", tipo), "filas": []})
+    existentes = bucket["filas"]
+    por_source = {(f.get("source"), str(f.get("source_id"))): i
+                  for i, f in enumerate(existentes)
+                  if f.get("source") and f.get("source_id") is not None}
+    inserted = 0
+    upserted = 0
+    for fila in filas:
+        key = (fila.get("source"), str(fila["source_id"]) if fila.get("source_id") is not None else None)
+        if key[0] and key[1] and key in por_source:
+            existentes[por_source[key]] = {**existentes[por_source[key]], **fila}
+            upserted += 1
+        else:
+            existentes.append(dict(fila))
+            if key[0] and key[1]:
+                por_source[key] = len(existentes) - 1
+            inserted += 1
+    _save(data)
+    return {"tipo": tipo, "upserted": upserted, "inserted": inserted}
+
+
+def delete_odoo_missing(tipo: str, pulled_source_ids) -> int:
+    """Drop Odoo-sourced rows whose source_id is no longer in the pull.
+    CSV / hand-entered rows (no source) are left alone."""
+    keep = {str(x) for x in pulled_source_ids}
+    data = _load()
+    bucket = data.get(tipo)
+    if not bucket:
+        return 0
+    antes = len(bucket["filas"])
+    bucket["filas"] = [
+        f for f in bucket["filas"]
+        if not (f.get("source") == "odoo" and str(f.get("source_id") or "") not in keep)
+    ]
+    deleted = antes - len(bucket["filas"])
+    if deleted:
+        _save(data)
+    return deleted
+
+
 def validar_referencias_producto(filas: list[dict]) -> dict:
     """Integridad referencial: cada fila debe referenciar un producto que exista
     (por código o por nombre). Las huérfanas se marcan (no se integran ciegas).
