@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints } from "lucide-react";
 import Brand from "../components/Brand";
@@ -12,11 +12,9 @@ import InsightsMobile from "./InsightsMobile";
 import MapaSimpleMobile from "./MapaSimpleMobile";
 import AngelaView from "../views/AngelaView";
 import MiPerfil from "../sections/MiPerfil";
-import AlertasNegocio from "../sections/AlertasNegocio";
 import Cobranzas from "../sections/Cobranzas";
 import Deposito from "../sections/Deposito";
 import Administracion from "../sections/Administracion";
-import OportunidadesNegocio from "../sections/OportunidadesNegocio";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
@@ -53,7 +51,7 @@ function resolveView(raw, { piso, user, navIds }) {
   if (!destino) return null;
   if (piso && (destino === "panel" || destino === "mi_dia")) return "mi_dia";
   if (destino === "perfil") return "perfil";
-  if (["insights", "alertas", "oportunidades"].includes(destino)) {
+  if (["insights", "alertas", "oportunidades", "prioridades"].includes(destino)) {
     return (user.features.includes("alertas") || user.features.includes("oportunidades")) ? "insights" : null;
   }
   if (destino === "angela") return "angela";
@@ -106,7 +104,7 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     if (piso && (destino === "panel" || destino === "mi_dia")) { setView("mi_dia"); return; }
     if (destino === "perfil") { setView("perfil"); return; }
     // P35·E2/E3 — Alertas y Oportunidades se fusionaron en "Insights" en mobile.
-    if (["insights", "alertas", "oportunidades"].includes(destino)) {
+    if (["insights", "alertas", "oportunidades", "prioridades"].includes(destino)) {
       if (user.features.includes("alertas") || user.features.includes("oportunidades")) {
         setView("insights");
         if (hl) resaltarPorId(hl);
@@ -151,8 +149,6 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
       // P35·E3 — "insights": fusión de Alertas + Oportunidades en filas compactas.
       case "insights":
         return <InsightsMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
-      case "alertas":
-        return <AlertasNegocio onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} datos={fase?.datos} />;
       case "equipo":
         return <EquipoMobile />;
       case "cobranzas":
@@ -163,8 +159,6 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         return <Deposito data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
       case "administracion":
         return <Administracion data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
-      case "oportunidades":
-        return <OportunidadesNegocio onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
       // P35·E6 — el mapa en mobile es la VISTA SIMPLE read-only (sin React Flow),
       // accesible solo desde "Ver el mapa" de Today. Volver → Today.
       case "mapa":

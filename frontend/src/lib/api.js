@@ -93,6 +93,7 @@ export const api = {
     get(`/api/grupo/${nombre}${limit ? `?limit=${limit}` : ""}`),
   buscar: (q) => get(`/api/buscar?q=${encodeURIComponent(q)}`),
   oportunidades: () => get("/api/oportunidades"),
+  prioridades: () => get("/api/prioridades"),
   // P38·B — el dueño aprueba la orden que Ángela dejó armada (queda en borrador).
   ordenCompraPreparar: (p) => post("/api/orden-compra/preparar", p),
   ordenesPreparadas: () => get("/api/ordenes-preparadas"),

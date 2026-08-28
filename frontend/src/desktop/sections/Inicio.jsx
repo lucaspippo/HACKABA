@@ -131,6 +131,11 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       .then((a) => { if (a?.rotacion?.disponible && a.rotacion.dias_promedio != null) setRotDias(Math.round(a.rotacion.dias_promedio)); })
       .catch(() => {});
   }, []);
+  const [prio, setPrio] = useState(null);
+  useEffect(() => {
+    if (!authStore.tiene("alertas") && !authStore.tiene("oportunidades")) return;
+    api.prioridades().then(setPrio).catch(() => {});
+  }, [session?.token, lang]);
 
   // --- La cola de decisión: staging + propuestas del libro + solicitudes ---
   const decisiones = armarDecisiones(ini, t).map((d) => ({
@@ -146,14 +151,9 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       : () => onNavegar("equipo", "solicitudes"),
   }));
 
-  // --- Oportunidades de hoy: del cache de análisis; si no, el set CERRADO de
-  //     cards (P27·A — las "concretas" eran errores de datos y viven en
-  //     Datos a corregir, no acá). P30·C3 — las de naturaleza "riesgo"
-  //     (concentración) NO son oportunidad capturable: fuera de esta lista. ---
-  const opsCards = (oportunidades?.cards || []).filter((o) => o.naturaleza !== "riesgo");
-  const ops = ini?.analisis_objetivos?.length
-    ? ini.analisis_objetivos.map((o) => ({ id: o.id, titulo: o.titulo, detalle: o.detalle, monto: o.monto }))
-    : opsCards.map((o) => ({ id: o.id, titulo: o.titulo, detalle: o.resumen, monto: o.monto }));
+  const ops = (prio?.act || []).map((o) => ({
+    id: o.id, titulo: o.titulo, detalle: o.resumen, monto: o.monto,
+  }));
 
   // --- La fila de la referencia: hasta 4 tarjetas, cada una con dato real ---
   const cartas = [];
@@ -183,7 +183,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       chip: i === 0 ? t("inicio.card_oportunidad") : t("inicio.card_seguimiento"),
       titulo: o.titulo, detalle: primeraFrase(o.detalle), monto: o.monto,
       icon: i === 0 ? Lightbulb : TrendingUp,
-      cta: t("inicio.card_ver_analisis"), ir: () => onNavegar("oportunidades"),
+      cta: t("inicio.card_ver_analisis"), ir: () => onNavegar("prioridades"),
     });
   }
   const opsUsadas = cartas.filter((c) => c.id.startsWith("op-")).length;
@@ -201,8 +201,8 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       titulo: todoEnOrden ? t("inicio.card_estado_ok") : resumen.salud.label,
       detalle: todoEnOrden ? t("inicio.card_estado_detalle") : t("inicio.card_estado_mirar"),
       icon: ShieldCheck,
-      cta: authStore.tiene("alertas") ? t("inicio.card_ver_alertas") : null,
-      ir: authStore.tiene("alertas") ? () => onNavegar("alertas") : null,
+      cta: (authStore.tiene("alertas") || authStore.tiene("oportunidades")) ? t("inicio.card_ver_alertas") : null,
+      ir: (authStore.tiene("alertas") || authStore.tiene("oportunidades")) ? () => onNavegar("prioridades") : null,
     });
   }
   const fila = cartas.slice(0, 4);
@@ -215,9 +215,9 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
     tieneCuentas
       ? { label: t("inicio.metrica_mora"), valor: morosos ? num(morosos.cantidad) : "—", icon: Bell, color: morosos?.cantidad ? "text-rojo" : "text-tinta-suave", sec: "cuentas" }
       : { label: t("inicio.metrica_mora_bloqueada"), valor: "—", icon: Bell, color: "text-tinta-suave", sec: "cuentas" },
-    { label: t("inicio.metrica_oportunidades"), valor: num(opsCards.length), icon: Sparkles, color: "text-salvia", sec: "oportunidades" },
+    { label: t("inicio.metrica_oportunidades"), valor: num(prio?.badge ?? ops.length), icon: Sparkles, color: "text-salvia", sec: "prioridades" },
     ...(rotDias != null
-      ? [{ label: t("inicio.metrica_rotacion"), valor: num(rotDias), icon: Clock, color: "text-hielo", sec: "oportunidades" }]
+      ? [{ label: t("inicio.metrica_rotacion"), valor: num(rotDias), icon: Clock, color: "text-hielo", sec: "prioridades" }]
       : []),
   ];
 
@@ -285,13 +285,13 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
         <section>
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-[0.88rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.op_titulo")}</h2>
-            <button onClick={() => onNavegar("oportunidades")} className="text-[0.88rem] font-semibold text-tinta">{t("inicio.ver_todo")}</button>
+            <button onClick={() => onNavegar("prioridades")} className="text-[0.88rem] font-semibold text-tinta">{t("inicio.ver_todo")}</button>
           </div>
           <div className="space-y-2">
             {opsRestantes.map((o) => (
               <button
                 key={o.id}
-                onClick={() => onNavegar("oportunidades")}
+                onClick={() => onNavegar("prioridades")}
                 className="flex w-full flex-wrap items-center gap-4 rounded-[var(--radius-card)] border border-linea bg-crema p-4 text-left sombra-papel transition-colors hover:border-tinta/25"
               >
                 {o.monto != null && (
