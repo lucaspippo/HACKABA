@@ -29,6 +29,13 @@ class _FakeModels:
             if model == "purchase.order.line":
                 return [{"id": 1, "order_id": [1, "P00001"], "product_id": [1, "Producto Odoo"],
                           "name": "Producto Odoo", "product_qty": 5.0, "price_unit": 100.0}]
+            if model == "sale.order":
+                return [{"id": 1, "name": "S00001", "partner_id": [1, "Cliente Odoo"],
+                          "state": "sale", "date_order": "2026-06-15 10:00:00", "amount_total": 100.0}]
+            if model == "sale.order.line":
+                return [{"id": 1, "order_id": [1, "S00001"], "product_id": [1, "Producto Odoo"],
+                          "product_template_id": [1, "Producto Odoo"], "name": "Producto Odoo",
+                          "product_uom_qty": 1.0, "price_unit": 100.0}]
             return [{"id": 1, "name": "Cliente Odoo", "vat": "20-1-9", "city": "CABA",
                       "phone": "11-0000", "email": "c@example.com"}]
         raise NotImplementedError(method)
@@ -226,4 +233,39 @@ def test_ingest_ordenes_compra_primera_vez_crea_batch(admin_token, monkeypatch):
 
 def test_ingest_ordenes_compra_sin_conexion_da_400(admin_token):
     r = client.post("/api/conectores/odoo/ingest-ordenes-compra", headers=_h(admin_token))
+    assert r.status_code == 400
+
+
+def test_sync_ventas_trae_ordenes(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/sync-ventas", headers=_h(admin_token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["ordenes"][0]["numero"] == "S00001"
+    assert body["ordenes"][0]["estado"] == "confirmada"
+
+
+def test_sync_ventas_sin_conexion_da_400(admin_token):
+    r = client.post("/api/conectores/odoo/sync-ventas", headers=_h(admin_token))
+    assert r.status_code == 400
+
+
+def test_ingest_ventas_primera_vez_crea_batch(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/ingest-ventas", headers=_h(admin_token))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["nuevos_para_revisar"] == 1
+    assert body["batch_id"] is not None
+
+
+def test_ingest_ventas_sin_conexion_da_400(admin_token):
+    r = client.post("/api/conectores/odoo/ingest-ventas", headers=_h(admin_token))
     assert r.status_code == 400

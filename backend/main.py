@@ -1617,6 +1617,27 @@ def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/sync-ventas")
+def odoo_sync_ventas(_u: dict = Depends(require_admin)):
+    """Preview of Odoo sale.order rows (all states) with lines."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_ordenes_venta()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-ventas")
+def odoo_ingest_ventas(_u: dict = Depends(require_admin)):
+    """Confirmed sale lines: linked rows auto-upsert; new ones go to Staging."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_ventas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
 # EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
 # sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/
