@@ -140,7 +140,7 @@ function Detalle({ detalle, grupo }) {
   );
 }
 
-export default function Margenes({ onPreguntar }) {
+export default function Margenes({ onPreguntar, onNavegar }) {
   const t = useT();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
@@ -184,10 +184,21 @@ export default function Margenes({ onPreguntar }) {
             <b>{peorMay.label}</b> {t("margenes.intro_3", { bajo: peorMay.margen_pct })}
             {min && <> {t("margenes.intro_mostrador", { top: min.grupos[0].recargo_pct })}</>}
           </p>
-          <button onClick={() => onPreguntar?.(t("margenes.preguntar"))}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
-            <Sparkles size={14} /> {t("margenes.preguntar_cta")}
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button onClick={() => onPreguntar?.(t("margenes.preguntar"))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+              <Sparkles size={14} /> {t("margenes.preguntar_cta")}
+            </button>
+            {onNavegar && (
+              <button
+                type="button"
+                onClick={() => onNavegar("productos")}
+                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta"
+              >
+                {t("margenes.ir_catalogo")}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -11,6 +11,11 @@ import { fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import { useQuerySeed } from "../../lib/usePagedList";
 
+function qDeHighlight(highlight) {
+  if (!highlight) return "";
+  return highlight.startsWith("q:") ? highlight.slice(2) : highlight;
+}
+
 const ESTADO_CLS = {
   borrador: "bg-oro/15 text-oro-tinta",
   aprobada: "bg-hielo/12 text-hielo",
@@ -25,16 +30,21 @@ const ESTADO_ICON = {
   cancelada: Ban,
 };
 
-export default function OrdenesCompra() {
+export default function OrdenesCompra({ highlight }) {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(false);
   const seed = useQuerySeed();
-  const [q, setQ] = useState(seed);
+  const [q, setQ] = useState(() => qDeHighlight(highlight) || seed);
   const [estado, setEstado] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  useEffect(() => {
+    const n = qDeHighlight(highlight);
+    if (n) setQ(n);
+  }, [highlight]);
 
   const cargar = () => api.ordenesPreparadas().then((d) => setItems(d.ordenes)).catch(setError);
   useEffect(() => { cargar(); }, []);
@@ -115,7 +125,7 @@ export default function OrdenesCompra() {
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("ordenes.buscar")}
-        vacio={t("ordenes.vacio")}
+        vacio={qn ? t("ordenes.vacio_filtro") : t("ordenes.vacio")}
         onCrear={() => setModal(true)}
         crearLabel={t("ordenes.nueva")}
         onLimpiar={hasFilters ? clearFilters : undefined}
