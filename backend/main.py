@@ -1104,6 +1104,12 @@ def evolucion_get(u: dict = Depends(require_feature("evolucion"))):
                                          lambda: evolucion.panorama(lang))
 
 
+@app.get("/api/forecast")
+def forecast_get(u: dict = Depends(require_feature("evolucion"))):
+    from core import forecast as forecast_mod
+    return forecast_mod.forecast_demand(_lang(u))
+
+
 # --- Depósito y logística (capa sobre el WMS/TMS: consultas, no picking ni rutas) ---
 
 @app.get("/api/deposito")
@@ -1634,6 +1640,44 @@ def odoo_ingest_ventas(_u: dict = Depends(require_admin)):
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_ventas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-deposito")
+def odoo_sync_deposito(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_deposito()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-deposito")
+def odoo_ingest_deposito(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_deposito(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-recepciones")
+def odoo_sync_recepciones(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_recepciones()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-recepciones")
+def odoo_ingest_recepciones(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_recepciones(actor=_u["username"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

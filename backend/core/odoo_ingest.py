@@ -222,3 +222,79 @@ def ingest_ventas(actor: str = "dueño") -> dict:
 
     return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas),
             "omitidos_malformados": omitidas, "batch_id": batch_id}
+
+
+def _resolve_odoo_codigo(product_tmpl_id) -> int | None:
+    if product_tmpl_id is None:
+        return None
+    art = store.buscar_por_source("odoo", str(product_tmpl_id))
+    return art["codigo"] if art else None
+
+
+def _ingest_blob(tipo: str, pulled: list[dict], actor: str, nombre: str) -> dict:
+    from core import esquema
+    vinculadas = {str(f.get("source_id")) for f in esquema.filas(tipo)
+                  if f.get("source") == "odoo"}
+    nuevas, actualizadas_filas, omitidas = [], [], 0
+    pulled_ids = [str(p["id"]) for p in pulled]
+    coercer = staging._COERCERS_ODOO[tipo]
+    required = staging._REQUERIDO_ODOO[tipo]
+    for p in pulled:
+        fila = coercer(p)
+        if not fila.get(required):
+            omitidas += 1
+            continue
+        if str(p["id"]) in vinculadas:
+            actualizadas_filas.append(fila)
+        else:
+            nuevas.append(p)
+    if actualizadas_filas:
+        esquema.upsert_filas(tipo, actualizadas_filas)
+        _audit.record(actor, f"upsert_{tipo}_conector", None,
+                       {"actualizadas": len(actualizadas_filas),
+                        "source_ids": [f["source_id"] for f in actualizadas_filas]})
+    esquema.delete_odoo_missing(tipo, pulled_ids)
+    batch_id = None
+    if nuevas:
+        r = staging.crear_batch_odoo(tipo, nuevas, nombre=nombre)
+        batch_id = r["id"]
+    return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas),
+            "omitidos_malformados": omitidas, "batch_id": batch_id}
+
+
+def ingest_deposito(actor: str = "dueño") -> dict:
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_deposito()
+    filas = []
+    for q in pull["quants"]:
+        row = dict(q)
+        row["nombre"] = q.get("producto") or ""
+        row["codigo"] = _resolve_odoo_codigo(q.get("product_tmpl_id"))
+        filas.append(row)
+    return _ingest_blob("deposito", filas, actor, "Odoo · depósito")
+
+
+def ingest_recepciones(actor: str = "dueño") -> dict:
+    """Done incoming pickings → recepciones. Does not change product.stock."""
+    from core.db import purchase_orders_repo
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_recepciones()
+    filas = []
+    for p in pull["recepciones"]:
+        row = dict(p)
+        row["nombre"] = p.get("producto") or ""
+        row["codigo"] = _resolve_odoo_codigo(p.get("product_tmpl_id"))
+        filas.append(row)
+    result = _ingest_blob("recepciones", filas, actor, "Odoo · recepciones")
+    po_numbers = {p.get("po_number") for p in filas if p.get("po_number")}
+    for number in po_numbers:
+        po = purchase_orders_repo.find_by_number(tenant_id, number)
+        if not po or po.get("source") != "odoo":
+            continue
+        if po.get("estado") in ("cancelada", "recibida"):
+            continue
+        purchase_orders_repo.update_status(tenant_id, number, "recibida")
+    return result

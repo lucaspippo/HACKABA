@@ -48,9 +48,11 @@ class _FakeModels:
         ]
         self.lineas_orden = [
             {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Producto"],
-             "name": "Producto", "product_qty": 1.0, "price_unit": 100.0},
+             "product_template_id": [1, "Producto Ya Vinculado"], "name": "Producto",
+             "product_qty": 1.0, "price_unit": 100.0, "qty_received": 0.0},
             {"id": 101, "order_id": [11, "P00011"], "product_id": [1, "Producto"],
-             "name": "Producto", "product_qty": 2.0, "price_unit": 100.0},
+             "product_template_id": [1, "Producto Ya Vinculado"], "name": "Producto",
+             "product_qty": 2.0, "price_unit": 100.0, "qty_received": 0.0},
         ]
         self.ordenes_venta = [
             {"id": 20, "name": "S00020", "partner_id": [1, "Cliente"],
@@ -70,6 +72,46 @@ class _FakeModels:
             {"id": 202, "order_id": [22, "S00022"], "product_id": [1, "Producto Ya Vinculado"],
              "product_template_id": [1, "Producto Ya Vinculado"], "name": "Producto Ya Vinculado",
              "product_uom_qty": 9.0, "price_unit": 8.0},
+        ]
+        self.variantes = [
+            {"id": 1, "product_tmpl_id": [1, "Producto Ya Vinculado"], "free_qty": 45.0,
+             "qty_available": 50.0, "incoming_qty": 5.0, "outgoing_qty": 0.0},
+            {"id": 2, "product_tmpl_id": [2, "Producto Nuevo De Odoo"], "free_qty": 20.0,
+             "qty_available": 20.0, "incoming_qty": 0.0, "outgoing_qty": 0.0},
+            {"id": 99, "product_tmpl_id": [99, "Fantasma Archivado"], "free_qty": 3.0,
+             "qty_available": 3.0, "incoming_qty": 0.0, "outgoing_qty": 0.0},
+            {"id": 101, "product_tmpl_id": [1, "Producto Ya Vinculado"], "free_qty": 0.0,
+             "qty_available": 0.0, "incoming_qty": 0.0, "outgoing_qty": 0.0},
+        ]
+        self.locations = [
+            {"id": 8, "complete_name": "WH/Stock", "usage": "internal"},
+            {"id": 9, "complete_name": "WH2/Stock", "usage": "internal"},
+        ]
+        self.lots = [
+            {"id": 40, "name": "LOT-A", "expiration_date": "2026-12-01"},
+        ]
+        self.quants = [
+            {"id": 30, "product_id": [101, "Producto Ya Vinculado"], "location_id": [8, "WH/Stock"],
+             "quantity": 5.0, "lot_id": [40, "LOT-A"], "in_date": "2026-01-15 10:00:00",
+             "inventory_quantity": 0, "inventory_quantity_set": False},
+            {"id": 31, "product_id": [101, "Producto Ya Vinculado"], "location_id": [9, "WH2/Stock"],
+             "quantity": 2.0, "lot_id": False, "in_date": "2025-01-01 10:00:00",
+             "inventory_quantity": 1.0, "inventory_quantity_set": True},
+            {"id": 32, "product_id": [101, "Producto Ya Vinculado"], "location_id": [8, "WH/Stock"],
+             "quantity": 0.0, "lot_id": False, "in_date": "2026-02-01 10:00:00",
+             "inventory_quantity": 0, "inventory_quantity_set": False},
+        ]
+        self.pickings = [
+            {"id": 50, "name": "WH/IN/00012", "partner_id": [3, "Distribuidora del Sur"],
+             "date_done": "2026-08-06 12:00:00", "origin": "P00011",
+             "location_dest_id": [8, "WH/Stock"], "state": "done",
+             "picking_type_code": "incoming"},
+        ]
+        self.moves = [
+            {"id": 500, "picking_id": [50, "WH/IN/00012"],
+             "product_id": [101, "Producto Ya Vinculado"], "quantity": 1.5,
+             "location_dest_id": [8, "WH/Stock"],
+             "purchase_line_id": [101, "P00011"], "state": "done"},
         ]
 
     def execute_kw(self, db, uid, pwd, model, method, args, kwargs):
@@ -113,6 +155,43 @@ class _FakeModels:
                 return [l["id"] for l in self.lineas_venta]
             if method == "read":
                 return self.lineas_venta
+        if model == "stock.quant":
+            if method == "search":
+                return [q["id"] for q in self.quants if q["quantity"] != 0]
+            if method == "read":
+                want = set(args[0])
+                return [q for q in self.quants if q["id"] in want]
+        if model == "stock.location":
+            if method == "read":
+                want = set(args[0])
+                return [x for x in self.locations if x["id"] in want]
+        if model == "stock.lot":
+            if method == "read":
+                want = set(args[0])
+                return [x for x in self.lots if x["id"] in want]
+        if model == "product.product":
+            if method == "search":
+                domain = args[0] if args else []
+                tmpl_in = None
+                for term in domain:
+                    if isinstance(term, (list, tuple)) and len(term) >= 3 and term[0] == "product_tmpl_id" and term[1] == "in":
+                        tmpl_in = set(term[2])
+                if tmpl_in is not None:
+                    return [v["id"] for v in self.variantes if v["product_tmpl_id"][0] in tmpl_in]
+                return [v["id"] for v in self.variantes]
+            if method == "read":
+                want = set(args[0])
+                return [x for x in self.variantes if x["id"] in want]
+        if model == "stock.picking":
+            if method == "search":
+                return [p["id"] for p in self.pickings]
+            if method == "read":
+                return self.pickings
+        if model == "stock.move":
+            if method == "search":
+                return [m["id"] for m in self.moves]
+            if method == "read":
+                return self.moves
         raise NotImplementedError((model, method))
 
 
@@ -137,6 +216,16 @@ def _limpiar_ventas() -> None:
     blob_repo.save_blob("sales_validation", _t.current_tenant_id(), {"estado": "sin_datos"})
 
 
+def _limpiar_deposito() -> None:
+    from core import esquema
+    esquema.reemplazar_filas("deposito", [])
+
+
+def _limpiar_recepciones() -> None:
+    from core import esquema
+    esquema.reemplazar_filas("recepciones", [])
+
+
 @pytest.fixture(autouse=True)
 def _setup(tenant_id, monkeypatch):
     monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
@@ -146,6 +235,8 @@ def _setup(tenant_id, monkeypatch):
     limpiar_tabla_tenant("purchase_orders")
     _limpiar_proveedores()
     _limpiar_ventas()
+    _limpiar_deposito()
+    _limpiar_recepciones()
     yield
     odoo_connections_repo.delete(tenant_id)
     store.resetear_actual()
@@ -153,6 +244,8 @@ def _setup(tenant_id, monkeypatch):
     limpiar_tabla_tenant("purchase_orders")
     _limpiar_proveedores()
     _limpiar_ventas()
+    _limpiar_deposito()
+    _limpiar_recepciones()
 
 
 def test_ingest_productos_primera_vez_todo_va_a_revision():
@@ -482,3 +575,77 @@ def test_ingest_ventas_borra_linea_cancelada_y_conserva_csv(monkeypatch):
     assert ids == {None}
     csv_row = next(f for f in esquema.filas("venta") if not f.get("source"))
     assert csv_row["producto"] == "CSV"
+
+
+def _integrar_productos():
+    from core import staging
+    r = odoo_ingest.ingest_productos(actor="test")
+    staging.integrar(r["batch_id"], actor="test")
+
+
+def test_ingest_deposito_primera_vez_va_a_revision():
+    _integrar_productos()
+    r = odoo_ingest.ingest_deposito(actor="test")
+    assert r["actualizados"] == 0
+    assert r["nuevos_para_revisar"] == 2
+    assert r["batch_id"] is not None
+
+
+def test_ingest_deposito_segunda_vez_actualiza():
+    from core import staging, esquema
+    _integrar_productos()
+    r1 = odoo_ingest.ingest_deposito(actor="test")
+    staging.integrar(r1["batch_id"], actor="test")
+    filas = esquema.filas("deposito")
+    assert len(filas) == 2
+    counted = next(f for f in filas if f["source_id"] == "31")
+    assert counted["counted_qty"] == 1.0
+    sin_conteo = next(f for f in filas if f["source_id"] == "30")
+    assert "counted_qty" not in sin_conteo
+    r2 = odoo_ingest.ingest_deposito(actor="test")
+    assert r2["actualizados"] == 2
+    assert r2["nuevos_para_revisar"] == 0
+
+
+def test_ingest_recepciones_no_cambia_stock():
+    from core import staging
+    _integrar_productos()
+    antes = {d["codigo"]: d.get("stock") for d in store.raw_actual()}
+    r = odoo_ingest.ingest_recepciones(actor="test")
+    staging.integrar(r["batch_id"], actor="test")
+    despues = {d["codigo"]: d.get("stock") for d in store.raw_actual()}
+    assert antes == despues
+
+
+def test_ingest_recepciones_marca_po_recibida(tenant_id):
+    from core import staging
+    from core.db import purchase_orders_repo
+    _integrar_productos()
+    r_oc = odoo_ingest.ingest_ordenes_compra(actor="test")
+    staging.integrar(r_oc["batch_id"], actor="test")
+    po = purchase_orders_repo.find_by_number(tenant_id, "P00011")
+    assert po["estado"] == "aprobada"
+    r = odoo_ingest.ingest_recepciones(actor="test")
+    staging.integrar(r["batch_id"], actor="test")
+    po = purchase_orders_repo.find_by_number(tenant_id, "P00011")
+    assert po["estado"] == "recibida"
+
+
+def test_ingest_oc_purchase_con_qty_received_queda_recibida(monkeypatch, tenant_id):
+    from core import staging
+    from core.db import purchase_orders_repo
+
+    def _fake_parcial(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.lineas_orden[1]["qty_received"] = 1.0
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_parcial)
+    r = odoo_ingest.ingest_ordenes_compra(actor="test")
+    staging.integrar(r["batch_id"], actor="test")
+    po = purchase_orders_repo.find_by_number(tenant_id, "P00011")
+    assert po["estado"] == "recibida"
+    po_draft = purchase_orders_repo.find_by_number(tenant_id, "P00010")
+    assert po_draft["estado"] == "borrador"

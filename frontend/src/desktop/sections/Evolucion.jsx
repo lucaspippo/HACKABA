@@ -50,6 +50,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
   const [error, setError] = useState(null);
   const [meses, setMeses] = useState(12);
   const [analisis, setAnalisis] = useState(null);
+  const [forecast, setForecast] = useState(null);
   const [verNominal, setVerNominal] = useState(true);
   // "Resumen" (KPIs + interanual/YTD + tendencia) es lo que se mira todos
   // los días; estacionalidad/composición quedan a una pestaña, no borradas.
@@ -61,6 +62,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
   useEffect(() => {
     api.evolucion().then(setD).catch(setError);
     api.analisis().then(setAnalisis).catch(() => {});
+    api.forecast().then(setForecast).catch(() => {});
   }, [data]);
   const picos = analisis?.estacionalidad?.proximos_picos || [];
   const kpis = analisis?.kpis || {};
@@ -129,6 +131,32 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           </span>
         )}
       </header>
+
+      {forecast?.available && (forecast.items || []).some((it) => it.available) && (
+        <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+            {t("evolucion.forecast_titulo")}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {(forecast.items || []).filter((it) => it.available).slice(0, 8).map((it) => {
+              const next = it.months?.[0];
+              if (!next) return null;
+              return (
+                <li key={it.product_code} className="flex flex-wrap items-baseline justify-between gap-2 text-[0.85rem]">
+                  <span className="min-w-0 truncate font-medium text-tinta">{it.description || it.product_code}</span>
+                  <span className="shrink-0 text-tinta-suave">
+                    {t("evolucion.forecast_mes", { qty: num(next.qty), period: next.period })}
+                    {next.interval_ok
+                      ? ` · ${t("evolucion.forecast_intervalo", { low: num(next.qty_low), high: num(next.qty_high) })}`
+                      : ` · ${t("evolucion.forecast_sin_intervalo")}`}
+                    {it.stockout_risk ? ` · ${t("evolucion.forecast_quiebre")}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* P18·A — la fila de KPIs del dueño: MISMA fuente que el chat y el PDF
           (analisis.kpis, cacheado). Cada card existe solo si su dato existe;

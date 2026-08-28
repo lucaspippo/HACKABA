@@ -66,11 +66,14 @@ class _FakeModels:
             if method == "read":
                 return [
                     {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Office Chair Ergo"],
-                     "name": "Office Chair Ergo", "product_qty": 20.0, "price_unit": 120.0},
+                     "product_template_id": [1, "Office Chair Ergo"], "name": "Office Chair Ergo",
+                     "product_qty": 20.0, "price_unit": 120.0, "qty_received": 0.0},
                     {"id": 101, "order_id": [10, "P00010"], "product_id": [2, "Filing Cabinet"],
-                     "name": "Filing Cabinet", "product_qty": 10.0, "price_unit": 140.0},
+                     "product_template_id": [2, "Filing Cabinet"], "name": "Filing Cabinet",
+                     "product_qty": 10.0, "price_unit": 140.0, "qty_received": 0.0},
                     {"id": 102, "order_id": [11, "P00011"], "product_id": False,
-                     "name": "Printer Paper A4 (Box)", "product_qty": 100.0, "price_unit": 6.5},
+                     "product_template_id": False, "name": "Printer Paper A4 (Box)",
+                     "product_qty": 100.0, "price_unit": 6.5, "qty_received": 0.0},
                 ]
             raise NotImplementedError(method)
         if model == "sale.order":
@@ -101,6 +104,78 @@ class _FakeModels:
                      "product_template_id": [3, "Printer Paper A4 (Box)"], "name": "Printer Paper A4 (Box)",
                      "product_uom_qty": 20.0, "price_unit": 8.0},
                 ]
+            raise NotImplementedError(method)
+        if model == "stock.quant":
+            quants = [
+                {"id": 30, "product_id": [101, "Laptop Pro 15\""], "location_id": [8, "WH/Stock"],
+                 "quantity": 5.0, "lot_id": [40, "LOT-A"], "in_date": "2026-01-15 10:00:00",
+                 "inventory_quantity": 0, "inventory_quantity_set": False},
+                {"id": 31, "product_id": [101, "Laptop Pro 15\""], "location_id": [9, "WH2/Stock"],
+                 "quantity": 2.0, "lot_id": False, "in_date": "2025-01-01 10:00:00",
+                 "inventory_quantity": 1.0, "inventory_quantity_set": True},
+                {"id": 32, "product_id": [101, "Laptop Pro 15\""], "location_id": [8, "WH/Stock"],
+                 "quantity": 0.0, "lot_id": False, "in_date": "2026-02-01 10:00:00",
+                 "inventory_quantity": 0, "inventory_quantity_set": False},
+            ]
+            if method == "search":
+                return [q["id"] for q in quants if q["quantity"] != 0]
+            if method == "read":
+                want = set(args[0])
+                return [q for q in quants if q["id"] in want]
+            raise NotImplementedError(method)
+        if model == "stock.location":
+            if method == "read":
+                locs = [
+                    {"id": 8, "complete_name": "WH/Stock", "usage": "internal"},
+                    {"id": 9, "complete_name": "WH2/Stock", "usage": "internal"},
+                ]
+                want = set(args[0])
+                return [x for x in locs if x["id"] in want]
+            raise NotImplementedError(method)
+        if model == "stock.lot":
+            if method == "read":
+                return [{"id": 40, "name": "LOT-A", "expiration_date": "2026-12-01"}]
+            raise NotImplementedError(method)
+        if model == "product.product":
+            variants = [
+                {"id": 1, "product_tmpl_id": [1, "Laptop Pro 15\""], "free_qty": 40.0,
+                 "qty_available": 45.0, "incoming_qty": 10.0, "outgoing_qty": 5.0},
+                {"id": 2, "product_tmpl_id": [2, "Standing Desk"], "free_qty": 0.0,
+                 "qty_available": 0.0, "incoming_qty": 0.0, "outgoing_qty": 0.0},
+                {"id": 101, "product_tmpl_id": [1, "Laptop Pro 15\""], "free_qty": 0.0,
+                 "qty_available": 0.0, "incoming_qty": 0.0, "outgoing_qty": 0.0},
+            ]
+            if method == "search":
+                domain = args[0] if args else []
+                tmpl_in = None
+                for term in domain:
+                    if isinstance(term, (list, tuple)) and len(term) >= 3 and term[0] == "product_tmpl_id" and term[1] == "in":
+                        tmpl_in = set(term[2])
+                if tmpl_in is not None:
+                    return [v["id"] for v in variants if v["product_tmpl_id"][0] in tmpl_in]
+                return [v["id"] for v in variants]
+            if method == "read":
+                want = set(args[0])
+                return [v for v in variants if v["id"] in want]
+            raise NotImplementedError(method)
+        if model == "stock.picking":
+            if method == "search":
+                return [50]
+            if method == "read":
+                return [{"id": 50, "name": "WH/IN/00012",
+                         "partner_id": [3, "Distribuidora del Sur"],
+                         "date_done": "2026-08-06 12:00:00", "origin": "P00010",
+                         "location_dest_id": [8, "WH/Stock"], "state": "done",
+                         "picking_type_code": "incoming"}]
+            raise NotImplementedError(method)
+        if model == "stock.move":
+            if method == "search":
+                return [500]
+            if method == "read":
+                return [{"id": 500, "picking_id": [50, "WH/IN/00012"],
+                         "product_id": [101, "Laptop Pro 15\""], "quantity": 15.0,
+                         "location_dest_id": [8, "WH/Stock"],
+                         "purchase_line_id": [100, "P00010"], "state": "done"}]
             raise NotImplementedError(method)
         raise NotImplementedError(model)
 
@@ -281,3 +356,36 @@ def test_pull_ordenes_venta_trae_ordenes_con_items(tenant_id, monkeypatch):
     assert borrador["estado"] == "borrador"
     cancelada = next(o for o in r["ordenes"] if o["numero"] == "S00022")
     assert cancelada["estado"] == "cancelada"
+
+
+def test_pull_deposito_omite_qty_cero_y_resuelve_lote(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
+    r = conectores.ConectorOdoo(tenant_id).pull_deposito()
+    assert r["modulo"] == "stock.quant"
+    assert r["total"] == 2
+    ids = {q["id"] for q in r["quants"]}
+    assert ids == {30, 31}
+    q30 = next(q for q in r["quants"] if q["id"] == 30)
+    assert q30["ubicacion"] == "WH/Stock"
+    assert q30["lote"] == "LOT-A"
+    assert q30["vencimiento"] == "2026-12-01"
+    assert q30["product_tmpl_id"] == 1
+    assert "counted_qty" not in q30
+    q31 = next(q for q in r["quants"] if q["id"] == 31)
+    assert q31["counted_qty"] == 1.0
+    assert q31["in_date"] == "2025-01-01"
+
+
+def test_pull_recepciones_solo_incoming_done(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
+    r = conectores.ConectorOdoo(tenant_id).pull_recepciones()
+    assert r["modulo"] == "stock.picking"
+    assert r["total"] == 1
+    rec = r["recepciones"][0]
+    assert rec["id"] == 500
+    assert rec["origen"] == "WH/IN/00012"
+    assert rec["po_number"] == "P00010"
+    assert rec["cantidad"] == 15.0
+    assert rec["product_tmpl_id"] == 1
