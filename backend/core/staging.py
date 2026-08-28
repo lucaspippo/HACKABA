@@ -112,12 +112,21 @@ def coerce_producto_odoo(p: dict) -> dict:
     # Odoo owns cost (`standard_price` → `costo_iva`) on linked products.
     # `venta_x_peso` is omitted: it is a PolPilot-native field the dueño
     # fills in by hand; emitting it would blank a dueño edit on re-sync.
+    # `precio` is the pricelist-resolved sellable price (not list_price).
+    # needs_pricing products keep pvp=None so they surface as "sin precio"
+    # instead of a fake $0 line.
+    status = p.get("pricing_status")
+    pvp = None if status == "needs_pricing" else p.get("precio")
     return {
         "codigo": None,
         "descripcion": str(p.get("nombre") or "").strip(),
         "estado": "activo" if p.get("activo", True) else "anulado",
         "stock": p.get("stock") or 0.0,
-        "pvp": p.get("precio"),
+        "pvp": pvp,
+        "precio_lista": p.get("precio_lista"),
+        "pricing_status": status,
+        "precios_pricelist": p.get("precios_pricelist") or [],
+        "moneda": p.get("moneda"),
         "costo_iva": p.get("costo"),
         "free_qty": p.get("free_qty") or 0.0,
         "incoming_qty": p.get("incoming_qty") or 0.0,
@@ -169,7 +178,9 @@ def coerce_cliente_odoo(c: dict) -> dict:
         "saldo": 0, "limite_credito": 0, "plazo_dias": 30,
         "dias_sin_pagar": 0, "promedio_pago_dias": None,
         "vat": c.get("cuit") or "", "city": c.get("localidad") or "",
-        "phone": c.get("telefono") or "", "email": c.get("email") or "",
+        "phone": c.get("telefono") or "",         "email": c.get("email") or "",
+        "pricelist_id": c.get("pricelist_id"),
+        "pricelist": c.get("pricelist") or "",
         "source": "odoo", "source_id": str(c["id"]),
     }
 
@@ -191,8 +202,15 @@ def _analizar_clientes(filas: list[dict], lang: str | None = None) -> list[dict]
     }]
 
 
-def map_purchase_status(odoo_state: str, qty_received_any: bool) -> str:
-    """Odoo PO state (+ any qty received) → PolPilot purchase-order status."""
+def map_purchase_status(odoo_state: str, qty_received_any: bool = False, *,
+                        fully_received: bool = False,
+                        open_backorder: bool = False) -> str:
+    """Odoo PO state + fulfillment → PolPilot purchase-order status.
+
+    A confirmed PO with some qty received is NOT `recibida` while a remainder
+    is still open (real backorders). Only complete receipt (or Odoo `done`)
+    maps to `recibida`.
+    """
     raw = (odoo_state or "").lower()
     if raw in ("draft", "sent", "borrador", "enviada"):
         return "borrador"
@@ -200,14 +218,15 @@ def map_purchase_status(odoo_state: str, qty_received_any: bool) -> str:
         return "cancelada"
     if raw in ("done", "cerrada"):
         return "recibida"
-    if raw in ("purchase", "confirmada") and qty_received_any:
-        return "recibida"
     if raw in ("purchase", "confirmada"):
-        return "aprobada"
+        if open_backorder or not fully_received:
+            return "aprobada"
+        return "recibida"
     return "borrador"
 
 
 def coerce_orden_compra_odoo(o: dict) -> dict:
+    from . import odoo_fx
     items = []
     for it in o.get("items") or []:
         item = dict(it)
@@ -217,15 +236,23 @@ def coerce_orden_compra_odoo(o: dict) -> dict:
             if art:
                 item["codigo"] = art["codigo"]
         items.append(item)
-    qty_any = any(float(it.get("qty_received") or 0) > 0 for it in items)
+    open_bo = bool(o.get("open_backorder"))
+    fulfill = o.get("fulfillment") or odoo_fx.lines_fulfillment(
+        items, open_backorder=open_bo)
+    fully = fulfill == "complete" and not open_bo
+    qty_any = fulfill in ("partial", "complete")
     estado_odoo = o.get("estado") or "borrador"
     return {
         "numero": o.get("numero") or "",
         "proveedor": o.get("proveedor") or "",
         "fecha": o.get("fecha") or "",
-        "total": o.get("total") or 0,
+        "total": o.get("total_company") if o.get("total_company") is not None else o.get("total") or 0,
+        "currency": o.get("currency") or "",
+        "fulfillment": fulfill,
+        "open_backorder": open_bo,
         "items": items,
-        "estado": map_purchase_status(estado_odoo, qty_any),
+        "estado": map_purchase_status(
+            estado_odoo, qty_any, fully_received=fully, open_backorder=open_bo),
         "source": "odoo",
         "source_id": str(o["id"]),
         "source_status": estado_odoo,
@@ -234,12 +261,18 @@ def coerce_orden_compra_odoo(o: dict) -> dict:
 
 def coerce_venta_odoo(p: dict) -> dict:
     fecha = str(p.get("fecha") or "").strip()
+    precio = p.get("precio")
+    if p.get("precio_company") is not None:
+        precio = p.get("precio_company")
     return {
         "fecha": fecha[:10] if fecha else "",
         "producto": str(p.get("nombre") or p.get("producto") or "").strip(),
         "codigo": p.get("codigo"),
         "cantidad": p.get("cantidad") or 0.0,
-        "precio": p.get("precio"),
+        "qty_delivered": p.get("qty_delivered") or 0.0,
+        "precio": precio,
+        "currency": p.get("currency") or "",
+        "precio_original": p.get("precio_original", p.get("precio_unitario")),
         "source": "odoo",
         "source_id": str(p["id"]),
         "source_status": p.get("estado") or "",
@@ -274,6 +307,11 @@ def coerce_recepcion_odoo(p: dict) -> dict:
         "deposito": p.get("deposito") or "",
         "origen": p.get("origen") or "",
         "po_number": p.get("po_number") or "",
+        "qty_ordered": p.get("qty_ordered"),
+        "backorder_id": p.get("backorder_id"),
+        "es_backorder": bool(p.get("es_backorder")),
+        "pendiente": bool(p.get("pendiente")),
+        "open_backorder": bool(p.get("open_backorder")),
         "source": "odoo",
         "source_id": str(p["id"]),
         "source_status": p.get("estado") or "",
@@ -751,6 +789,13 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
         return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
                 "mensaje": f"{len(a_integrar)} recepciones nuevas."}
 
+    if tipo in ("entregas", "cuenta_corriente", "compras", "pagos") and b.get("fuente") == "odoo":
+        esquema.upsert_filas(tipo, a_integrar)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} filas nuevas."}
+
     if tipo != "producto":
         # Generic CSV/apartado path (ventas, depósito, logística, …): creates
         # the apartado and wires up its relations. Odoo-sourced batches never
@@ -841,6 +886,74 @@ def descartar(batch_id: str) -> dict:
     return {"ok": True}
 
 
+def coerce_entrega_odoo(p: dict) -> dict:
+    fecha = str(p.get("fecha") or "").strip()
+    return {
+        "fecha": fecha[:10] if fecha else "",
+        "codigo": p.get("codigo"),
+        "producto": str(p.get("nombre") or p.get("producto") or "").strip(),
+        "cliente": p.get("cliente") or p.get("partner") or "",
+        "cantidad": p.get("cantidad") or 0.0,
+        "qty_ordered": p.get("qty_ordered") or 0.0,
+        "deposito": p.get("deposito") or "",
+        "origen": p.get("origen") or "",
+        "so_number": p.get("so_number") or "",
+        "backorder_id": p.get("backorder_id"),
+        "es_backorder": bool(p.get("es_backorder")),
+        "pendiente": bool(p.get("pendiente")),
+        "open_backorder": bool(p.get("open_backorder")),
+        "source": "odoo",
+        "source_id": str(p["id"]),
+        "source_status": p.get("estado") or "",
+    }
+
+
+def coerce_factura_odoo(f: dict) -> dict:
+    return {
+        "numero": f.get("numero") or "",
+        "partner": f.get("partner") or "",
+        "partner_id": f.get("partner_id"),
+        "move_type": f.get("move_type") or "",
+        "tipo": f.get("tipo") or "",
+        "fecha": f.get("fecha") or "",
+        "vencimiento": f.get("vencimiento") or "",
+        "total": f.get("total_company") if f.get("total_company") is not None else f.get("total") or 0,
+        "residual": f.get("residual_company") if f.get("residual_company") is not None else f.get("residual") or 0,
+        "total_original": f.get("total") or 0,
+        "residual_original": f.get("residual") or 0,
+        "currency": f.get("currency") or "",
+        "payment_state": f.get("payment_state") or "",
+        "aging": f.get("aging") or "",
+        "overdue": bool(f.get("overdue")),
+        "origen": f.get("origen") or "",
+        "source": "odoo",
+        "source_id": str(f["id"]),
+        "source_status": f.get("estado") or "",
+    }
+
+
+def coerce_pago_odoo(p: dict) -> dict:
+    return {
+        "numero": p.get("numero") or "",
+        "partner": p.get("partner") or "",
+        "partner_id": p.get("partner_id"),
+        "monto": p.get("monto_company") if p.get("monto_company") is not None else p.get("monto") or 0,
+        "monto_original": p.get("monto") or 0,
+        "currency": p.get("currency") or "",
+        "fecha": p.get("fecha") or "",
+        "payment_type": p.get("payment_type") or "",
+        "partner_type": p.get("partner_type") or "",
+        "ref": p.get("ref") or "",
+        "source": "odoo",
+        "source_id": str(p["id"]),
+        "source_status": p.get("estado") or "",
+    }
+
+
+def _analizar_passthrough(filas: list[dict], lang: str | None = None) -> list[dict]:
+    return []
+
+
 _COERCERS_ODOO = {
     "producto": coerce_producto_odoo,
     "proveedor": coerce_proveedor_odoo,
@@ -849,12 +962,18 @@ _COERCERS_ODOO = {
     "venta": coerce_venta_odoo,
     "deposito": coerce_deposito_odoo,
     "recepciones": coerce_recepcion_odoo,
+    "entregas": coerce_entrega_odoo,
+    "cuenta_corriente": coerce_factura_odoo,
+    "compras": coerce_factura_odoo,
+    "pagos": coerce_pago_odoo,
 }
 
 _REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
                     "cliente": "nombre", "orden_compra": "numero",
                     "venta": "producto", "deposito": "producto",
-                    "recepciones": "producto"}
+                    "recepciones": "producto", "entregas": "producto",
+                    "cuenta_corriente": "numero", "compras": "numero",
+                    "pagos": "numero"}
 
 
 def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
@@ -869,22 +988,23 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
     coerce = _COERCERS_ODOO[tipo]
     filas = [coerce(f) for f in filas_odoo]
     filas = [f for f in filas if f.get(_REQUERIDO_ODOO[tipo])]
-    if tipo == "producto":
-        observaciones = _analizar(filas)
-    elif tipo == "proveedor":
-        observaciones = _analizar_proveedores(filas, lang)
-    elif tipo == "cliente":
-        observaciones = _analizar_clientes(filas, lang)
-    elif tipo == "orden_compra":
-        observaciones = _analizar_ordenes_compra(filas, lang)
-    elif tipo == "venta":
-        observaciones = _analizar_ventas(filas, lang)
-    elif tipo == "deposito":
-        observaciones = _analizar_deposito(filas, lang)
-    elif tipo == "recepciones":
-        observaciones = _analizar_recepciones(filas, lang)
-    else:
+    _ANALIZADORES_ODOO = {
+        "producto": lambda f, l: _analizar(f),
+        "proveedor": _analizar_proveedores,
+        "cliente": _analizar_clientes,
+        "orden_compra": _analizar_ordenes_compra,
+        "venta": _analizar_ventas,
+        "deposito": _analizar_deposito,
+        "recepciones": _analizar_recepciones,
+        "entregas": _analizar_passthrough,
+        "cuenta_corriente": _analizar_passthrough,
+        "compras": _analizar_passthrough,
+        "pagos": _analizar_passthrough,
+    }
+    analizar = _ANALIZADORES_ODOO.get(tipo)
+    if analizar is None:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
+    observaciones = analizar(filas, lang)
     batch = {
         "id": "b" + secrets.token_hex(3),
         "nombre": nombre or f"Odoo · {tipo}",

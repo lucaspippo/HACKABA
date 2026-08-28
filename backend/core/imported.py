@@ -19,6 +19,9 @@ _PRODUCT_FIELDS = (
     ("stock", "stock"),
     ("costo_iva", "cost"),
     ("pvp", "list_price"),
+    ("precio_lista", "reference_price"),
+    ("pricing_status", "pricing_status"),
+    ("moneda", "currency"),
     ("free_qty", "free_qty"),
     ("incoming_qty", "incoming_qty"),
     ("outgoing_qty", "outgoing_qty"),
@@ -31,6 +34,8 @@ _SALE_FIELDS = (
     ("codigo", "code"),
     ("cantidad", "quantity"),
     ("precio", "price"),
+    ("currency", "currency"),
+    ("qty_delivered", "qty_delivered"),
     ("source", "source"),
     ("source_id", "source_id"),
     ("source_status", "source_status"),
@@ -44,6 +49,9 @@ _RECEIPT_FIELDS = (
     ("deposito", "warehouse"),
     ("origen", "origin"),
     ("po_number", "po_number"),
+    ("qty_ordered", "qty_ordered"),
+    ("pendiente", "pending"),
+    ("es_backorder", "is_backorder"),
     ("source", "source"),
     ("source_id", "source_id"),
     ("source_status", "source_status"),
@@ -57,6 +65,35 @@ _MOVEMENT_FIELDS = (
     ("cantidad", "quantity"),
     ("in_date", "in_date"),
     ("counted_qty", "counted_qty"),
+    ("source", "source"),
+    ("source_id", "source_id"),
+)
+_INVOICE_FIELDS = (
+    ("fecha", "date"),
+    ("numero", "number"),
+    ("partner", "partner"),
+    ("tipo", "kind"),
+    ("total", "total"),
+    ("residual", "residual"),
+    ("currency", "currency"),
+    ("payment_state", "payment_state"),
+    ("aging", "aging"),
+    ("vencimiento", "due"),
+    ("overdue", "overdue"),
+    ("source", "source"),
+    ("source_id", "source_id"),
+)
+_DELIVERY_FIELDS = (
+    ("fecha", "date"),
+    ("producto", "product"),
+    ("codigo", "code"),
+    ("cliente", "customer"),
+    ("cantidad", "quantity"),
+    ("qty_ordered", "qty_ordered"),
+    ("origen", "origin"),
+    ("so_number", "so_number"),
+    ("pendiente", "pending"),
+    ("es_backorder", "is_backorder"),
     ("source", "source"),
     ("source_id", "source_id"),
 )
@@ -94,25 +131,43 @@ def overview() -> dict:
         key=lambda row: str(row.get("in_date") or row.get("vencimiento") or ""),
         reverse=True,
     )
+    invoices_raw = sorted(
+        esquema.filas("cuenta_corriente") + esquema.filas("compras"),
+        key=lambda row: str(row.get("fecha") or ""),
+        reverse=True,
+    )
+    deliveries_raw = sorted(
+        esquema.filas("entregas"),
+        key=lambda row: str(row.get("fecha") or ""),
+        reverse=True,
+    )
     products = _project(products_raw, _PRODUCT_FIELDS, "p")
     sales = _project(sales_raw, _SALE_FIELDS, "v")
     receipts = _project(receipts_raw, _RECEIPT_FIELDS, "r")
     movements = _project(movements_raw, _MOVEMENT_FIELDS, "m")
+    invoices = _project(invoices_raw, _INVOICE_FIELDS, "i")
+    deliveries = _project(deliveries_raw, _DELIVERY_FIELDS, "e")
     return {
         "products": products,
         "sales": sales,
         "receipts": receipts,
         "movements": movements,
+        "invoices": invoices,
+        "deliveries": deliveries,
         "summary": {
             "products": len(products),
             "sales": len(sales),
             "receipts": len(receipts),
             "movements": len(movements),
+            "invoices": len(invoices),
+            "deliveries": len(deliveries),
             "odoo": {
                 "products": _count_source(products),
                 "sales": _count_source(sales),
                 "receipts": _count_source(receipts),
                 "movements": _count_source(movements),
+                "invoices": _count_source(invoices),
+                "deliveries": _count_source(deliveries),
             },
         },
     }

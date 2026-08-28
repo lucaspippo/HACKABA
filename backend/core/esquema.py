@@ -94,6 +94,18 @@ TIPOS = {
         "activa": ["estado de envío por cliente", "alertas de entregas atrasadas",
                    "resumen del día de reparto"],
     },
+    "entregas": {
+        "nombre": "Entregas",
+        "senales": ["entrega", "picking", "backorder", "qty_delivered"],
+        "relaciona_con": ["cliente", "venta"],
+        "activa": ["entregas parciales y backorders abiertos"],
+    },
+    "pagos": {
+        "nombre": "Pagos",
+        "senales": ["pago", "recibo", "account.payment", "conciliacion"],
+        "relaciona_con": ["cliente", "proveedor", "cuenta_corriente", "compras"],
+        "activa": ["pagos reales conciliados contra facturas y residuales"],
+    },
 }
 
 

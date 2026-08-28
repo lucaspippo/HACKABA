@@ -66,6 +66,9 @@ class Articulo:
     free_qty: float | None = None
     incoming_qty: float | None = None
     outgoing_qty: float | None = None
+    pricing_status: str | None = None
+    precio_lista: float | None = None
+    moneda: str | None = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "Articulo":
@@ -88,6 +91,9 @@ class Articulo:
             free_qty=d.get("free_qty"),
             incoming_qty=d.get("incoming_qty"),
             outgoing_qty=d.get("outgoing_qty"),
+            pricing_status=d.get("pricing_status"),
+            precio_lista=d.get("precio_lista"),
+            moneda=d.get("moneda"),
         )
 
 

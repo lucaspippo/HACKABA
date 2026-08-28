@@ -5,6 +5,7 @@ import pytest
 from core import odoo_ingest, store
 from core.db import odoo_connections_repo, tenant as _tenant
 from tests.conftest import limpiar_cuentas_db, limpiar_tabla_tenant
+from tests.odoo_fakes import match_domain
 
 
 class _FakeCommon:
@@ -42,9 +43,11 @@ class _FakeModels:
         ]
         self.ordenes = [
             {"id": 10, "name": "P00010", "partner_id": [1, "Proveedor Ya Vinculado"],
-             "state": "draft", "date_order": "2026-08-01", "amount_total": 100.0},
+             "state": "draft", "date_order": "2026-08-01", "amount_total": 100.0,
+             "currency_id": [1, "ARS"]},
             {"id": 11, "name": "P00011", "partner_id": [1, "Proveedor Nuevo De Odoo"],
-             "state": "purchase", "date_order": "2026-08-02", "amount_total": 200.0},
+             "state": "purchase", "date_order": "2026-08-02", "amount_total": 200.0,
+             "currency_id": [1, "ARS"]},
         ]
         self.lineas_orden = [
             {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Producto"],
@@ -56,11 +59,14 @@ class _FakeModels:
         ]
         self.ordenes_venta = [
             {"id": 20, "name": "S00020", "partner_id": [1, "Cliente"],
-             "state": "sale", "date_order": "2026-06-15 10:00:00", "amount_total": 200.0},
+             "state": "sale", "date_order": "2026-06-15 10:00:00", "amount_total": 200.0,
+             "currency_id": [1, "ARS"], "pricelist_id": [10, "Minorista ARS"]},
             {"id": 21, "name": "S00021", "partner_id": [1, "Cliente"],
-             "state": "draft", "date_order": "2026-06-20 09:00:00", "amount_total": 50.0},
+             "state": "draft", "date_order": "2026-06-20 09:00:00", "amount_total": 50.0,
+             "currency_id": [1, "ARS"], "pricelist_id": [10, "Minorista ARS"]},
             {"id": 22, "name": "S00022", "partner_id": [1, "Cliente"],
-             "state": "cancel", "date_order": "2026-05-01 09:00:00", "amount_total": 8.0},
+             "state": "cancel", "date_order": "2026-05-01 09:00:00", "amount_total": 8.0,
+             "currency_id": [1, "ARS"], "pricelist_id": [10, "Minorista ARS"]},
         ]
         self.lineas_venta = [
             {"id": 200, "order_id": [20, "S00020"], "product_id": [1, "Producto Ya Vinculado"],
@@ -103,15 +109,60 @@ class _FakeModels:
         ]
         self.pickings = [
             {"id": 50, "name": "WH/IN/00012", "partner_id": [3, "Distribuidora del Sur"],
-             "date_done": "2026-08-06 12:00:00", "origin": "P00011",
+             "date_done": "2026-08-06 12:00:00", "scheduled_date": "2026-08-06 12:00:00",
+             "origin": "P00011",
              "location_dest_id": [8, "WH/Stock"], "state": "done",
-             "picking_type_code": "incoming"},
+             "picking_type_code": "incoming", "backorder_id": False},
+            {"id": 60, "name": "WH/OUT/00001", "partner_id": [5, "Cliente Ya Vinculado"],
+             "date_done": "2026-06-16 12:00:00", "scheduled_date": "2026-06-16 12:00:00",
+             "origin": "S00020", "location_dest_id": [8, "WH/Stock"], "state": "done",
+             "picking_type_code": "outgoing", "backorder_id": False},
         ]
         self.moves = [
             {"id": 500, "picking_id": [50, "WH/IN/00012"],
              "product_id": [101, "Producto Ya Vinculado"], "quantity": 1.5,
+             "product_uom_qty": 1.5,
              "location_dest_id": [8, "WH/Stock"],
-             "purchase_line_id": [101, "P00011"], "state": "done"},
+             "purchase_line_id": [101, "P00011"], "sale_line_id": False, "state": "done"},
+            {"id": 600, "picking_id": [60, "WH/OUT/00001"],
+             "product_id": [1, "Producto Ya Vinculado"], "quantity": 2.0,
+             "product_uom_qty": 2.0, "location_dest_id": [8, "WH/Stock"],
+             "purchase_line_id": False, "sale_line_id": [200, "S00020"], "state": "done"},
+        ]
+        self.company = [{"id": 1, "name": "Demo", "currency_id": [1, "ARS"],
+                         "country_id": [10, "Argentina"]}]
+        self.rates = [
+            {"id": 1, "name": "2024-08-01", "currency_id": [2, "USD"],
+             "rate": 1 / 950, "inverse_company_rate": 950.0, "company_rate": 1 / 950},
+            {"id": 2, "name": "2026-07-07", "currency_id": [2, "USD"],
+             "rate": 1 / 1450, "inverse_company_rate": 1450.0, "company_rate": 1 / 1450},
+        ]
+        self.currencies = [{"id": 1, "name": "ARS", "symbol": "$"},
+                           {"id": 2, "name": "USD", "symbol": "US$"}]
+        self.pricelists = [
+            {"id": 10, "name": "Minorista ARS", "currency_id": [1, "ARS"]},
+            {"id": 11, "name": "Mayorista ARS", "currency_id": [1, "ARS"]},
+        ]
+        self.pl_items = []
+        self.invoices = [
+            {"id": 70, "name": "INV/2026/0001", "partner_id": [5, "Cliente Ya Vinculado"],
+             "move_type": "out_invoice", "invoice_date": "2026-05-01",
+             "invoice_date_due": "2026-05-15", "amount_total": 200.0,
+             "amount_residual": 200.0, "amount_untaxed": 165.0,
+             "payment_state": "not_paid", "currency_id": [1, "ARS"],
+             "invoice_origin": "S00020", "state": "posted"},
+            {"id": 71, "name": "BILL/2026/0001", "partner_id": [3, "Distribuidora del Sur"],
+             "move_type": "in_invoice", "invoice_date": "2026-06-02",
+             "invoice_date_due": "2026-06-16", "amount_total": 200.0,
+             "amount_residual": 50.0, "amount_untaxed": 165.0,
+             "payment_state": "partial", "currency_id": [1, "ARS"],
+             "invoice_origin": "P00011", "state": "posted"},
+        ]
+        self.payments = [
+            {"id": 80, "name": "PAY/2026/0001", "partner_id": [3, "Distribuidora del Sur"],
+             "amount": 150.0, "date": "2026-06-10", "payment_type": "outbound",
+             "partner_type": "supplier", "currency_id": [1, "ARS"],
+             "ref": "BILL/2026/0001", "state": "posted"},
         ]
 
     def execute_kw(self, db, uid, pwd, model, method, args, kwargs):
@@ -184,14 +235,55 @@ class _FakeModels:
                 return [x for x in self.variantes if x["id"] in want]
         if model == "stock.picking":
             if method == "search":
-                return [p["id"] for p in self.pickings]
+                return [p["id"] for p in match_domain(self.pickings, args[0] if args else [])]
             if method == "read":
-                return self.pickings
+                want = set(args[0])
+                return [p for p in self.pickings if p["id"] in want]
         if model == "stock.move":
             if method == "search":
-                return [m["id"] for m in self.moves]
+                return [m["id"] for m in match_domain(self.moves, args[0] if args else [])]
             if method == "read":
-                return self.moves
+                want = set(args[0])
+                return [m for m in self.moves if m["id"] in want]
+        if model == "res.company":
+            if method == "search":
+                return [c["id"] for c in self.company]
+            if method == "read":
+                return self.company
+        if model == "res.currency.rate":
+            if method == "search":
+                return [r["id"] for r in self.rates]
+            if method == "read":
+                want = set(args[0])
+                return [r for r in self.rates if r["id"] in want]
+        if model == "res.currency":
+            if method == "read":
+                want = set(args[0])
+                return [c for c in self.currencies if c["id"] in want]
+        if model == "product.pricelist":
+            if method == "search":
+                return [p["id"] for p in self.pricelists]
+            if method == "read":
+                want = set(args[0])
+                return [p for p in self.pricelists if p["id"] in want]
+        if model == "product.pricelist.item":
+            if method == "search":
+                return [i["id"] for i in match_domain(self.pl_items, args[0] if args else [])]
+            if method == "read":
+                want = set(args[0])
+                return [i for i in self.pl_items if i["id"] in want]
+        if model == "account.move":
+            if method == "search":
+                return [m["id"] for m in match_domain(self.invoices, args[0] if args else [])]
+            if method == "read":
+                want = set(args[0])
+                return [m for m in self.invoices if m["id"] in want]
+        if model == "account.payment":
+            if method == "search":
+                return [p["id"] for p in match_domain(self.payments, args[0] if args else [])]
+            if method == "read":
+                want = set(args[0])
+                return [p for p in self.payments if p["id"] in want]
         raise NotImplementedError((model, method))
 
 
@@ -226,6 +318,14 @@ def _limpiar_recepciones() -> None:
     esquema.reemplazar_filas("recepciones", [])
 
 
+def _limpiar_contable() -> None:
+    from core import esquema
+    esquema.reemplazar_filas("entregas", [])
+    esquema.reemplazar_filas("cuenta_corriente", [])
+    esquema.reemplazar_filas("compras", [])
+    esquema.reemplazar_filas("pagos", [])
+
+
 @pytest.fixture(autouse=True)
 def _setup(tenant_id, monkeypatch):
     monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
@@ -237,6 +337,7 @@ def _setup(tenant_id, monkeypatch):
     _limpiar_ventas()
     _limpiar_deposito()
     _limpiar_recepciones()
+    _limpiar_contable()
     yield
     odoo_connections_repo.delete(tenant_id)
     store.resetear_actual()
@@ -246,6 +347,7 @@ def _setup(tenant_id, monkeypatch):
     _limpiar_ventas()
     _limpiar_deposito()
     _limpiar_recepciones()
+    _limpiar_contable()
 
 
 def test_ingest_productos_primera_vez_todo_va_a_revision():
@@ -631,7 +733,7 @@ def test_ingest_recepciones_marca_po_recibida(tenant_id):
     assert po["estado"] == "recibida"
 
 
-def test_ingest_oc_purchase_con_qty_received_queda_recibida(monkeypatch, tenant_id):
+def test_ingest_oc_purchase_parcial_queda_aprobada(monkeypatch, tenant_id):
     from core import staging
     from core.db import purchase_orders_repo
 
@@ -646,6 +748,41 @@ def test_ingest_oc_purchase_con_qty_received_queda_recibida(monkeypatch, tenant_
     r = odoo_ingest.ingest_ordenes_compra(actor="test")
     staging.integrar(r["batch_id"], actor="test")
     po = purchase_orders_repo.find_by_number(tenant_id, "P00011")
-    assert po["estado"] == "recibida"
+    assert po["estado"] == "aprobada"
     po_draft = purchase_orders_repo.find_by_number(tenant_id, "P00010")
     assert po_draft["estado"] == "borrador"
+
+
+def test_ingest_oc_purchase_fully_received_queda_recibida(monkeypatch, tenant_id):
+    from core import staging
+    from core.db import purchase_orders_repo
+
+    def _fake_completa(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.lineas_orden[1]["qty_received"] = 2.0
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_completa)
+    r = odoo_ingest.ingest_ordenes_compra(actor="test")
+    staging.integrar(r["batch_id"], actor="test")
+    po = purchase_orders_repo.find_by_number(tenant_id, "P00011")
+    assert po["estado"] == "recibida"
+
+
+def test_ingest_facturas_y_entregas(tenant_id):
+    from core import esquema, staging
+    r = odoo_ingest.ingest_facturas(actor="test")
+    assert r["nuevos_para_revisar"] == 2
+    staging.integrar(r["batch_id_facturas"], actor="test")
+    staging.integrar(r["batch_id_compras"], actor="test")
+    facturas = esquema.filas("cuenta_corriente")
+    assert any(f["numero"] == "INV/2026/0001" and f["aging"] == "overdue" for f in facturas)
+    bills = esquema.filas("compras")
+    assert any(b["numero"] == "BILL/2026/0001" and b["residual"] == 50.0 for b in bills)
+    r2 = odoo_ingest.ingest_entregas(actor="test")
+    assert r2["nuevos_para_revisar"] == 1
+    staging.integrar(r2["batch_id"], actor="test")
+    entregas = esquema.filas("entregas")
+    assert entregas[0]["so_number"] == "S00020"
