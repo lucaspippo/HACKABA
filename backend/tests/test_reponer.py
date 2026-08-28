@@ -87,6 +87,17 @@ def test_un_plazo_supuesto_viaja_marcado():
         assert isinstance(i["lead_propio"], bool)
 
 
+def test_items_exponen_pipeline_y_stockout():
+    r = _r()
+    if not r["disponible"]:
+        return
+    assert "stockout_mes" in r
+    for i in r["items"]:
+        assert "incoming_qty" in i and "outgoing_qty" in i
+        assert "stock" in i and "projected_stock" in i
+        assert isinstance(i["stockout_risk"], bool)
+
+
 def test_sin_ventas_no_inventa_un_ranking():
     from unittest.mock import patch
     with patch("core.analisis.rotacion", return_value={"disponible": False,

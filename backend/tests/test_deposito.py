@@ -35,6 +35,8 @@ def test_aging_buckets_with_frozen_today():
     assert buckets["365_plus"]["units"] == 1
     costo = float(art.get("costo_iva") or 0)
     assert buckets["0_90"]["inmovilizado"] == round(4 * costo, 2)
+    assert {b["bucket"] for b in deposito.resumen()["aging"]} == {
+        "0_90", "91_180", "181_365", "365_plus"}
 
 
 def test_discrepancias_counted_vs_system():

@@ -43,6 +43,7 @@ export default function Reponer({ onPreguntar }) {
             </p>
             <p className="text-[0.82rem] text-tinta-suave">
               {t("reponer.sub", { zona: num(d.total_en_zona), tiempo: num(d.con_tiempo) })}
+              {d.stockout_mes > 0 ? ` ${t("reponer.stockout_n", { n: num(d.stockout_mes) })}` : ""}
             </p>
           </div>
           <div className="shrink-0 text-right">
@@ -66,8 +67,24 @@ export default function Reponer({ onPreguntar }) {
             {d.items.map((i) => (
               <tr key={i.codigo} className="border-b border-linea/60 last:border-0">
                 <td className="px-4 py-2">
-                  <p className="font-medium">{i.producto}</p>
+                  <p className="font-medium">
+                    {i.producto}
+                    {i.stockout_risk && (
+                      <span className="ml-2 rounded-full bg-rojo/12 px-1.5 py-0.5 text-[0.68rem] font-semibold text-rojo align-middle">
+                        {t("reponer.stockout")}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-[0.72rem] text-tinta-suave">{i.proveedor}</p>
+                  {(i.incoming_qty || i.outgoing_qty) ? (
+                    <p className="text-[0.72rem] text-tinta-suave">
+                      {t("reponer.pipeline", {
+                        mano: num(i.stock),
+                        inc: i.incoming_qty ? t("reponer.pipeline_inc", { n: num(i.incoming_qty) }) : "",
+                        out: i.outgoing_qty ? t("reponer.pipeline_out", { n: num(i.outgoing_qty) }) : "",
+                      })}
+                    </p>
+                  ) : null}
                 </td>
                 <td className="plata px-3 py-2 text-right">{i.cobertura_dias} d</td>
                 <td className="plata px-3 py-2 text-right text-tinta-suave">

@@ -119,6 +119,16 @@ def actualizar_articulo(codigo: int, cambios: dict, actor: str) -> dict:
     raise KeyError(codigo)
 
 
+def eliminar_articulo(codigo: int, actor: str) -> None:
+    raw = raw_actual()
+    quedan = [d for d in raw if d.get("codigo") != codigo]
+    if len(quedan) == len(raw):
+        raise KeyError(codigo)
+    borrado = next(d for d in raw if d.get("codigo") == codigo)
+    guardar(quedan)
+    audit.record(actor, "eliminar_articulo", borrado, None)
+
+
 def buscar_por_source(source: str, source_id: str) -> dict | None:
     return next((d for d in raw_actual()
                  if d.get("source") == source and d.get("source_id") == source_id), None)
@@ -316,8 +326,57 @@ def articulos_con_estado() -> list[dict]:
             "peso_por_unidad": pricing.peso_por_unidad(d),
             "unidades": pricing.unidades_de(d),
             "precio_por_unidad": pricing.precio_por_unidad(d),
+            "source": d.get("source"),
+            "source_id": d.get("source_id"),
+            "sku": d.get("sku"),
+            "tipo": d.get("tipo"),
+            "proveedor": d.get("proveedor"),
+            "free_qty": d.get("free_qty"),
+            "incoming_qty": d.get("incoming_qty"),
+            "outgoing_qty": d.get("outgoing_qty"),
         })
     return out
+
+
+_PRODUCT_SEARCH = ("descripcion", "codigo", "sku", "source", "tipo", "proveedor")
+_PRODUCT_CSV = ("codigo", "sku", "descripcion", "stock", "costo_iva", "pvp",
+                "estado", "estado_calidad", "source")
+
+
+def _filtered_articles(*, q: str = "", sort: str | None = "descripcion",
+                       direction: str = "asc", source: str | None = None,
+                       filtro: str | None = None, err: str | None = None) -> list[dict]:
+    from . import paging, section_records
+    rows = articulos_con_estado()
+    if filtro == "ok":
+        rows = [r for r in rows if r.get("estado_calidad") == "ok"]
+    elif filtro == "balanza":
+        rows = [r for r in rows if r.get("unidad_pricing") == "kg"]
+    elif filtro == "a_corregir":
+        rows = [r for r in rows if r.get("estado_calidad") != "ok"]
+        if err and err != "todos":
+            rows = [r for r in rows if r.get("estado_calidad") == err]
+    rows = section_records.match_source(rows, source)
+    return paging.filter_sort(
+        rows, q=q, search_in=_PRODUCT_SEARCH, sort=sort, direction=direction)
+
+
+def list_page(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
+              offset: int = 0, limit: int = 50, source: str | None = None,
+              filtro: str | None = None, err: str | None = None) -> dict:
+    from . import paging
+    rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
+                              filtro=filtro, err=err)
+    return paging.page_rows(rows, offset=offset, limit=limit)
+
+
+def export_csv(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
+               source: str | None = None, filtro: str | None = None,
+               err: str | None = None) -> str:
+    from . import paging
+    rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
+                              filtro=filtro, err=err)
+    return paging.rows_to_csv(rows, _PRODUCT_CSV)
 
 
 def articulos_balanza() -> list[dict]:
