@@ -158,3 +158,12 @@ def test_actividad_excluye_eventos_administrativos(h):
     # pero el evento sí quedó en la auditoría cruda
     eventos = client.get("/api/audit", headers=h).json()["eventos"]
     assert any(e["accion"] == "cambiar_idioma" for e in eventos)
+
+
+def test_prioridades_inbox_shape(h):
+    r = client.get("/api/prioridades", headers=h)
+    assert r.status_code == 200
+    body = r.json()
+    assert {"act", "watch", "badge", "hay_ventas"} <= set(body)
+    assert body["badge"] == len(body["act"])
+    assert isinstance(body["act"], list) and isinstance(body["watch"], list)
