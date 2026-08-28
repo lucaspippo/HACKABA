@@ -157,6 +157,7 @@ export default function DateRangePicker({ from, to, onChange }) {
       setDraftFrom(iso);
       setDraftTo("");
       setHover(null);
+      apply(iso, iso);
       return;
     }
     let a = draftFrom;
@@ -183,7 +184,13 @@ export default function DateRangePicker({ from, to, onChange }) {
         type="button"
         aria-expanded={open}
         aria-haspopup="dialog"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          if (e.target.closest("[data-clear-range]")) {
+            apply("", "");
+            return;
+          }
+          setOpen((v) => !v);
+        }}
         className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors ${
           from
             ? "border-tinta bg-tinta text-crema"
@@ -194,12 +201,9 @@ export default function DateRangePicker({ from, to, onChange }) {
         <span className="max-w-[14rem] truncate">{label}</span>
         {from && (
           <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); apply("", ""); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); apply("", ""); } }}
+            data-clear-range
             className="ml-0.5 rounded-full p-0.5 hover:bg-crema/20"
-            aria-label={t("crud.rango_limpiar")}
+            aria-hidden
           >
             <X size={12} />
           </span>
