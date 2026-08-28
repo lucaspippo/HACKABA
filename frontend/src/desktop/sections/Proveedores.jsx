@@ -73,7 +73,7 @@ export default function Proveedores({ highlight }) {
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("proveedores.buscar")}
-        vacio={t("proveedores.vacio")}
+        vacio={qn ? t("proveedores.vacio_filtro") : t("proveedores.vacio")}
         acciones={(p) => (
           <div className="flex items-center justify-end gap-2">
             <button onClick={() => setModal(p)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
