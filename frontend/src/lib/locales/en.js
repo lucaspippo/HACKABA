@@ -1961,6 +1961,7 @@ export const EN = {
   "inicio.metrica_corregir": "Data to fix",
   "inicio.metrica_mora": "Customers past due",
   "inicio.metrica_oportunidades": "Priorities",
+  "inicio.metrica_recuperable": "Recoverable if you act now",
   "inicio.angela_del_dia": "Ángela · message of the day",
   "inicio.saludo": "Good morning, {nombre}!",
   "inicio.hero_titulo": "Ángela already worked for you",
