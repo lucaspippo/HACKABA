@@ -116,6 +116,50 @@ function Vencimientos({ onPreguntar }) {
   );
 }
 
+const AGING_LABEL = {
+  "0_90": "deposito.aging_0_90",
+  "91_180": "deposito.aging_91_180",
+  "181_365": "deposito.aging_181_365",
+  "365_plus": "deposito.aging_365",
+};
+const AGING_COLOR = {
+  "0_90": "bg-hielo",
+  "91_180": "bg-salvia",
+  "181_365": "bg-oro",
+  "365_plus": "bg-rojo",
+};
+
+function AgingMercaderia({ aging }) {
+  const t = useT();
+  const buckets = aging || [];
+  const totalU = buckets.reduce((s, b) => s + (b.units || 0), 0);
+  if (!totalU) return null;
+  return (
+    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
+      <p className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.aging_titulo")}</p>
+      <p className="mt-0.5 text-[0.82rem] text-tinta-suave">{t("deposito.aging_sub")}</p>
+      <div className="mt-3 flex h-3 overflow-hidden rounded-full">
+        {buckets.filter((b) => b.units > 0).map((b) => (
+          <div key={b.bucket} className={AGING_COLOR[b.bucket]}
+            style={{ width: `${(b.units / totalU) * 100}%` }}
+            title={`${t(AGING_LABEL[b.bucket])}: ${num(b.units)}`} />
+        ))}
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
+        {buckets.map((b) => (
+          <div key={b.bucket} className="flex items-baseline justify-between gap-2 text-[0.8rem]">
+            <span className="flex items-center gap-1.5 text-tinta-suave">
+              <span className={`h-2 w-2 rounded-full ${AGING_COLOR[b.bucket]}`} />
+              {t(AGING_LABEL[b.bucket])}
+            </span>
+            <span className="plata font-medium">{pesoCorto(b.inmovilizado)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Vista del encargado de depósito: lo físico. Los datos WMS del tenant
 // (ubicaciones, lotes, vencimientos, discrepancias) + los problemas de
 // catálogo que él resuelve en el galpón (fantasma / negativo). El panel
@@ -241,6 +285,7 @@ export default function Deposito({ data, onPreguntar }) {
       {/* P38·H — el apartado de vencimientos GESTIONADOS: no "vence en 12 días"
           (eso no decide nada) sino "vence en 12 días y NO llegás a venderlo". */}
       <Vencimientos onPreguntar={onPreguntar} />
+      <AgingMercaderia aging={wms?.aging || wms?.resumen?.aging} />
 
       {/* Vencidos + por vencer: mover primero (FIFO con datos reales) */}
       {hayWms && (wms.vencidos?.length > 0 || wms.vencimientos?.length > 0) && (

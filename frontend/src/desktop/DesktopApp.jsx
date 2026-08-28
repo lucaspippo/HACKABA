@@ -6,7 +6,7 @@ import {
   HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
   Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
-  ShoppingCart, Plug, Layers, Inbox, PackageCheck,
+  ShoppingCart, Plug, Layers, Inbox, PackageCheck, Package, PackagePlus, ShoppingBag,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -24,6 +24,7 @@ import { InsightNodo } from "./sections/MapaNegocio";
 import MapaSeccion from "./sections/MapaSeccion";
 import ErrorBoundary from "../components/ErrorBoundary";
 import Inventario from "./sections/Inventario";
+import Productos from "./sections/Productos";
 import Saneamiento from "./sections/Saneamiento";
 import Finanzas from "./sections/Finanzas";
 import Prioridades from "../sections/Prioridades";
@@ -42,7 +43,9 @@ import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
 import Conectores from "./sections/Conectores";
 import Ubicaciones from "./sections/Ubicaciones";
-import Lotes from "./sections/Lotes";
+import Movimientos from "./sections/Movimientos";
+import Ventas from "./sections/Ventas";
+import Recepciones from "./sections/Recepciones";
 import Proveedores from "./sections/Proveedores";
 import OrdenesCompra from "./sections/OrdenesCompra";
 import Imported from "./sections/Imported";
@@ -65,6 +68,10 @@ const CATALOGO = {
   panel: { lk: "nav.panel", icon: LayoutDashboard },
   mapa: { lk: "nav.mapa", icon: Waypoints },
   inventario: { lk: "nav.inventario", icon: Boxes },
+  productos: { lk: "nav.productos", icon: Package },
+  ventas: { lk: "nav.ventas", icon: ShoppingBag },
+  recepciones: { lk: "nav.recepciones", icon: PackagePlus },
+  movimientos: { lk: "nav.movimientos", icon: PackageSearch },
   saneamiento: { lk: "nav.saneamiento", icon: ClipboardList },
   finanzas: { lk: "nav.finanzas", icon: Wallet },
   cuentas: { lk: "nav.cuentas", icon: HandCoins },
@@ -87,7 +94,6 @@ const CATALOGO = {
   admin_contexto: { lk: "nav.admin_contexto", icon: Globe },
   perfil: { lk: "nav.perfil", icon: UserCircle },
   ubicaciones: { lk: "nav.ubicaciones", icon: MapPin },
-  lotes: { lk: "nav.lotes", icon: PackageSearch },
   imported: { lk: "nav.imported", icon: Layers },
   proveedores: { lk: "nav.proveedores", icon: Truck },
   ordenes_compra: { lk: "nav.ordenes_compra", icon: ShoppingCart },
@@ -104,7 +110,7 @@ const GRUPOS_NAV = [
   { id: "prioridades", leaf: true },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
-  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "deposito", "ubicaciones", "lotes"] },
+  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "productos", "ventas", "recepciones", "movimientos", "deposito", "ubicaciones"] },
   { id: "ingesta", lk: "nav.grupo_ingesta", icon: Inbox, ids: ["cargar", "conectores", "staging", "imported", "saneamiento"] },
   { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
@@ -140,7 +146,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // Prioridades is the ranked inbox for anyone with alertas or oportunidades.
   const extraNav = [];
   if (user.features.includes("inventario")) {
-    extraNav.push("ubicaciones", "lotes", "proveedores", "ordenes_compra");
+    extraNav.push("productos", "ventas", "recepciones", "movimientos", "ubicaciones", "proveedores", "ordenes_compra");
   }
   if (user.features.includes("saneamiento")) extraNav.push("staging");
   if (user.features.includes("inventario") && (
@@ -162,6 +168,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     gestion_equipo: "equipo", "gestion de equipo": "equipo",
     alertas: "prioridades", oportunidades: "prioridades", insights: "prioridades",
     pendientes: "staging",
+    lotes: "movimientos",
   };
   const secciones = featuresEfectivas.filter((f) => CATALOGO[f]);
   // La vista de trabajo del de a pie ("Mi día") es SUYA, no un módulo de la
@@ -513,7 +520,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
-                {section === "lotes" && <Lotes onNavegar={navegar} />}
+                {section === "productos" && <Productos data={data} highlight={highlight} />}
+                {section === "ventas" && <Ventas />}
+                {section === "recepciones" && <Recepciones />}
+                {section === "movimientos" && <Movimientos onNavegar={navegar} />}
                 {section === "imported" && <Imported highlight={highlight} onNavigate={navegar} />}
                 {section === "proveedores" && <Proveedores />}
                 {section === "ordenes_compra" && <OrdenesCompra />}

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import statistics
 
-from . import esquema, fechas, store
+from . import esquema, fechas, stock, store
 from .evolucion import _monto_fila
 from .fechas import parse_fecha
 
@@ -147,7 +147,7 @@ def forecast_demand(lang: str | None = None) -> dict:
                 "interval_ok": interval_ok,
             })
         art = catalogo.get(codigo) or {}
-        cover = (art.get("stock") or 0) + (art.get("incoming_qty") or 0) - (art.get("outgoing_qty") or 0)
+        cover = stock.projected_stock(art)
         stockout_risk = bool(months) and months[0]["qty"] > cover
         items.append({
             "product_code": codigo,
