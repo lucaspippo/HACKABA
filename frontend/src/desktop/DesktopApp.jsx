@@ -6,7 +6,7 @@ import {
   HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
   Sparkles, Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
-  ShoppingCart, Link2,
+  ShoppingCart, Plug, Layers, Inbox, PackageCheck,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -46,6 +46,7 @@ import Ubicaciones from "./sections/Ubicaciones";
 import Lotes from "./sections/Lotes";
 import Proveedores from "./sections/Proveedores";
 import OrdenesCompra from "./sections/OrdenesCompra";
+import Imported from "./sections/Imported";
 import MiDia from "../mobile/MiDia";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { tieneVistaHerramienta } from "../lib/roles";
@@ -84,11 +85,13 @@ const CATALOGO = {
   // Bloque F — el registro de auditoría: scope organización, sólo el dueño.
   auditoria: { lk: "nav.auditoria", icon: ShieldCheck },
   // Plan 11 — sistemas externos (CSV/BCRA/Odoo/MCP): mismo scope que auditoría.
-  conectores: { lk: "nav.conectores", icon: Link2 },
+  conectores: { lk: "nav.conectores", icon: Plug },
+  staging: { lk: "nav.pendientes", icon: PackageCheck },
   admin_contexto: { lk: "nav.admin_contexto", icon: Globe },
   perfil: { lk: "nav.perfil", icon: UserCircle },
   ubicaciones: { lk: "nav.ubicaciones", icon: MapPin },
   lotes: { lk: "nav.lotes", icon: PackageSearch },
+  imported: { lk: "nav.imported", icon: Layers },
   proveedores: { lk: "nav.proveedores", icon: Truck },
   ordenes_compra: { lk: "nav.ordenes_compra", icon: ShoppingCart },
 };
@@ -104,10 +107,11 @@ const GRUPOS_NAV = [
   { id: "senales", lk: "nav.grupo_senales", icon: Radar, ids: ["alertas", "oportunidades", "evolucion"] },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
-  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito", "ubicaciones", "lotes"] },
+  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "deposito", "ubicaciones", "lotes"] },
+  { id: "ingesta", lk: "nav.grupo_ingesta", icon: Inbox, ids: ["cargar", "conectores", "staging", "imported", "saneamiento"] },
   { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
-  { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "conectores", "admin_contexto"] },
+  { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["documentos", "auditoria", "admin_contexto"] },
 ];
 
 // A qué grupo pertenece una sección hoja (null si es ella misma un grupo o no existe).
@@ -133,11 +137,21 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
-  // Ubicaciones/lotes/proveedores/órdenes de compra no son features propias:
-  // el backend las gatea con require_feature("inventario") igual que el resto
-  // del módulo, así que viajan con esa misma feature en vez de pedir 4 nuevas.
-  const featuresEfectivas = user.features.includes("inventario")
-    ? [...user.features, "ubicaciones", "lotes", "proveedores", "ordenes_compra"]
+  // Locations/lots/vendors/POs ride on inventario. Staging is the review
+  // gate of saneamiento. Imported data is the browse step of the ingest
+  // pipeline (cargar / conectores / saneamiento), not a warehouse screen.
+  const extraNav = [];
+  if (user.features.includes("inventario")) {
+    extraNav.push("ubicaciones", "lotes", "proveedores", "ordenes_compra");
+  }
+  if (user.features.includes("saneamiento")) extraNav.push("staging");
+  if (user.features.includes("inventario") && (
+      user.features.includes("cargar") || user.features.includes("conectores")
+      || user.features.includes("saneamiento"))) {
+    extraNav.push("imported");
+  }
+  const featuresEfectivas = extraNav.length
+    ? [...user.features, ...extraNav]
     : user.features;
   const secciones = featuresEfectivas.filter((f) => CATALOGO[f]);
   // La vista de trabajo del de a pie ("Mi día") es SUYA, no un módulo de la
@@ -164,6 +178,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
     // Ángela, la campanita y cualquier link viejo.
     gestion_equipo: "equipo", "gestion de equipo": "equipo",
+    pendientes: "staging",
   };
   // The active section lives in the URL (/:section) instead of a useState.
   const navigate = useNavigate();
@@ -209,10 +224,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // P38·A — una sola definición de "Datos a corregir" (lib/alertas): el badge
   // cuenta EXACTAMENTE lo que muestran la tabla de stock y la sección.
   const nCorregir = contarACorregir(data);
-  // P24·G2 — el badge de "Datos a corregir" suma los dos flujos: errores en el
-  // sistema (nCorregir) + cargas esperando el OK (stagingCount).
   const BADGES = { alertas: nAlertas, oportunidades: nOportunidades,
-                   saneamiento: nCorregir + stagingCount };
+                   saneamiento: nCorregir, staging: stagingCount };
   const docNuevo = useDocNuevo();
 
   // P37 — Identidad del tenant ENTERA del backend (empresa + logo por tenant).
@@ -237,11 +250,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   };
   const navegar = (sec, hl) => {
     let destino = ALIAS_SECCION[sec] || sec;
-    // P24·G2 — "Pending data" se FUSIONÓ dentro de "Datos a corregir": las
-    // rutas viejas (navegar_a, links, tests) redirigen al lugar nuevo.
-    if (destino === "pendientes") {
-      destino = "saneamiento";
-      hl = hl || "revision";
+    // Old "pendientes" / saneamiento?revision land on the staging step.
+    if (destino === "pendientes" || (destino === "saneamiento" && hl === "revision")) {
+      destino = "staging";
+      hl = null;
     }
     // "panel" para el de a pie es su vista de trabajo, no el Inicio del dueño:
     // se navega igual aunque no tenga esa feature (ver `secciones`, arriba).
@@ -257,7 +269,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   };
   const irAPendientes = () => {
     api.stagingListar().then((d) => setStagingCount(d.batches.length)).catch(() => {});
-    navegar("saneamiento", "revision");
+    navegar("staging");
   };
   // El acordeón sigue a la sección activa, venga de donde venga el click
   // (sidebar, command palette, un link guiado de Ángela).
@@ -488,12 +500,13 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "mapa" && <MapaSeccion onNavegar={navegar} onPreguntar={preguntar}
                   onInsight={(i) => { setMapaInsight(i); if (i) setAngelaOpen(true); }} />}
                 {section === "inventario" && <Inventario data={data} highlight={highlight} onPreguntar={preguntar} onNavegar={navegar} />}
-                {section === "saneamiento" && <Saneamiento user={user} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} onRecargar={onRecargar} onStagingCambio={setStagingCount} />}
+                {section === "saneamiento" && <Saneamiento user={user} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} onRecargar={onRecargar} />}
+                {section === "staging" && <StagingArea onCambio={setStagingCount} onRecargar={onRecargar} onNavigate={navegar} />}
+                {section === "cargar" && <CargarDatos user={user} onArchivoCargado={irAPendientes} onPreguntar={preguntar} onAbrirAngela={abrirAngela} onNavigate={navegar} />}
                 {section === "finanzas" && <Finanzas data={data} onPreguntar={preguntar} datos={fase?.datos} onNavegar={navegar} />}
                 {section === "alertas" && <AlertasNegocio onPreguntar={preguntar} onNavegar={navegar} datos={fase?.datos} />}
                 {section === "oportunidades" && <OportunidadesNegocio onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "equipo" && <GestionEquipo data={data} user={user} highlight={highlight} />}
-                {section === "cargar" && <CargarDatos user={user} onArchivoCargado={irAPendientes} onPreguntar={preguntar} onAbrirAngela={abrirAngela} />}
                 {section === "documentos" && <Documentos onPreguntar={preguntar} />}
                 {section === "cuentas" && <CuentasCorrientes onPreguntar={preguntar} highlight={highlight} />}
                 {section === "caja" && <Caja />}
@@ -507,6 +520,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
                 {section === "lotes" && <Lotes onNavegar={navegar} />}
+                {section === "imported" && <Imported highlight={highlight} onNavigate={navegar} />}
                 {section === "proveedores" && <Proveedores />}
                 {section === "ordenes_compra" && <OrdenesCompra />}
                 </ErrorBoundary>

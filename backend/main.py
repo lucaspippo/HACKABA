@@ -1110,6 +1110,13 @@ def forecast_get(u: dict = Depends(require_feature("evolucion"))):
     return forecast_mod.forecast_demand(_lang(u))
 
 
+@app.get("/api/imported")
+def imported_get(_u: dict = Depends(require_feature("inventario"))):
+    """Raw loaded rows: catalog, sales, receipts, warehouse positions."""
+    from core import imported as imported_mod
+    return imported_mod.overview()
+
+
 # --- Depósito y logística (capa sobre el WMS/TMS: consultas, no picking ni rutas) ---
 
 @app.get("/api/deposito")

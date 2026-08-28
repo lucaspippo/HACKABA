@@ -36,6 +36,7 @@ CASOS = [
     ("caja_estado", "GET", "/api/caja", "paula", "deposito"),
     ("caja_cerrar", "POST", "/api/caja/cerrar", "paula", "deposito"),
     ("inventario", "GET", "/api/inventario", "emilio", "vendedor"),
+    ("imported", "GET", "/api/imported", "emilio", "vendedor"),
     ("calidad", "GET", "/api/calidad", "paula", "deposito"),
     ("saneamiento_aplicar", "POST", "/api/saneamiento/aplicar/balanza", "paula", "deposito"),
     ("anomalias_aplicar", "POST", "/api/anomalias/aplicar", "paula", "deposito"),

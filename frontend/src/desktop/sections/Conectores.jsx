@@ -1,16 +1,32 @@
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, LineChart, Waypoints, Link2, ChevronDown } from "lucide-react";
+import { FileSpreadsheet, LineChart, Waypoints, Plug, ChevronDown } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { useT } from "../../lib/i18n";
+import IngestPipeline from "./IngestPipeline";
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
 // Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo interactivo (conectás vos
 // tu cuenta), MCP como slot pendiente para cuando Faro/Tango lo expongan. A
 // medida que se sumen conectores nuevos, entran acá — un solo lugar, no uno
 // por sistema desperdigado en otras pantallas.
-const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Link2, mcp: Waypoints };
+const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Plug, mcp: Waypoints };
+
+function IngestLinks({ t, onNavigate, batchId, importedTab }) {
+  return (
+    <>
+      {batchId && (
+        <> · <button type="button" onClick={() => onNavigate?.("staging")}
+          className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
+      )}
+      {importedTab && (
+        <> · <button type="button" onClick={() => onNavigate?.("imported", importedTab)}
+          className="font-semibold text-violeta underline">{t("odoo.view_imported")}</button></>
+      )}
+    </>
+  );
+}
 
 export default function Conectores({ onNavigate }) {
   const t = useT();
@@ -25,6 +41,9 @@ export default function Conectores({ onNavigate }) {
       <header>
         <h1 className="font-display text-2xl font-bold">{t("conectores.titulo")}</h1>
         <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("conectores.subtitulo")}</p>
+        <div className="mt-3">
+          <IngestPipeline current="conectores" onNavigate={onNavigate} />
+        </div>
       </header>
 
       <AngelaSays>{t("conectores.angela")}</AngelaSays>
@@ -108,7 +127,7 @@ function PanelOdoo({ estado, onNavigate }) {
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
       <button onClick={() => setAbierto((v) => !v)} className="flex w-full items-center gap-3 text-left">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violeta/10 text-violeta">
-          <Link2 size={17} />
+          <Plug size={17} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-display text-[1.02rem] font-bold leading-tight">{t("odoo.titulo")}</span>
@@ -123,6 +142,9 @@ function PanelOdoo({ estado, onNavigate }) {
             <>
               <p className="text-[0.85rem] text-tinta">
                 {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
+                {" · "}
+                <button type="button" onClick={() => onNavigate?.("imported")}
+                  className="font-semibold text-violeta underline">{t("odoo.view_imported")}</button>
               </p>
               <div className="flex flex-wrap items-center gap-1 border-b border-linea">
                 <button onClick={() => setTab("contactos")}
@@ -255,10 +277,7 @@ function OdooTabContactos({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_contactos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_contactos_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -335,10 +354,7 @@ function OdooTabProductos({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_productos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_productos_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="products" />
         </p>
       )}
       {sync && (
@@ -422,10 +438,7 @@ function OdooTabProveedores({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_proveedores_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_proveedores_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -502,10 +515,7 @@ function OdooTabCompras({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_compras_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_compras_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -593,10 +603,7 @@ function OdooTabVentas({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_ventas_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_ventas_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="sales" />
         </p>
       )}
       {sync && (
@@ -684,10 +691,7 @@ function OdooTabDeposito({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_deposito_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_deposito_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="movements" />
         </p>
       )}
       {sync && (
@@ -764,10 +768,7 @@ function OdooTabRecepciones({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_recepciones_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_recepciones_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="receipts" />
         </p>
       )}
       {sync && (

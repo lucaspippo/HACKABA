@@ -168,6 +168,7 @@ export const api = {
   grafo: () => get("/api/grafo"),
   fase: () => get("/api/fase"),
   articulos: () => get("/api/articulos"),
+  imported: () => get("/api/imported"),
   inventarioTop: (n = 10) => get(`/api/inventario/top?n=${n}`),
   calidad: () => get("/api/calidad"),
   anomalias: () => get("/api/anomalias"),

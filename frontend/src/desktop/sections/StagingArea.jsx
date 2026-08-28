@@ -5,10 +5,11 @@ import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import IngestPipeline from "./IngestPipeline";
 
 // La zona de revisión: los datos nuevos pasan por acá antes de entrar al sistema.
 // Ángela los analiza y el dueño resuelve con reglas (no caso por caso).
-export default function StagingArea({ onCambio, onRecargar }) {
+export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
   const t = useT();
   const [batches, setBatches] = useState([]);
   const [preview, setPreview] = useState({});
@@ -55,7 +56,10 @@ export default function StagingArea({ onCambio, onRecargar }) {
   if (batches.length === 0 && !resultado) {
     return (
       <div className="space-y-4">
-        <h1 className="font-display text-3xl font-bold">{t("staging.titulo")}</h1>
+        <header className="space-y-3">
+          <h1 className="font-display text-3xl font-bold">{t("staging.titulo")}</h1>
+          <IngestPipeline current="staging" onNavigate={onNavigate} />
+        </header>
         <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-8 text-center">
           <PackageCheck size={28} className="mx-auto text-tinta-suave" />
           <p className="mt-2 text-[0.95rem] text-tinta-suave">{t("staging.vacio")}</p>
@@ -71,13 +75,24 @@ export default function StagingArea({ onCambio, onRecargar }) {
         <div>
           <h1 className="font-display text-3xl font-bold leading-none">{t("staging.titulo")}</h1>
           <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("staging.sub")}</p>
+          <div className="mt-3">
+            <IngestPipeline current="staging" onNavigate={onNavigate} />
+          </div>
         </div>
       </header>
 
       {resultado && (
         <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-salvia/40 bg-salvia/[0.07] p-5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-salvia text-crema"><Check size={18} /></span>
-          <p className="text-[1rem] text-tinta">{resultado.mensaje}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-[1rem] text-tinta">{resultado.mensaje}</p>
+            {onNavigate && (
+              <button type="button" onClick={() => onNavigate("imported")}
+                className="mt-2 text-[0.84rem] font-semibold text-hielo">
+                {t("staging.go_imported")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
