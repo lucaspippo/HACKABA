@@ -8,9 +8,10 @@ tocarlos: siguen leyendo el mismo apartado de siempre.
 """
 from __future__ import annotations
 
+import datetime
 import uuid
 
-from . import esquema, paging, section_records
+from . import esquema, fechas, paging, section_records
 from .audit import AuditLog
 
 _audit = AuditLog(esquema.DATA_DIR)
@@ -98,25 +99,42 @@ def _enriquecer(row: dict) -> dict:
 
 
 def _rows(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
-          source: str | None = None, discrepancia: bool = False) -> list[dict]:
+          source: str | None = None, discrepancia: bool = False,
+          date_from: str | None = None, date_to: str | None = None,
+          ubicacion: str | None = None, proximos: int | None = None) -> list[dict]:
     rows = [_enriquecer(r) for r in listar()]
     rows = section_records.match_source(rows, source)
     if discrepancia:
         rows = [r for r in rows if r.get("tiene_discrepancia")]
+    if proximos:
+        cutoff = (fechas.hoy() + datetime.timedelta(days=int(proximos))).isoformat()
+        rows = [r for r in rows if r.get("vencimiento") and str(r["vencimiento"]) <= cutoff]
+    equals = {"ubicacion": ubicacion} if ubicacion else None
     return paging.filter_sort(
-        rows, q=q, search_in=SEARCH, sort=sort, direction=direction)
+        rows, q=q, search_in=SEARCH, sort=sort, direction=direction,
+        equals=equals, date_field="in_date", date_from=date_from, date_to=date_to,
+    )
 
 
 def list_page(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
               offset: int = 0, limit: int = paging.DEFAULT_LIMIT,
-              source: str | None = None, discrepancia: bool = False) -> dict:
+              source: str | None = None, discrepancia: bool = False,
+              date_from: str | None = None, date_to: str | None = None,
+              ubicacion: str | None = None, proximos: int | None = None) -> dict:
+    facet_src = section_records.match_source([_enriquecer(r) for r in listar()], source)
     rows = _rows(q=q, sort=sort, direction=direction, source=source,
-                 discrepancia=discrepancia)
-    return paging.page_rows(rows, offset=offset, limit=limit)
+                 discrepancia=discrepancia, date_from=date_from, date_to=date_to,
+                 ubicacion=ubicacion, proximos=proximos)
+    result = paging.page_rows(rows, offset=offset, limit=limit)
+    result["facets"] = paging.collect_facets(facet_src, ("ubicacion",))
+    return result
 
 
 def export_csv(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
-               source: str | None = None, discrepancia: bool = False) -> str:
+               source: str | None = None, discrepancia: bool = False,
+               date_from: str | None = None, date_to: str | None = None,
+               ubicacion: str | None = None, proximos: int | None = None) -> str:
     rows = _rows(q=q, sort=sort, direction=direction, source=source,
-                 discrepancia=discrepancia)
+                 discrepancia=discrepancia, date_from=date_from, date_to=date_to,
+                 ubicacion=ubicacion, proximos=proximos)
     return paging.rows_to_csv(rows, CSV_COLUMNS)

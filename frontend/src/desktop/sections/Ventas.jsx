@@ -2,6 +2,9 @@ import { useCallback, useState } from "react";
 import { TrendingUp, Pencil, Trash2, X } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
+import { FilterDivider, FilterRail } from "../../components/FilterRail";
+import DateRangePicker from "../../components/DateRangePicker";
+import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { fecha, num, peso } from "../../lib/format";
@@ -50,17 +53,22 @@ export default function Ventas() {
         titulo={t("ventas_crud.tabla")}
         conteo={t("crud.conteo", { a: num(page.items.length), b: num(page.total) })}
         columnas={[
-          { key: "fecha", label: t("imported.col_date"), sortable: true, plata: true,
+          { key: "fecha", label: t("imported.col_date"), sortable: true, plata: true, groupable: true,
             render: (r) => (r.fecha ? fecha(r.fecha) : "—") },
-          { key: "producto", label: t("imported.col_product"), sortable: true,
-            render: (r) => <span className="font-medium text-tinta">{r.producto || "—"}</span> },
+          { key: "producto", label: t("imported.col_product"), sortable: true, groupable: true,
+            render: (r) => (
+              <CellLink to={qLink("productos", r.producto)}>
+                <span className="font-medium">{r.producto || "—"}</span>
+              </CellLink>
+            ) },
           { key: "codigo", label: t("imported.col_sku"), sortable: true, plata: true,
-            render: (r) => r.codigo ?? "—" },
+            render: (r) => <CellLink to={qLink("productos", r.codigo)}>{r.codigo ?? "—"}</CellLink> },
           { key: "cantidad", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
             render: (r) => num(r.cantidad || 0) },
           { key: "precio", label: t("imported.col_price"), sortable: true, align: "right", plata: true,
             render: (r) => (r.precio == null ? "—" : peso(r.precio)) },
-          { key: "source", label: t("imported.col_source"), sortable: true,
+          { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
+            groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
             render: (r) => <SourceBadge source={r.source} t={t} /> },
         ]}
         filas={page.items}
@@ -77,16 +85,13 @@ export default function Ventas() {
         onLoadMore={page.loadMore}
         hasMore={page.hasMore}
         cargandoMas={page.loadingMore}
+        onLimpiar={page.hasActiveFilters ? page.clearFilters : undefined}
         filtros={(
-          <>
+          <FilterRail onClear={page.hasActiveFilters ? page.clearFilters : undefined} clearLabel={t("crud.limpiar_filtros")}>
             <SourceChips value={page.source} onChange={page.setSource} t={t} />
-            <label className="ml-2 text-[0.78rem] font-semibold text-tinta-suave">{t("crud.desde")}</label>
-            <input type="date" value={page.dateFrom} onChange={(e) => page.setDateFrom(e.target.value)}
-              className="rounded-full border border-linea bg-papel px-3 py-1 text-[0.82rem] outline-none focus:border-tinta/40" />
-            <label className="text-[0.78rem] font-semibold text-tinta-suave">{t("crud.hasta")}</label>
-            <input type="date" value={page.dateTo} onChange={(e) => page.setDateTo(e.target.value)}
-              className="rounded-full border border-linea bg-papel px-3 py-1 text-[0.82rem] outline-none focus:border-tinta/40" />
-          </>
+            <FilterDivider />
+            <DateRangePicker from={page.dateFrom} to={page.dateTo} onChange={page.setDateRange} />
+          </FilterRail>
         )}
         acciones={(r) => (
           <div className="flex items-center justify-end gap-2">

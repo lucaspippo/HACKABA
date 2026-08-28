@@ -77,6 +77,14 @@ CASOS_ADMIN = [
     ("odoo_ingest_deposito", "POST", "/api/conectores/odoo/ingest-deposito"),
     ("odoo_sync_recepciones", "POST", "/api/conectores/odoo/sync-recepciones"),
     ("odoo_ingest_recepciones", "POST", "/api/conectores/odoo/ingest-recepciones"),
+    ("odoo_sync_entregas", "POST", "/api/conectores/odoo/sync-entregas"),
+    ("odoo_ingest_entregas", "POST", "/api/conectores/odoo/ingest-entregas"),
+    ("odoo_sync_facturas", "POST", "/api/conectores/odoo/sync-facturas"),
+    ("odoo_ingest_facturas", "POST", "/api/conectores/odoo/ingest-facturas"),
+    ("odoo_sync_pagos", "POST", "/api/conectores/odoo/sync-pagos"),
+    ("odoo_ingest_pagos", "POST", "/api/conectores/odoo/ingest-pagos"),
+    ("odoo_sync_listas_precios", "POST", "/api/conectores/odoo/sync-listas-precios"),
+    ("odoo_sync_monedas", "POST", "/api/conectores/odoo/sync-monedas"),
 ]
 
 

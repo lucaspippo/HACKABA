@@ -28,7 +28,10 @@ def clasificar(a: Articulo) -> list[Issue]:
         issues.append(_issue(a, Categoria.NEGATIVO, 0.0,
                              f"Stock negativo: {a.stock:g}"))
 
-    if a.estado == "activo" and not a.pvp:
+    if a.estado == "activo" and a.pricing_status == "needs_pricing":
+        issues.append(_issue(a, Categoria.SIN_PRECIO, a.inmovilizado,
+                             "Activo sin precio de venta (needs pricing)"))
+    elif a.estado == "activo" and not a.pvp and a.pricing_status != "wholesale_only":
         issues.append(_issue(a, Categoria.SIN_PRECIO, a.inmovilizado,
                              "Activo sin precio de venta"))
 

@@ -226,9 +226,29 @@ def test_descartar():
 def test_map_purchase_status():
     assert staging.map_purchase_status("draft", False) == "borrador"
     assert staging.map_purchase_status("confirmada", False) == "aprobada"
-    assert staging.map_purchase_status("purchase", True) == "recibida"
+    assert staging.map_purchase_status("purchase", True) == "aprobada"
+    assert staging.map_purchase_status("purchase", True, fully_received=True) == "recibida"
+    assert staging.map_purchase_status(
+        "purchase", True, fully_received=True, open_backorder=True) == "aprobada"
     assert staging.map_purchase_status("done", False) == "recibida"
     assert staging.map_purchase_status("cancel", False) == "cancelada"
+
+
+def test_coerce_producto_odoo_needs_pricing_vs_wholesale():
+    needs = staging.coerce_producto_odoo({
+        "id": 4, "nombre": "Cable", "codigo": "product_unpriced_cable",
+        "stock": 1, "precio": None, "precio_lista": 0, "pricing_status": "needs_pricing",
+        "costo": 10, "activo": True,
+    })
+    assert needs["pvp"] is None
+    assert needs["pricing_status"] == "needs_pricing"
+    wholesale = staging.coerce_producto_odoo({
+        "id": 3, "nombre": "Pallet", "codigo": "WH-001",
+        "stock": 8, "precio": 8500, "precio_lista": 0, "pricing_status": "wholesale_only",
+        "costo": 400, "activo": True,
+    })
+    assert wholesale["pvp"] == 8500
+    assert wholesale["pricing_status"] == "wholesale_only"
 
 
 def test_coerce_deposito_odoo_omite_counted_si_no_hay_conteo():

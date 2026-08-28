@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Boxes, Pencil, Trash2, X, ArrowRight, Sparkles } from "lucide-react";
+import { Boxes, Pencil, Trash2, X, ArrowRight, Sparkles, CheckCircle2, Scale, AlertTriangle, ListFilter, Tag, Truck } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
+import { FilterChip, FilterDivider, FilterRail, FacetSelect } from "../../components/FilterRail";
+import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { num, peso } from "../../lib/format";
@@ -48,7 +50,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
     }),
     [filtro, errSel],
   );
-  const page = usePagedList(fetcher);
+  const page = usePagedList(fetcher, [filtro, errSel]);
 
   useEffect(() => {
     if (qHighlight) page.setQ(qHighlight);
@@ -87,10 +89,10 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
   }
 
   const chips = [
-    { id: "todos", label: t("inventario.filtro_todos") },
-    { id: "ok", label: t("inventario.filtro_activos") },
-    { id: "balanza", label: t("inventario.filtro_balanza") },
-    { id: "a_corregir", label: t("inventario.filtro_a_corregir", { n: num(nACorregir) }) },
+    { id: "todos", label: t("inventario.filtro_todos"), icon: ListFilter },
+    { id: "ok", label: t("inventario.filtro_activos"), icon: CheckCircle2 },
+    { id: "balanza", label: t("inventario.filtro_balanza"), icon: Scale },
+    { id: "a_corregir", label: t("inventario.filtro_a_corregir", { n: num(nACorregir) }), icon: AlertTriangle, tone: "danger" },
   ];
 
   return (
@@ -142,11 +144,19 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
         titulo={t("inventario.tabla_titulo")}
         conteo={t("inventario.tabla_conteo", { a: num(page.items.length), b: num(page.total) })}
         columnas={[
-          { key: "descripcion", label: t("inventario.col_producto"), sortable: true,
+          { key: "descripcion", label: t("inventario.col_producto"), sortable: true, groupable: true,
             render: (p) => (
               <span>
                 <span className="font-medium text-tinta">{p.descripcion}</span>
-                <span className="mt-0.5 block text-[0.78rem] text-tinta-suave">{t("inventario.cod", { codigo: p.codigo })}</span>
+                <span className="mt-0.5 block text-[0.78rem] text-tinta-suave">
+                  {t("inventario.cod", { codigo: p.codigo })}
+                  {p.proveedor ? (
+                    <>
+                      {" · "}
+                      <CellLink to={qLink("proveedores", p.proveedor)}>{p.proveedor}</CellLink>
+                    </>
+                  ) : null}
+                </span>
               </span>
             ) },
           { key: "sku", label: t("imported.col_sku"), sortable: true, plata: true,
@@ -174,7 +184,21 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
               </span>
             ) },
           { key: "pvp", label: t("inventario.col_pvp"), sortable: true, align: "right", plata: true,
-            render: (p) => (p.pvp ? peso(p.pvp) : "—") },
+            render: (p) => {
+              if (p.pricing_status === "needs_pricing") {
+                return <span className="text-rojo">{t("imported.pricing_needs")}</span>;
+              }
+              return (
+                <span>
+                  {p.pvp ? peso(p.pvp) : "—"}
+                  {p.pricing_status === "wholesale_only" && (
+                    <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">
+                      {t("imported.pricing_wholesale")}
+                    </span>
+                  )}
+                </span>
+              );
+            } },
           { key: "margen_venta_pct", label: t("inventario.col_margen"), sortable: true, align: "right", plata: true,
             render: (p) => (p.margen_venta_pct == null ? "—" : (
               <span>
@@ -184,12 +208,14 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
                 )}
               </span>
             )) },
-          { key: "estado_calidad", label: t("inventario.col_estado"), sortable: true,
+          { key: "estado_calidad", label: t("inventario.col_estado"), sortable: true, groupable: true,
+            groupLabel: (k) => t((ESTADO_CAL[k] || ESTADO_CAL.ok).lk),
             render: (p) => {
               const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
               return <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>;
             } },
-          { key: "source", label: t("imported.col_source"), sortable: true,
+          { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
+            groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
             render: (p) => <SourceBadge source={p.source} t={t} /> },
         ]}
         filas={page.items}
@@ -208,28 +234,39 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
         hasMore={page.hasMore}
         cargandoMas={page.loadingMore}
         cargando={page.loading}
+        onLimpiar={filtro !== "todos" || errSel !== "todos" || page.hasActiveFilters
+          ? () => { setFiltro("todos"); setErrSel("todos"); page.clearFilters(); }
+          : undefined}
         filtros={(
-          <>
+          <FilterRail
+            onClear={filtro !== "todos" || errSel !== "todos" || page.hasActiveFilters
+              ? () => { setFiltro("todos"); setErrSel("todos"); page.clearFilters(); }
+              : undefined}
+            clearLabel={t("crud.limpiar_filtros")}
+          >
             {chips.map((c) => (
-              <button key={c.id} type="button" onClick={() => { setFiltro(c.id); setErrSel("todos"); }}
-                className={`rounded-full px-3 py-1 text-[0.82rem] font-semibold ${
-                  filtro === c.id
-                    ? c.id === "a_corregir" ? "bg-rojo text-crema" : "bg-tinta text-crema"
-                    : c.id === "a_corregir" && nACorregir > 0
-                      ? "border border-rojo/35 text-rojo" : "border border-linea text-tinta-suave"}`}>
+              <FilterChip key={c.id} icon={c.icon} tone={c.tone || "ink"}
+                active={filtro === c.id}
+                onClick={() => { setFiltro(c.id); setErrSel("todos"); }}>
                 {c.label}
-              </button>
+              </FilterChip>
             ))}
-            <span className="mx-1 h-4 w-px bg-linea" />
+            <FilterDivider />
             <SourceChips value={page.source} onChange={page.setSource} t={t} />
+            <FacetSelect icon={Tag} label={t("productos.facet_tipo")}
+              value={page.filters.tipo || ""}
+              options={page.facets.tipo}
+              onChange={(v) => page.setFilter("tipo", v)} />
+            <FacetSelect icon={Truck} label={t("productos.facet_proveedor")}
+              value={page.filters.proveedor || ""}
+              options={page.facets.proveedor}
+              onChange={(v) => page.setFilter("proveedor", v)} />
             {filtro === "a_corregir" && ERRORES_DATO.map((e) => (
-              <button key={e} type="button" onClick={() => setErrSel(e)}
-                className={`rounded-full px-3 py-1 text-[0.82rem] font-semibold ${
-                  errSel === e ? "bg-rojo text-crema" : "border border-rojo/30 text-rojo"}`}>
+              <FilterChip key={e} tone="danger" active={errSel === e} onClick={() => setErrSel(errSel === e ? "todos" : e)}>
                 {t(ESTADO_CAL[e].lk)}
-              </button>
+              </FilterChip>
             ))}
-          </>
+          </FilterRail>
         )}
         acciones={(p) => (
           <div className="flex items-center justify-end gap-2">

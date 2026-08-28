@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { PackageSearch, Pencil, Trash2, X } from "lucide-react";
+import { PackageSearch, Pencil, Trash2, X, AlertTriangle, CalendarClock, MapPin } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
+import { FilterChip, FilterDivider, FilterRail, FacetSelect } from "../../components/FilterRail";
+import DateRangePicker from "../../components/DateRangePicker";
+import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { fecha, num } from "../../lib/format";
@@ -24,7 +27,7 @@ export default function Movimientos({ onNavegar, highlight }) {
     (p) => api.movimientos({ ...p, discrepancia: soloDiscrepancias ? 1 : undefined }),
     [soloDiscrepancias],
   );
-  const page = usePagedList(fetcher);
+  const page = usePagedList(fetcher, [soloDiscrepancias]);
 
   const eliminar = async (id) => {
     try {
@@ -73,10 +76,14 @@ export default function Movimientos({ onNavegar, highlight }) {
         titulo={t("movimientos.tabla")}
         conteo={t("crud.conteo", { a: num(page.items.length), b: num(page.total) })}
         columnas={[
-          { key: "producto", label: t("lotes.col_producto"), sortable: true,
-            render: (l) => <span className="font-medium text-tinta">{l.producto}</span> },
-          { key: "ubicacion", label: t("lotes.col_ubicacion"), sortable: true,
-            render: (l) => l.ubicacion || "—" },
+          { key: "producto", label: t("lotes.col_producto"), sortable: true, groupable: true,
+            render: (l) => (
+              <CellLink to={qLink("productos", l.producto)}>
+                <span className="font-medium">{l.producto}</span>
+              </CellLink>
+            ) },
+          { key: "ubicacion", label: t("lotes.col_ubicacion"), sortable: true, groupable: true,
+            render: (l) => <CellLink to={qLink("ubicaciones", l.ubicacion)}>{l.ubicacion || "—"}</CellLink> },
           { key: "lote", label: t("lotes.col_lote"), plata: true, render: (l) => l.lote || "—" },
           { key: "vencimiento", label: t("lotes.col_vencimiento"), sortable: true, plata: true,
             render: (l) => (l.vencimiento ? fecha(l.vencimiento) : "—") },
@@ -92,7 +99,8 @@ export default function Movimientos({ onNavegar, highlight }) {
                 {l.diferencia > 0 ? "+" : ""}{num(l.diferencia)}
               </span>
             )) },
-          { key: "source", label: t("imported.col_source"), sortable: true,
+          { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
+            groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
             render: (l) => <SourceBadge source={l.source} t={t} /> },
         ]}
         filas={page.items}
@@ -109,16 +117,32 @@ export default function Movimientos({ onNavegar, highlight }) {
         onLoadMore={page.loadMore}
         hasMore={page.hasMore}
         cargandoMas={page.loadingMore}
+        onLimpiar={soloDiscrepancias || page.hasActiveFilters
+          ? () => { setSoloDiscrepancias(false); page.clearFilters(); }
+          : undefined}
         filtros={(
-          <>
-            <button type="button" onClick={() => setSoloDiscrepancias((v) => !v)}
-              className={`rounded-full px-3 py-1 text-[0.82rem] font-semibold ${
-                soloDiscrepancias ? "bg-oro text-crema" : "border border-linea text-tinta-suave"}`}>
+          <FilterRail
+            onClear={soloDiscrepancias || page.hasActiveFilters
+              ? () => { setSoloDiscrepancias(false); page.clearFilters(); }
+              : undefined}
+            clearLabel={t("crud.limpiar_filtros")}
+          >
+            <FilterChip icon={AlertTriangle} tone="attention" active={soloDiscrepancias}
+              onClick={() => setSoloDiscrepancias((v) => !v)}>
               {t("movimientos.filtro_discrepancias")}
-            </button>
-            <span className="mx-1 h-4 w-px bg-linea" />
+            </FilterChip>
+            <FilterChip icon={CalendarClock} tone="attention" active={page.filters.proximos === "30"}
+              onClick={() => page.setFilter("proximos", page.filters.proximos === "30" ? "" : "30")}>
+              {t("movimientos.filtro_vence")}
+            </FilterChip>
+            <FilterDivider />
             <SourceChips value={page.source} onChange={page.setSource} t={t} />
-          </>
+            <DateRangePicker from={page.dateFrom} to={page.dateTo} onChange={page.setDateRange} />
+            <FacetSelect icon={MapPin} label={t("movimientos.facet_ubicacion")}
+              value={page.filters.ubicacion || ""}
+              options={page.facets.ubicacion}
+              onChange={(v) => page.setFilter("ubicacion", v)} />
+          </FilterRail>
         )}
         acciones={(l) => (
           <div className="flex items-center justify-end gap-2">

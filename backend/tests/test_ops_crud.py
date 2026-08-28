@@ -104,6 +104,28 @@ def test_receipts_create_requires_product():
         receipts.create({"fecha": "2026-07-01", "cantidad": 1}, "emilio")
 
 
+def test_receipts_list_page_facets_vendor_and_missing_po():
+    receipts.create(
+        {"fecha": "2026-07-02", "producto": "Aceite", "proveedor": "Molinos",
+         "cantidad": 20, "deposito": "WH", "po_number": "PO001"},
+        "emilio",
+    )
+    receipts.create(
+        {"fecha": "2026-07-03", "producto": "Harina", "proveedor": "Acme",
+         "cantidad": 5, "deposito": "WH2"},
+        "emilio",
+    )
+    by_vendor = receipts.list_page(proveedor="Molinos")
+    assert by_vendor["total"] == 1
+    assert by_vendor["items"][0]["proveedor"] == "Molinos"
+    assert "Molinos" in by_vendor["facets"]["proveedor"]
+    assert "Acme" in by_vendor["facets"]["proveedor"]
+
+    no_po = receipts.list_page(sin_po=True)
+    assert no_po["total"] == 1
+    assert no_po["items"][0]["producto"] == "Harina"
+
+
 def test_movements_list_page_and_extra_fields():
     created = lotes.crear(
         {"producto": "Harina", "ubicacion": "Rack A", "lote": "L-001",
@@ -120,6 +142,30 @@ def test_movements_list_page_and_extra_fields():
     assert "Harina" in csv
     assert "ubicacion" in csv.splitlines()[0]
     lotes.eliminar(created["id"], "emilio")
+
+
+def test_movements_list_page_filters_location_and_dates():
+    early = lotes.crear(
+        {"producto": "Harina early", "ubicacion": "Rack A", "lote": "L-e",
+         "cantidad": 10, "in_date": "2026-06-01"},
+        "emilio",
+    )
+    late = lotes.crear(
+        {"producto": "Harina late", "ubicacion": "Rack B", "lote": "L-l",
+         "cantidad": 10, "in_date": "2026-07-15"},
+        "emilio",
+    )
+    by_loc = lotes.list_page(ubicacion="Rack A")
+    assert by_loc["total"] == 1
+    assert by_loc["items"][0]["id"] == early["id"]
+    assert "Rack A" in by_loc["facets"]["ubicacion"]
+
+    july = lotes.list_page(date_from="2026-07-01", date_to="2026-07-31")
+    ids = {r["id"] for r in july["items"]}
+    assert late["id"] in ids
+    assert early["id"] not in ids
+    lotes.eliminar(early["id"], "emilio")
+    lotes.eliminar(late["id"], "emilio")
 
 
 def test_movements_list_page_filters_discrepancies():
