@@ -46,6 +46,8 @@ CASOS = [
     ("anomalias_aplicar", "POST", "/api/anomalias/aplicar", "paula", "deposito"),
     ("documentos", "GET", "/api/documentos/resumen_ejecutivo", "emilio", "deposito"),
     ("deposito", "GET", "/api/deposito", "deposito", "vendedor"),
+    ("conciliacion", "GET", "/api/conciliacion", "deposito", "vendedor"),
+    ("conciliacion_aceptar", "POST", "/api/conciliacion/no-existe/aceptar", "deposito", "vendedor"),
     ("logistica", "GET", "/api/logistica", "deposito", "vendedor"),
     ("evolucion", "GET", "/api/evolucion", "emilio", "vendedor"),
     ("forecast", "GET", "/api/forecast", "emilio", "vendedor"),

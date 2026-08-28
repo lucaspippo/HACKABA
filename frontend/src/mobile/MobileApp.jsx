@@ -14,6 +14,7 @@ import AngelaView from "../views/AngelaView";
 import MiPerfil from "../sections/MiPerfil";
 import Cobranzas from "../sections/Cobranzas";
 import Deposito from "../sections/Deposito";
+import Conciliacion from "../sections/Conciliacion";
 import Administracion from "../sections/Administracion";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
@@ -51,6 +52,9 @@ function resolveView(raw, { piso, user, navIds }) {
   if (!destino) return null;
   if (piso && (destino === "panel" || destino === "mi_dia")) return "mi_dia";
   if (destino === "perfil") return "perfil";
+  if (destino === "conciliacion") {
+    return user.features.includes("deposito") ? "conciliacion" : null;
+  }
   if (["insights", "alertas", "oportunidades", "prioridades"].includes(destino)) {
     return (user.features.includes("alertas") || user.features.includes("oportunidades")) ? "insights" : null;
   }
@@ -103,6 +107,11 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     // Para el de a pie, "inicio/home/hoy" es SU día, no el Today del dueño.
     if (piso && (destino === "panel" || destino === "mi_dia")) { setView("mi_dia"); return; }
     if (destino === "perfil") { setView("perfil"); return; }
+    if (destino === "conciliacion") {
+      if (user.features.includes("deposito")) { setView("conciliacion"); if (hl) resaltarPorId(hl); }
+      else toast(t("nav.sin_permiso"), "error");
+      return;
+    }
     // P35·E2/E3 — Alertas y Oportunidades se fusionaron en "Insights" en mobile.
     if (["insights", "alertas", "oportunidades", "prioridades"].includes(destino)) {
       if (user.features.includes("alertas") || user.features.includes("oportunidades")) {
@@ -156,7 +165,9 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         // panorama; si es el preventista, su gestión de la calle.
         return <Cobranzas onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} datos={fase?.datos} user={user} />;
       case "deposito":
-        return <Deposito data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
+        return <Deposito data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
+      case "conciliacion":
+        return <Conciliacion onPreguntar={(txt) => { setConsultaAngela(txt); setView("angela"); }} onNavegar={navegarMobile} puedeMovimientos={user.features.includes("inventario")} />;
       case "administracion":
         return <Administracion data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
       // P35·E6 — el mapa en mobile es la VISTA SIMPLE read-only (sin React Flow),

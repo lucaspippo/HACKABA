@@ -3227,6 +3227,41 @@ CATALOGO: dict[str, dict[str, str]] = {
                         "en": "{cat} spikes in {mes}."},
     "core.prio.pico_chat": {"es": "¿Cómo me preparo para el pico de {cat}?",
                            "en": "How do I prepare for the {cat} peak?"},
+    # --- conciliación depósito (conteo vs sistema) --------------------------------
+    "conc.hip.conteo_incompleto": {
+        "es": "Este lote se contó, pero {n} lote(s) del mismo producto todavía no. Hasta completar el conteo no se puede explicar el hueco.",
+        "en": "This lot was counted, but {n} other lot(s) of the same product were not. Until the count is complete the gap can't be explained.",
+    },
+    "conc.hip.tara": {
+        "es": "La diferencia es {pct}%: por debajo del umbral de desvío de balanza ({umbral}%).",
+        "en": "The gap is {pct}% — under the scale-drift threshold ({umbral}%).",
+    },
+    "conc.hip.venta_sin_bajar_stock": {
+        "es": "Una venta de {qty} unidades el {fecha} cierra con el faltante: puede que el stock no se haya bajado.",
+        "en": "A sale of {qty} units on {fecha} matches the shortage; stock may not have been reduced.",
+    },
+    "conc.hip.recepcion_sin_cargar": {
+        "es": "Una recepción de {qty} unidades el {fecha} cierra con el sobrante: puede que no se haya cargado.",
+        "en": "A receipt of {qty} units on {fecha} matches the surplus; it may not have been booked.",
+    },
+    "conc.hip.en_transito": {
+        "es": "Hay {qty} unidades en tránsito ({lado}). Todavía no conviene aceptar el conteo.",
+        "en": "{qty} units are in the pipeline ({lado}). Don't accept the count yet.",
+    },
+    "conc.hip.cantidad_mal_tipeada": {
+        "es": "Contado {counted} contra sistema {cantidad}: parece un error de tipeo ×10.",
+        "en": "Counted {counted} vs system {cantidad} looks like a ×10 typing error.",
+    },
+    "conc.hip.lote_vencido": {
+        "es": "El lote venció el {vencimiento}; el faltante puede ser merma para dar de baja.",
+        "en": "The lot expired on {vencimiento}; the shortage may be a write-off.",
+    },
+    "conc.hip.sin_explicacion": {
+        "es": "No hay una venta, recepción, tránsito ni vencimiento que explique este hueco.",
+        "en": "No matching sale, receipt, pipeline or expiry explains this gap.",
+    },
+    "conc.pipeline_in": {"es": "entrando", "en": "incoming"},
+    "conc.pipeline_out": {"es": "saliendo", "en": "outgoing"},
 }
 
 

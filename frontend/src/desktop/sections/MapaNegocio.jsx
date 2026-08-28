@@ -2014,7 +2014,9 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
       seccion = "evolucion";
     } else {
       conclusiones = [data.dato ? `${data.label}: ${data.dato}` : data.label];
-      seccion = DOMINIOS[rama]?.seccion || null;
+      seccion = (data.kind === "dep" && data.lista === "discrepancias")
+        ? "conciliacion"
+        : (DOMINIOS[rama]?.seccion || null);
     }
     // conocimiento: [] es OBLIGATORIO — NodoDetalle lee insight.conocimiento.length.
     // El insight de un sub-nodo (entidad real: cliente, ítem, persona) no cablea

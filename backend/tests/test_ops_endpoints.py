@@ -81,3 +81,52 @@ def test_movimientos_endpoint_lists_lots():
     assert csv.status_code == 200
     assert b"Harina mov" in csv.content
     client.post(f"/api/lotes/{lid}/eliminar", headers=h, json={})
+
+
+def test_movimientos_endpoint_filters_discrepancies():
+    h = _h()
+    gap = client.post("/api/lotes", headers=h, json={
+        "producto": "Harina disc", "ubicacion": "Rack D", "cantidad": 50,
+        "counted_qty": 40,
+    })
+    assert gap.status_code == 200
+    lid = gap.json()["id"]
+    page = client.get("/api/movimientos?discrepancia=1&q=harina+disc", headers=h)
+    assert page.status_code == 200
+    assert page.json()["total"] == 1
+    assert page.json()["items"][0]["diferencia"] == -10
+    client.post(f"/api/lotes/{lid}/eliminar", headers=h, json={})
+
+
+def test_conciliacion_endpoint_lists_and_accepts():
+    h = _h()
+    created = client.post("/api/articulos", headers=h, json={
+        "codigo": 9301, "descripcion": "Harina conc API", "stock": 50,
+        "costo_iva": 10, "pvp": 20,
+    })
+    assert created.status_code == 200
+    lot = client.post("/api/lotes", headers=h, json={
+        "codigo": 9301, "producto": "Harina conc API", "ubicacion": "Rack C",
+        "cantidad": 50, "counted_qty": 40,
+    })
+    assert lot.status_code == 200
+    lid = lot.json()["id"]
+
+    listed = client.get("/api/conciliacion", headers=h)
+    assert listed.status_code == 200
+    body = listed.json()
+    ids = {d["id"] for d in body["diferencias"]}
+    assert lid in ids
+    item = next(d for d in body["diferencias"] if d["id"] == lid)
+    assert item["diferencia"] == -10
+    assert item["hipotesis"]["clase"]
+
+    accepted = client.post(f"/api/conciliacion/{lid}/aceptar", headers=h, json={})
+    assert accepted.status_code == 200
+    assert accepted.json()["cantidad"] == 40
+
+    after = client.get("/api/conciliacion", headers=h).json()
+    assert lid not in {d["id"] for d in after["diferencias"]}
+
+    client.post(f"/api/lotes/{lid}/eliminar", headers=h, json={})
+    client.post("/api/articulos/9301/eliminar", headers=h, json={})

@@ -7,6 +7,7 @@ import {
   Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
   ShoppingCart, Plug, Layers, Inbox, PackageCheck, Package, PackagePlus, ShoppingBag,
+  Scale,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -35,6 +36,7 @@ import AdminContexto from "../sections/AdminContexto";
 import Cobranzas from "../sections/Cobranzas";
 import Administracion from "../sections/Administracion";
 import Deposito from "../sections/Deposito";
+import Conciliacion from "../sections/Conciliacion";
 import StagingArea from "./sections/StagingArea";
 import Documentos from "./sections/Documentos";
 import CuentasCorrientes from "./sections/CuentasCorrientes";
@@ -72,6 +74,7 @@ const CATALOGO = {
   ventas: { lk: "nav.ventas", icon: ShoppingBag },
   recepciones: { lk: "nav.recepciones", icon: PackagePlus },
   movimientos: { lk: "nav.movimientos", icon: PackageSearch },
+  conciliacion: { lk: "nav.conciliacion", icon: Scale },
   saneamiento: { lk: "nav.saneamiento", icon: ClipboardList },
   finanzas: { lk: "nav.finanzas", icon: Wallet },
   cuentas: { lk: "nav.cuentas", icon: HandCoins },
@@ -110,7 +113,7 @@ const GRUPOS_NAV = [
   { id: "prioridades", leaf: true },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
-  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "productos", "ventas", "recepciones", "movimientos", "deposito", "ubicaciones"] },
+  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "productos", "ventas", "recepciones", "movimientos", "deposito", "conciliacion", "ubicaciones"] },
   { id: "ingesta", lk: "nav.grupo_ingesta", icon: Inbox, ids: ["cargar", "conectores", "staging", "imported", "saneamiento"] },
   { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
@@ -157,6 +160,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   if (user.features.includes("alertas") || user.features.includes("oportunidades")) {
     extraNav.push("prioridades");
   }
+  if (user.features.includes("deposito")) extraNav.push("conciliacion");
   const featuresEfectivas = extraNav.length
     ? [...user.features, ...extraNav]
     : user.features;
@@ -513,7 +517,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "caja" && <Caja />}
                 {section === "cobranzas" && <Cobranzas onPreguntar={preguntar} datos={fase?.datos} user={user} onNavegar={navegar} />}
                 {section === "administracion" && <Administracion data={data} onPreguntar={preguntar} />}
-                {section === "deposito" && <Deposito data={data} onPreguntar={preguntar} />}
+                {section === "deposito" && <Deposito data={data} onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "evolucion" && <Evolucion data={data} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "auditoria" && <Auditoria />}
                 {section === "conectores" && <Conectores onNavigate={navegar} />}
@@ -523,7 +527,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "productos" && <Productos data={data} highlight={highlight} />}
                 {section === "ventas" && <Ventas />}
                 {section === "recepciones" && <Recepciones />}
-                {section === "movimientos" && <Movimientos onNavegar={navegar} />}
+                {section === "movimientos" && <Movimientos onNavegar={navegar} highlight={highlight} />}
+                {section === "conciliacion" && <Conciliacion onPreguntar={preguntar} onNavegar={navegar} puedeMovimientos={user.features.includes("inventario")} />}
                 {section === "imported" && <Imported highlight={highlight} onNavigate={navegar} />}
                 {section === "proveedores" && <Proveedores />}
                 {section === "ordenes_compra" && <OrdenesCompra />}
