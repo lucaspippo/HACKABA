@@ -1934,6 +1934,7 @@ export const ES = {
   "inicio.metrica_corregir": "Datos a corregir",
   "inicio.metrica_mora": "Clientes en mora",
   "inicio.metrica_oportunidades": "Prioridades",
+  "inicio.metrica_recuperable": "Recuperable si actuás ahora",
   "inicio.angela_del_dia": "Ángela · mensaje del día",
   "inicio.saludo": "¡Buen día, {nombre}!",
   "inicio.hero_titulo": "Ángela ya trabajó por vos",
