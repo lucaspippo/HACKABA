@@ -18,6 +18,8 @@ def test_overview_includes_catalog_even_without_sections():
     assert result["summary"]["sales"] == 0
     assert result["summary"]["receipts"] == 0
     assert result["summary"]["movements"] == 0
+    assert result["summary"]["invoices"] == 0
+    assert result["summary"]["deliveries"] == 0
     assert result["sales"] == []
     product = result["products"][0]
     assert "description" in product
@@ -72,3 +74,22 @@ def test_overview_projects_odoo_provenance():
     assert result["movements"][0]["counted_qty"] == 11
     assert result["receipts"][0]["po_number"] == "PO001"
     assert result["receipts"][0]["vendor"] == "Molinos"
+    esquema.reemplazar_filas("cuenta_corriente", [
+        {"fecha": "2026-07-01", "numero": "INV/1", "partner": "Aceite",
+         "tipo": "factura", "total": 150, "residual": 40, "currency": "ARS",
+         "payment_state": "partial", "aging": "partial", "vencimiento": "2026-08-01",
+         "overdue": False, "source": "odoo", "source_id": "inv-1"},
+    ])
+    esquema.reemplazar_filas("entregas", [
+        {"fecha": "2026-07-03", "producto": "Aceite Odoo", "codigo": 1,
+         "cliente": "Pérez", "cantidad": 1, "qty_ordered": 2, "origen": "WH/OUT",
+         "so_number": "S0001", "pendiente": True, "es_backorder": True,
+         "source": "odoo", "source_id": "sm-out-1"},
+    ])
+    result = imported.overview()
+    assert result["summary"]["invoices"] == 1
+    assert result["summary"]["deliveries"] == 1
+    assert result["invoices"][0]["residual"] == 40
+    assert result["invoices"][0]["aging"] == "partial"
+    assert result["deliveries"][0]["pending"] is True
+    assert result["deliveries"][0]["is_backorder"] is True

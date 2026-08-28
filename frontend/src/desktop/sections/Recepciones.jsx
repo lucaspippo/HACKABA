@@ -62,6 +62,8 @@ export default function Recepciones() {
             render: (r) => r.deposito || "—" },
           { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true,
             render: (r) => r.po_number || r.origen || "—" },
+          { key: "pendiente", label: t("imported.col_pending"), sortable: true, plata: true,
+            render: (r) => t(r.pendiente ? "imported.yes" : "imported.no") },
           { key: "source", label: t("imported.col_source"), sortable: true,
             render: (r) => <SourceBadge source={r.source} t={t} /> },
         ]}

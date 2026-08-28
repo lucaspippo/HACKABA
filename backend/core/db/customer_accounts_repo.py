@@ -144,6 +144,21 @@ def upsert_account_from_odoo(tenant_id: str, account: dict) -> None:
         )
 
 
+def update_ar_from_odoo(tenant_id: str, account_id: str, *,
+                        saldo: float, days_overdue: int) -> None:
+    """Invoice ingest owns AR for an already-linked Odoo customer: writes
+    balance and days_overdue from posted invoice residuals. Contact-field
+    re-sync (upsert_account_from_odoo) still does not touch these columns."""
+    with tenant_connection(tenant_id) as conn:
+        conn.execute(
+            text(
+                "UPDATE customer_accounts SET balance = :saldo, days_overdue = :dias "
+                "WHERE id = :id"
+            ),
+            {"saldo": saldo, "dias": days_overdue, "id": account_id},
+        )
+
+
 def add_movement(tenant_id: str, customer_id: str, movement: dict) -> None:
     with tenant_connection(tenant_id) as conn:
         conn.execute(
