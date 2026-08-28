@@ -24,14 +24,31 @@ def _coerce(data: dict) -> dict:
     return out
 
 
+def _equals(*, proveedor: str | None = None, deposito: str | None = None,
+            po_number: str | None = None) -> dict:
+    out = {}
+    if proveedor:
+        out["proveedor"] = proveedor
+    if deposito:
+        out["deposito"] = deposito
+    if po_number:
+        out["po_number"] = po_number
+    return out
+
+
 def list_page(*, q: str = "", sort: str | None = "fecha", direction: str = "desc",
               offset: int = 0, limit: int = paging.DEFAULT_LIMIT,
               source: str | None = None, date_from: str | None = None,
-              date_to: str | None = None) -> dict:
+              date_to: str | None = None, proveedor: str | None = None,
+              deposito: str | None = None, po_number: str | None = None,
+              sin_po: bool = False) -> dict:
     return section_records.list_page(
         TYPE, **_LIST_KW, q=q, sort=sort, direction=direction,
         offset=offset, limit=limit, source=source,
         date_from=date_from, date_to=date_to,
+        equals=_equals(proveedor=proveedor, deposito=deposito, po_number=po_number),
+        empty=("po_number",) if sin_po else None,
+        facet_fields=("proveedor", "deposito"),
     )
 
 
@@ -51,10 +68,14 @@ def delete(id_: str, actor: str) -> None:
 
 def export_csv(*, q: str = "", sort: str | None = "fecha", direction: str = "desc",
                source: str | None = None, date_from: str | None = None,
-               date_to: str | None = None) -> str:
+               date_to: str | None = None, proveedor: str | None = None,
+               deposito: str | None = None, po_number: str | None = None,
+               sin_po: bool = False) -> str:
     return section_records.export_csv(
         TYPE, CSV_COLUMNS, **_LIST_KW, q=q, sort=sort, direction=direction,
         source=source, date_from=date_from, date_to=date_to,
+        equals=_equals(proveedor=proveedor, deposito=deposito, po_number=po_number),
+        empty=("po_number",) if sin_po else None,
     )
 
 

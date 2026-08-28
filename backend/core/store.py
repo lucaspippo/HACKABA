@@ -348,7 +348,8 @@ _PRODUCT_CSV = ("codigo", "sku", "descripcion", "stock", "costo_iva", "pvp",
 
 def _filtered_articles(*, q: str = "", sort: str | None = "descripcion",
                        direction: str = "asc", source: str | None = None,
-                       filtro: str | None = None, err: str | None = None) -> list[dict]:
+                       filtro: str | None = None, err: str | None = None,
+                       tipo: str | None = None, proveedor: str | None = None) -> list[dict]:
     from . import paging, section_records
     rows = articulos_con_estado()
     if filtro == "ok":
@@ -360,25 +361,37 @@ def _filtered_articles(*, q: str = "", sort: str | None = "descripcion",
         if err and err != "todos":
             rows = [r for r in rows if r.get("estado_calidad") == err]
     rows = section_records.match_source(rows, source)
+    equals = {}
+    if tipo:
+        equals["tipo"] = tipo
+    if proveedor:
+        equals["proveedor"] = proveedor
     return paging.filter_sort(
-        rows, q=q, search_in=_PRODUCT_SEARCH, sort=sort, direction=direction)
+        rows, q=q, search_in=_PRODUCT_SEARCH, sort=sort, direction=direction,
+        equals=equals or None,
+    )
 
 
 def list_page(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
               offset: int = 0, limit: int = 50, source: str | None = None,
-              filtro: str | None = None, err: str | None = None) -> dict:
+              filtro: str | None = None, err: str | None = None,
+              tipo: str | None = None, proveedor: str | None = None) -> dict:
     from . import paging
+    facet_src = _filtered_articles(source=source, filtro=filtro, err=err)
     rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
-                              filtro=filtro, err=err)
-    return paging.page_rows(rows, offset=offset, limit=limit)
+                              filtro=filtro, err=err, tipo=tipo, proveedor=proveedor)
+    result = paging.page_rows(rows, offset=offset, limit=limit)
+    result["facets"] = paging.collect_facets(facet_src, ("tipo", "proveedor"))
+    return result
 
 
 def export_csv(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
                source: str | None = None, filtro: str | None = None,
-               err: str | None = None) -> str:
+               err: str | None = None, tipo: str | None = None,
+               proveedor: str | None = None) -> str:
     from . import paging
     rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
-                              filtro=filtro, err=err)
+                              filtro=filtro, err=err, tipo=tipo, proveedor=proveedor)
     return paging.rows_to_csv(rows, _PRODUCT_CSV)
 
 

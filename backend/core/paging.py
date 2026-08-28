@@ -34,6 +34,25 @@ def _sort_key(row: dict, field: str):
         return (0, str(value).lower())
 
 
+def collect_facets(rows: list[dict], fields: tuple[str, ...] | list[str]) -> dict:
+    """Unique non-empty values per field, sorted, for filter dropdowns."""
+    out: dict[str, list] = {}
+    for field in fields:
+        seen: list[str] = []
+        used: set[str] = set()
+        for row in rows:
+            value = row.get(field)
+            if value in (None, ""):
+                continue
+            key = str(value)
+            if key not in used:
+                used.add(key)
+                seen.append(key)
+        seen.sort(key=str.lower)
+        out[field] = seen
+    return out
+
+
 def filter_sort(
     rows: list[dict],
     *,
@@ -42,6 +61,7 @@ def filter_sort(
     sort: str | None = None,
     direction: str = "asc",
     equals: dict | None = None,
+    empty: tuple[str, ...] | list[str] | None = None,
     date_field: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
@@ -53,6 +73,9 @@ def filter_sort(
             if expected in (None, "", "all"):
                 continue
             filtered = [r for r in filtered if r.get(key) == expected]
+    if empty:
+        for key in empty:
+            filtered = [r for r in filtered if r.get(key) in (None, "")]
     if date_field and (date_from or date_to):
         lo = date_from or ""
         hi = date_to or "\uffff"
@@ -79,6 +102,7 @@ def page_rows(
     offset: int = 0,
     limit: int = DEFAULT_LIMIT,
     equals: dict | None = None,
+    empty: tuple[str, ...] | list[str] | None = None,
     date_field: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
@@ -86,7 +110,8 @@ def page_rows(
     """Return `{items, total, offset, limit, has_more}` after filter/sort/slice."""
     filtered = filter_sort(
         rows, q=q, search_in=search_in, sort=sort, direction=direction,
-        equals=equals, date_field=date_field, date_from=date_from, date_to=date_to,
+        equals=equals, empty=empty, date_field=date_field,
+        date_from=date_from, date_to=date_to,
     )
     total = len(filtered)
     offset = max(0, int(offset or 0))

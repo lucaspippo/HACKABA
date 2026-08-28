@@ -61,6 +61,29 @@ def test_page_rows_missing_source_does_not_match_odoo():
     assert page["items"][0]["producto"] == "Odoo"
 
 
+def test_page_rows_filters_empty_fields():
+    rows = [
+        {"po_number": "PO1", "producto": "A"},
+        {"po_number": "", "producto": "B"},
+        {"producto": "C"},
+    ]
+    page = page_rows(rows, empty=("po_number",))
+    assert {r["producto"] for r in page["items"]} == {"B", "C"}
+
+
+def test_collect_facets_unique_sorted():
+    from core.paging import collect_facets
+    rows = [
+        {"proveedor": "Molinos", "deposito": "WH"},
+        {"proveedor": "acme", "deposito": "WH"},
+        {"proveedor": "Molinos", "deposito": ""},
+        {"proveedor": None},
+    ]
+    facets = collect_facets(rows, ("proveedor", "deposito"))
+    assert facets["proveedor"] == ["acme", "Molinos"]
+    assert facets["deposito"] == ["WH"]
+
+
 def test_rows_to_csv_emits_headers_and_values():
     csv = rows_to_csv(
         [{"fecha": "2026-07-01", "producto": "Harina", "cantidad": 2}],
