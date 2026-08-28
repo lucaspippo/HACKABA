@@ -20,7 +20,12 @@ export const gridProps = {
   strokeWidth: 1,
 };
 
-const tickBase = { fontSize: 11, fill: GRAFICO.tintaSuave, fontVariantNumeric: "tabular-nums" };
+const tickBase = {
+  fontSize: 11,
+  fill: GRAFICO.tintaSuave,
+  fontVariantNumeric: "tabular-nums",
+  fontFamily: "Hanken Grotesk, system-ui, sans-serif",
+};
 
 export const ejeX = (extra = {}) => ({
   axisLine: { stroke: GRAFICO.linea, strokeWidth: 1 },

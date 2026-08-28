@@ -4,6 +4,7 @@ import AngelaMark from "../../components/AngelaMark";
 import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { GmroiBars } from "./InventarioViz";
 
 // P38·C — el número que el dueño más pide: cuánto gana POR GRUPO.
 //
@@ -140,7 +141,7 @@ function Detalle({ detalle, grupo }) {
   );
 }
 
-export default function Margenes({ onPreguntar, onNavegar }) {
+export default function Margenes({ onPreguntar, onNavegar, viz }) {
   const t = useT();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
@@ -201,6 +202,8 @@ export default function Margenes({ onPreguntar, onNavegar }) {
           </div>
         </div>
       </div>
+
+      <GmroiBars data={viz?.gmroi} />
 
       <TablaCanal
         titulo={t("margenes.canal_mayorista")} sub={t("margenes.canal_mayorista_sub")}

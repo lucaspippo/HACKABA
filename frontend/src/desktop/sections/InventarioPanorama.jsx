@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ResponsiveContainer, Treemap, Tooltip } from "recharts";
 import {
-  ArrowRight, ClipboardList, Package, PackagePlus, ShoppingCart,
+  ArrowRight, ClipboardList, Hourglass, Package, PackagePlus, ShoppingCart,
   Sparkles, Truck, Warehouse, TrendingUp,
 } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
@@ -15,6 +15,7 @@ import { GRAFICO } from "../../lib/paleta";
 import { tealSecuencial, textoSobre } from "../../components/charts/tema";
 import { authStore } from "../../lib/auth";
 import { useT, useLang, tCat } from "../../lib/i18n";
+import { ExcessByCat, ExpiryHorizon, SeasonalityCover } from "./InventarioViz";
 
 // Inventario inteligente is the briefing, not the workbench.
 // Reading order: the stake (one sentence) → Ángela's ranked actions →
@@ -42,7 +43,7 @@ const HIGHLIGHT_ERR = {
   balanza: "balanza", costo_viejo: "costo_viejo",
 };
 
-export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar }) {
+export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar, viz }) {
   const t = useT();
   const lang = useLang();
   const { resumen } = data;
@@ -84,6 +85,8 @@ export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar
         onNavegar={onNavegar}
         onPreguntar={onPreguntar}
       />
+
+      {viz && <ExcessByCat data={viz.excess_by_category} />}
 
       <section data-nav-id="briefing" className="space-y-3">
         <div>
@@ -135,6 +138,9 @@ export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar
           </ul>
         )}
       </section>
+
+      {viz && <ExpiryHorizon data={viz.expiry_horizon} />}
+      {viz && <SeasonalityCover data={viz.seasonality} />}
 
       <MapaPlata
         t={t}
@@ -406,7 +412,7 @@ function armarAcciones({ data, reponer, ventas, venc, t }) {
       titulo: t("inventario.acc_excedente_titulo"),
       dato: t("inventario.acc_excedente_dato"),
       monto: rot.plata_excedente,
-      ir: { tab: "margenes", label: t("inventario.acc_ver_margenes") },
+      ir: { tab: "rotacion", label: t("inventario.acc_ver_rotacion") },
       angela: t("inventario.acc_excedente_angela", { monto: pesoCorto(rot.plata_excedente) }),
     });
   }
@@ -648,6 +654,15 @@ function PisoDestinos({ t, data, nCorregir, reponer, ventas, onNavegar, onTab })
           })
         : t("inventario.lane_reponer_lock"),
       go: () => onTab?.("reponer"),
+    },
+    {
+      id: "rotacion",
+      icon: Hourglass,
+      titulo: t("inventario.tab_rotacion"),
+      dato: ventas?.disponible
+        ? t("inventario.lane_rotacion_d")
+        : t("inventario.lane_rotacion_lock"),
+      go: () => onTab?.("rotacion"),
     },
     {
       id: "margenes",
