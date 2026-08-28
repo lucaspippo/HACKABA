@@ -52,3 +52,6 @@ desktop.ini
 
 # Isolated worktrees for in-progress feature work (superpowers:using-git-worktrees)
 .worktrees/
+
+# Visual companion / brainstorm session files (local only)
+.superpowers/

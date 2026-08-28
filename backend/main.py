@@ -35,7 +35,7 @@ import authz
 import config
 import data_store as ds
 import i18n
-from authz import require_admin, require_feature, usuario_actual
+from authz import require_admin, require_any_feature, require_feature, usuario_actual
 from core import (store, saneamiento, fase, memoria, importer, staging, anomalias,
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
@@ -1896,6 +1896,15 @@ def oportunidades(u: dict = Depends(usuario_actual)):
     r["cards"] = oportunidades_neg.visibles_para(
         todas, perfiles.features_efectivas(u["username"]))
     return r
+
+
+@app.get("/api/prioridades")
+def prioridades_get(u: dict = Depends(require_any_feature("alertas", "oportunidades"))):
+    """Ranked “what should I do now” inbox. Same payload for desktop, mobile,
+    the sidebar badge and Ángela — merge and sort live in core/priorities.
+    inbox() caches the unfiltered compose (`prioridades`) and cuts by role."""
+    from core import priorities
+    return priorities.inbox(_lang(u), perfiles.features_efectivas(u["username"]))
 
 
 @app.get("/api/margenes")
