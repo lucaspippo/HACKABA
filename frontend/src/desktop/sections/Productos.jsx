@@ -141,7 +141,21 @@ export default function Productos({ data, highlight }) {
               </span>
             ) },
           { key: "pvp", label: t("inventario.col_pvp"), sortable: true, align: "right", plata: true,
-            render: (p) => (p.pvp ? peso(p.pvp) : "—") },
+            render: (p) => {
+              if (p.pricing_status === "needs_pricing") {
+                return <span className="text-rojo">{t("imported.pricing_needs")}</span>;
+              }
+              return (
+                <span>
+                  {p.pvp ? peso(p.pvp) : "—"}
+                  {p.pricing_status === "wholesale_only" && (
+                    <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">
+                      {t("imported.pricing_wholesale")}
+                    </span>
+                  )}
+                </span>
+              );
+            } },
           { key: "margen_venta_pct", label: t("inventario.col_margen"), sortable: true, align: "right", plata: true,
             render: (p) => (p.margen_venta_pct == null ? "—" : (
               <span>
