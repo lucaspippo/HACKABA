@@ -212,6 +212,20 @@ def coerce_orden_compra_odoo(o: dict) -> dict:
     }
 
 
+def coerce_venta_odoo(p: dict) -> dict:
+    fecha = str(p.get("fecha") or "").strip()
+    return {
+        "fecha": fecha[:10] if fecha else "",
+        "producto": str(p.get("nombre") or p.get("producto") or "").strip(),
+        "codigo": p.get("codigo"),
+        "cantidad": p.get("cantidad") or 0.0,
+        "precio": p.get("precio"),
+        "source": "odoo",
+        "source_id": str(p["id"]),
+        "source_status": p.get("estado") or "",
+    }
+
+
 def _analizar_ordenes_compra(filas: list[dict], lang: str | None = None) -> list[dict]:
     # No duplicate heuristic: an Odoo purchase order never collides by name
     # with a hand-entered one — Odoo's own id (source_id) is already the key,
@@ -642,6 +656,17 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
         return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
                 "mensaje": f"{len(a_integrar)} órdenes de compra nuevas."}
 
+    if tipo == "venta" and b.get("fuente") == "odoo":
+        from . import ventas as ventas_mod
+        esquema.upsert_filas("venta", a_integrar)
+        v = ventas_mod.iniciar_validacion(lang)
+        if v.get("estado") == "pendiente":
+            ventas_mod.confirmar_validacion(confirmar=True, actor=actor)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} ventas nuevas."}
+
     if tipo != "producto":
         # Generic CSV/apartado path (ventas, depósito, logística, …): creates
         # the apartado and wires up its relations. Odoo-sourced batches never
@@ -737,14 +762,12 @@ _COERCERS_ODOO = {
     "proveedor": coerce_proveedor_odoo,
     "cliente": coerce_cliente_odoo,
     "orden_compra": coerce_orden_compra_odoo,
+    "venta": coerce_venta_odoo,
 }
 
-# Which field makes a coerced row "usable", per tipo — an Odoo row missing it
-# (e.g. a contact with no name) is dropped instead of creating an empty
-# record; same criterion as the CSV filtering in _coerce_y_analizar
-# (the "filas = [f for f in filas if f[...]]" lines).
 _REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
-                    "cliente": "nombre", "orden_compra": "numero"}
+                    "cliente": "nombre", "orden_compra": "numero",
+                    "venta": "producto"}
 
 
 def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
@@ -767,6 +790,8 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
         observaciones = _analizar_clientes(filas, lang)
     elif tipo == "orden_compra":
         observaciones = _analizar_ordenes_compra(filas, lang)
+    elif tipo == "venta":
+        observaciones = _analizar_ventas(filas, lang)
     else:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
     batch = {

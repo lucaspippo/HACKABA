@@ -52,6 +52,25 @@ class _FakeModels:
             {"id": 101, "order_id": [11, "P00011"], "product_id": [1, "Producto"],
              "name": "Producto", "product_qty": 2.0, "price_unit": 100.0},
         ]
+        self.ordenes_venta = [
+            {"id": 20, "name": "S00020", "partner_id": [1, "Cliente"],
+             "state": "sale", "date_order": "2026-06-15 10:00:00", "amount_total": 200.0},
+            {"id": 21, "name": "S00021", "partner_id": [1, "Cliente"],
+             "state": "draft", "date_order": "2026-06-20 09:00:00", "amount_total": 50.0},
+            {"id": 22, "name": "S00022", "partner_id": [1, "Cliente"],
+             "state": "cancel", "date_order": "2026-05-01 09:00:00", "amount_total": 8.0},
+        ]
+        self.lineas_venta = [
+            {"id": 200, "order_id": [20, "S00020"], "product_id": [1, "Producto Ya Vinculado"],
+             "product_template_id": [1, "Producto Ya Vinculado"], "name": "Producto Ya Vinculado",
+             "product_uom_qty": 2.0, "price_unit": 100.0},
+            {"id": 201, "order_id": [21, "S00021"], "product_id": [2, "Producto Nuevo De Odoo"],
+             "product_template_id": [2, "Producto Nuevo De Odoo"], "name": "Producto Nuevo De Odoo",
+             "product_uom_qty": 1.0, "price_unit": 50.0},
+            {"id": 202, "order_id": [22, "S00022"], "product_id": [1, "Producto Ya Vinculado"],
+             "product_template_id": [1, "Producto Ya Vinculado"], "name": "Producto Ya Vinculado",
+             "product_uom_qty": 9.0, "price_unit": 8.0},
+        ]
 
     def execute_kw(self, db, uid, pwd, model, method, args, kwargs):
         if model == "product.template":
@@ -84,6 +103,16 @@ class _FakeModels:
                 return [l["id"] for l in self.lineas_orden]
             if method == "read":
                 return self.lineas_orden
+        if model == "sale.order":
+            if method == "search":
+                return [o["id"] for o in self.ordenes_venta]
+            if method == "read":
+                return self.ordenes_venta
+        if model == "sale.order.line":
+            if method == "search":
+                return [l["id"] for l in self.lineas_venta]
+            if method == "read":
+                return self.lineas_venta
         raise NotImplementedError((model, method))
 
 
@@ -101,6 +130,13 @@ def _limpiar_proveedores() -> None:
     esquema.reemplazar_filas("proveedores", [])
 
 
+def _limpiar_ventas() -> None:
+    from core import esquema
+    from core.db import blob_repo, tenant as _t
+    esquema.reemplazar_filas("venta", [])
+    blob_repo.save_blob("sales_validation", _t.current_tenant_id(), {"estado": "sin_datos"})
+
+
 @pytest.fixture(autouse=True)
 def _setup(tenant_id, monkeypatch):
     monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
@@ -109,12 +145,14 @@ def _setup(tenant_id, monkeypatch):
     limpiar_cuentas_db()
     limpiar_tabla_tenant("purchase_orders")
     _limpiar_proveedores()
+    _limpiar_ventas()
     yield
     odoo_connections_repo.delete(tenant_id)
     store.resetear_actual()
     limpiar_cuentas_db()
     limpiar_tabla_tenant("purchase_orders")
     _limpiar_proveedores()
+    _limpiar_ventas()
 
 
 def test_ingest_productos_primera_vez_todo_va_a_revision():
@@ -396,3 +434,51 @@ def test_ingest_ordenes_compra_omite_vinculada_sin_numero(monkeypatch, tenant_id
     assert r2["actualizados"] == 1
     orden = purchase_orders_repo.find_by_number(tenant_id, "P00010")
     assert orden is not None
+
+
+def test_ingest_ventas_primera_vez_solo_confirmadas_van_a_revision():
+    r = odoo_ingest.ingest_ventas(actor="test")
+    assert r["actualizados"] == 0
+    assert r["nuevos_para_revisar"] == 1
+    assert r["batch_id"] is not None
+
+
+def test_ingest_ventas_segunda_vez_actualiza_y_confirma_montos():
+    from core import staging, ventas, esquema
+    r1 = odoo_ingest.ingest_ventas(actor="test")
+    staging.integrar(r1["batch_id"], actor="test")
+    assert ventas.montos_confirmados() is True
+    filas = esquema.filas("venta")
+    assert len(filas) == 1
+    assert filas[0]["source_id"] == "200"
+    assert filas[0]["cantidad"] == 2.0
+    assert filas[0]["fecha"] == "2026-06-15"
+
+    r2 = odoo_ingest.ingest_ventas(actor="test")
+    assert r2["actualizados"] == 1
+    assert r2["nuevos_para_revisar"] == 0
+    assert r2["batch_id"] is None
+
+
+def test_ingest_ventas_borra_linea_cancelada_y_conserva_csv(monkeypatch):
+    from core import staging, esquema
+    esquema.reemplazar_filas("venta", [
+        {"fecha": "2026-01-01", "producto": "CSV", "cantidad": 1, "precio": 1},
+    ])
+    r1 = odoo_ingest.ingest_ventas(actor="test")
+    staging.integrar(r1["batch_id"], actor="test")
+    assert {f.get("source_id") for f in esquema.filas("venta")} == {None, "200"}
+
+    def _fake_cancelada(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.ordenes_venta[0]["state"] = "cancel"
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_cancelada)
+    odoo_ingest.ingest_ventas(actor="test")
+    ids = {f.get("source_id") for f in esquema.filas("venta")}
+    assert ids == {None}
+    csv_row = next(f for f in esquema.filas("venta") if not f.get("source"))
+    assert csv_row["producto"] == "CSV"

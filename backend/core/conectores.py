@@ -244,6 +244,56 @@ class ConectorOdoo(IConector):
         ]
         return {"origen": "odoo", "modulo": "purchase.order", "total": len(compras), "ordenes": compras}
 
+    def pull_ordenes_venta(self, **kwargs) -> dict:
+        """Preview of sale.order rows (all workflow states) with lines.
+        Ingest filters to confirmed (`sale`/`done` → confirmada) elsewhere."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "sale.order", "search", [], limit=kwargs.get("limite", 200)
+        )
+        ordenes = self._execute_kw(
+            "sale.order", "read", ids,
+            fields=["name", "partner_id", "state", "date_order", "amount_total"],
+        )
+        lineas_por_orden: dict[int, list[dict]] = {o["id"]: [] for o in ordenes}
+        if ordenes:
+            linea_ids = self._execute_kw(
+                "sale.order.line", "search", [["order_id", "in", list(lineas_por_orden)]]
+            )
+            lineas = self._execute_kw(
+                "sale.order.line", "read", linea_ids,
+                fields=["order_id", "product_id", "product_template_id", "name",
+                        "product_uom_qty", "price_unit"],
+            )
+            for l in lineas:
+                tmpl = l.get("product_template_id") or [None, ""]
+                prod = l.get("product_id") or [None, l.get("name") or ""]
+                lineas_por_orden[l["order_id"][0]].append({
+                    "id": l["id"],
+                    "producto": prod[1],
+                    "product_tmpl_id": tmpl[0],
+                    "cantidad": l.get("product_uom_qty") or 0,
+                    "precio_unitario": l.get("price_unit") or 0,
+                })
+        _ESTADOS = {
+            "draft": "borrador", "sent": "enviada", "sale": "confirmada",
+            "done": "confirmada", "cancel": "cancelada",
+        }
+        ventas = [
+            {
+                "id": o["id"],
+                "numero": o.get("name") or "",
+                "cliente": (o.get("partner_id") or [None, ""])[1],
+                "estado": _ESTADOS.get(o.get("state"), o.get("state") or ""),
+                "fecha": o.get("date_order") or "",
+                "total": o.get("amount_total") or 0,
+                "items": lineas_por_orden.get(o["id"], []),
+            }
+            for o in ordenes
+        ]
+        return {"origen": "odoo", "modulo": "sale.order", "total": len(ventas), "ordenes": ventas}
+
     def push_action(self, accion: dict) -> dict:
         return {"ok": False, "motivo": "Conector Odoo: por ahora solo lectura (Contactos)."}
 

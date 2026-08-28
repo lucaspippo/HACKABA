@@ -73,6 +73,35 @@ class _FakeModels:
                      "name": "Printer Paper A4 (Box)", "product_qty": 100.0, "price_unit": 6.5},
                 ]
             raise NotImplementedError(method)
+        if model == "sale.order":
+            if method == "search":
+                return [20, 21, 22]
+            if method == "read":
+                return [
+                    {"id": 20, "name": "S00020", "partner_id": [1, "Almacén Don Pérez"],
+                     "state": "sale", "date_order": "2026-06-15 10:00:00", "amount_total": 2500.0},
+                    {"id": 21, "name": "S00021", "partner_id": [2, "Kiosco La Esquina"],
+                     "state": "draft", "date_order": "2026-06-20 09:00:00", "amount_total": 25.0},
+                    {"id": 22, "name": "S00022", "partner_id": [1, "Almacén Don Pérez"],
+                     "state": "cancel", "date_order": "2026-05-01 09:00:00", "amount_total": 8.0},
+                ]
+            raise NotImplementedError(method)
+        if model == "sale.order.line":
+            if method == "search":
+                return [200, 201, 202]
+            if method == "read":
+                return [
+                    {"id": 200, "order_id": [20, "S00020"], "product_id": [1, "Laptop Pro 15\""],
+                     "product_template_id": [1, "Laptop Pro 15\""], "name": "Laptop Pro 15\"",
+                     "product_uom_qty": 2.0, "price_unit": 1200.0},
+                    {"id": 201, "order_id": [21, "S00021"], "product_id": [2, "Wireless Mouse"],
+                     "product_template_id": [2, "Wireless Mouse"], "name": "Wireless Mouse",
+                     "product_uom_qty": 1.0, "price_unit": 25.0},
+                    {"id": 202, "order_id": [22, "S00022"], "product_id": [3, "Printer Paper A4 (Box)"],
+                     "product_template_id": [3, "Printer Paper A4 (Box)"], "name": "Printer Paper A4 (Box)",
+                     "product_uom_qty": 20.0, "price_unit": 8.0},
+                ]
+            raise NotImplementedError(method)
         raise NotImplementedError(model)
 
 
@@ -227,3 +256,28 @@ def test_pull_ordenes_compra_credenciales_guardadas_invalidas(tenant_id, monkeyp
     odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "bad-key")
     with pytest.raises(ValueError):
         conectores.ConectorOdoo(tenant_id).pull_ordenes_compra()
+
+
+def test_pull_ordenes_venta_sin_conexion_configurada(tenant_id):
+    with pytest.raises(ValueError):
+        conectores.ConectorOdoo(tenant_id).pull_ordenes_venta()
+
+
+def test_pull_ordenes_venta_trae_ordenes_con_items(tenant_id, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    odoo_connections_repo.save(tenant_id, "https://x.odoo.com", "x", "admin", "good-key")
+    r = conectores.ConectorOdoo(tenant_id).pull_ordenes_venta()
+    assert r["origen"] == "odoo"
+    assert r["modulo"] == "sale.order"
+    assert r["total"] == 3
+    confirmada = next(o for o in r["ordenes"] if o["numero"] == "S00020")
+    assert confirmada["estado"] == "confirmada"
+    assert confirmada["cliente"] == "Almacén Don Pérez"
+    assert len(confirmada["items"]) == 1
+    assert confirmada["items"][0]["id"] == 200
+    assert confirmada["items"][0]["product_tmpl_id"] == 1
+    assert confirmada["items"][0]["cantidad"] == 2.0
+    borrador = next(o for o in r["ordenes"] if o["numero"] == "S00021")
+    assert borrador["estado"] == "borrador"
+    cancelada = next(o for o in r["ordenes"] if o["numero"] == "S00022")
+    assert cancelada["estado"] == "cancelada"
