@@ -93,6 +93,12 @@ ACCIONES: dict[str, dict] = {
     # shape rather than the "stock" class used by ordenes.py's own audited
     # actions above (this is a data sync, not a stock movement decision).
     "upsert_ordenes_compra_conector": {"clase": "datos", "gate": "propia"},
+    # Same data-sync shape as purchase orders: Odoo confirmed sale lines,
+    # depósito quants, and receipts write through odoo_ingest, not a dueño
+    # stock-movement decision.
+    "upsert_ventas_conector":      {"clase": "datos", "gate": "propia"},
+    "upsert_deposito_conector":    {"clase": "datos", "gate": "propia"},
+    "upsert_recepciones_conector": {"clase": "datos", "gate": "propia"},
     "reportar_faltante":  {"clase": "stock", "gate": "propia"},
     "marcar_conteo":      {"clase": "stock", "gate": "propia"},
     "confirmar_entrega":  {"clase": "stock", "gate": "propia"},

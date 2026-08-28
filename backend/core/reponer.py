@@ -28,13 +28,14 @@ están adentro de esa multiplicación; no hacen falta pesos arbitrarios encima.
 AGRUPADO POR PROVEEDOR porque así se compra de verdad: no se emiten nueve
 órdenes, se emite una por proveedor con nueve renglones.
 
-Determinista de punta a punta. Reusa las MISMAS primitivas que el resto
-(`analisis._unidades_por_codigo`, `reposicion.dias_reposicion`) para que la
-cobertura de un producto sea un solo número en todo el producto.
+Determinista de punta a punta. Cover days use `stock.days_of_cover` (on-hand
++ incoming − outgoing) so Reponer, Prioridades, and forecast stockout share
+one number. Rotation-in-days / inmovilizado stay on on-hand: that is capital,
+not the truck that is already coming.
 """
 from __future__ import annotations
 
-from . import analisis, pricing, reposicion, store
+from . import analisis, pricing, reposicion, stock, store
 
 # Solo entran los que ya están en zona: por encima de esto no hay decisión que
 # tomar hoy. 45 días cubre el lead más largo del set de proveedores (21) con
@@ -65,8 +66,7 @@ def analizar(limite: int = 12) -> dict:
         if u <= 0:
             continue
         ritmo = u / 365.0                      # misma derivación que rotación
-        stock = a.get("stock") or 0
-        cobertura = stock / ritmo if stock > 0 else 0.0
+        cobertura = stock.days_of_cover(a, ritmo)
         if cobertura > COBERTURA_MAX_DIAS:
             continue
 
@@ -87,7 +87,7 @@ def analizar(limite: int = 12) -> dict:
 
         # cuánto pedir: reponer a un mes de venta, descontando lo que se va a
         # consumir mientras el camión viene en camino (misma cuenta que la card)
-        stock_al_llegar = max(0.0, stock - ritmo * lead)
+        stock_al_llegar = max(0.0, stock.projected_stock(a) - ritmo * lead)
         sugerido = max(0.0, ritmo * DIAS_COBERTURA_OBJETIVO - stock_al_llegar)
         sugerido = (round(sugerido, 1) if pricing.es_por_peso(a)
                     else float(round(sugerido)))
