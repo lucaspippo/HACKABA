@@ -60,6 +60,15 @@ export default function Finanzas({ data, onPreguntar, datos, onNavegar }) {
           <p className="mt-2 text-[0.95rem] leading-snug text-tinta">
             {num(alertas.sin_pvp.cantidad)} {t("finanzas.potencial_detalle")}
           </p>
+          {onNavegar && alertas.sin_pvp.cantidad > 0 && (
+            <button
+              type="button"
+              onClick={() => onNavegar("productos", "sin_precio")}
+              className="mt-3 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-salvia hover:underline"
+            >
+              {t("finanzas.potencial_ver_productos")} <ArrowRight size={13} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,31 +1,27 @@
 import { useEffect, useState } from "react";
-import { ResponsiveContainer, Treemap, Tooltip } from "recharts";
-import { Sparkles, Lock, X, Pencil } from "lucide-react";
+import { Sparkles, X, Pencil, ArrowRight } from "lucide-react";
 import { toast } from "../../lib/toastStore";
 import AngelaMark from "../../components/AngelaMark";
-import { useCountUp } from "../../lib/useCountUp";
 import { useVista, vistaStore } from "../../lib/vistaStore";
 import { useFoco, focoStore } from "../../lib/focoStore";
-import Widget from "../../components/Widget";
+import { contarACorregir } from "../../lib/alertas";
+import { peso, num } from "../../lib/format";
+import { api } from "../../lib/api";
+import { authStore } from "../../lib/auth";
+import { useT } from "../../lib/i18n";
+import Panorama from "./InventarioPanorama";
 import Margenes from "./Margenes";
 import Reponer from "./Reponer";
-import { peso, pesoCorto, num } from "../../lib/format";
-import { api } from "../../lib/api";
-import { GRAFICO } from "../../lib/paleta";
-import { tealSecuencial, textoSobre } from "../../components/charts/tema";
-import { useT } from "../../lib/i18n";
 
-// P16: el subtab "balanzas" murió — un producto de balanza es un producto más
-// (se pricea distinto): vive como filtro "Por kg" de la tabla completa.
+// P16: the "balanzas" subtab died — a scale product is just a product
+// (priced differently): it lives as the "By kg" filter of the full catalog.
 const SUBTABS = [
   { id: "panorama", lk: "inventario.tab_panorama" },
-  { id: "margenes", lk: "inventario.tab_margenes" },
   { id: "reponer", lk: "inventario.tab_reponer" },
+  { id: "margenes", lk: "inventario.tab_margenes" },
 ];
-const GRUPOS = ["fantasmas", "negativos", "sin_pvp", "balanza"];
-const HIGHLIGHT_ERR = { fantasmas: "fantasma", negativos: "negativo", sin_pvp: "sin_precio", balanza: "balanza" };
+const GRUPOS = ["fantasmas", "negativos", "sin_pvp", "balanza", "costo_viejo"];
 
-// Estado de calidad → etiqueta (lk del diccionario) + color (para badges de la tabla).
 const ESTADO_CAL = {
   ok: { lk: "inventario.estado_ok", cls: "bg-salvia/15 text-salvia" },
   fantasma: { lk: "inventario.estado_fantasma", cls: "bg-rojo/12 text-rojo" },
@@ -38,23 +34,22 @@ const ESTADO_CAL = {
 export default function Inventario({ data, highlight, onPreguntar, onNavegar }) {
   const t = useT();
   const [sub, setSub] = useState("panorama");
-  const [detalle, setDetalle] = useState(null); // producto seleccionado (modal)
-  const [reloadKey, setReloadKey] = useState(0); // fuerza refetch de Panorama tras crear/editar un producto
+  const [detalle, setDetalle] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const vista = useVista();
   const foco = useFoco();
+  const nCorregir = contarACorregir(data);
 
   const tabs = [...SUBTABS, ...(vista.pestanas || []).map((p) => ({ id: p.id, label: p.nombre, custom: p }))];
   const irABalanzas = () => onNavegar?.("productos", "balanza");
-  const irACorregir = (err = "todos") => onNavegar?.("productos", err === "todos" ? "a_corregir" : err);
 
   useEffect(() => {
     if (!highlight) return;
     if (highlight === "foco") setSub("foco");
     else if (highlight === "margenes") setSub("margenes");
     else if (highlight === "reponer") setSub("reponer");
-    else if (highlight === "plata") setSub("panorama");
+    else if (highlight === "plata" || highlight === "briefing" || highlight === "mapa" || GRUPOS.includes(highlight)) setSub("panorama");
     else if (highlight === "balanzas") irABalanzas();
-    else if (GRUPOS.includes(highlight)) irACorregir(HIGHLIGHT_ERR[highlight]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlight]);
 
@@ -64,12 +59,13 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl font-bold">{t("inventario.titulo")}</h1>
-        <p className="mt-1 text-[0.95rem] text-tinta-suave">
+        <p className="mt-1 max-w-2xl text-[0.95rem] leading-snug text-tinta-suave">
           {t("inventario.subtitulo")}
         </p>
       </header>
 
-      {/* Ángela propone separar las balanzas la primera vez */}
+      <PisoNav t={t} onNavegar={onNavegar} nCorregir={nCorregir} />
+
       {!vista.balanzaEsquemaOk && <BalanzaPropuesta onVer={irABalanzas} />}
 
       <div className="flex flex-wrap gap-2 border-b border-linea">
@@ -91,20 +87,69 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       </div>
 
       {sub === "foco" && <FocoView foco={foco} onSelect={setDetalle} onPreguntar={onPreguntar} onSalir={() => { focoStore.clear(); setSub("panorama"); }} />}
-      {sub === "panorama" && <Panorama key={reloadKey} data={data} onSelect={setDetalle} onNavegar={onNavegar} onCorregir={irACorregir} />}
-      {sub === "margenes" && <Margenes onPreguntar={onPreguntar} />}
-      {sub === "reponer" && <Reponer onPreguntar={onPreguntar} />}
+      {sub === "panorama" && (
+        <Panorama
+          key={reloadKey}
+          data={data}
+          onSelect={setDetalle}
+          onNavegar={onNavegar}
+          onTab={setSub}
+          onPreguntar={onPreguntar}
+        />
+      )}
+      {sub === "margenes" && (
+        <div data-nav-id="margenes">
+          <Margenes onPreguntar={onPreguntar} onNavegar={onNavegar} />
+        </div>
+      )}
+      {sub === "reponer" && (
+        <div data-nav-id="reponer">
+          <Reponer onPreguntar={onPreguntar} onNavegar={onNavegar} />
+        </div>
+      )}
       {pestActiva && <PestanaCustom pestana={pestActiva} onSelect={setDetalle} />}
 
       {detalle && (
         <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar}
-          onGuardado={() => { setDetalle(null); setReloadKey((k) => k + 1); }} />
+          onGuardado={() => { setDetalle(null); setReloadKey((k) => k + 1); }}
+          onNavegar={onNavegar} />
       )}
     </div>
   );
 }
 
-// Primera vez en inventario: Ángela detecta los productos de balanza y propone el esquema.
+function PisoNav({ t, onNavegar, nCorregir }) {
+  if (!onNavegar) return null;
+  const chips = [
+    { id: "productos", label: t("nav.productos") },
+    authStore.tiene("saneamiento") && {
+      id: "saneamiento", label: t("nav.saneamiento"), badge: nCorregir,
+    },
+    authStore.tiene("deposito") && { id: "deposito", label: t("nav.deposito") },
+    { id: "ordenes_compra", label: t("nav.ordenes_compra") },
+  ].filter(Boolean);
+  return (
+    <nav aria-label={t("inventario.piso_aria")} className="flex flex-wrap items-center gap-2">
+      <span className="text-[0.82rem] text-tinta-suave">{t("inventario.piso_trabajar")}</span>
+      {chips.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onNavegar(c.id)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.8rem] font-semibold text-tinta hover:border-tinta/30"
+        >
+          {c.label}
+          {c.badge > 0 && (
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-[0.68rem] font-bold text-crema">
+              {num(c.badge)}
+            </span>
+          )}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function BalanzaPropuesta({ onVer }) {
   const t = useT();
   const [n, setN] = useState(null);
@@ -132,7 +177,6 @@ function BalanzaPropuesta({ onVer }) {
   );
 }
 
-// Vista de foco: SOLO los productos que Ángela señaló (de una anomalía), resaltados.
 function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
   const t = useT();
   const [items, setItems] = useState(null);
@@ -181,7 +225,6 @@ function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
   );
 }
 
-// Pestaña creada por Ángela a pedido: filtra la tabla por estado de calidad.
 function PestanaCustom({ pestana, onSelect }) {
   const t = useT();
   const [items, setItems] = useState(null);
@@ -219,318 +262,7 @@ function PestanaCustom({ pestana, onSelect }) {
   );
 }
 
-function Tarjeta({ label, valor, acento }) {
-  return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-      <p className={`plata text-2xl font-medium ${acento ? "text-hielo" : "text-tinta"}`}>{valor}</p>
-      <p className="text-[0.8rem] text-tinta-suave">{label}</p>
-    </div>
-  );
-}
-
-/* ---------------- PANORAMA ---------------- */
-function Panorama({ data, onSelect, onNavegar, onCorregir }) {
-  const t = useT();
-  const { resumen, alertas, top_inmovilizado } = data;
-  const contado = useCountUp(resumen.inmovilizado_total);
-  const vista = useVista();
-  const widgets = vista.widgets?.inventario || [];
-  // P25·D — murió el donut "activos 427 / anulados 3" (no aportaba nada):
-  // en su lugar, LA pregunta que el dueño de verdad se hace — dónde está la
-  // plata por categoría (misma capa auditada de consultas del P21).
-  const [plataCat, setPlataCat] = useState([]);
-  useEffect(() => {
-    api.consultaSerie({ fuente: "inventario", metrica: "inmovilizado", agrupar: "categoria" })
-      .then((r) => r.ok && setPlataCat(r.series[0].puntos.slice(0, 8)))
-      .catch(() => {});
-  }, []);
-  const nCorregir = data.resumen?.a_corregir || 0;
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <div className="relative overflow-hidden rounded-[var(--radius-card)] border border-hielo/20 bg-hielo-claro p-6 sombra-alta lg:col-span-2">
-          <div className="relative">
-            <p className="text-[0.88rem] font-semibold uppercase tracking-[0.16em] text-hielo">{t("inventario.plata_parada_mercaderia")}</p>
-            <p className="plata mt-2 text-5xl font-medium leading-none text-hielo">{peso(contado)}</p>
-            <p className="mt-3 max-w-md text-[0.92rem] leading-snug text-tinta">
-              {t("inventario.plata_parada_detalle")}
-            </p>
-          </div>
-        </div>
-        <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-papel">
-          <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.plata_por_cat")}</p>
-          <div className="mt-3 space-y-1.5">
-            {plataCat.length === 0 && <div className="skeleton h-36 w-full" />}
-            {plataCat.map((p) => {
-              const max = plataCat[0]?.y || 1;
-              return (
-                <div key={p.x} className="relative rounded-lg px-2.5 py-1">
-                  <div className="absolute inset-y-0 left-0 rounded-lg bg-hielo/15" style={{ width: `${Math.max(6, (p.y / max) * 100)}%` }} />
-                  <div className="relative flex items-center justify-between gap-2 text-[0.8rem]">
-                    <span className="truncate">{p.x}</span>
-                    <span className="plata shrink-0 font-medium text-hielo">{pesoCorto(p.y)}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {nCorregir > 0 && (
-        <button type="button" onClick={() => onCorregir?.("todos")}
-          className="rounded-full border border-rojo/35 bg-rojo/[0.04] px-4 py-2 text-left text-[0.9rem] font-semibold text-rojo hover:bg-rojo/[0.08]">
-          {t("inventario.chip_corregir", { n: num(nCorregir) })}
-        </button>
-      )}
-
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <TreemapPlata data={data} onSelect={onSelect} />
-        <div className="space-y-5">
-          <SaludCatalogo data={data} />
-          <ConcentracionTop10 data={data} />
-        </div>
-      </div>
-
-      {/* Widgets que el dueño le pidió a Ángela */}
-      {widgets.length > 0 && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          {widgets.map((w) => (
-            <Widget key={w.id} widget={w} data={data} onQuitar={(id) => vistaStore.quitarWidget("inventario", id)} />
-          ))}
-        </div>
-      )}
-
-      <button type="button" onClick={() => onNavegar?.("productos")}
-        className="flex w-full flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-linea bg-crema p-5 text-left sombra-papel hover:bg-papel-hondo/30">
-        <div>
-          <h2 className="font-display text-[1.1rem] font-bold">{t("inventario.tabla_titulo")}</h2>
-          <p className="mt-1 text-[0.88rem] text-tinta-suave">{t("inventario.ver_catalogo_sub")}</p>
-        </div>
-        <span className="inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-hielo">
-          {t("inventario.ver_catalogo")} →
-        </span>
-      </button>
-
-      <RotacionPlaceholder data={data} />
-    </div>
-  );
-}
-
-/* Treemap interactivo: tooltip + click → detalle */
-function TreemapPlata({ data, onSelect }) {
-  const t = useT();
-  // El mapa muestra los productos con MÁS plata parada. Antes graficaba 10 SKUs
-  // contra el total del catálogo entero y el nodo "resto del catálogo" se comía
-  // el gráfico (parecía un error). Ahora el mapa es de los top reales y la
-  // relación con el total se dice en texto, honesta.
-  const [top, setTop] = useState(() => data.top_inmovilizado.slice(0, 12));
-  useEffect(() => {
-    api.inventarioTop(50).then((r) => { if (r.items?.length) setTop(r.items); }).catch(() => {});
-  }, []);
-  const sumaTop = top.reduce((a, p) => a + p.inmovilizado, 0);
-  const total = data.resumen.inmovilizado_total || 0;
-  const pct = total > 0 ? Math.round((sumaTop / total) * 100) : 0;
-  // P17·E3: muere el arcoíris — escala secuencial de UN hue (teal):
-  // más oscuro = más plata inmovilizada. El color ES el dato.
-  const maxV = top[0]?.inmovilizado || 1;
-  const minV = top[top.length - 1]?.inmovilizado || 0;
-  const nodos = top.map((p) => ({
-    name: p.descripcion, size: p.inmovilizado,
-    fill: tealSecuencial(maxV > minV ? (p.inmovilizado - minV) / (maxV - minV) * 0.85 + 0.15 : 0.5),
-    codigo: p.codigo, stock: p.stock, costo_iva: p.costo_iva, inmovilizado: p.inmovilizado, estado: p.estado,
-  }));
-
-  return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.donde_plata")}</p>
-      <p className="mt-0.5 text-[0.88rem] text-tinta-suave">{t("inventario.donde_plata_detalle")}</p>
-      {total > 0 && sumaTop > 0 && (
-        <p className="mt-0.5 text-[0.8rem] text-tinta-suave">
-          {t("inventario.donde_plata_top", { n: num(top.length), pct, monto: pesoCorto(sumaTop), total: pesoCorto(total) })}
-        </p>
-      )}
-      <div className="mt-3 h-64">
-        <ResponsiveContainer>
-          <Treemap
-            data={nodos} dataKey="size" stroke={GRAFICO.fondo} content={<CeldaTreemap />} isAnimationActive={false}
-            onClick={(n) => { if (n && !n.resto && n.codigo != null) onSelect(n); }}
-          >
-            <Tooltip content={<TreemapTooltip />} />
-          </Treemap>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
-
-function TreemapTooltip({ active, payload }) {
-  const t = useT();
-  if (!active || !payload?.length) return null;
-  const n = payload[0].payload;
-  return (
-    <div className="rounded-xl border border-linea bg-crema p-3 text-[0.88rem] sombra-alta">
-      <p className="font-semibold text-tinta">{n.name}</p>
-      {!n.resto && (
-        <div className="mt-1 space-y-0.5 text-tinta-suave">
-          <p>{t("inventario.tt_stock")} <span className="plata">{num(n.stock)}</span></p>
-          <p>{t("inventario.tt_costo_iva")} <span className="plata">{n.costo_iva ? peso(n.costo_iva) : "—"}</span></p>
-          <p>{t("inventario.tt_plata_parada")} <span className="plata font-semibold text-hielo">{peso(n.inmovilizado)}</span></p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CeldaTreemap({ x, y, width, height, name, fill, inmovilizado }) {
-  if (width == null || height == null || width < 1 || height < 1) return null;
-  const safeName = name || "";
-  // Labels (SKU + $) solo en rectángulos grandes; los chicos hablan por tooltip.
-  const mostrar = safeName && width > 84 && height > 40;
-  const maxChars = Math.floor(width / 7);
-  const texto = textoSobre(fill || "rgb(215,231,235)");
-  return (
-    <g style={{ cursor: "pointer" }}>
-      <rect x={x} y={y} width={width} height={height} style={{ fill: fill || GRAFICO.linea, stroke: GRAFICO.fondo, strokeWidth: 2 }} />
-      {mostrar && (
-        <>
-          <text x={x + 7} y={y + 16} fill={texto} fontSize={10.5} fontWeight={600} style={{ pointerEvents: "none" }}>
-            {safeName.length > maxChars ? safeName.slice(0, maxChars) + "…" : safeName}
-          </text>
-          <text x={x + 7} y={y + 30} fill={texto} fontSize={10} opacity={0.85}
-            style={{ pointerEvents: "none", fontVariantNumeric: "tabular-nums" }}>
-            {pesoCorto(inmovilizado)}
-          </text>
-        </>
-      )}
-    </g>
-  );
-}
-
-function SaludCatalogo({ data }) {
-  const t = useT();
-  const { resumen, alertas } = data;
-  const sinPrecio = alertas.sin_pvp.cantidad;
-  const activosConPrecio = Math.max(0, resumen.activos - sinPrecio);
-  const total = resumen.total_articulos;
-  const segs = [
-    { label: t("inventario.salud_activos_precio"), value: activosConPrecio, color: GRAFICO.salvia },
-    { label: t("inventario.salud_activos_sin_precio"), value: sinPrecio, color: GRAFICO.oro },
-    { label: t("inventario.anulados"), value: resumen.anulados, color: GRAFICO.linea },
-  ];
-  return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.salud_titulo")}</p>
-      <div className="mt-3 flex h-4 overflow-hidden rounded-full">
-        {segs.map((s) => <div key={s.label} style={{ width: `${(s.value / total) * 100}%`, background: s.color }} title={`${s.label}: ${s.value}`} />)}
-      </div>
-      <div className="mt-3 space-y-1">
-        {segs.map((s) => (
-          <div key={s.label} className="flex items-center justify-between text-[0.88rem]">
-            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />{s.label}</span>
-            <span className="plata font-medium">{num(s.value)}</span>
-          </div>
-        ))}
-      </div>
-      <p className="mt-2 text-[0.88rem] text-tinta-suave">{t("inventario.salud_ademas", { n: num(alertas.negativos.cantidad), m: num(alertas.balanza.cantidad) })}</p>
-    </div>
-  );
-}
-
-function ConcentracionTop10({ data }) {
-  const t = useT();
-  const top = data.top_inmovilizado.slice(0, 10);
-  const sumaTop = top.reduce((a, p) => a + p.inmovilizado, 0);
-  const total = data.resumen.inmovilizado_total;
-  const pct = Math.round((sumaTop / total) * 100);
-  // P15·E4: el copy sigue al dato. Concentración alta (≥25%) = hay palanca;
-  // baja = la verdad útil es la contraria: está repartida, se trabaja en lista.
-  const concentrada = pct >= 25;
-  return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("inventario.conc_titulo")}</p>
-      <p className="mt-2 text-[0.9rem] text-tinta">
-        {concentrada ? (
-          <>
-            {t("inventario.conc_1")} <b className="plata text-hielo">{pct}%</b> {t("inventario.conc_2")} <b>{t("inventario.conc_3")}</b>{t("inventario.conc_4")}
-          </>
-        ) : (
-          <>
-            {t("inventario.conc_baja_1")} <b className="plata text-hielo">{pct}%</b> {t("inventario.conc_baja_2")}
-          </>
-        )}
-      </p>
-      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-papel-hondo">
-        <div style={{ width: `${pct}%` }} className="bg-hielo" />
-      </div>
-      <div className="mt-1.5 flex justify-between text-[0.88rem] text-tinta-suave">
-        <span>{t("inventario.conc_top", { monto: pesoCorto(sumaTop) })}</span><span>{t("inventario.conc_resto", { monto: pesoCorto(total - sumaTop) })}</span>
-      </div>
-    </div>
-  );
-}
-
-function RotacionPlaceholder({ data }) {
-  // Cableado al apartado ventas: cuando el CSV entre Y el dueño confirme el
-  // validador de montos, esta card despierta sola con los números reales.
-  const t = useT();
-  const [v, setV] = useState(null);
-  useEffect(() => { api.ventas().then(setV).catch(() => {}); }, []);
-
-  if (v?.disponible) {
-    const rot = v.rotacion;
-    return (
-      <div className="rounded-[var(--radius-card)] border border-salvia/30 bg-salvia/[0.05] p-6">
-        <p className="font-display text-[1.05rem] font-bold">{t("inventario.rot_titulo")}</p>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_parado_total")}</p>
-            <p className="plata text-2xl font-medium text-hielo">{pesoCorto(rot.inmovilizado_total)}</p></div>
-          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_excedente")}</p>
-            <p className="plata text-2xl font-medium text-salvia">{pesoCorto(rot.plata_excedente)}</p></div>
-          <div><p className="text-[0.88rem] font-semibold uppercase text-tinta-suave">{t("inventario.rot_necesario")}</p>
-            <p className="plata text-2xl font-medium">{pesoCorto(rot.plata_necesaria)}</p></div>
-        </div>
-        {v.quiebre?.cantidad > 0 && (
-          <p className="mt-3 text-[0.88rem] text-rojo">
-            {t("inventario.rot_quiebre", { n: v.quiebre.cantidad })}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  const validando = v?.validacion?.estado === "pendiente" || v?.validacion?.estado === "sospechoso";
-  return (
-    <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-6">
-      <div className="flex items-start gap-3">
-        <Lock size={18} className="mt-0.5 shrink-0 text-tinta-suave" />
-        <div>
-          <p className="font-display text-[1.05rem] font-bold">{t("inventario.rot_titulo")}</p>
-          <p className="mt-1.5 max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
-            {validando
-              ? (v.validacion.estado === "sospechoso"
-                  ? t("inventario.rot_sospechoso")
-                  : t("inventario.rot_pendiente"))
-              : <>{t("inventario.rot_1")} <b className="plata">{pesoCorto(data?.resumen?.inmovilizado_total || 0)}</b> {t("inventario.rot_2")} <b>{t("inventario.rot_3")}</b>{t("inventario.rot_4")} <b>{t("inventario.rot_5")}</b> {t("inventario.rot_6")} <b>{t("inventario.rot_7")}</b> {t("inventario.rot_8")}</>}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Leyenda({ color, label, value }) {
-  return (
-    <div className="flex items-center justify-between text-[0.88rem]">
-      <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />{label}</span>
-      <span className="plata font-medium">{num(value)}</span>
-    </div>
-  );
-}
-
-/* Modal de detalle de un producto */
-function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
+function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
   const t = useT();
   const [editando, setEditando] = useState(false);
   const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
@@ -538,6 +270,8 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
   if (editando) {
     return <ModalArticulo inicial={p} onClose={() => setEditando(false)} onGuardado={onGuardado} />;
   }
+
+  const err = p.estado_calidad && p.estado_calidad !== "ok" ? p.estado_calidad : null;
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-tinta/40 p-4" onClick={onClose}>
@@ -571,8 +305,6 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
           {(Number(p.outgoing_qty) || 0) !== 0 && (
             <Dato label={t("inventario.det_reservado")} valor={num(p.outgoing_qty)} />
           )}
-          {/* P38·G — el pesable, completo: piezas, peso de una pieza y lo que
-              sale una pieza. Sin esto, "522 kg" no le sirve a nadie del piso. */}
           {p.unidades != null && (
             <>
               <Dato label={t("inventario.det_piezas")} valor={num(p.unidades)} />
@@ -583,12 +315,30 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
             </>
           )}
         </div>
-        <button
-          onClick={() => { onClose(); onPreguntar?.(`Contame sobre el producto ${p.descripcion || p.name} (código ${p.codigo})`); }}
-          className="mt-5 inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema"
-        >
-          <AngelaMark size={18} /> {t("inventario.det_preguntar")}
-        </button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button
+            onClick={() => { onClose(); onPreguntar?.(t("inventario.det_preguntar_q", { nombre: p.descripcion || p.name, codigo: p.codigo })); }}
+            className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema"
+          >
+            <AngelaMark size={18} /> {t("inventario.det_preguntar")}
+          </button>
+          {onNavegar && (
+            <button
+              onClick={() => { onClose(); onNavegar("productos", `q:${p.codigo}`); }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta"
+            >
+              {t("inventario.acc_ver_catalogo")} <ArrowRight size={13} />
+            </button>
+          )}
+          {err && onNavegar && authStore.tiene("saneamiento") && (
+            <button
+              onClick={() => { onClose(); onNavegar("saneamiento", err); }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta-suave"
+            >
+              {t("inventario.acc_ver_saneamiento")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
