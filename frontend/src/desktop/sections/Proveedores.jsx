@@ -6,12 +6,22 @@ import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 
-export default function Proveedores() {
+function qDeHighlight(highlight) {
+  if (!highlight) return "";
+  return highlight.startsWith("q:") ? highlight.slice(2) : highlight;
+}
+
+export default function Proveedores({ highlight }) {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => qDeHighlight(highlight));
+
+  useEffect(() => {
+    const n = qDeHighlight(highlight);
+    if (n) setQ(n);
+  }, [highlight]);
 
   const cargar = () => api.proveedores().then((d) => setItems(d.proveedores)).catch(setError);
   useEffect(() => { cargar(); }, []);

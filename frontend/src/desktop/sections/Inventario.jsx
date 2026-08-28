@@ -127,6 +127,7 @@ function PisoNav({ t, onNavegar, nCorregir }) {
     },
     authStore.tiene("deposito") && { id: "deposito", label: t("nav.deposito") },
     { id: "ordenes_compra", label: t("nav.ordenes_compra") },
+    { id: "proveedores", label: t("nav.proveedores") },
   ].filter(Boolean);
   return (
     <nav aria-label={t("inventario.piso_aria")} className="flex flex-wrap items-center gap-2">

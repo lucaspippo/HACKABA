@@ -85,7 +85,11 @@ export default function Reponer({ onPreguntar, onNavegar }) {
                   </p>
                   <p className="text-[0.72rem] text-tinta-suave">
                     {onNavegar ? (
-                      <button type="button" onClick={() => onNavegar("proveedores")} className="hover:underline">
+                      <button
+                        type="button"
+                        onClick={() => onNavegar("proveedores", i.proveedor)}
+                        className="hover:underline"
+                      >
                         {i.proveedor}
                       </button>
                     ) : i.proveedor}
@@ -136,12 +140,22 @@ export default function Reponer({ onPreguntar, onNavegar }) {
         <p className="mt-0.5 text-[0.84rem] text-tinta-suave">{t("reponer.prov_sub")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {d.proveedores.slice(0, 6).map((g) => (
-            <button key={g.proveedor} onClick={() => onPreguntar?.(
-              t("reponer.prov_preguntar", { proveedor: g.proveedor }))}
-              className="rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-left
-                         transition-colors hover:border-violeta/50 hover:bg-violeta-suave">
+            <div
+              key={g.proveedor}
+              className="rounded-xl border border-linea bg-papel px-3.5 py-2.5"
+            >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="min-w-0 truncate text-[0.9rem] font-semibold">{g.proveedor}</span>
+                {onNavegar ? (
+                  <button
+                    type="button"
+                    onClick={() => onNavegar("proveedores", g.proveedor)}
+                    className="min-w-0 truncate text-left text-[0.9rem] font-semibold hover:underline"
+                  >
+                    {g.proveedor}
+                  </button>
+                ) : (
+                  <span className="min-w-0 truncate text-[0.9rem] font-semibold">{g.proveedor}</span>
+                )}
                 <span className="plata shrink-0 text-[0.9rem] font-medium text-rojo">
                   {pesoCorto(g.plata_en_riesgo)}
                 </span>
@@ -150,7 +164,25 @@ export default function Reponer({ onPreguntar, onNavegar }) {
                 <Clock size={12} />
                 {t("reponer.prov_detalle", { n: num(g.items), lead: num(g.lead_dias) })}
               </p>
-            </button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {onNavegar && (
+                  <button
+                    type="button"
+                    onClick={() => onNavegar("ordenes_compra", g.proveedor)}
+                    className="text-[0.76rem] font-semibold text-hielo hover:underline"
+                  >
+                    {t("reponer.ir_ordenes")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onPreguntar?.(t("reponer.prov_preguntar", { proveedor: g.proveedor }))}
+                  className="text-[0.76rem] font-semibold text-violeta hover:underline"
+                >
+                  {t("inventario.acc_preguntar")}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       </div>

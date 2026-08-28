@@ -7,6 +7,11 @@ import { toast } from "../../lib/toastStore";
 import { fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 
+function qDeHighlight(highlight) {
+  if (!highlight) return "";
+  return highlight.startsWith("q:") ? highlight.slice(2) : highlight;
+}
+
 const ESTADO_CLS = {
   borrador: "bg-oro/15 text-oro-tinta",
   aprobada: "bg-hielo/12 text-hielo",
@@ -14,12 +19,17 @@ const ESTADO_CLS = {
   cancelada: "bg-papel-hondo text-tinta-suave",
 };
 
-export default function OrdenesCompra() {
+export default function OrdenesCompra({ highlight }) {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(false);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => qDeHighlight(highlight));
+
+  useEffect(() => {
+    const n = qDeHighlight(highlight);
+    if (n) setQ(n);
+  }, [highlight]);
 
   const cargar = () => api.ordenesPreparadas().then((d) => setItems(d.ordenes)).catch(setError);
   useEffect(() => { cargar(); }, []);
