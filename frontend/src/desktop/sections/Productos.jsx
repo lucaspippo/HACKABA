@@ -132,6 +132,15 @@ export default function Productos({ data, highlight }) {
             ) },
           { key: "pvp", label: t("inventario.col_pvp"), sortable: true, align: "right", plata: true,
             render: (p) => (p.pvp ? peso(p.pvp) : "—") },
+          { key: "margen_venta_pct", label: t("inventario.col_margen"), sortable: true, align: "right", plata: true,
+            render: (p) => (p.margen_venta_pct == null ? "—" : (
+              <span>
+                {num(p.margen_venta_pct)}%
+                {p.margen_pesos != null && (
+                  <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">{peso(p.margen_pesos)}</span>
+                )}
+              </span>
+            )) },
           { key: "estado_calidad", label: t("inventario.col_estado"), sortable: true,
             render: (p) => {
               const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;

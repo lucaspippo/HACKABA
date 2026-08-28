@@ -19,7 +19,8 @@ _CAMPOS = ("codigo", "producto", "ubicacion", "lote", "vencimiento", "cantidad",
            "in_date", "counted_qty", "source", "source_id")
 SEARCH = ("producto", "ubicacion", "lote", "codigo", "source")
 CSV_COLUMNS = ("producto", "codigo", "ubicacion", "lote", "vencimiento",
-               "cantidad", "in_date", "counted_qty", "source")
+               "cantidad", "counted_qty", "diferencia", "in_date", "source")
+QTY_EPS = 0.01
 
 
 def _con_ids(filas: list[dict]) -> tuple[list[dict], bool]:
@@ -77,20 +78,45 @@ def eliminar(id_: str, actor: str) -> None:
     _audit.record(actor, "eliminar_lote", borrado, None)
 
 
+def _enriquecer(row: dict) -> dict:
+    """Add the counted-vs-system gap so the grid can filter and sort it."""
+    out = dict(row)
+    counted = out.get("counted_qty")
+    if counted is None or counted == "":
+        out["diferencia"] = None
+        out["tiene_discrepancia"] = False
+        return out
+    try:
+        diff = round(float(counted) - float(out.get("cantidad") or 0), 2)
+    except (TypeError, ValueError):
+        out["diferencia"] = None
+        out["tiene_discrepancia"] = False
+        return out
+    out["diferencia"] = diff
+    out["tiene_discrepancia"] = abs(diff) > QTY_EPS
+    return out
+
+
+def _rows(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
+          source: str | None = None, discrepancia: bool = False) -> list[dict]:
+    rows = [_enriquecer(r) for r in listar()]
+    rows = section_records.match_source(rows, source)
+    if discrepancia:
+        rows = [r for r in rows if r.get("tiene_discrepancia")]
+    return paging.filter_sort(
+        rows, q=q, search_in=SEARCH, sort=sort, direction=direction)
+
+
 def list_page(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
               offset: int = 0, limit: int = paging.DEFAULT_LIMIT,
-              source: str | None = None) -> dict:
-    listar()  # persist ids on seed rows before paging
-    return section_records.list_page(
-        _TIPO, search_in=SEARCH, q=q, sort=sort, direction=direction,
-        offset=offset, limit=limit, source=source,
-    )
+              source: str | None = None, discrepancia: bool = False) -> dict:
+    rows = _rows(q=q, sort=sort, direction=direction, source=source,
+                 discrepancia=discrepancia)
+    return paging.page_rows(rows, offset=offset, limit=limit)
 
 
 def export_csv(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
-               source: str | None = None) -> str:
-    listar()
-    return section_records.export_csv(
-        _TIPO, CSV_COLUMNS, search_in=SEARCH, q=q, sort=sort, direction=direction,
-        source=source,
-    )
+               source: str | None = None, discrepancia: bool = False) -> str:
+    rows = _rows(q=q, sort=sort, direction=direction, source=source,
+                 discrepancia=discrepancia)
+    return paging.rows_to_csv(rows, CSV_COLUMNS)

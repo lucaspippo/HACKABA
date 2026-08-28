@@ -40,6 +40,24 @@ def margen_pct(art: dict) -> float | None:
     return round((pvp - costo) / costo * 100, 2)
 
 
+def margen_sobre_venta_pct(art: dict) -> float | None:
+    """Margin on the sale: (pvp − cost) / pvp. Same definition as Márgenes
+    (`margen_unitario_pct`). None if PVP or cost is missing. Distinct from
+    `margen_pct`, which is markup on cost."""
+    costo, pvp = art.get("costo_iva"), art.get("pvp")
+    if not costo or not pvp:
+        return None
+    return round((pvp - costo) / pvp * 100, 2)
+
+
+def margen_pesos(art: dict) -> float | None:
+    """Peso gap per unit: pvp − cost. None if either side is missing."""
+    costo, pvp = art.get("costo_iva"), art.get("pvp")
+    if costo is None or pvp is None:
+        return None
+    return round(float(pvp) - float(costo), 2)
+
+
 def es_a_perdida(art: dict) -> bool:
     """Vende por debajo del costo, comparando en su unidad. Un producto por peso
     NUNCA se evalúa contra un precio por unidad: ambos lados son $/kg."""
@@ -99,6 +117,8 @@ def enriquecer(art: dict) -> dict:
         "unidad_pricing": unidad(art),
         "label_precio": label_precio(art),
         "margen_pct": margen_pct(art),
+        "margen_venta_pct": margen_sobre_venta_pct(art),
+        "margen_pesos": margen_pesos(art),
         "peso_por_unidad": peso_por_unidad(art),
         "unidades": unidades_de(art),
         "precio_por_unidad": precio_por_unidad(art),

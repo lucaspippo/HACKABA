@@ -164,7 +164,7 @@ function AgingMercaderia({ aging }) {
 // (ubicaciones, lotes, vencimientos, discrepancias) + los problemas de
 // catálogo que él resuelve en el galpón (fantasma / negativo). El panel
 // "FIFO pendiente" sólo existe donde el dato todavía no está (piloto).
-export default function Deposito({ data, onPreguntar }) {
+export default function Deposito({ data, onPreguntar, onNavegar }) {
   const t = useT();
   // El consejo de Ángela habla de LOS DATOS del tenant: cada tenant usa su
   // propia versión general del texto (P9·C1, M2), sin datos cross-tenant.
@@ -197,7 +197,7 @@ export default function Deposito({ data, onPreguntar }) {
     { icon: PackageX, valor: wms.resumen.lotes, lk: "deposito.wms_lotes", color: "text-hielo" },
     { icon: Clock, valor: wms.resumen.por_vencer, lk: "deposito.wms_porvencer", color: wms.resumen.por_vencer ? "text-oro-tinta" : "text-tinta-suave" },
     { icon: Clock, valor: wms.resumen.vencidos, lk: "deposito.wms_vencidos", color: wms.resumen.vencidos ? "text-rojo" : "text-tinta-suave" },
-    { icon: Scale, valor: wms.resumen.discrepancias, lk: "deposito.wms_discrep", color: wms.resumen.discrepancias ? "text-oro-tinta" : "text-tinta-suave" },
+    { icon: Scale, valor: wms.resumen.discrepancias, lk: "deposito.wms_discrep", color: wms.resumen.discrepancias ? "text-oro-tinta" : "text-tinta-suave", ir: "conciliacion" },
   ] : [];
 
   return (
@@ -257,14 +257,16 @@ export default function Deposito({ data, onPreguntar }) {
           {tiles.map((x, i) => {
             const Icon = x.icon;
             const imparFinal = i === tiles.length - 1 && tiles.length % 2 === 1;
+            const Tag = x.ir ? "button" : "div";
             return (
-              <div key={x.lk}
-                className={`rounded-[var(--radius-card)] border border-linea bg-crema p-3.5 sombra-papel ${
-                  imparFinal ? "col-span-2 sm:col-span-1" : ""}`}>
+              <Tag key={x.lk} type={x.ir ? "button" : undefined}
+                onClick={x.ir ? () => onNavegar?.(x.ir) : undefined}
+                className={`rounded-[var(--radius-card)] border border-linea bg-crema p-3.5 text-left sombra-papel ${
+                  imparFinal ? "col-span-2 sm:col-span-1" : ""} ${x.ir ? "hover:border-violeta/40" : ""}`}>
                 <Icon size={15} className={x.color} />
                 <p className={`plata mt-1 text-xl font-medium leading-none ${x.color}`}>{num(x.valor)}</p>
                 <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{t(x.lk)}</p>
-              </div>
+              </Tag>
             );
           })}
         </div>
@@ -312,15 +314,22 @@ export default function Deposito({ data, onPreguntar }) {
       {/* Físico vs sistema: lo que el conteo encontró distinto */}
       {hayWms && wms.discrepancias?.length > 0 && (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
-          <p className="border-b border-linea px-4 py-2.5 text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.disc_titulo")}</p>
+          <div className="flex items-center justify-between gap-3 border-b border-linea px-4 py-2.5">
+            <p className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.disc_titulo")}</p>
+            {onNavegar && (
+              <button type="button" onClick={() => onNavegar("conciliacion")}
+                className="text-[0.78rem] font-semibold text-hielo">{t("nav.conciliacion")}</button>
+            )}
+          </div>
           {wms.discrepancias.slice(0, 8).map((d) => (
-            <div key={d.codigo} className="flex items-center justify-between gap-3 border-b border-linea px-4 py-2.5 last:border-0">
+            <button key={d.codigo} type="button" onClick={() => onNavegar?.("conciliacion")}
+              className="flex w-full items-center justify-between gap-3 border-b border-linea px-4 py-2.5 text-left last:border-0 hover:bg-papel">
               <p className="min-w-0 flex-1 truncate text-[0.88rem] font-medium">{d.descripcion}</p>
               <span className="plata shrink-0 text-[0.82rem] text-tinta-suave">{num(d.stock_contable)} → {num(d.stock_fisico)}</span>
               <span className={`plata shrink-0 text-[0.84rem] font-semibold ${d.diferencia < 0 ? "text-rojo" : "text-salvia"}`}>
                 {d.diferencia > 0 ? "+" : ""}{num(d.diferencia)}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       )}
