@@ -74,10 +74,13 @@ def _sanitize_args(name: str, args: dict) -> dict:
     return args
 
 
+_READ_ONLY_ANNOTATIONS = types.ToolAnnotations(readOnlyHint=True)
+
+
 def _to_mcp_tool(name: str) -> types.Tool:
     spec = _TOOLS_BY_NAME[name]
     return types.Tool(name=spec["name"], description=spec["description"],
-                       inputSchema=spec["input_schema"])
+                       inputSchema=spec["input_schema"], annotations=_READ_ONLY_ANNOTATIONS)
 
 
 def _bearer_token(request) -> str | None:
