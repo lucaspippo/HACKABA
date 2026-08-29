@@ -2759,6 +2759,24 @@ export const EN = {
   "conectores.whatsapp_nombre": "WhatsApp Business",
   "conectores.whatsapp_desc": "The sales channel: catalog, orders and quotes over chat, handled by Ángela.",
 
+  // --- AI connectors (Claude/ChatGPT/Gemini over the MCP server) ------------
+  "conectores.ia_titulo": "Connect your AI assistant",
+  "conectores.ia_intro": "PolPilot exposes a read-only MCP server: bring the same data you see here into the AI you already use every day. It sees exactly what your role can see — it never corrects anything or acts on its own.",
+  "conectores.ia_card_subtitulo": "Query your PolPilot data from here, read-only.",
+  "conectores.ia_disponible": "Available",
+  "conectores.ia_paso_url": "Your connection URL (MCP)",
+  "conectores.ia_paso_token": "Your access token",
+  "conectores.ia_paso_token_desc": "This is your current session: it expires on its own in a few hours. Everyone on the team uses their own — never share yours.",
+  "conectores.ia_paso_app": "Set it up in the app",
+  "conectores.ia_paso_claude": "In Claude Desktop: Settings → Connectors → Add custom connector, paste the URL and add the Authorization header with your token. claude.ai works the same way, from Settings → Connectors.",
+  "conectores.ia_paso_chatgpt": "In ChatGPT: Settings → Connectors, add an MCP connector with this URL and a custom Authorization: Bearer header carrying your token. The exact menu name can vary by plan — look for 'MCP' or 'connectors'.",
+  "conectores.ia_paso_gemini": "In Gemini: look for the extensions or connectors section in Settings and add this URL with your token as the Authorization header. MCP connector availability can vary by plan.",
+  "conectores.ia_nota": "Read-only: it never corrects a record, closes the register, or sends a message on your behalf. That still only happens inside the app.",
+  "conectores.ia_copiar_url": "Copy the connection URL",
+  "conectores.ia_copiar_token": "Copy the token",
+  "conectores.ia_mostrar_token": "Show the token",
+  "conectores.ia_ocultar_token": "Hide the token",
+
   // --- WhatsApp bot (customer-facing sales channel) --------------------------
   "whatsapp_bot.error_generico": "Something failed. Try again in a moment.",
   "whatsapp_bot.error_guardar": "I couldn't validate those credentials against WhatsApp Business. Check them and try again.",
