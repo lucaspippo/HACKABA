@@ -31,6 +31,7 @@ BUSINESS_DATA_TABLES = (
     "sales_validation",
     "floor_reports", "staging_batches", "user_profiles", "supplier_accounts",
     "users",
+    "whatsapp_channels", "whatsapp_messages", "whatsapp_conversations",
 )
 
 TENANT_SCOPED_TABLES = AUTH_TABLES + BUSINESS_DATA_TABLES
