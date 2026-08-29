@@ -146,4 +146,13 @@ def analizar(limite: int = 12) -> dict:
         "plata_total": round(sum(x["plata_en_riesgo"] for x in items), 2),
         "proveedores": proveedores,
         "cobertura_max_dias": COBERTURA_MAX_DIAS,
+        # Compact scatter of the whole zone (the table stays the top ranking).
+        "puntos": [{
+            "codigo": x["codigo"],
+            "producto": x["producto"],
+            "cobertura_dias": x["cobertura_dias"],
+            "lead_dias": x["lead_dias"],
+            "plata_en_riesgo": x["plata_en_riesgo"],
+            "dias_para_negociar": x["dias_para_negociar"],
+        } for x in items[:80]],
     }

@@ -3274,6 +3274,26 @@ CATALOGO: dict[str, dict[str, str]] = {
     },
     "conc.pipeline_in": {"es": "entrando", "en": "incoming"},
     "conc.pipeline_out": {"es": "saliendo", "en": "outgoing"},
+    "core.stock_viz.aging_sin_fecha": {
+        "es": "Los lotes no tienen fecha de ingreso, así que no puedo decir hace cuánto está la mercadería.",
+        "en": "Lots have no inbound date, so I can't tell how long the merchandise has been sitting.",
+    },
+    "core.stock_viz.lead_sin_ordenes": {
+        "es": "Todavía no hay órdenes de compra para cruzar contra las recepciones.",
+        "en": "There are no purchase orders yet to match against receipts.",
+    },
+    "core.stock_viz.lead_sin_pares": {
+        "es": "Hay recepciones, pero ninguna está atada a una orden con fecha. Sin ese cruce no puedo decir si el camión llega cuando promete.",
+        "en": "There are receipts, but none are tied to a dated purchase order. Without that match I can't tell if the truck arrives when it promises.",
+    },
+    "core.stock_viz.burn_sin_sku": {
+        "es": "No encuentro ese producto en el catálogo.",
+        "en": "I can't find that product in the catalog.",
+    },
+    "core.stock_viz.burn_sin_ritmo": {
+        "es": "Este producto no tiene ventas en el año: no hay ritmo para proyectar cuándo se acaba.",
+        "en": "This product has no sales in the year, so there's no rate to project a stockout.",
+    },
 }
 
 
