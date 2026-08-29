@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  FileSpreadsheet, LineChart, Waypoints, Plug, MessageCircle, ArrowRight,
+  FileSpreadsheet, LineChart, Waypoints, Copy, Check, ChevronDown, MessagesSquare,
   Users, Package, Truck, ShoppingCart, ShoppingBag, Warehouse, PackagePlus,
   PackageCheck, FileText, Tag,
 } from "lucide-react";
@@ -11,16 +11,17 @@ import { useT } from "../../lib/i18n";
 import IngestPipeline from "./IngestPipeline";
 import {
   ConnectorCard, ConnectorStatusPill, ConnectorField, ConnectorButton,
-  ConnectorSyncAction,
+  ConnectorSyncAction, ConnectorEmptyState, LogoOdoo, LogoWhatsApp,
 } from "./connectorUI";
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
-// Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo interactivo (conectás vos
-// tu cuenta), WhatsApp (canal de ventas — ver whatsapp_bot.jsx, se configura
-// en su propia pantalla), MCP como slot pendiente para cuando Faro/Tango lo
-// expongan. A medida que se sumen conectores nuevos, entran acá — un solo
-// lugar, no uno por sistema desperdigado en otras pantallas.
-const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Plug, mcp: Waypoints };
+// Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo y WhatsApp interactivos
+// (conectás vos tu cuenta, ambos EN esta misma página — nada de saltar a
+// otra pantalla para configurar un conector), MCP como slot pendiente para
+// cuando Faro/Tango lo expongan. A medida que se sumen conectores nuevos,
+// entran acá — un solo lugar, no uno por sistema desperdigado en otras
+// pantallas.
+const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, mcp: Waypoints };
 
 function IngestLinks({ t, onNavigate, batchId, importedTab }) {
   return (
@@ -67,7 +68,7 @@ export default function Conectores({ onNavigate }) {
               ? <PanelOdoo key={c.nombre} estado={c.estado} onNavigate={onNavigate} />
               : <TarjetaConector key={c.nombre} nombre={c.nombre} estado={c.estado} />
           ))}
-          <TarjetaWhatsApp onNavigate={onNavigate} />
+          <PanelWhatsApp />
         </div>
       )}
     </div>
@@ -94,37 +95,219 @@ function TarjetaConector({ nombre, estado }) {
   );
 }
 
-// WhatsApp vive en su propia pantalla (setup + bandeja de conversaciones es
-// demasiado para un panel expandible acá) pero es un CONECTOR como cualquier
-// otro — tiene que aparecer en esta galería, no escondido en otro menú.
-// El ícono es "agent"-tone (violeta) a propósito: este canal ES Ángela
-// contestando del otro lado, distinto de Odoo (un caño de datos).
-function TarjetaWhatsApp({ onNavigate }) {
+// CONECTOR WHATSAPP (canal de ventas de cara al cliente — ver
+// core/whatsapp_channel.py y backend/whatsapp_bot.py). EN esta página, como
+// Odoo: se configura y se ve acá, no en una pantalla aparte. El logo es la
+// marca real de WhatsApp (no un ícono genérico) y, una vez conectado, sus
+// mensajes en la bandeja de conversaciones usan violeta — el único lugar
+// donde ese acento es correcto acá: este canal literalmente ES Ángela
+// hablando con el cliente, a diferencia de Odoo (un caño de datos).
+function PanelWhatsApp() {
   const t = useT();
+  const [abierta, setAbierta] = useState(false);
+  const [autoAbierta, setAutoAbierta] = useState(false);
   const [cfg, setCfg] = useState(null);
-  useEffect(() => { api.whatsappBotConfig().then(setCfg).catch(() => setCfg(false)); }, []);
-  const activo = !!cfg?.conectado && cfg?.enabled;
+  const [form, setForm] = useState({
+    phone_number_id: "", access_token: "", app_secret: "", greeting_message: "", enabled: true,
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
+  const [copiado, setCopiado] = useState(false);
+  const [conversaciones, setConversaciones] = useState(null);
+  const [conversacionAbierta, setConversacionAbierta] = useState(null);
+  const [mensajes, setMensajes] = useState(null);
+
+  const cargar = () => api.whatsappBotConfig().then((c) => {
+    setCfg(c);
+    // Igual que Odoo: si ya está conectado, arranca expandido — pero sólo la
+    // PRIMERA vez que sabemos el estado, nunca fuerza el panel a reabrirse
+    // si el dueño lo cerró después de conectar.
+    if (!autoAbierta) {
+      setAbierta(!!c.conectado);
+      setAutoAbierta(true);
+    }
+  }).catch(() => setCfg(false));
+  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (cfg?.conectado) {
+      api.whatsappBotConversaciones().then((r) => setConversaciones(r.conversaciones)).catch(() => setConversaciones([]));
+    }
+  }, [cfg?.conectado]);
+
+  const conectar = async (e) => {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      await api.whatsappBotConfigGuardar(form);
+      setForm({ phone_number_id: "", access_token: "", app_secret: "", greeting_message: "", enabled: true });
+      await cargar();
+    } catch (err) {
+      setError(err.status === 400 ? t("whatsapp_bot.error_guardar") : t("whatsapp_bot.error_generico"));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const desconectar = async () => {
+    try { await api.whatsappBotConfigBorrar(); } catch { /* best-effort */ }
+    await cargar();
+    setConversaciones(null);
+  };
+
+  const webhookUrl = `${window.location.origin}/api/webhooks/whatsapp`;
+  const copiarWebhook = () => {
+    navigator.clipboard?.writeText(webhookUrl).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    });
+  };
+
+  const verConversacion = async (id) => {
+    if (conversacionAbierta === id) { setConversacionAbierta(null); return; }
+    setConversacionAbierta(id);
+    setMensajes(null);
+    try {
+      setMensajes((await api.whatsappBotMensajes(id)).mensajes);
+    } catch {
+      setMensajes([]);
+    }
+  };
+
   return (
-    <button type="button" onClick={() => onNavigate?.("whatsapp_bot")}
-      className="card-hover block w-full rounded-[var(--radius-card)] text-left">
-      <ConnectorCard
-        icon={MessageCircle}
-        tone={activo ? "active" : "agent"}
-        title={t("conectores.whatsapp_nombre")}
-        subtitle={t("conectores.whatsapp_desc")}
-        status={
-          <>
-            {cfg && (
-              <ConnectorStatusPill variant={activo ? "activo" : cfg.conectado ? "pausado" : "pendiente"}>
-                {t(activo ? "conectores.estado_activo"
-                  : cfg.conectado ? "whatsapp_bot.estado_pausado" : "conectores.estado_configurar")}
-              </ConnectorStatusPill>
+    <ConnectorCard
+      logo={LogoWhatsApp}
+      tone={cfg?.conectado && cfg?.enabled ? "active" : "agent"}
+      title={t("conectores.whatsapp_nombre")}
+      subtitle={cfg?.conectado
+        ? t(cfg.business_name ? "whatsapp_bot.conectado_como_empresa" : "whatsapp_bot.conectado_como", {
+            numero: cfg.display_phone_number || cfg.phone_number_id, empresa: cfg.business_name,
+          })
+        : t("conectores.whatsapp_desc")}
+      status={cfg && (
+        <ConnectorStatusPill variant={cfg.conectado ? (cfg.enabled ? "activo" : "pausado") : "pendiente"}>
+          {t(cfg.conectado ? (cfg.enabled ? "whatsapp_bot.estado_activo" : "whatsapp_bot.estado_pausado")
+            : "conectores.estado_configurar")}
+        </ConnectorStatusPill>
+      )}
+      expanded={abierta}
+      onToggle={() => setAbierta((v) => !v)}
+    >
+      {cfg && (cfg.conectado ? (
+        <>
+          <div>
+            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-tinta-suave">
+              {t("whatsapp_bot.saludo_actual")}
+            </p>
+            <p className="mt-1.5 rounded-xl bg-papel-hondo/40 p-3 text-[0.85rem] leading-snug text-tinta">
+              {cfg.greeting_message || t("whatsapp_bot.sin_saludo")}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-[0.95rem] font-bold text-tinta">{t("whatsapp_bot.conversaciones_titulo")}</h3>
+            <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{t("whatsapp_bot.conversaciones_desc")}</p>
+
+            {conversaciones === null && <div className="mt-3"><Cargando /></div>}
+
+            {conversaciones?.length === 0 && (
+              <div className="mt-3">
+                <ConnectorEmptyState icon={MessagesSquare}>{t("whatsapp_bot.conversaciones_vacio")}</ConnectorEmptyState>
+              </div>
             )}
-            <ArrowRight size={15} className="shrink-0 text-tinta-suave" />
-          </>
-        }
-      />
-    </button>
+
+            {conversaciones?.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {conversaciones.map((c) => (
+                  <li key={c.id} className="overflow-hidden rounded-xl border border-linea/60 bg-papel-hondo/30">
+                    <button onClick={() => verConversacion(c.id)} aria-expanded={conversacionAbierta === c.id}
+                      className="flex w-full items-center gap-2.5 p-2.5 text-left transition-colors hover:bg-papel-hondo/60">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crema text-[0.78rem] font-bold text-tinta-suave">
+                        {(c.customer_name || c.customer_phone || "?").slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[0.85rem] font-semibold text-tinta">
+                          {c.customer_name || c.customer_phone}
+                        </span>
+                        <span className="block truncate text-[0.76rem] text-tinta-suave">{c.customer_phone}</span>
+                      </span>
+                      {c.status === "necesita_atencion" && (
+                        <span className="shrink-0 rounded-full bg-oro/10 px-2 py-0.5 text-[0.72rem] font-semibold text-oro-tinta">
+                          {t("whatsapp_bot.necesita_atencion")}
+                        </span>
+                      )}
+                      <ChevronDown size={15} className={`shrink-0 text-tinta-suave transition-transform duration-200 ${conversacionAbierta === c.id ? "rotate-180" : ""}`} />
+                    </button>
+                    {conversacionAbierta === c.id && (
+                      <div className="space-y-1.5 border-t border-linea/60 bg-papel/60 p-2.5">
+                        {mensajes === null && <Cargando />}
+                        {mensajes?.map((m) => (
+                          <p key={m.id} className={`max-w-[85%] rounded-xl px-3 py-1.5 text-[0.82rem] leading-snug ${
+                            m.direction === "in"
+                              ? "bg-crema text-tinta"
+                              : "ml-auto bg-violeta/10 text-tinta"}`}>
+                            {m.body}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="border-t border-linea pt-3.5">
+            <ConnectorButton variant="danger" onClick={desconectar}>{t("whatsapp_bot.desconectar")}</ConnectorButton>
+          </div>
+        </>
+      ) : (
+        <ol className="space-y-3">
+          <li className="rounded-xl bg-papel-hondo/40 p-3">
+            <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_webhook_titulo")}</p>
+            <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_webhook_desc")}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+                {webhookUrl}
+              </code>
+              <button type="button" onClick={copiarWebhook} aria-label={t("whatsapp_bot.copiar_webhook")}
+                className="shrink-0 rounded-lg border border-linea p-1.5 text-tinta-suave transition-colors hover:border-tinta/40 hover:text-tinta">
+                {copiado ? <Check size={14} className="text-salvia" /> : <Copy size={14} />}
+              </button>
+            </div>
+          </li>
+          <li className="rounded-xl bg-papel-hondo/40 p-3">
+            <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_credenciales_titulo")}</p>
+            <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_credenciales_desc")}</p>
+            <form onSubmit={conectar} className="mt-3 space-y-3">
+              <ConnectorField label={t("whatsapp_bot.campo_phone_number_id")} value={form.phone_number_id}
+                hint={t("whatsapp_bot.campo_phone_number_id_hint")}
+                onChange={(v) => setForm((f) => ({ ...f, phone_number_id: v }))} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ConnectorField label={t("whatsapp_bot.campo_access_token")} type="password" value={form.access_token}
+                  onChange={(v) => setForm((f) => ({ ...f, access_token: v }))} />
+                <ConnectorField label={t("whatsapp_bot.campo_app_secret")} type="password" value={form.app_secret}
+                  onChange={(v) => setForm((f) => ({ ...f, app_secret: v }))} />
+              </div>
+              <label className="block text-[0.8rem]">
+                <span className="mb-1 block font-semibold text-tinta">{t("whatsapp_bot.campo_saludo")}</span>
+                <textarea value={form.greeting_message} rows={2}
+                  placeholder={t("whatsapp_bot.campo_saludo_placeholder")}
+                  onChange={(e) => setForm((f) => ({ ...f, greeting_message: e.target.value }))}
+                  className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-[0.85rem]
+                             text-tinta outline-none transition-colors focus:border-tinta/40" />
+              </label>
+              {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+              <ConnectorButton type="submit" loading={guardando}>
+                {guardando ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
+              </ConnectorButton>
+            </form>
+          </li>
+        </ol>
+      ))}
+      {cfg && <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>}
+    </ConnectorCard>
   );
 }
 
@@ -179,7 +362,7 @@ function PanelOdoo({ estado, onNavigate }) {
 
   return (
     <ConnectorCard
-      icon={Plug}
+      logo={LogoOdoo}
       tone={cfg?.conectado ? "active" : "neutral"}
       title={t("odoo.titulo")}
       subtitle={t("odoo.subtitulo")}

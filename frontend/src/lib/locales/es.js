@@ -2677,10 +2677,6 @@ export const ES = {
   "conectores.whatsapp_desc": "El canal de ventas: catálogo, pedidos y presupuestos por chat, atendidos por Ángela.",
 
   // --- Bot de WhatsApp (canal de ventas de cara al cliente) ------------------
-  "nav.whatsapp_bot": "Bot de WhatsApp",
-  "whatsapp_bot.titulo": "Bot de WhatsApp",
-  "whatsapp_bot.subtitulo": "Conectá tu WhatsApp Business para que tus clientes consulten catálogo, arme un pedido o pidan un presupuesto por chat.",
-  "whatsapp_bot.angela": "Cuando lo conectes, yo atiendo del otro lado: contesto catálogo, precio y stock, y levanto el pedido o el presupuesto. Nunca cierro una venta sola — vos ves y aprobás cada uno como cualquier otro pedido del equipo.",
   "whatsapp_bot.error_generico": "Algo falló. Probá de nuevo en un momento.",
   "whatsapp_bot.error_guardar": "No pude validar esas credenciales contra WhatsApp Business. Revisalas y probá de nuevo.",
   "whatsapp_bot.canal_nombre": "WhatsApp Business",

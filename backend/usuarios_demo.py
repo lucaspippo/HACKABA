@@ -58,7 +58,7 @@ USUARIOS = {
         "features": [
             "panel", "mapa", "inventario", "saneamiento", "finanzas", "cuentas", "caja", "deposito",
             "logistica", "evolucion", "alertas", "oportunidades", "equipo", "gestion_equipo",
-            "cargar", "documentos", "cobranzas", "auditoria", "conectores", "whatsapp_bot",
+            "cargar", "documentos", "cobranzas", "auditoria", "conectores",
             "perfil", "angela",
         ],
     },
