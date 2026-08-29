@@ -12,16 +12,21 @@ Regla de la casa, sin excepción: reportar NO modifica el stock ni el ERP. El
 reporte es un hecho del piso; lo que sale de cruzarlo es una PROPUESTA que el
 dueño aprueba o descarta. Ángela detecta y propone, nunca ejecuta sola.
 
-Cinco cosas que el piso reporta, cada una con su acción en la vista del rol:
-  · faltante   — diferencia/rotura al recibir o al entregar (depósito, reparto)
-  · conteo     — conteo cíclico de un producto (depósito)
-  · entrega    — confirmación de una parada de la ruta (reparto)
-  · reposicion — pedido de mercadería de una sucursal al depósito central
-  · pedido     — pedido levantado en la calle por el preventista
+Seis cosas que el piso reporta, cada una con su acción en la vista del rol:
+  · faltante    — diferencia/rotura al recibir o al entregar (depósito, reparto)
+  · conteo      — conteo cíclico de un producto (depósito)
+  · entrega     — confirmación de una parada de la ruta (reparto)
+  · reposicion  — pedido de mercadería de una sucursal al depósito central
+  · pedido      — pedido levantado en la calle por el preventista, O por el
+                  bot de WhatsApp de cara al cliente (ver `datos.canal`)
+  · presupuesto — cotización que un cliente pidió por WhatsApp, sin
+                  confirmar todavía compra
 
 Un `pedido` acá NO es una orden de venta: la facturación sigue siendo del ERP.
-Es el registro de que el preventista lo levantó, para que el dueño lo vea y
-Ángela lo cruce — igual que el resto.
+Es el registro de que alguien (preventista, o el bot de WhatsApp hablando con
+un cliente) lo levantó, para que el dueño lo vea y Ángela lo cruce — igual
+que el resto. Un `presupuesto` es un escalón atrás: el cliente todavía está
+decidiendo: nunca se etiqueta ni se cuenta como pedido en curso.
 
 Todo se persiste en piso.json y se audita con el slug de su tipo, que es lo que
 lee "qué resolvió esta semana" del panel del dueño (main._TRABAJO_EXTRA).
@@ -48,6 +53,7 @@ ACCION = {
     "entrega": "confirmar_entrega",
     "reposicion": "pedir_reposicion",
     "pedido": "registrar_pedido",
+    "presupuesto": "registrar_presupuesto",
 }
 TIPOS = tuple(ACCION)
 
@@ -119,8 +125,10 @@ def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
         d.setdefault("motivo", "faltante")
     if tipo == "conteo" and d.get("contado") is None:
         raise ValueError("Un conteo necesita cuánto contaste.")
-    if tipo in ("entrega", "pedido") and not d.get("cliente"):
+    if tipo in ("entrega", "pedido", "presupuesto") and not d.get("cliente"):
         raise ValueError("Falta el cliente.")
+    if tipo == "presupuesto" and not d.get("items"):
+        raise ValueError("Un presupuesto necesita al menos un producto.")
     if tipo == "reposicion" and not (d.get("producto") or d.get("nota")):
         raise ValueError("Decí qué necesitás reponer.")
 
@@ -147,7 +155,7 @@ def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
     _audit.record(actor, ACCION[tipo], None,
                   {k: v for k, v in d.items() if k in
                    ("producto", "codigo", "cantidad", "contado", "motivo",
-                    "cliente", "local", "nota")})
+                    "cliente", "local", "nota", "canal", "telefono", "items")})
     return r
 
 
