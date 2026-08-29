@@ -12,12 +12,15 @@ import { useT } from "../../lib/i18n";
 import Panorama from "./InventarioPanorama";
 import Margenes from "./Margenes";
 import Reponer from "./Reponer";
+import Rotacion from "./Rotacion";
+import { BurnChart } from "./InventarioViz";
 
 // P16: the "balanzas" subtab died — a scale product is just a product
 // (priced differently): it lives as the "By kg" filter of the full catalog.
 const SUBTABS = [
   { id: "panorama", lk: "inventario.tab_panorama" },
   { id: "reponer", lk: "inventario.tab_reponer" },
+  { id: "rotacion", lk: "inventario.tab_rotacion" },
   { id: "margenes", lk: "inventario.tab_margenes" },
 ];
 const GRUPOS = ["fantasmas", "negativos", "sin_pvp", "balanza", "costo_viejo"];
@@ -36,19 +39,28 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
   const [sub, setSub] = useState("panorama");
   const [detalle, setDetalle] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [viz, setViz] = useState(null);
   const vista = useVista();
   const foco = useFoco();
   const nCorregir = contarACorregir(data);
 
   const tabs = [...SUBTABS, ...(vista.pestanas || []).map((p) => ({ id: p.id, label: p.nombre, custom: p }))];
   const irABalanzas = () => onNavegar?.("productos", "balanza");
+  useEffect(() => {
+    api.inventarioViz().then(setViz).catch(() => setViz({}));
+  }, [reloadKey]);
 
   useEffect(() => {
     if (!highlight) return;
     if (highlight === "foco") setSub("foco");
     else if (highlight === "margenes") setSub("margenes");
     else if (highlight === "reponer") setSub("reponer");
-    else if (highlight === "plata" || highlight === "briefing" || highlight === "mapa" || GRUPOS.includes(highlight)) setSub("panorama");
+    else if (highlight === "rotacion" || highlight === "excedente") setSub("rotacion");
+    else if (
+      highlight === "plata" || highlight === "briefing" || highlight === "mapa"
+      || highlight === "exceso" || highlight === "temporada" || highlight === "venc-horizon"
+      || GRUPOS.includes(highlight)
+    ) setSub("panorama");
     else if (highlight === "balanzas") irABalanzas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlight]);
@@ -95,16 +107,22 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
           onNavegar={onNavegar}
           onTab={setSub}
           onPreguntar={onPreguntar}
+          viz={viz}
         />
       )}
       {sub === "margenes" && (
         <div data-nav-id="margenes">
-          <Margenes onPreguntar={onPreguntar} onNavegar={onNavegar} />
+          <Margenes onPreguntar={onPreguntar} onNavegar={onNavegar} viz={viz} />
         </div>
       )}
       {sub === "reponer" && (
         <div data-nav-id="reponer">
-          <Reponer onPreguntar={onPreguntar} onNavegar={onNavegar} />
+          <Reponer onPreguntar={onPreguntar} onNavegar={onNavegar} viz={viz} onSelect={setDetalle} />
+        </div>
+      )}
+      {sub === "rotacion" && (
+        <div data-nav-id="rotacion">
+          <Rotacion onSelect={setDetalle} viz={viz} />
         </div>
       )}
       {pestActiva && <PestanaCustom pestana={pestActiva} onSelect={setDetalle} />}
@@ -266,7 +284,13 @@ function PestanaCustom({ pestana, onSelect }) {
 function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
   const t = useT();
   const [editando, setEditando] = useState(false);
+  const [burn, setBurn] = useState(null);
   const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
+
+  useEffect(() => {
+    if (!p?.codigo) return;
+    api.inventarioBurn(p.codigo).then(setBurn).catch(() => setBurn(null));
+  }, [p?.codigo]);
 
   if (editando) {
     return <ModalArticulo inicial={p} onClose={() => setEditando(false)} onGuardado={onGuardado} />;
@@ -276,7 +300,7 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-tinta/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="font-display text-[1.2rem] font-bold leading-tight">{p.descripcion || p.name}</p>
@@ -316,6 +340,7 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
             </>
           )}
         </div>
+        {burn && <BurnChart data={burn} />}
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             onClick={() => { onClose(); onPreguntar?.(t("inventario.det_preguntar_q", { nombre: p.descripcion || p.name, codigo: p.codigo })); }}
