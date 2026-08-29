@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, LineChart, Waypoints, Plug, ChevronDown } from "lucide-react";
+import {
+  FileSpreadsheet, LineChart, Waypoints, Plug, MessageCircle, ArrowRight,
+  Users, Package, Truck, ShoppingCart, ShoppingBag, Warehouse, PackagePlus,
+  PackageCheck, FileText, Tag,
+} from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { useT } from "../../lib/i18n";
 import IngestPipeline from "./IngestPipeline";
+import {
+  ConnectorCard, ConnectorStatusPill, ConnectorField, ConnectorButton,
+  ConnectorSyncAction,
+} from "./connectorUI";
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
 // Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo interactivo (conectás vos
-// tu cuenta), MCP como slot pendiente para cuando Faro/Tango lo expongan. A
-// medida que se sumen conectores nuevos, entran acá — un solo lugar, no uno
-// por sistema desperdigado en otras pantallas.
+// tu cuenta), WhatsApp (canal de ventas — ver whatsapp_bot.jsx, se configura
+// en su propia pantalla), MCP como slot pendiente para cuando Faro/Tango lo
+// expongan. A medida que se sumen conectores nuevos, entran acá — un solo
+// lugar, no uno por sistema desperdigado en otras pantallas.
 const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Plug, mcp: Waypoints };
 
 function IngestLinks({ t, onNavigate, batchId, importedTab }) {
@@ -49,7 +58,7 @@ export default function Conectores({ onNavigate }) {
       <AngelaSays>{t("conectores.angela")}</AngelaSays>
 
       {lista === null && <Cargando />}
-      {lista === false && <p className="text-[0.9rem] text-rojo">{t("conectores.error")}</p>}
+      {lista === false && <p className="text-[0.9rem] text-rojo-hondo">{t("conectores.error")}</p>}
 
       {lista && (
         <div className="space-y-4">
@@ -58,6 +67,7 @@ export default function Conectores({ onNavigate }) {
               ? <PanelOdoo key={c.nombre} estado={c.estado} onNavigate={onNavigate} />
               : <TarjetaConector key={c.nombre} nombre={c.nombre} estado={c.estado} />
           ))}
+          <TarjetaWhatsApp onNavigate={onNavigate} />
         </div>
       )}
     </div>
@@ -68,22 +78,53 @@ export default function Conectores({ onNavigate }) {
 // toque su turno de volverse interactivos (como Odoo hoy).
 function TarjetaConector({ nombre, estado }) {
   const t = useT();
-  const Icon = ICONOS[nombre] || Waypoints;
   const activo = estado === "activo";
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${activo ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"}`}>
-        <Icon size={17} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-display text-[1.02rem] font-bold leading-tight">{t(`conectores.${nombre}_nombre`)}</p>
-        <p className="text-[0.82rem] text-tinta-suave">{t(`conectores.${nombre}_desc`)}</p>
-      </div>
-      <span className={`shrink-0 rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
-        activo ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"}`}>
-        {t(activo ? "conectores.estado_activo" : "conectores.estado_pendiente")}
-      </span>
-    </div>
+    <ConnectorCard
+      icon={ICONOS[nombre] || Waypoints}
+      tone={activo ? "active" : "neutral"}
+      title={t(`conectores.${nombre}_nombre`)}
+      subtitle={t(`conectores.${nombre}_desc`)}
+      status={
+        <ConnectorStatusPill variant={activo ? "activo" : "proximamente"}>
+          {t(activo ? "conectores.estado_activo" : "conectores.estado_pendiente")}
+        </ConnectorStatusPill>
+      }
+    />
+  );
+}
+
+// WhatsApp vive en su propia pantalla (setup + bandeja de conversaciones es
+// demasiado para un panel expandible acá) pero es un CONECTOR como cualquier
+// otro — tiene que aparecer en esta galería, no escondido en otro menú.
+// El ícono es "agent"-tone (violeta) a propósito: este canal ES Ángela
+// contestando del otro lado, distinto de Odoo (un caño de datos).
+function TarjetaWhatsApp({ onNavigate }) {
+  const t = useT();
+  const [cfg, setCfg] = useState(null);
+  useEffect(() => { api.whatsappBotConfig().then(setCfg).catch(() => setCfg(false)); }, []);
+  const activo = !!cfg?.conectado && cfg?.enabled;
+  return (
+    <button type="button" onClick={() => onNavigate?.("whatsapp_bot")}
+      className="card-hover block w-full rounded-[var(--radius-card)] text-left">
+      <ConnectorCard
+        icon={MessageCircle}
+        tone={activo ? "active" : "agent"}
+        title={t("conectores.whatsapp_nombre")}
+        subtitle={t("conectores.whatsapp_desc")}
+        status={
+          <>
+            {cfg && (
+              <ConnectorStatusPill variant={activo ? "activo" : cfg.conectado ? "pausado" : "pendiente"}>
+                {t(activo ? "conectores.estado_activo"
+                  : cfg.conectado ? "whatsapp_bot.estado_pausado" : "conectores.estado_configurar")}
+              </ConnectorStatusPill>
+            )}
+            <ArrowRight size={15} className="shrink-0 text-tinta-suave" />
+          </>
+        }
+      />
+    </button>
   );
 }
 
@@ -123,120 +164,91 @@ function PanelOdoo({ estado, onNavigate }) {
     await cargar();
   };
 
-  return (
-    <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-      <button onClick={() => setAbierto((v) => !v)} className="flex w-full items-center gap-3 text-left">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violeta/10 text-violeta">
-          <Plug size={17} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-display text-[1.02rem] font-bold leading-tight">{t("odoo.titulo")}</span>
-          <span className="block text-[0.82rem] text-tinta-suave">{t("odoo.subtitulo")}</span>
-        </span>
-        <ChevronDown size={16} className={`shrink-0 text-tinta-suave transition-transform ${abierto ? "rotate-180" : ""}`} />
-      </button>
+  const TABS = [
+    { id: "contactos", icon: Users },
+    { id: "productos", icon: Package },
+    { id: "proveedores", icon: Truck },
+    { id: "compras", icon: ShoppingCart },
+    { id: "ventas", icon: ShoppingBag },
+    { id: "deposito", icon: Warehouse },
+    { id: "recepciones", icon: PackagePlus },
+    { id: "entregas", icon: PackageCheck },
+    { id: "facturas", icon: FileText },
+    { id: "precios", icon: Tag },
+  ];
 
-      {abierto && cfg && (
-        <div className="mt-3.5 space-y-3 border-t border-linea pt-3.5">
-          {cfg.conectado ? (
-            <>
-              <p className="text-[0.85rem] text-tinta">
-                {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
-                {" · "}
-                <button type="button" onClick={() => onNavigate?.("imported")}
-                  className="font-semibold text-violeta underline">{t("odoo.view_imported")}</button>
-              </p>
-              <div className="flex flex-wrap items-center gap-1 border-b border-linea">
-                <button onClick={() => setTab("contactos")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "contactos" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_contactos")}
-                </button>
-                <button onClick={() => setTab("productos")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "productos" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_productos")}
-                </button>
-                <button onClick={() => setTab("proveedores")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "proveedores" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_proveedores")}
-                </button>
-                <button onClick={() => setTab("compras")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "compras" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_compras")}
-                </button>
-                <button onClick={() => setTab("ventas")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "ventas" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_ventas")}
-                </button>
-                <button onClick={() => setTab("deposito")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "deposito" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_deposito")}
-                </button>
-                <button onClick={() => setTab("recepciones")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "recepciones" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_recepciones")}
-                </button>
-                <button onClick={() => setTab("entregas")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "entregas" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_entregas")}
-                </button>
-                <button onClick={() => setTab("facturas")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "facturas" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_facturas")}
-                </button>
-                <button onClick={() => setTab("precios")}
-                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
-                    tab === "precios" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
-                  {t("odoo.tab_precios")}
-                </button>
-              </div>
-              {tab === "contactos" && <OdooTabContactos t={t} onNavigate={onNavigate} />}
-              {tab === "productos" && <OdooTabProductos t={t} onNavigate={onNavigate} />}
-              {tab === "proveedores" && <OdooTabProveedores t={t} onNavigate={onNavigate} />}
-              {tab === "compras" && <OdooTabCompras t={t} onNavigate={onNavigate} />}
-              {tab === "ventas" && <OdooTabVentas t={t} onNavigate={onNavigate} />}
-              {tab === "deposito" && <OdooTabDeposito t={t} onNavigate={onNavigate} />}
-              {tab === "recepciones" && <OdooTabRecepciones t={t} onNavigate={onNavigate} />}
-              {tab === "entregas" && <OdooTabEntregas t={t} onNavigate={onNavigate} />}
-              {tab === "facturas" && <OdooTabFacturas t={t} onNavigate={onNavigate} />}
-              {tab === "precios" && <OdooTabPrecios t={t} />}
-              <button onClick={desconectar}
-                className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
-                           text-tinta-suave hover:text-tinta">
-                {t("odoo.desconectar")}
-              </button>
-            </>
-          ) : (
-            <form onSubmit={conectar} className="space-y-2.5">
-              <p className="text-[0.85rem] text-tinta-suave">{t("odoo.no_conectado")}</p>
-              <Campo label={t("odoo.campo_url")} placeholder="https://mi-empresa.odoo.com"
-                value={form.url} onChange={(v) => setForm((f) => ({ ...f, url: v }))} />
-              <Campo label={t("odoo.campo_db")} value={form.database}
-                onChange={(v) => setForm((f) => ({ ...f, database: v }))} />
-              <Campo label={t("odoo.campo_usuario")} value={form.username}
-                onChange={(v) => setForm((f) => ({ ...f, username: v }))} />
-              <Campo label={t("odoo.campo_api_key")} type="password" value={form.api_key}
-                onChange={(v) => setForm((f) => ({ ...f, api_key: v }))} />
-              {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-              <button type="submit" disabled={guardando}
-                className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                           font-semibold text-crema disabled:opacity-50">
-                {guardando ? t("odoo.conectando") : t("odoo.conectar")}
-              </button>
-            </form>
-          )}
-          <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("odoo.nota")}</p>
-        </div>
+  return (
+    <ConnectorCard
+      icon={Plug}
+      tone={cfg?.conectado ? "active" : "neutral"}
+      title={t("odoo.titulo")}
+      subtitle={t("odoo.subtitulo")}
+      status={cfg && (
+        <ConnectorStatusPill variant={cfg.conectado ? "activo" : "pendiente"}>
+          {t(cfg.conectado ? "conectores.estado_activo" : "conectores.estado_configurar")}
+        </ConnectorStatusPill>
       )}
-    </div>
+      expanded={abierto}
+      onToggle={() => setAbierto((v) => !v)}
+    >
+      {cfg && (cfg.conectado ? (
+        <>
+          <p className="text-[0.85rem] text-tinta-suave">
+            {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
+            {" · "}
+            <button type="button" onClick={() => onNavigate?.("imported")}
+              className="font-semibold text-tinta underline decoration-linea underline-offset-2 hover:decoration-tinta">
+              {t("odoo.view_imported")}
+            </button>
+          </p>
+          <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b border-linea px-1 pb-px">
+            {TABS.map(({ id, icon: TabIcon }) => (
+              <button key={id} onClick={() => setTab(id)}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 -mb-px px-2.5 py-2 text-[0.8rem] font-semibold transition-colors ${
+                  tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                <TabIcon size={14} />
+                {t(`odoo.tab_${id}`)}
+              </button>
+            ))}
+          </div>
+          {tab === "contactos" && <OdooTabContactos t={t} onNavigate={onNavigate} />}
+          {tab === "productos" && <OdooTabProductos t={t} onNavigate={onNavigate} />}
+          {tab === "proveedores" && <OdooTabProveedores t={t} onNavigate={onNavigate} />}
+          {tab === "compras" && <OdooTabCompras t={t} onNavigate={onNavigate} />}
+          {tab === "ventas" && <OdooTabVentas t={t} onNavigate={onNavigate} />}
+          {tab === "deposito" && <OdooTabDeposito t={t} onNavigate={onNavigate} />}
+          {tab === "recepciones" && <OdooTabRecepciones t={t} onNavigate={onNavigate} />}
+          {tab === "entregas" && <OdooTabEntregas t={t} onNavigate={onNavigate} />}
+          {tab === "facturas" && <OdooTabFacturas t={t} onNavigate={onNavigate} />}
+          {tab === "precios" && <OdooTabPrecios t={t} />}
+          <div className="border-t border-linea pt-3.5">
+            <ConnectorButton variant="danger" onClick={desconectar}>{t("odoo.desconectar")}</ConnectorButton>
+          </div>
+        </>
+      ) : (
+        <>
+          <form onSubmit={conectar} className="space-y-3">
+            <p className="text-[0.85rem] text-tinta-suave">{t("odoo.no_conectado")}</p>
+            <ConnectorField label={t("odoo.campo_url")} placeholder="https://mi-empresa.odoo.com"
+              value={form.url} onChange={(v) => setForm((f) => ({ ...f, url: v }))} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ConnectorField label={t("odoo.campo_db")} placeholder="mi_empresa" value={form.database}
+                onChange={(v) => setForm((f) => ({ ...f, database: v }))} />
+              <ConnectorField label={t("odoo.campo_usuario")} placeholder="admin@mi-empresa.com" value={form.username}
+                onChange={(v) => setForm((f) => ({ ...f, username: v }))} />
+            </div>
+            <ConnectorField label={t("odoo.campo_api_key")} type="password" value={form.api_key}
+              hint={t("odoo.campo_api_key_hint")}
+              onChange={(v) => setForm((f) => ({ ...f, api_key: v }))} />
+            {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+            <ConnectorButton type="submit" loading={guardando}>
+              {guardando ? t("odoo.conectando") : t("odoo.conectar")}
+            </ConnectorButton>
+          </form>
+        </>
+      ))}
+      {cfg && <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("odoo.nota")}</p>}
+    </ConnectorCard>
   );
 }
 
@@ -276,20 +288,13 @@ function OdooTabContactos({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando") : t("odoo.sincronizar")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_contactos") : t("odoo.ingestar_contactos")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.sincronizar")} fetchingLabel={t("odoo.sincronizando")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_contactos")} ingestingLabel={t("odoo.ingestando_contactos")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -353,20 +358,13 @@ function OdooTabProductos({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_productos") : t("odoo.traer_productos")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_productos") : t("odoo.ingestar_productos")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_productos")} fetchingLabel={t("odoo.sincronizando_productos")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_productos")} ingestingLabel={t("odoo.ingestando_productos")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -390,13 +388,13 @@ function OdooTabProductos({ t, onNavigate }) {
                 {p.nombre}
                 {p.categoria && <span className="text-tinta-suave"> · {p.categoria}</span>}
                 {p.pricing_status === "needs_pricing" && (
-                  <span className="text-rojo"> · {t("odoo.pricing_needs")}</span>
+                  <span className="text-rojo-hondo"> · {t("odoo.pricing_needs")}</span>
                 )}
                 {p.pricing_status === "wholesale_only" && (
                   <span className="text-tinta-suave"> · {t("odoo.pricing_wholesale")}</span>
                 )}
               </span>
-              <span className={`shrink-0 font-semibold ${p.stock > 0 ? "text-tinta" : "text-rojo"}`}>
+              <span className={`shrink-0 font-semibold ${p.stock > 0 ? "text-tinta" : "text-rojo-hondo"}`}>
                 {t("odoo.stock_unidades", { n: p.stock })}
               </span>
             </li>
@@ -443,20 +441,13 @@ function OdooTabProveedores({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_proveedores") : t("odoo.traer_proveedores")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_proveedores") : t("odoo.ingestar_proveedores")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_proveedores")} fetchingLabel={t("odoo.sincronizando_proveedores")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_proveedores")} ingestingLabel={t("odoo.ingestando_proveedores")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -520,20 +511,13 @@ function OdooTabCompras({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_compras") : t("odoo.traer_compras")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_compras") : t("odoo.ingestar_compras")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_compras")} fetchingLabel={t("odoo.sincronizando_compras")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_compras")} ingestingLabel={t("odoo.ingestando_compras")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -559,7 +543,7 @@ function OdooTabCompras({ t, onNavigate }) {
                     <span className="font-normal text-tinta-suave"> · {o.currency}</span>
                   )}
                   {o.open_backorder && (
-                    <span className="ml-1 font-normal text-rojo"> · {t("odoo.backorder_abierto")}</span>
+                    <span className="ml-1 font-normal text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>
                   )}
                 </span>
                 <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
@@ -614,20 +598,13 @@ function OdooTabVentas({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_ventas") : t("odoo.traer_ventas")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_ventas") : t("odoo.ingestar_ventas")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_ventas")} fetchingLabel={t("odoo.sincronizando_ventas")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_ventas")} ingestingLabel={t("odoo.ingestando_ventas")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -653,7 +630,7 @@ function OdooTabVentas({ t, onNavigate }) {
                     <span className="font-normal text-tinta-suave"> · {o.currency}</span>
                   )}
                   {o.open_backorder && (
-                    <span className="ml-1 font-normal text-rojo"> · {t("odoo.backorder_abierto")}</span>
+                    <span className="ml-1 font-normal text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>
                   )}
                 </span>
                 <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
@@ -708,20 +685,13 @@ function OdooTabDeposito({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_deposito") : t("odoo.traer_deposito")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_deposito") : t("odoo.ingestar_deposito")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_deposito")} fetchingLabel={t("odoo.sincronizando_deposito")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_deposito")} ingestingLabel={t("odoo.ingestando_deposito")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -786,20 +756,13 @@ function OdooTabRecepciones({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_recepciones") : t("odoo.traer_recepciones")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_recepciones") : t("odoo.ingestar_recepciones")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_recepciones")} fetchingLabel={t("odoo.sincronizando_recepciones")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_recepciones")} ingestingLabel={t("odoo.ingestando_recepciones")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -821,8 +784,8 @@ function OdooTabRecepciones({ t, onNavigate }) {
               {r.origen} · {r.producto}
               <span className="text-tinta-suave"> · {r.cantidad}</span>
               {r.po_number && <span className="text-tinta-suave"> · {r.po_number}</span>}
-              {r.pendiente && <span className="text-rojo"> · {t("odoo.picking_pendiente")}</span>}
-              {r.open_backorder && <span className="text-rojo"> · {t("odoo.backorder_abierto")}</span>}
+              {r.pendiente && <span className="text-rojo-hondo"> · {t("odoo.picking_pendiente")}</span>}
+              {r.open_backorder && <span className="text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>}
             </li>
           ))}
         </ul>
@@ -865,20 +828,13 @@ function OdooTabEntregas({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_entregas") : t("odoo.traer_entregas")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_entregas") : t("odoo.ingestar_entregas")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_entregas")} fetchingLabel={t("odoo.sincronizando_entregas")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_entregas")} ingestingLabel={t("odoo.ingestando_entregas")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -900,8 +856,8 @@ function OdooTabEntregas({ t, onNavigate }) {
               {r.origen} · {r.producto}
               <span className="text-tinta-suave"> · {r.cantidad}</span>
               {r.cliente && <span className="text-tinta-suave"> · {r.cliente}</span>}
-              {r.pendiente && <span className="text-rojo"> · {t("odoo.picking_pendiente")}</span>}
-              {r.open_backorder && <span className="text-rojo"> · {t("odoo.backorder_abierto")}</span>}
+              {r.pendiente && <span className="text-rojo-hondo"> · {t("odoo.picking_pendiente")}</span>}
+              {r.open_backorder && <span className="text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>}
             </li>
           ))}
         </ul>
@@ -946,20 +902,13 @@ function OdooTabFacturas({ t, onNavigate }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <button onClick={sincronizar} disabled={sincronizando}
-          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-crema disabled:opacity-50">
-          {sincronizando ? t("odoo.sincronizando_facturas") : t("odoo.traer_facturas")}
-        </button>
-        <button onClick={ingestar} disabled={ingestando}
-          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
-                     font-semibold text-violeta disabled:opacity-50">
-          {ingestando ? t("odoo.ingestando_facturas") : t("odoo.ingestar_facturas")}
-        </button>
-      </div>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      <ConnectorSyncAction
+        onFetch={sincronizar} fetching={sincronizando}
+        fetchLabel={t("odoo.traer_facturas")} fetchingLabel={t("odoo.sincronizando_facturas")}
+        onIngest={ingestar} ingesting={ingestando}
+        ingestLabel={t("odoo.ingestar_facturas")} ingestingLabel={t("odoo.ingestando_facturas")}
+        error={error} errorIngest={errorIngesta}
+      />
       {ingesta && (
         <p className="text-[0.82rem] text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
@@ -985,7 +934,7 @@ function OdooTabFacturas({ t, onNavigate }) {
                 {f.currency && <span className="text-tinta-suave"> · {f.currency}</span>}
               </span>
               <span className={`shrink-0 text-[0.72rem] font-semibold ${
-                f.aging === "overdue" ? "text-rojo" : "text-tinta-suave"}`}>
+                f.aging === "overdue" ? "text-rojo-hondo" : "text-tinta-suave"}`}>
                 {t(agingKey(f))}
                 {f.residual != null && f.aging !== "paid" ? ` · ${f.residual}` : ""}
               </span>
@@ -1019,12 +968,10 @@ function OdooTabPrecios({ t }) {
 
   return (
     <div className="space-y-3 pt-1">
-      <button onClick={traer} disabled={cargando}
-        className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                   font-semibold text-crema disabled:opacity-50">
+      <ConnectorButton onClick={traer} loading={cargando}>
         {cargando ? t("odoo.sincronizando_precios") : t("odoo.traer_precios")}
-      </button>
-      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      </ConnectorButton>
+      {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
       {monedas && (
         <p className="text-[0.82rem] text-tinta-suave">
           {t("odoo.sync_monedas_resultado", {
@@ -1064,14 +1011,3 @@ function OdooTabPrecios({ t }) {
   );
 }
 
-function Campo({ label, value, onChange, type = "text", placeholder }) {
-  return (
-    <label className="block text-[0.8rem]">
-      <span className="mb-1 block font-semibold text-tinta-suave">{label}</span>
-      <input required type={type} value={value} placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-linea bg-papel px-3 py-1.5 text-[0.85rem]
-                   text-tinta outline-none focus:border-violeta" />
-    </label>
-  );
-}
