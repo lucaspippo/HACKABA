@@ -2732,6 +2732,16 @@ export const ES = {
   "conectores.whatsapp_nombre": "WhatsApp Business",
   "conectores.whatsapp_desc": "El canal de ventas: catálogo, pedidos y presupuestos por chat, atendidos por Ángela.",
 
+  // --- Más ERPs (showcase, sin panel propio todavía) -------------------------
+  "conectores.mas_erp_titulo": "Más sistemas en camino",
+  "conectores.mas_erp_desc": "Odoo es el primero — vamos sumando el resto de los ERPs y sistemas de gestión más usados.",
+  "conectores.erp_sap_nombre": "SAP Business One",
+  "conectores.erp_quickbooks_nombre": "QuickBooks",
+  "conectores.erp_zoho_nombre": "Zoho Books",
+  "conectores.erp_netsuite_nombre": "NetSuite",
+  "conectores.erp_xubio_nombre": "Xubio",
+  "conectores.erp_colppy_nombre": "Colppy",
+
   // --- Conectores de IA (Claude/ChatGPT/Gemini vía el servidor MCP) ----------
   "conectores.ia_titulo": "Conectá tu asistente de IA",
   "conectores.ia_intro": "PolPilot expone un servidor MCP de sólo lectura: llevá los mismos datos que ves acá a la IA que ya usás todos los días. Ve exactamente lo que tu rol puede ver — nunca corrige nada ni actúa solo.",

@@ -15,7 +15,20 @@ import {
   ConnectorCard, ConnectorStatusPill, ConnectorField, ConnectorButton,
   ConnectorSyncAction, ConnectorEmptyState,
   LogoOdoo, LogoWhatsApp, LogoClaude, LogoOpenAI, LogoGemini,
+  LogoSAP, LogoQuickBooks, LogoZohoBooks, LogoNetSuite, LogoXubio, LogoColppy,
 } from "./connectorUI";
+
+// ERPs mostrados sólo como "próximamente" (Plan 11 · showcase de roadmap):
+// Odoo ya tiene panel interactivo propio arriba — estos todavía no, sólo
+// muestran hacia dónde va la lista de conectores a medida que se suman.
+const ERPS_PROXIMAMENTE = [
+  { key: "sap", logo: LogoSAP },
+  { key: "quickbooks", logo: LogoQuickBooks },
+  { key: "zoho", logo: LogoZohoBooks },
+  { key: "netsuite", logo: LogoNetSuite },
+  { key: "xubio", logo: LogoXubio },
+  { key: "colppy", logo: LogoColppy },
+];
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
 // Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo y WhatsApp interactivos
@@ -76,6 +89,16 @@ export default function Conectores({ onNavigate }) {
           </div>
 
           <div className="pt-2">
+            <h2 className="font-display text-[1.15rem] font-bold text-tinta">{t("conectores.mas_erp_titulo")}</h2>
+            <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("conectores.mas_erp_desc")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {ERPS_PROXIMAMENTE.map(({ key, logo }) => (
+              <TarjetaConectorProximo key={key} logo={logo} nombre={t(`conectores.erp_${key}_nombre`)} />
+            ))}
+          </div>
+
+          <div className="pt-2">
             <h2 className="font-display text-[1.15rem] font-bold text-tinta">{t("conectores.ia_titulo")}</h2>
             <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("conectores.ia_intro")}</p>
           </div>
@@ -107,6 +130,27 @@ function TarjetaConector({ nombre, estado }) {
         </ConnectorStatusPill>
       }
     />
+  );
+}
+
+// Tarjeta de roadmap: un ERP reconocible por su marca, marcado "próximamente"
+// y sin acción alguna (ni onToggle ni contenido) — sólo muestra que la lista
+// de sistemas conectables sigue creciendo más allá de Odoo.
+function TarjetaConectorProximo({ logo, nombre }) {
+  const t = useT();
+  return (
+    <div className="opacity-60 grayscale-[0.3]">
+      <ConnectorCard
+        logo={logo}
+        tone="neutral"
+        title={nombre}
+        status={
+          <ConnectorStatusPill variant="proximamente">
+            {t("conectores.estado_pendiente")}
+          </ConnectorStatusPill>
+        }
+      />
+    </div>
   );
 }
 
