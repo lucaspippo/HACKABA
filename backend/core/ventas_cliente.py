@@ -65,10 +65,10 @@ def de(cliente_id: str) -> dict | None:
     return por_cliente().get(cliente_id)
 
 
-def todos_los_pedidos() -> list[dict]:
-    """Cada pedido de cada cliente, con `cliente_id`/`cliente` agregado — la
-    canasta completa para cruzar qué productos viajan juntos EN EL MISMO
-    pedido (core/patrones.py)."""
+def all_orders() -> list[dict]:
+    """Every order from every customer, with `cliente_id`/`cliente` attached
+    — the full basket, for cross-referencing which products travel together
+    in the SAME order (core/patrones.py)."""
     return [{**p, "cliente_id": c["cliente_id"], "cliente": c["nombre"]}
             for c in _load().get("clientes", []) for p in c.get("pedidos", [])]
 

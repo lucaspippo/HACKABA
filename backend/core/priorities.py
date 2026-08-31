@@ -299,9 +299,9 @@ def _opportunity_items(lang) -> list[dict]:
 
 
 def _pattern_items(lang) -> list[dict]:
-    """Aprendizaje continuo (core/patrones.py) — hallazgos que ningún reporte
-    estándar resume porque son una correlación, no una cuenta. Misma forma de
-    tarjeta que una oportunidad; entran al inbox como una fuente más."""
+    """Continuous learning (core/patrones.py) — findings no standard report
+    summarizes because they're a correlation, not a single number. Same card
+    shape as an opportunity; they enter the inbox as one more source."""
     out = []
     for c in _safe(lambda: patrones.cards(lang)) or []:
         out.append(_item(
@@ -311,7 +311,7 @@ def _pattern_items(lang) -> list[dict]:
             titulo=c["titulo"],
             resumen=c.get("resumen") or "",
             origen=[f"patron:{c['id']}"],
-            modulos=patrones.DOMINIO.get(c["id"], ("__sin_dominio__",)),
+            modulos=patrones.MODULES_BY_ID.get(c["id"], ("__sin_dominio__",)),
             monto=c.get("monto"),
             monto_label=c.get("monto_label"),
             fuentes=c.get("fuentes") or [],

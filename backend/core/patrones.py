@@ -1,25 +1,25 @@
 """
-Aprendizaje continuo — patrones que NADIE pidió calcular.
+Continuous learning — patterns nobody asked to have calculated.
 
-Todo lo demás en `core/` responde una pregunta que alguien ya sabía hacer
-(¿quién me debe?, ¿qué se me está por acabar?). Este módulo busca lo
-contrario: comportamiento que vive en los datos operativos de siempre
-(pedidos, cierres de caja) pero que ningún reporte estándar de un ERP
-resume, porque no es UNA cuenta — es una correlación entre dos cosas que
-nadie puso a comparar.
+Everything else in `core/` answers a question someone already knew to ask
+(who owes me money? what's about to run out?). This module looks for the
+opposite: behavior that already lives in the everyday operational data
+(orders, cash-register closes) but that no standard ERP report summarizes,
+because it isn't ONE number — it's a correlation between two things nobody
+ever put side by side.
 
-El set (chico a propósito — se suma cuando un patrón nuevo se vuelva a
-detectar en producción, nunca antes):
+The set (small on purpose — grows only once a new pattern proves itself in
+production, never before):
 
-  1. combo_no_percibido    — dos productos que viajan juntos en el mismo
-                              pedido mucho más de lo que el azar explica
-  2. faltante_caja_patron  — un día de la semana donde la caja falta mucho
-                              más seguido que el resto, tapado por el
-                              promedio general
+  1. combo_no_percibido    — two products that travel together in the same
+                              order far more than chance would explain
+  2. faltante_caja_patron  — a weekday where the till comes up short far
+                              more often than the rest, hidden by the
+                              overall average
 
-Misma regla que en `oportunidades_neg`: sin el soporte estadístico mínimo
-(volumen, clientes distintos, tamaño del efecto) la tarjeta no existe — se
-cae en silencio, nunca se fuerza a partir de dos coincidencias sueltas.
+Same rule as `oportunidades_neg`: without the minimum statistical support
+(volume, distinct customers, effect size) the card doesn't exist — it drops
+silently, never forced out of two loose coincidences.
 """
 from __future__ import annotations
 
@@ -27,17 +27,17 @@ import collections
 import datetime
 import itertools
 
-# --- combos no percibidos: umbrales del cruce ---------------------------------
-MIN_PEDIDOS_TOTAL = 40        # sin volumen de pedidos, la canasta no dice nada
-MIN_COOCURRENCIAS = 5         # el par tiene que repetirse, no ser dos clientes sueltos
-MIN_LIFT = 6.0                # cuántas veces más se ven juntos de lo que el azar predice
-MIN_CLIENTES_DISTINTOS = 3    # que no sea la costumbre de un solo cliente
+# --- combo_no_percibido: cross-purchase thresholds -----------------------------
+MIN_TOTAL_ORDERS = 40           # without enough order volume, the basket says nothing
+MIN_COOCCURRENCES = 5           # the pair has to repeat, not be two one-off customers
+MIN_LIFT = 6.0                  # how many times more often they appear together than chance predicts
+MIN_DISTINCT_CUSTOMERS = 3      # so it isn't just one customer's habit
 
-# --- faltantes de caja: umbrales del cruce por día de semana -------------------
-MIN_CIERRES_CAJA = 20         # historial mínimo para hablar de un día "típico"
-MIN_MUESTRAS_DIA = 4          # cierres de ESE día de semana, mínimo, para no opinar con 1
-UMBRAL_RATIO_CAJA = 2.5       # el día señalado falta esto de veces más que el resto
-UMBRAL_MIN_PESOS_CAJA = 500   # y no ser ruido de unos pesos
+# --- faltante_caja_patron: weekday shortfall thresholds ------------------------
+MIN_CASH_CLOSES = 20            # minimum history before calling a weekday "typical"
+MIN_SAMPLES_PER_WEEKDAY = 4     # closes for THAT weekday, minimum, so one bad day doesn't decide it
+SHORTFALL_RATIO_THRESHOLD = 2.5 # the flagged weekday has to fall short this many times more than the rest
+MIN_SHORTFALL_PESOS = 500       # and not be a few pesos of noise
 
 
 def _t(key: str, lang: str | None = None, **params) -> str:
@@ -45,244 +45,250 @@ def _t(key: str, lang: str | None = None, **params) -> str:
     return i18n.t(key, lang, **params)
 
 
-def _pesos(n, lang) -> str:
+def _money(n, lang) -> str:
     import i18n
     return i18n.pesos(n or 0, lang)
 
 
-def _grafico(nombre: str, puntos: list[dict], unidad: str, temporal: bool,
-             ventana: str = "") -> dict:
-    return {"ok": True, "series": [{"nombre": nombre, "puntos": puntos}],
-            "meta": {"unidad": unidad, "temporal": temporal, "ventana": ventana,
+def _chart(name: str, points: list[dict], unit: str, is_time_series: bool,
+           window: str = "") -> dict:
+    return {"ok": True, "series": [{"nombre": name, "puntos": points}],
+            "meta": {"unidad": unit, "temporal": is_time_series, "ventana": window,
                      "composicion": False, "deflactado": False}}
 
 
-# --- 1 · combos no percibidos --------------------------------------------------
+# --- 1 · combo_no_percibido -----------------------------------------------------
 
-def _pares_por_lift(pedidos: list[dict]) -> list[dict]:
-    """Todo par de códigos que aparece junto en el MISMO pedido más seguido de
-    lo que el azar explicaría (lift = P(a∩b) / (P(a)·P(b))), con soporte real."""
-    n = len(pedidos)
-    prod_count: dict[int, int] = collections.Counter()
-    prod_clientes: dict[int, set] = collections.defaultdict(set)
+def _pairs_by_lift(orders: list[dict]) -> tuple[list[dict], dict[int, str]]:
+    """Every code pair that shows up together in the SAME order far more
+    often than chance would explain (lift = P(a∩b) / (P(a)·P(b))), with real
+    support behind it."""
+    n = len(orders)
+    product_count: dict[int, int] = collections.Counter()
+    product_customers: dict[int, set] = collections.defaultdict(set)
     pair_count: dict[tuple, int] = collections.Counter()
-    pair_clientes: dict[tuple, set] = collections.defaultdict(set)
-    nombres: dict[int, str] = {}
-    for p in pedidos:
-        codigos = set()
-        for it in p.get("items") or []:
-            cod = it.get("codigo")
-            if cod is None:
+    pair_customers: dict[tuple, set] = collections.defaultdict(set)
+    names: dict[int, str] = {}
+    for order in orders:
+        codes = set()
+        for line in order.get("items") or []:
+            code = line.get("codigo")
+            if code is None:
                 continue
-            cod = int(cod)
-            codigos.add(cod)
-            nombres[cod] = it.get("producto")
-        for cod in codigos:
-            prod_count[cod] += 1
-            prod_clientes[cod].add(p.get("cliente_id"))
-        for a, b in itertools.combinations(sorted(codigos), 2):
+            code = int(code)
+            codes.add(code)
+            names[code] = line.get("producto")
+        for code in codes:
+            product_count[code] += 1
+            product_customers[code].add(order.get("cliente_id"))
+        for a, b in itertools.combinations(sorted(codes), 2):
             pair_count[(a, b)] += 1
-            pair_clientes[(a, b)].add(p.get("cliente_id"))
+            pair_customers[(a, b)].add(order.get("cliente_id"))
     out = []
     for (a, b), cnt in pair_count.items():
-        if cnt < MIN_COOCURRENCIAS or n == 0:
+        if cnt < MIN_COOCCURRENCES or n == 0:
             continue
-        clientes = pair_clientes[(a, b)]
-        if len(clientes) < MIN_CLIENTES_DISTINTOS:
+        customers = pair_customers[(a, b)]
+        if len(customers) < MIN_DISTINCT_CUSTOMERS:
             continue
-        lift = (cnt / n) / ((prod_count[a] / n) * (prod_count[b] / n))
+        lift = (cnt / n) / ((product_count[a] / n) * (product_count[b] / n))
         if lift < MIN_LIFT:
             continue
         out.append({"a": a, "b": b, "cnt": cnt, "lift": lift,
-                    "clientes": len(clientes),
-                    "prod_a": prod_count[a], "prod_b": prod_count[b]})
+                    "customers": len(customers),
+                    "count_a": product_count[a], "count_b": product_count[b]})
     out.sort(key=lambda x: (-x["lift"], -x["cnt"]))
-    return out, nombres
+    return out, names
 
 
-def _card_combo_no_percibido(lang) -> dict | None:
+def _unnoticed_combo_card(lang) -> dict | None:
     from . import ventas_cliente
-    pedidos = ventas_cliente.todos_los_pedidos()
-    if len(pedidos) < MIN_PEDIDOS_TOTAL:
+    orders = ventas_cliente.all_orders()
+    if len(orders) < MIN_TOTAL_ORDERS:
         return None
-    pares, nombres = _pares_por_lift(pedidos)
-    if not pares:
+    pairs, names = _pairs_by_lift(orders)
+    if not pairs:
         return None
-    top = pares[0]
-    # El ancla es el menos frecuente de los dos: "cuando aparece ESTE, el otro
-    # casi siempre lo acompaña" cuenta una historia; al revés, no.
-    if top["prod_a"] <= top["prod_b"]:
-        ancla, pareja, n_ancla = top["a"], top["b"], top["prod_a"]
+    top = pairs[0]
+    # The anchor is the rarer of the two: "when THIS shows up, the other one
+    # almost always comes along" tells a story; the other way around doesn't.
+    if top["count_a"] <= top["count_b"]:
+        anchor, partner, n_anchor = top["a"], top["b"], top["count_a"]
     else:
-        ancla, pareja, n_ancla = top["b"], top["a"], top["prod_b"]
-    nombre_a, nombre_b = nombres[ancla], nombres[pareja]
+        anchor, partner, n_anchor = top["b"], top["a"], top["count_b"]
+    anchor_name, partner_name = names[anchor], names[partner]
 
-    monto_conjunto = 0.0
-    montos_pareja: list[float] = []
-    con_ambos = 0
-    faltantes: list[dict] = []
-    con_pareja: list[dict] = []
-    for p in pedidos:
-        por_codigo = {int(it["codigo"]): it for it in (p.get("items") or [])
-                      if it.get("codigo") is not None}
-        if ancla not in por_codigo:
+    combined_revenue = 0.0
+    partner_amounts: list[float] = []
+    both_count = 0
+    missed: list[dict] = []
+    both_present: list[dict] = []
+    for order in orders:
+        by_code = {int(line["codigo"]): line for line in (order.get("items") or [])
+                   if line.get("codigo") is not None}
+        if anchor not in by_code:
             continue
-        if pareja in por_codigo:
-            con_ambos += 1
-            monto_conjunto += float(por_codigo[ancla].get("monto") or 0)
-            monto_conjunto += float(por_codigo[pareja].get("monto") or 0)
-            montos_pareja.append(float(por_codigo[pareja].get("monto") or 0))
-            con_pareja.append({"nombre": p.get("cliente"),
-                               "monto": round(float(por_codigo[pareja].get("monto") or 0), 2),
-                               "detalle": _t("core.pat.combo_i_conjunto", lang,
-                                             fecha=p.get("fecha"))})
+        if partner in by_code:
+            both_count += 1
+            combined_revenue += float(by_code[anchor].get("monto") or 0)
+            combined_revenue += float(by_code[partner].get("monto") or 0)
+            partner_amounts.append(float(by_code[partner].get("monto") or 0))
+            both_present.append({"nombre": order.get("cliente"),
+                                 "monto": round(float(by_code[partner].get("monto") or 0), 2),
+                                 "detalle": _t("core.pat.combo_i_conjunto", lang,
+                                               fecha=order.get("fecha"))})
         else:
-            faltantes.append({"nombre": p.get("cliente"), "fecha": p.get("fecha"),
-                              "detalle": _t("core.pat.combo_i_falta", lang,
-                                            a=nombre_a, fecha=p.get("fecha"), b=nombre_b)})
-    attach_pct = round(con_ambos / n_ancla * 100) if n_ancla else 0
-    hay_hueco = bool(faltantes) and montos_pareja
-    if hay_hueco:
-        monto = round(len(faltantes) * (sum(montos_pareja) / len(montos_pareja)), 2)
-        monto_label = _t("core.pat.combo_monto_label_potencial", lang)
-        resumen = _t("core.pat.combo_r_falta", lang, pct=attach_pct, a=nombre_a,
-                     b=nombre_b, n=len(faltantes))
-        q2 = _t("core.pat.combo_q2_falta", lang, n=len(faltantes))
-        involucrados = [{"nombre": f["nombre"], "monto": None, "detalle": f["detalle"]}
-                        for f in faltantes[:6]]
+            missed.append({"nombre": order.get("cliente"), "fecha": order.get("fecha"),
+                           "detalle": _t("core.pat.combo_i_falta", lang,
+                                         a=anchor_name, fecha=order.get("fecha"), b=partner_name)})
+    attach_pct = round(both_count / n_anchor * 100) if n_anchor else 0
+    has_gap = bool(missed) and partner_amounts
+    if has_gap:
+        amount = round(len(missed) * (sum(partner_amounts) / len(partner_amounts)), 2)
+        amount_label = _t("core.pat.combo_monto_label_potencial", lang)
+        summary = _t("core.pat.combo_r_falta", lang, pct=attach_pct, a=anchor_name,
+                     b=partner_name, n=len(missed))
+        why_2 = _t("core.pat.combo_q2_falta", lang, n=len(missed))
+        involved = [{"nombre": m["nombre"], "monto": None, "detalle": m["detalle"]}
+                   for m in missed[:6]]
     else:
-        monto = round(monto_conjunto, 2)
-        monto_label = _t("core.pat.combo_monto_label_conjunto", lang)
-        resumen = _t("core.pat.combo_r_conjunto", lang, pct=attach_pct, a=nombre_a, b=nombre_b)
-        q2 = _t("core.pat.combo_q2_conjunto", lang)
-        involucrados = con_pareja[:6]
-    if monto <= 0:
+        amount = round(combined_revenue, 2)
+        amount_label = _t("core.pat.combo_monto_label_conjunto", lang)
+        summary = _t("core.pat.combo_r_conjunto", lang, pct=attach_pct, a=anchor_name, b=partner_name)
+        why_2 = _t("core.pat.combo_q2_conjunto", lang)
+        involved = both_present[:6]
+    if amount <= 0:
         return None
-    grafico = _grafico(
-        _t("core.pat.combo_g", lang, a=nombre_a),
-        [{"x": _t("core.pat.combo_g_con", lang, b=nombre_b), "y": con_ambos},
-         {"x": _t("core.pat.combo_g_sin", lang, b=nombre_b), "y": len(faltantes)}],
+    chart = _chart(
+        _t("core.pat.combo_g", lang, a=anchor_name),
+        [{"x": _t("core.pat.combo_g_con", lang, b=partner_name), "y": both_count},
+         {"x": _t("core.pat.combo_g_sin", lang, b=partner_name), "y": len(missed)}],
         "#", False)
     return {
         "id": "combo_no_percibido", "tipo": "vender",
-        "titulo": _t("core.pat.combo_t", lang, a=nombre_a, b=nombre_b),
-        "monto": monto, "monto_label": monto_label,
-        "datos": {"producto_ancla": nombre_a, "producto_pareja": nombre_b,
-                  "attach_pct": attach_pct, "coocurrencias": con_ambos,
-                  "pedidos_sin_pareja": len(faltantes), "clientes": top["clientes"],
+        "titulo": _t("core.pat.combo_t", lang, a=anchor_name, b=partner_name),
+        "monto": amount, "monto_label": amount_label,
+        "datos": {"producto_ancla": anchor_name, "producto_pareja": partner_name,
+                  "attach_pct": attach_pct, "coocurrencias": both_count,
+                  "pedidos_sin_pareja": len(missed), "clientes": top["customers"],
                   "lift": round(top["lift"], 2)},
-        "resumen": resumen,
-        "accion_chat": _t("core.pat.combo_chat", lang, a=nombre_a, b=nombre_b),
+        "resumen": summary,
+        "accion_chat": _t("core.pat.combo_chat", lang, a=anchor_name, b=partner_name),
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang)],
         "drill": {
             "porque": [
-                _t("core.pat.combo_q1", lang, n=n_ancla, clientes=top["clientes"],
-                   a=nombre_a, b=nombre_b, pct=attach_pct),
-                q2,
+                _t("core.pat.combo_q1", lang, n=n_anchor, clientes=top["customers"],
+                   a=anchor_name, b=partner_name, pct=attach_pct),
+                why_2,
             ],
-            "grafico": grafico,
-            "involucrados": involucrados,
+            "grafico": chart,
+            "involucrados": involved,
             "supuestos": [_t("core.pat.combo_s1", lang)],
         },
     }
 
 
-# --- 2 · faltantes de caja con patrón por día de semana -------------------------
+# --- 2 · faltante_caja_patron: weekday shortfall pattern -----------------------
 
-def _card_faltante_caja_patron(lang) -> dict | None:
+def _cash_shortfall_weekday_card(lang) -> dict | None:
     import i18n
     from . import caja
-    hist = [h for h in (caja.historial() or []) if h.get("total")]
-    if len(hist) < MIN_CIERRES_CAJA:
+    history = [h for h in (caja.historial() or []) if h.get("total")]
+    if len(history) < MIN_CASH_CLOSES:
         return None
-    por_dia: dict[int, list[tuple[str, float]]] = collections.defaultdict(list)
-    for h in hist:
+    by_weekday: dict[int, list[tuple[str, float]]] = collections.defaultdict(list)
+    for h in history:
         try:
-            wd = datetime.date.fromisoformat(h["fecha"]).weekday()
+            weekday = datetime.date.fromisoformat(h["fecha"]).weekday()
         except (KeyError, ValueError, TypeError):
             continue
-        por_dia[wd].append((h["fecha"], float(h.get("diferencia") or 0)))
-    candidatos = []
-    for wd, muestras in por_dia.items():
-        if len(muestras) < MIN_MUESTRAS_DIA:
+        by_weekday[weekday].append((h["fecha"], float(h.get("diferencia") or 0)))
+    candidates = []
+    for weekday, samples in by_weekday.items():
+        if len(samples) < MIN_SAMPLES_PER_WEEKDAY:
             continue
-        resto = [d for wd2, ms in por_dia.items() if wd2 != wd for _, d in ms]
-        if not resto:
+        rest = [d for wd2, ss in by_weekday.items() if wd2 != weekday for _, d in ss]
+        if not rest:
             continue
-        difs = [d for _, d in muestras]
-        falt_dia = sum(-d for d in difs if d < 0) / len(difs)
-        falt_resto = sum(-d for d in resto if d < 0) / len(resto)
-        candidatos.append((wd, falt_dia, falt_resto, muestras, resto))
-    if not candidatos:
+        diffs = [d for _, d in samples]
+        shortfall_day = sum(-d for d in diffs if d < 0) / len(diffs)
+        shortfall_rest = sum(-d for d in rest if d < 0) / len(rest)
+        candidates.append((weekday, shortfall_day, shortfall_rest, samples, rest))
+    if not candidates:
         return None
-    wd, falt_dia, falt_resto, muestras, resto = max(candidatos, key=lambda c: c[1])
-    if falt_dia < UMBRAL_MIN_PESOS_CAJA:
+    weekday, shortfall_day, shortfall_rest, samples, rest = max(candidates, key=lambda c: c[1])
+    if shortfall_day < MIN_SHORTFALL_PESOS:
         return None
-    if falt_resto > 0 and falt_dia < falt_resto * UMBRAL_RATIO_CAJA:
+    if shortfall_rest > 0 and shortfall_day < shortfall_rest * SHORTFALL_RATIO_THRESHOLD:
         return None
 
-    difs = [d for _, d in muestras]
-    faltantes = [(f, d) for f, d in muestras if d < 0]
-    pct = round(len(faltantes) / len(difs) * 100)
-    pct_resto = round(sum(1 for d in resto if d < 0) / len(resto) * 100)
-    total = round(sum(-d for d in difs if d < 0), 2)
-    dia = i18n.dia_semana_nombre(wd, lang)
-    grafico = _grafico(_t("core.pat.caja_g", lang),
-                       [{"x": f, "y": round(-d, 2) or 0.0} for f, d in sorted(muestras)],
-                       "$", True)
+    diffs = [d for _, d in samples]
+    shortfalls = [(f, d) for f, d in samples if d < 0]
+    pct = round(len(shortfalls) / len(diffs) * 100)
+    pct_rest = round(sum(1 for d in rest if d < 0) / len(rest) * 100)
+    total = round(sum(-d for d in diffs if d < 0), 2)
+    weekday_name = i18n.weekday_name(weekday, lang)
+    chart = _chart(_t("core.pat.caja_g", lang),
+                   [{"x": f, "y": round(-d, 2) or 0.0} for f, d in sorted(samples)],
+                   "$", True)
     return {
         "id": "faltante_caja_patron", "tipo": "revisar",
-        "titulo": _t("core.pat.caja_t", lang, dia=dia),
+        "titulo": _t("core.pat.caja_t", lang, dia=weekday_name),
         "monto": total,
-        "datos": {"dia_semana": wd, "dia_nombre": dia, "pct_faltante": pct,
-                  "pct_faltante_resto": pct_resto, "cierres_analizados": len(difs),
+        "datos": {"dia_semana": weekday, "dia_nombre": weekday_name, "pct_faltante": pct,
+                  "pct_faltante_resto": pct_rest, "cierres_analizados": len(diffs),
                   "total_faltante": total},
-        "resumen": _t("core.pat.caja_r", lang, pct=pct, dia=dia, pct_resto=pct_resto,
-                      total=_pesos(total, lang), n=len(difs)),
-        "accion_chat": _t("core.pat.caja_chat", lang, dia=dia),
+        "resumen": _t("core.pat.caja_r", lang, pct=pct, dia=weekday_name, pct_resto=pct_rest,
+                      total=_money(total, lang), n=len(diffs)),
+        "accion_chat": _t("core.pat.caja_chat", lang, dia=weekday_name),
         "navegar": "caja",
         "fuentes": [_t("core.prio.f_caja", lang)],
         "drill": {
             "porque": [
-                _t("core.pat.caja_q1", lang, n=len(difs), faltan=len(faltantes),
-                   dia=dia, pct=pct, pct_resto=pct_resto),
-                _t("core.pat.caja_q2", lang, total=_pesos(total, lang), dia=dia),
+                _t("core.pat.caja_q1", lang, n=len(diffs), faltan=len(shortfalls),
+                   dia=weekday_name, pct=pct, pct_resto=pct_rest),
+                _t("core.pat.caja_q2", lang, total=_money(total, lang), dia=weekday_name),
             ],
-            "grafico": grafico,
+            "grafico": chart,
             "involucrados": [{"nombre": f, "monto": round(-d, 2),
                               "detalle": _t("core.pat.caja_i", lang, fecha=f,
-                                            monto=_pesos(-d, lang))}
-                             for f, d in sorted(faltantes, key=lambda x: x[1])[:6]],
+                                            monto=_money(-d, lang))}
+                             for f, d in sorted(shortfalls, key=lambda x: x[1])[:6]],
             "supuestos": [_t("core.pat.caja_s1", lang)],
         },
     }
 
 
-# --- el set --------------------------------------------------------------------
+# --- the set ---------------------------------------------------------------
 
-NATURALEZA = {
+# Values match the shared vocabulary already established by
+# oportunidades_neg.NATURALEZA / priorities._is_watch — "riesgo" is what
+# priorities.py checks for to route a card into the watch band.
+NATURE_BY_ID = {
     "combo_no_percibido": "accionable",
     "faltante_caja_patron": "riesgo",
 }
 
-DOMINIO = {
+# Same module-gating convention as oportunidades_neg.DOMINIO: a card only
+# shows up for a role that has ALL the listed modules enabled.
+MODULES_BY_ID = {
     "combo_no_percibido": ("cuentas", "oportunidades"),
     "faltante_caja_patron": ("caja",),
 }
 
-_SET = (_card_combo_no_percibido, _card_faltante_caja_patron)
+_CARD_BUILDERS = (_unnoticed_combo_card, _cash_shortfall_weekday_card)
 
 
 def cards(lang: str | None = None) -> list[dict]:
     out = []
-    for fn in _SET:
+    for build in _CARD_BUILDERS:
         try:
-            c = fn(lang)
-        except Exception:  # noqa: BLE001 — un patrón roto no tira la sección
-            c = None
-        if c:
-            c["naturaleza"] = NATURALEZA.get(c["id"], "accionable")
-            out.append(c)
+            card = build(lang)
+        except Exception:  # noqa: BLE001 — one broken pattern must not kill the section
+            card = None
+        if card:
+            card["naturaleza"] = NATURE_BY_ID.get(card["id"], "accionable")
+            out.append(card)
     out.sort(key=lambda c: -(c.get("monto") or 0))
     return out
