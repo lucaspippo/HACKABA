@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight } from "lucide-react";
+import { ArrowRight, CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight, Lightbulb } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { FeedActividad } from "../components/ActividadFeed";
 import { armarDecisiones } from "../lib/decisiones";
@@ -134,6 +134,16 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
           </div>
         </Bloque>
       )}
+
+      {/* Aprendizaje continuo — always shown, whether or not there's a live
+          finding right now: the storefront for the value Ángela keeps
+          building on her own (see AprendizajeContinuo.jsx). */}
+      <Bloque titulo={t("hoy.aprendizaje_titulo")} accion={t("hoy.ver_aprendizaje")} onAccion={() => onTab("aprendizaje")}>
+        <div className="flex items-center gap-2.5 rounded-[var(--radius-card)] border border-violeta/25 bg-violeta/[0.05] px-4 py-3">
+          <Lightbulb size={16} className="shrink-0 text-violeta" />
+          <span className="min-w-0 flex-1 text-[0.86rem] leading-snug text-tinta">{t("aprendizaje.combo_titulo")}</span>
+        </div>
+      </Bloque>
 
       {/* 4 · Lo más importante de hoy — máx 3 filas + ver todo → Insights */}
       {importantes.length > 0 && (

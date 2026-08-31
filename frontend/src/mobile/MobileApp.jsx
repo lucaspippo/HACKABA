@@ -16,6 +16,7 @@ import Cobranzas from "../sections/Cobranzas";
 import Deposito from "../sections/Deposito";
 import Conciliacion from "../sections/Conciliacion";
 import Administracion from "../sections/Administracion";
+import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
@@ -59,6 +60,9 @@ function resolveView(raw, { piso, user, navIds }) {
     return (user.features.includes("alertas") || user.features.includes("oportunidades")) ? "insights" : null;
   }
   if (destino === "angela") return "angela";
+  // Continuous learning is education, not a data view gated by a role
+  // feature — reachable from a link (Hoy's teaser), not the tab bar.
+  if (destino === "aprendizaje") return "aprendizaje";
   if (MCAT[destino]) return navIds.includes(destino) ? destino : null;
   return null;
 }
@@ -107,6 +111,7 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     // Para el de a pie, "inicio/home/hoy" es SU día, no el Today del dueño.
     if (piso && (destino === "panel" || destino === "mi_dia")) { setView("mi_dia"); return; }
     if (destino === "perfil") { setView("perfil"); return; }
+    if (destino === "aprendizaje") { setView("aprendizaje"); return; }
     if (destino === "conciliacion") {
       if (user.features.includes("deposito")) { setView("conciliacion"); if (hl) resaltarPorId(hl); }
       else toast(t("nav.sin_permiso"), "error");
@@ -174,6 +179,8 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
       // accesible solo desde "Ver el mapa" de Today. Volver → Today.
       case "mapa":
         return <MapaSimpleMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onVolver={() => setView("panel")} />;
+      case "aprendizaje":
+        return <AprendizajeContinuo onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
       case "perfil":
         return <MiPerfil user={user} />;
       case "angela":
