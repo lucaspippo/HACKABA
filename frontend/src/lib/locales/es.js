@@ -2913,8 +2913,22 @@ export const ES = {
   "aprendizaje.fut_estacion_d": "Picos de venta propios de tu negocio (un cobro de sueldos, un evento del barrio) que no aparecen en ningún calendario genérico.",
   "aprendizaje.fut_vendedor_t": "Buenas prácticas de tu equipo",
   "aprendizaje.fut_vendedor_d": "Alguien de tu equipo que logra vender mejor en ciertos horarios o productos — para replicar lo que funciona, no para vigilar.",
-  "aprendizaje.fut_memoria_t": "Memoria de lo que ya te dijo",
-  "aprendizaje.fut_memoria_d": "Cuando aceptás o descartás un hallazgo, Ángela lo recuerda — y ajusta qué te importa mostrarte la próxima vez.",
+
+  // Cerrando el círculo: la reacción del dueño a un hallazgo en vivo se
+  // guarda (backend/core/patrones.py `record_feedback`) para que esa
+  // instancia puntual no vuelva a aparecer.
+  "aprendizaje.feedback_pregunta": "¿Qué hacemos con este hallazgo?",
+  "aprendizaje.feedback_aceptado": "Ya lo estoy resolviendo",
+  "aprendizaje.feedback_descartado": "No es relevante",
+  "aprendizaje.feedback_ya_sabia": "Ya lo sabía",
+  "aprendizaje.feedback_ok": "Listo — no te lo voy a repetir.",
+  "aprendizaje.feedback_error": "No pude guardar tu respuesta. Probá de nuevo.",
+  "aprendizaje.feedback_hecho": "Ya le diste tu opinión a Ángela sobre esto.",
+  "aprendizaje.historial_titulo": "Lo que ya hablamos",
+  "aprendizaje.historial_vacio": "Todavía no le diste tu opinión a ningún hallazgo — cuando lo hagas, va a quedar acá.",
+  "aprendizaje.historial_accepted": "Ya lo estás resolviendo",
+  "aprendizaje.historial_dismissed": "Descartado",
+  "aprendizaje.historial_already_knew": "Ya lo sabías",
 
   "hoy.aprendizaje_titulo": "Lo que Ángela va aprendiendo",
   "hoy.ver_aprendizaje": "Ver más",

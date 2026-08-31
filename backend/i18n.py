@@ -95,6 +95,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "notificación inexistente",
         "en": "no such notification",
     },
+    "api.patron_inexistente": {
+        "es": "Ese hallazgo ya no está activo (puede que alguien ya haya opinado sobre él).",
+        "en": "That finding isn't live anymore (someone may have already given feedback on it).",
+    },
     "api.recordatorio_ajeno": {
         "es": "Esa tarea es de otra persona.",
         "en": "That task belongs to someone else.",

@@ -2940,8 +2940,22 @@ export const EN = {
   "aprendizaje.fut_estacion_d": "Sales spikes specific to your business (payday, a neighborhood event) that no generic calendar captures.",
   "aprendizaje.fut_vendedor_t": "Good habits worth replicating",
   "aprendizaje.fut_vendedor_d": "Someone on your team who sells better at certain times or with certain products — to replicate what works, not to watch over anyone.",
-  "aprendizaje.fut_memoria_t": "Memory of what she already told you",
-  "aprendizaje.fut_memoria_d": "When you accept or dismiss a finding, Ángela remembers — and adjusts what's worth showing you next time.",
+
+  // Closing the loop: the owner's reaction to a live finding is saved
+  // (backend/core/patrones.py `record_feedback`) so that specific instance
+  // doesn't show up again.
+  "aprendizaje.feedback_pregunta": "What should we do with this finding?",
+  "aprendizaje.feedback_aceptado": "I'm already handling it",
+  "aprendizaje.feedback_descartado": "Not relevant",
+  "aprendizaje.feedback_ya_sabia": "I already knew that",
+  "aprendizaje.feedback_ok": "Got it — I won't bring it up again.",
+  "aprendizaje.feedback_error": "Couldn't save your answer. Try again.",
+  "aprendizaje.feedback_hecho": "You already gave Ángela your take on this.",
+  "aprendizaje.historial_titulo": "What we've already talked about",
+  "aprendizaje.historial_vacio": "You haven't given feedback on a finding yet — once you do, it'll show up here.",
+  "aprendizaje.historial_accepted": "You're handling it",
+  "aprendizaje.historial_dismissed": "Dismissed",
+  "aprendizaje.historial_already_knew": "You already knew",
 
   "hoy.aprendizaje_titulo": "What Ángela is learning",
   "hoy.ver_aprendizaje": "See more",
