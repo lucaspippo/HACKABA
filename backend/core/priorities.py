@@ -9,6 +9,7 @@ caller’s modules. Ángela and every UI read this; they do not re-sort.
 from __future__ import annotations
 
 from . import oportunidades_neg as opn
+from . import patrones
 
 # Alert id → opportunity id when both describe the same fact.
 MERGE_INTO = {
@@ -58,6 +59,7 @@ CHIP_BY_TIPO = {
     "planificar": "core.prio.chip_planificar",
     "diversificar": "core.prio.chip_riesgo",
     "reclamar": "core.prio.chip_equipo",
+    "revisar": "core.prio.chip_revisar",
 }
 
 CHIP_BY_ID = {
@@ -259,6 +261,7 @@ def inbox(lang: str | None = None, features=None) -> dict:
 def _compose(lang) -> dict:
     items: list[dict] = []
     items.extend(_opportunity_items(lang))
+    items.extend(_pattern_items(lang))
     items.extend(_alert_items(lang))
     items.extend(_piso_items(lang))
     hay_ventas = False
@@ -288,6 +291,32 @@ def _opportunity_items(lang) -> list[dict]:
             accion_chat=c.get("accion_chat"),
             propuesta=c.get("propuesta"),
             macro=c.get("macro"),
+            naturaleza=c.get("naturaleza"),
+            tipo=c.get("tipo"),
+            drill=c.get("drill") or _blank_drill(),
+        ))
+    return out
+
+
+def _pattern_items(lang) -> list[dict]:
+    """Aprendizaje continuo (core/patrones.py) — hallazgos que ningún reporte
+    estándar resume porque son una correlación, no una cuenta. Misma forma de
+    tarjeta que una oportunidad; entran al inbox como una fuente más."""
+    out = []
+    for c in _safe(lambda: patrones.cards(lang)) or []:
+        out.append(_item(
+            id=c["id"],
+            tono="oro" if c.get("naturaleza") == "riesgo" else "salvia",
+            chip=_chip(c, lang),
+            titulo=c["titulo"],
+            resumen=c.get("resumen") or "",
+            origen=[f"patron:{c['id']}"],
+            modulos=patrones.DOMINIO.get(c["id"], ("__sin_dominio__",)),
+            monto=c.get("monto"),
+            monto_label=c.get("monto_label"),
+            fuentes=c.get("fuentes") or [],
+            navegar=c.get("navegar"),
+            accion_chat=c.get("accion_chat"),
             naturaleza=c.get("naturaleza"),
             tipo=c.get("tipo"),
             drill=c.get("drill") or _blank_drill(),
