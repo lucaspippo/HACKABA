@@ -135,7 +135,7 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
         </Bloque>
       )}
 
-      {/* Aprendizaje continuo — always shown, whether or not there's a live
+      {/* Continuous learning — always shown, whether or not there's a live
           finding right now: the storefront for the value Ángela keeps
           building on her own (see AprendizajeContinuo.jsx). */}
       <Bloque titulo={t("hoy.aprendizaje_titulo")} accion={t("hoy.ver_aprendizaje")} onAccion={() => onTab("aprendizaje")}>
