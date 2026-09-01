@@ -5,9 +5,14 @@ from core import oportunidades_neg as opn
 
 
 def _ctx_with_arts(monkeypatch, arts, clientes=None):
+    clientes = clientes or []
     base_ctx = opn._ctx("es")
     base_ctx["arts"] = arts
-    base_ctx["clientes"] = clientes or []
+    base_ctx["clientes"] = clientes
+    base_ctx["product_id_by_name"] = {a.get("descripcion"): a.get("codigo")
+                                      for a in arts if a.get("descripcion")}
+    base_ctx["client_id_by_name"] = {c.get("nombre"): c.get("id")
+                                     for c in clientes if c.get("nombre")}
     return base_ctx
 
 
@@ -56,3 +61,23 @@ def test_cliente_frio_involucrados_carry_client_id(monkeypatch):
     if card:  # the synthetic fixture may or may not clear the drop threshold
         iv = card["drill"]["involucrados"][0]
         assert iv["id"] == 7 and iv["kind"] == "client"
+
+
+def test_ctx_builds_name_to_id_lookups(monkeypatch):
+    arts = [{"codigo": "P1", "descripcion": "Prod Uno"}]
+    clientes = [{"id": 3, "nombre": "Cliente Tres"}]
+    ctx = _ctx_with_arts(monkeypatch, arts, clientes)
+    assert ctx["product_id_by_name"]["Prod Uno"] == "P1"
+    assert ctx["client_id_by_name"]["Cliente Tres"] == 3
+
+
+def test_concentracion_involucrados_carry_client_id(monkeypatch):
+    clientes = [{"id": i, "nombre": f"Cliente {i}",
+                "movimientos": [{"tipo": "venta", "fecha": "2026-06-01",
+                                 "monto": 10_000_000 if i < 3 else 100_000}]}
+               for i in range(12)]
+    ctx = _ctx_with_arts(monkeypatch, [], clientes)
+    card = opn._card_concentracion("es", ctx)
+    assert card is not None
+    for iv in card["drill"]["involucrados"]:
+        assert iv["kind"] == "client" and iv["id"] is not None
