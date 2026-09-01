@@ -42,6 +42,7 @@ function rowOf(it) {
     involucrados: it.drill?.involucrados || [],
     supuestos: it.drill?.supuestos || [],
     confidence: it.drill?.confidence,
+    metricas: it.drill?.metricas || [],
     macro: it.macro,
     chat: it.accion_chat,
     navegar: it.navegar,
@@ -240,6 +241,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           fuentes={abierta.fuentes || []}
           origen={abierta.origen || []}
           confidence={abierta.confidence}
+          metricas={abierta.metricas || []}
           propuesta={abierta.propuesta}
           propuestaTrabajando={propTrabajando}
           propuestaResultado={propResultado[abierta.id]}

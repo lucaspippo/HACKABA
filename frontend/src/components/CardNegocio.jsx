@@ -224,6 +224,26 @@ function BasadoEn({ origen = [] }) {
   );
 }
 
+// A small strip of the exact numbers already narrated in prose inside
+// `porque` (e.g. days of coverage, supplier lead time) — structured so a
+// scanning eye doesn't have to parse a sentence to find them. Not a
+// replacement for the chart: these are forward-looking day-counts that
+// don't share the chart's (historical, monthly) x-axis, so they render as
+// stats rather than a misleading reference line drawn over past months.
+function Metricas({ items = [] }) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-linea/60 pt-2.5">
+      {items.map((m, i) => (
+        <div key={i} className="text-[0.78rem]">
+          <span className="text-tinta-suave">{m.label}: </span>
+          <span className="plata font-semibold text-tinta">{m.valor}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InvolucradoRow({ iv, onClick }) {
   // kind is required, not just id: an id without a recognized kind has
   // nowhere to navigate, and a clickable-looking row that silently no-ops
@@ -254,7 +274,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
                                onFeedback, feedbackBusy, confidence, origen = [],
-                               onVerFuentes, onVerInvolucrado }) {
+                               metricas = [], onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
@@ -326,10 +346,21 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
 
         {grafico && (
           <div className="mt-4 rounded-xl border border-linea bg-papel p-3">
+            {(grafico.series?.[0]?.nombre || grafico.meta?.unidad) && (
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                {grafico.series?.[0]?.nombre && (
+                  <p className="truncate text-[0.8rem] font-semibold text-tinta">{grafico.series[0].nombre}</p>
+                )}
+                {grafico.meta?.unidad && (
+                  <p className="shrink-0 text-[0.68rem] text-tinta-suave">{grafico.meta.unidad}</p>
+                )}
+              </div>
+            )}
             <CuerpoConsulta resultado={grafico} t={t} />
             {grafico.meta?.ventana && (
               <p className="mt-1 text-[0.7rem] text-tinta-suave">{grafico.meta.ventana}</p>
             )}
+            <Metricas items={metricas} />
           </div>
         )}
 

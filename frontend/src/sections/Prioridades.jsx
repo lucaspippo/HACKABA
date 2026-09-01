@@ -313,6 +313,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       supuestos: item.drill?.supuestos || [],
       confidence: item.drill?.confidence,
       origen: item.origen || [],
+      metricas: item.drill?.metricas || [],
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
