@@ -211,7 +211,7 @@ def _card_morosos(lang, ctx) -> dict | None:
             # "id" lets the frontend deep-link each debtor to their exact row
             # in Cuentas por cobrar (CuentasCorrientes.jsx's `cliente-${id}`
             # anchor) instead of leaving the name as inert text.
-            "involucrados": [{"id": c["id"], "nombre": c["nombre"], "monto": c["saldo"],
+            "involucrados": [{"id": c["id"], "kind": "client", "nombre": c["nombre"], "monto": c["saldo"],
                               "detalle": _t("core.opn.morosos_i", lang,
                                             dias=c["dias_sin_pagar"])}
                              for c in sorted(morosos, key=lambda x: -x["saldo"])],

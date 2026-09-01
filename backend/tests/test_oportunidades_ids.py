@@ -81,3 +81,19 @@ def test_concentracion_involucrados_carry_client_id(monkeypatch):
     assert card is not None
     for iv in card["drill"]["involucrados"]:
         assert iv["kind"] == "client" and iv["id"] is not None
+
+
+def test_morosos_involucrados_carry_client_id_and_kind(monkeypatch):
+    """Regression: cobrar_morosos involucrados must carry both id and kind
+    for frontend routing to work (design 2026-09-01)."""
+    clientes = [{"id": 10, "nombre": "Cliente Moroso",
+                 "en_mora": True, "saldo": 50_000,
+                 "dias_sin_pagar": 45,
+                 "movimientos": [{"tipo": "pago", "fecha": "2026-06-01", "monto": 10_000},
+                                 {"tipo": "pago", "fecha": "2026-05-01", "monto": 10_000}] * 3}]
+    ctx = _ctx_with_arts(monkeypatch, [], clientes)
+    card = opn._card_morosos("es", ctx)
+    assert card is not None
+    for iv in card["drill"]["involucrados"]:
+        assert iv.get("kind") == "client"
+        assert iv.get("id") is not None
