@@ -43,23 +43,45 @@ def find_draft(tenant_id: str, *, codigo: int | None, origen: str) -> dict | Non
     """The one existing draft order for (codigo, origen), if any — preparar()
     in core/ordenes.py uses this to stay idempotent.
 
-    Faithful port of the pre-existing JSON-file logic: `o.get("codigo")` was
-    always compared against the stored order *dict's own top-level key* —
-    which `preparar()` never actually sets (codigo only ever lands inside
-    `items[0]["codigo"]`) — so the old check was effectively always `None ==
-    codigo`, matching only when the caller passes codigo=None. That's almost
-    certainly a pre-existing bug (the docstring promises idempotency by
-    (codigo, origen)), but it's not this migration's job to change behavior,
-    only where it's stored — preserved exactly, including the bug."""
-    if codigo is not None:
-        return None
+    `codigo` lives inside the JSONB `items` payload, not in a column, so the
+    match happens in Python over the drafts sharing this origin. That set is
+    tiny, and it avoids both a schema migration and JSON-in-SQL differences
+    between the SQLite and Postgres backends.
+    """
     with tenant_connection(tenant_id) as conn:
-        row = conn.execute(
+        rows = conn.execute(
             text(f"SELECT {', '.join(_COLS)} FROM purchase_orders "
-                 "WHERE status = 'borrador' AND origin = :origen LIMIT 1"),
+                 "WHERE status = 'borrador' AND origin = :origen"),
             {"origen": origen},
-        ).mappings().first()
-    return _to_orden(row) if row else None
+        ).mappings().all()
+    for row in rows:
+        orden = _to_orden(row)
+        items = orden.get("items") or []
+        if items and items[0].get("codigo") == codigo:
+            return orden
+    return None
+
+
+def find_for_origin(tenant_id: str, *, origen: str, codigo: int | None) -> dict | None:
+    """Any order this origin already produced for `codigo`, whatever its
+    status — unlike find_draft, which only sees 'borrador'.
+
+    A card stays "acted upon" after someone advances its order to aprobada or
+    recibida; only a cancelada order releases it back to open work.
+    """
+    with tenant_connection(tenant_id) as conn:
+        rows = conn.execute(
+            text(f"SELECT {', '.join(_COLS)} FROM purchase_orders "
+                 "WHERE origin = :origen AND status <> 'cancelada' "
+                 "ORDER BY prepared_at DESC, number DESC"),
+            {"origen": origen},
+        ).mappings().all()
+    for row in rows:
+        orden = _to_orden(row)
+        items = orden.get("items") or []
+        if items and items[0].get("codigo") == codigo:
+            return orden
+    return None
 
 
 def create(tenant_id: str, orden: dict) -> None:

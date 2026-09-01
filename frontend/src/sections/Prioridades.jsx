@@ -43,6 +43,7 @@ function HotkeyBadge({ children }) {
 }
 
 function WorkRow({ item, selected, onSelect }) {
+  const t = useT();
   const a = ACENTO[item.tono] || ACENTO.salvia;
   const acc = estiloAccion(item);
   const Icon = acc.icon;
@@ -53,14 +54,20 @@ function WorkRow({ item, selected, onSelect }) {
     <button
       type="button"
       onClick={onSelect}
+      aria-current={selected || undefined}
       className={`flex w-full items-start gap-3 border-b border-linea px-4 py-3 text-left last:border-0 ${
         selected ? "bg-papel-hondo/70" : "hover:bg-papel-hondo/40"
-      }`}
+      } ${item.action_taken ? "opacity-60" : ""}`}
     >
       <span className="min-w-0 flex-1">
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${acc.cls}`}>
           <Icon size={11} /> {item.chip}
         </span>
+        {item.action_taken && (
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-[0.68rem] font-semibold text-salvia">
+            <Check size={10} /> {t("prioridades.done")} · {item.action_taken.label}
+          </span>
+        )}
         <span className="mt-1 block font-display text-[0.98rem] font-bold leading-tight">{item.titulo}</span>
         {item.resumen && (
           <span className="mt-0.5 block line-clamp-1 text-[0.82rem] leading-snug text-tinta-suave">{item.resumen}</span>
@@ -84,9 +91,9 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [adoptados, setAdoptados] = useState({});
   const [eligiendo, setEligiendo] = useState(null);
   const [equipo, setEquipo] = useState([]);
-  const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [confirmingFloorReport, setConfirmingFloorReport] = useState(null);
   const rootRef = useRef(null);
 
   const cargar = () => {
@@ -128,6 +135,8 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     () => (filtro ? todos.filter((i) => accionDe(i) === filtro) : todos),
     [todos, filtro],
   );
+
+  useEffect(() => { setConfirmingFloorReport(null); }, [selectedId]);
 
   useEffect(() => {
     if (selectedId && visible.some((i) => i.id === selectedId)) return;
@@ -174,8 +183,8 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
       });
-      setPropResultado((s) => ({ ...s, [c.id]: r.mensaje }));
       toast(r.mensaje);
+      cargar();
     } catch {
       toast(t("oportunidades.prop_error"));
     }
@@ -183,6 +192,11 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   };
 
   const resolverPiso = async (c) => {
+    if (confirmingFloorReport !== c.id) {
+      setConfirmingFloorReport(c.id);
+      return;
+    }
+    setConfirmingFloorReport(null);
     try {
       await Promise.all((c.reportes || []).map((rid) => api.piso.resolver(rid)));
       toast(t("oportunidades.piso_resuelta"));
@@ -231,10 +245,22 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const drillAcciones = (item, closeAfter) => (
     <>
       {item.piso && (
-        <button data-quick-action="1" onClick={() => resolverPiso(item)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-hielo px-4 py-2 text-[0.84rem] font-semibold text-crema">
-          <Check size={14} /> {t("oportunidades.piso_marcar")} <HotkeyBadge>1</HotkeyBadge>
-        </button>
+        <span className="inline-flex items-center gap-1.5">
+          <button data-quick-action="1" onClick={() => resolverPiso(item)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.84rem] font-semibold text-crema ${
+              confirmingFloorReport === item.id ? "bg-rojo" : "bg-hielo"
+            }`}>
+            <Check size={14} />
+            {confirmingFloorReport === item.id ? t("oportunidades.floor_mark_confirm") : t("oportunidades.piso_marcar")}
+            <HotkeyBadge>1</HotkeyBadge>
+          </button>
+          {confirmingFloorReport === item.id && (
+            <button onClick={() => setConfirmingFloorReport(null)}
+              className="text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+              {t("aprendizaje.feedback_cancel")}
+            </button>
+          )}
+        </span>
       )}
       {!item.piso && (adoptados[item.id] ? (
         <span className="text-[0.84rem] font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
@@ -291,10 +317,15 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       involucrados: item.drill?.involucrados || [],
       supuestos: item.drill?.supuestos || [],
       confidence: item.drill?.confidence,
+      origins: item.origen || [],
+      metrics: item.drill?.metrics || [],
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
-      propuestaResultado: propResultado[item.id],
+      actionTaken: item.action_taken && {
+        ...item.action_taken,
+        onOpen: () => onNavegar?.(item.action_taken.navigate, item.action_taken.label),
+      },
       onAprobarPropuesta: () => aprobarPropuesta(item),
       chip: item.chip,
       chipIcon: acc.icon,
@@ -327,7 +358,19 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             <Radar size={22} className="text-hielo" />
             <div>
               <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-              <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("prioridades.sub")}</p>
+              <p className="mt-1 text-[0.9rem] text-tinta-suave">
+                {/* `badge`, not act.length: `act` keeps executed cards visible
+                    (greyed out, stamped "Hecho") while the badge counts only
+                    open work — the header must agree with the sidebar count. */}
+                {act.length > 0
+                  ? t("prioridades.sub_count", { n: data?.badge ?? act.length })
+                  : t("prioridades.sub")}
+                {data?.recuperable?.disponible && (
+                  <span className="plata ml-2 font-semibold text-salvia">
+                    · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           {todos.length > 0 && (
@@ -403,7 +446,14 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
           </div>
           {!overlay && selected && (
             <div className="min-w-0 flex-1 overflow-y-auto">
-              <DrillNegocio variante="panel" {...drillProps(selected)}
+              {/* Keyed by card: arrow-key navigation only swaps props, so an
+                  unkeyed drill would carry the previous card's local state
+                  over — an armed "¿Seguro? Sí, descartar" in FindingFeedback
+                  could then dismiss the WRONG finding on one click (and
+                  AngelaProposal's `postponed` / BasedOn's `expanded` would
+                  leak across cards too). Remounting resets all of them at once,
+                  the same way the parent-owned confirmingFloorReport is. */}
+              <DrillNegocio key={selectedId} variante="panel" {...drillProps(selected)}
                 acciones={drillAcciones(selected)} />
             </div>
           )}
@@ -411,7 +461,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       )}
 
       {overlay && selected && (
-        <DrillNegocio variante="overlay" {...drillProps(selected)}
+        <DrillNegocio key={selectedId} variante="overlay" {...drillProps(selected)}
           onCerrar={() => setSelectedId(null)}
           acciones={drillAcciones(selected, () => setSelectedId(null))} />
       )}

@@ -1,6 +1,7 @@
-import { ArrowRight, ChevronRight, X, Check, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, ChevronRight, X, Link2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CuerpoConsulta } from "./Widget";
+import AngelaProposal from "./AngelaProposal";
 import { pesoCorto, peso } from "../lib/format";
 import { useT } from "../lib/i18n";
 
@@ -60,42 +61,6 @@ export function CardNegocio({ tono = "salvia", icon: Icon, chip, chipCls, titulo
 // El drill-down, consistente en AMBAS secciones: el porqué narrado + el
 // gráfico histórico (renderer P21) + los ítems involucrados + los supuestos
 // declarados + las acciones que cada sección arma (adoptar / Ángela / ir).
-// P38·B — la PROPUESTA con aprobación dentro del drill: Ángela deja la acción
-// armada (una orden de compra, una promoción) y espera el OK. Aprobar no
-// ejecuta contra nadie: deja el borrador firmado. Human-in-the-loop visible.
-function Propuesta({ propuesta, onAprobar, resultado, trabajando }) {
-  const t = useT();
-  const [pospuesta, setPospuesta] = useState(false);
-  if (!propuesta || pospuesta) return null;
-  return (
-    <div className="mt-4 rounded-xl border border-violeta/25 bg-violeta/[0.05] p-4">
-      <p className="flex items-center gap-1.5 text-[0.84rem] font-semibold text-violeta">
-        <Sparkles size={14} /> {t("cardneg.prop_titulo")}
-      </p>
-      <p className="mt-1 font-display text-[1rem] font-bold leading-tight">{propuesta.titulo}</p>
-      {propuesta.detalle && <p className="mt-1 text-[0.88rem] leading-snug text-tinta">{propuesta.detalle}</p>}
-      {resultado ? (
-        <p className="mt-3 flex items-start gap-1.5 text-[0.86rem] font-semibold text-salvia">
-          <Check size={15} className="mt-0.5 shrink-0" /> {resultado}
-        </p>
-      ) : (
-        <>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={onAprobar} disabled={trabajando}
-              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
-              <Check size={15} /> {trabajando ? t("cardneg.prop_trabajando") : t("cardneg.prop_aprobar")}
-            </button>
-            <button onClick={() => setPospuesta(true)}
-              className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
-              {t("cardneg.prop_despues")}
-            </button>
-          </div>
-          <p className="mt-2 text-[0.72rem] leading-snug text-tinta-suave">{t("cardneg.prop_nota")}</p>
-        </>
-      )}
-    </div>
-  );
-}
 
 // Closing the loop on a finding (core/pattern_feedback.py, shared by
 // core/patrones.py and core/oportunidades_neg.py alike): the owner's
@@ -108,18 +73,40 @@ const FEEDBACK_ACTIONS = [
   { action: "dismissed", lk: "aprendizaje.feedback_descartado" },
 ];
 
+// "dismissed" specifically drops the finding for good (core/pattern_feedback.py
+// removes it from ever resurfacing) — unlike "accepted"/"already_knew", which
+// are soft. That asymmetry earns it a one-tap confirm; the others stay
+// single-click so the common path isn't slowed down.
 export function FindingFeedback({ onFeedback, busy }) {
   const t = useT();
+  const [confirming, setConfirming] = useState(false);
   return (
     <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
       <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
-        {FEEDBACK_ACTIONS.map((f) => (
-          <button key={f.action} disabled={busy} onClick={() => onFeedback(f.action)}
-            className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
-            {t(f.lk)}
-          </button>
-        ))}
+        {FEEDBACK_ACTIONS.map((f) => {
+          if (f.action === "dismissed" && confirming) {
+            return (
+              <span key={f.action} className="inline-flex items-center gap-1.5">
+                <button disabled={busy} onClick={() => onFeedback("dismissed")}
+                  className="rounded-full border border-rojo/40 bg-rojo/10 px-3.5 py-1.5 text-[0.82rem] font-semibold text-rojo disabled:opacity-50">
+                  {t("aprendizaje.feedback_dismiss_confirm")}
+                </button>
+                <button disabled={busy} onClick={() => setConfirming(false)}
+                  className="text-[0.82rem] font-semibold text-tinta-suave hover:text-tinta">
+                  {t("aprendizaje.feedback_cancel")}
+                </button>
+              </span>
+            );
+          }
+          return (
+            <button key={f.action} disabled={busy}
+              onClick={() => (f.action === "dismissed" ? setConfirming(true) : onFeedback(f.action))}
+              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
+              {t(f.lk)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -169,6 +156,59 @@ function ConfidenceBadge({ confidence }) {
   );
 }
 
+// The badge's `reason` was only readable via a hover title — invisible on
+// touch. Repeat it as plain text so the trust-building copy actually reaches
+// mobile users, not just desktop hover.
+function ConfidenceReason({ confidence }) {
+  if (!confidence?.level || !confidence?.reason) return null;
+  return (
+    <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{confidence.reason}</p>
+  );
+}
+
+// How many raw signals (alerts/opportunities/patterns) got merged into this
+// one card (core/priorities.py::merge_duplicates). Collapsed by default —
+// this is provenance for someone auditing "why does this exist", not
+// something that belongs in the primary reading path.
+function BasedOn({ origins = [] }) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  if (origins.length < 2) return null;
+  return (
+    <div className="mt-3 text-[0.76rem] text-tinta-suave">
+      <button type="button" onClick={() => setExpanded((v) => !v)}
+        className="inline-flex items-center gap-1 font-semibold hover:text-tinta">
+        <Link2 size={11} /> {t("cardneg.based_on", { n: origins.length })}
+      </button>
+      {expanded && (
+        <ul className="mt-1.5 space-y-0.5 pl-4">
+          {origins.map((o, i) => <li key={i} className="list-disc">{o}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// A small strip of the exact numbers already narrated in prose inside
+// `porque` (e.g. days of coverage, supplier lead time) — structured so a
+// scanning eye doesn't have to parse a sentence to find them. Not a
+// replacement for the chart: these are forward-looking day-counts that
+// don't share the chart's (historical, monthly) x-axis, so they render as
+// stats rather than a misleading reference line drawn over past months.
+function Metrics({ items = [] }) {
+  if (!items.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-linea/60 pt-2.5">
+      {items.map((m, i) => (
+        <div key={i} className="text-[0.78rem]">
+          <span className="text-tinta-suave">{m.label}: </span>
+          <span className="plata font-semibold text-tinta">{m.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function InvolucradoRow({ iv, onClick }) {
   // kind is required, not just id: an id without a recognized kind has
   // nowhere to navigate, and a clickable-looking row that silently no-ops
@@ -195,14 +235,34 @@ function InvolucradoRow({ iv, onClick }) {
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
-                               propuesta, onAprobarPropuesta, propuestaResultado,
+                               propuesta, onAprobarPropuesta, actionTaken,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy, confidence,
-                               onVerFuentes, onVerInvolucrado }) {
+                               onFeedback, feedbackBusy, confidence, origins = [],
+                               metrics = [], onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
+  const dialogRef = useRef(null);
+
+  // Every caller passes an inline arrow for `onCerrar`, so its identity
+  // changes on each render. Depending on it would re-run this effect —
+  // yanking focus back to the dialog — on any parent re-render (toggling the
+  // working flag while approving, for one). Keep the latest handler in a ref
+  // and depend only on `panel`, so focus is set once when the dialog opens.
+  const onCerrarRef = useRef(onCerrar);
+  onCerrarRef.current = onCerrar;
+
+  // Self-contained so every caller (desktop panel+overlay, mobile overlay)
+  // gets the same behavior instead of each screen re-implementing Escape and
+  // initial focus: on open, move focus into the dialog; Esc closes it.
+  useEffect(() => {
+    if (panel) return;
+    dialogRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape") onCerrarRef.current?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panel]);
   const contenido = (
     <>
         <div className="flex items-start justify-between gap-3">
@@ -221,7 +281,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             )}
           </div>
           {!panel && onCerrar && (
-            <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+            <button onClick={onCerrar} aria-label={t("cardneg.close")}
+              className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
           )}
         </div>
 
@@ -231,6 +292,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               <h3 className="text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
               <ConfidenceBadge confidence={confidence} />
             </div>
+            <ConfidenceReason confidence={confidence} />
             <div className="mt-1.5 space-y-1.5">
               {porque.map((p, i) => (
                 <p key={i} className="text-[0.92rem] leading-snug text-tinta">{p}</p>
@@ -257,12 +319,29 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
 
         {grafico && (
           <div className="mt-4 rounded-xl border border-linea bg-papel p-3">
+            {(grafico.series?.[0]?.nombre || grafico.meta?.unidad) && (
+              <div className="mb-1 flex items-baseline justify-between gap-2">
+                {grafico.series?.[0]?.nombre && (
+                  <p className="truncate text-[0.8rem] font-semibold text-tinta">{grafico.series[0].nombre}</p>
+                )}
+                {grafico.meta?.unidad && (
+                  <p className="shrink-0 text-[0.68rem] text-tinta-suave">{grafico.meta.unidad}</p>
+                )}
+              </div>
+            )}
             <CuerpoConsulta resultado={grafico} t={t} />
             {grafico.meta?.ventana && (
               <p className="mt-1 text-[0.7rem] text-tinta-suave">{grafico.meta.ventana}</p>
             )}
           </div>
         )}
+
+        {/* Outside the chart block on purpose: a tenant with no complete
+            months of history gets `grafico = None` (see _card_quiebre_inminente
+            in backend/core/oportunidades_neg.py) and would otherwise lose the
+            coverage / lead-time / negotiating-window stats entirely — exactly
+            the tenant who needs them most. */}
+        <Metrics items={metrics} />
 
         {involucrados.length > 0 && (
           <>
@@ -275,14 +354,22 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </>
         )}
 
-        <Propuesta propuesta={propuesta} onAprobar={onAprobarPropuesta}
-          resultado={propuestaResultado} trabajando={propuestaTrabajando} />
+        {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador firmado.
+            Human-in-the-loop visible. */}
+        <AngelaProposal
+          proposal={propuesta && { title: propuesta.titulo, detail: propuesta.detalle }}
+          onApprove={onAprobarPropuesta}
+          working={propuestaTrabajando}
+          actionTaken={actionTaken}
+        />
 
         {supuestos.length > 0 && (
           <p className="mt-3 rounded-lg bg-papel-hondo/50 px-3 py-2 text-[0.78rem] leading-snug text-tinta-suave">
             {supuestos.join(" · ")}
           </p>
         )}
+
+        <BasedOn origins={origins} />
 
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>
@@ -302,8 +389,9 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
-      <div onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta outline-none">
         <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
         {pie}
       </div>

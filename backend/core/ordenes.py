@@ -53,6 +53,14 @@ def preparar(*, producto: str, codigo: int | None, cantidad: float,
     return orden
 
 
+def find_for_origin(*, origen: str, codigo: int | None) -> dict | None:
+    """The order this finding already produced, if any. Read-only: the
+    caller uses it to tell whether a proposal was already executed."""
+    from core.db import purchase_orders_repo, tenant as _tenant
+    return purchase_orders_repo.find_for_origin(
+        _tenant.current_tenant_id(), origen=origen, codigo=codigo)
+
+
 ESTADOS = ("borrador", "aprobada", "recibida", "cancelada")
 
 

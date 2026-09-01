@@ -169,6 +169,7 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
         "drill": drill or _blank_drill(),
         "reportes": reportes,
         "band": None,
+        "action_taken": None,
     }
 
 
@@ -235,9 +236,11 @@ def split_and_rank(items: list[dict]) -> tuple[list[dict], list[dict]]:
         (watch if band == "watch" else act).append(row)
 
     def act_key(it):
+        # Executed cards stay visible but sink below open work.
+        done = 1 if it.get("action_taken") else 0
         leak = 0 if it["id"] in LEAK_TODAY else 1
         has_monto = 0 if (it.get("monto") or 0) > 0 else 1
-        return (leak, has_monto, -(it.get("monto") or 0))
+        return (done, leak, has_monto, -(it.get("monto") or 0))
 
     act.sort(key=act_key)
     watch.sort(key=lambda i: -(i.get("monto") or 0))
@@ -251,7 +254,9 @@ def _is_watch(it: dict) -> bool:
 
 
 def badge_of(inbox: dict) -> int:
-    return len(inbox.get("act") or [])
+    """Open work only — a card whose proposal was already executed is done,
+    and counting it would keep nagging about finished work."""
+    return sum(1 for c in (inbox.get("act") or []) if not c.get("action_taken"))
 
 
 def visibles_para(items: list[dict], features) -> list[dict]:
@@ -266,12 +271,22 @@ def inbox(lang: str | None = None, features=None) -> dict:
     from . import analisis_cache
     composed = analisis_cache.get_o_computar(
         "prioridades", lang, lambda: _compose(lang))
-    items = visibles_para(list(composed["items"]), features)
+    # `composed` comes out of a PROCESS-LIFETIME cache (core/analisis_cache.py),
+    # so `action_taken` cannot be derived inside `_compose`: the first request
+    # would freeze "not done yet" into the cache and approving would never show
+    # up until the process restarted. Derive it here, per request, on shallow
+    # COPIES — with_action_taken() writes in place, and mutating the cached
+    # dicts would put the stale value straight back into the global cache.
+    # Cost is at most two small SELECTs (only quiebre_inminente and sobrecompra
+    # carry a proposal), and it is what makes cancelling an order release the
+    # card on the next load.
+    items = [dict(c) for c in visibles_para(list(composed["items"]), features)]
+    with_action_taken(items)
     act, watch = split_and_rank(items)
     return {
         "act": act,
         "watch": watch,
-        "badge": len(act),
+        "badge": badge_of({"act": act}),
         "hay_ventas": bool(composed.get("hay_ventas")),
         # Same items already carry `naturaleza` from the opportunity cards, so
         # this reuses the one canonical sum (opn.recuperable) instead of
@@ -280,6 +295,19 @@ def inbox(lang: str | None = None, features=None) -> dict:
         # Computed post-`visibles_para` so a role only sees its own exposure.
         "recuperable": opn.recuperable(cards_=items, lang=lang),
     }
+
+
+def with_action_taken(items: list[dict]) -> list[dict]:
+    """Mark each card whose proposal already produced a real record.
+
+    Derived per request from the domain table (see core/proposal_state.py),
+    so every user sees the same answer and a reload never resurrects a
+    proposal somebody already approved.
+    """
+    from . import proposal_state
+    for it in items:
+        it["action_taken"] = proposal_state.for_proposal(it.get("propuesta"), it["id"])
+    return items
 
 
 def _compose(lang) -> dict:
@@ -755,7 +783,10 @@ def _alerts_evolucion(lang) -> list[dict]:
                        "$", True) if serie else None
     for a in evolucion.alertas_de(pan, lang):
         out.append(_item(
-            id="caida_interanual", tono="rojo", chip=_t("core.prio.chip_riesgo", lang),
+            # tono=oro, not rojo: this id lives in WATCH_IDS (informational,
+            # own heading) — rojo is reserved for items in `act` so the
+            # section header color and the card's own accent never disagree.
+            id="caida_interanual", tono="oro", chip=_t("core.prio.chip_riesgo", lang),
             titulo=a["titulo"],
             resumen=a["detalle"],
             origen=["alerta:caida_interanual"],
