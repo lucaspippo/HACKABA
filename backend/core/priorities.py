@@ -755,7 +755,10 @@ def _alerts_evolucion(lang) -> list[dict]:
                        "$", True) if serie else None
     for a in evolucion.alertas_de(pan, lang):
         out.append(_item(
-            id="caida_interanual", tono="rojo", chip=_t("core.prio.chip_riesgo", lang),
+            # tono=oro, not rojo: this id lives in WATCH_IDS (informational,
+            # own heading) — rojo is reserved for items in `act` so the
+            # section header color and the card's own accent never disagree.
+            id="caida_interanual", tono="oro", chip=_t("core.prio.chip_riesgo", lang),
             titulo=a["titulo"],
             resumen=a["detalle"],
             origen=["alerta:caida_interanual"],

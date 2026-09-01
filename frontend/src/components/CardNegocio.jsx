@@ -1,5 +1,5 @@
-import { ArrowRight, ChevronRight, X, Check, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, ChevronRight, X, Check, Sparkles, Link2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { CuerpoConsulta } from "./Widget";
 import { pesoCorto, peso } from "../lib/format";
 import { useT } from "../lib/i18n";
@@ -108,18 +108,40 @@ const FEEDBACK_ACTIONS = [
   { action: "dismissed", lk: "aprendizaje.feedback_descartado" },
 ];
 
+// "dismissed" specifically drops the finding for good (core/pattern_feedback.py
+// removes it from ever resurfacing) — unlike "accepted"/"already_knew", which
+// are soft. That asymmetry earns it a one-tap confirm; the others stay
+// single-click so the common path isn't slowed down.
 export function FindingFeedback({ onFeedback, busy }) {
   const t = useT();
+  const [confirmando, setConfirmando] = useState(false);
   return (
     <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
       <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
-        {FEEDBACK_ACTIONS.map((f) => (
-          <button key={f.action} disabled={busy} onClick={() => onFeedback(f.action)}
-            className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
-            {t(f.lk)}
-          </button>
-        ))}
+        {FEEDBACK_ACTIONS.map((f) => {
+          if (f.action === "dismissed" && confirmando) {
+            return (
+              <span key={f.action} className="inline-flex items-center gap-1.5">
+                <button disabled={busy} onClick={() => onFeedback("dismissed")}
+                  className="rounded-full border border-rojo/40 bg-rojo/10 px-3.5 py-1.5 text-[0.82rem] font-semibold text-rojo disabled:opacity-50">
+                  {t("aprendizaje.feedback_descartar_confirmar")}
+                </button>
+                <button disabled={busy} onClick={() => setConfirmando(false)}
+                  className="text-[0.82rem] font-semibold text-tinta-suave hover:text-tinta">
+                  {t("aprendizaje.feedback_cancelar")}
+                </button>
+              </span>
+            );
+          }
+          return (
+            <button key={f.action} disabled={busy}
+              onClick={() => (f.action === "dismissed" ? setConfirmando(true) : onFeedback(f.action))}
+              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
+              {t(f.lk)}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -169,6 +191,39 @@ function ConfidenceBadge({ confidence }) {
   );
 }
 
+// The badge's `reason` was only readable via a hover title — invisible on
+// touch. Repeat it as plain text so the trust-building copy actually reaches
+// mobile users, not just desktop hover.
+function ConfidenceReason({ confidence }) {
+  if (!confidence?.level || !confidence?.reason) return null;
+  return (
+    <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{confidence.reason}</p>
+  );
+}
+
+// How many raw signals (alerts/opportunities/patterns) got merged into this
+// one card (core/priorities.py::merge_duplicates). Collapsed by default —
+// this is provenance for someone auditing "why does this exist", not
+// something that belongs in the primary reading path.
+function BasadoEn({ origen = [] }) {
+  const t = useT();
+  const [abierto, setAbierto] = useState(false);
+  if (origen.length < 2) return null;
+  return (
+    <div className="mt-3 text-[0.76rem] text-tinta-suave">
+      <button type="button" onClick={() => setAbierto((v) => !v)}
+        className="inline-flex items-center gap-1 font-semibold hover:text-tinta">
+        <Link2 size={11} /> {t("cardneg.basado_en", { n: origen.length })}
+      </button>
+      {abierto && (
+        <ul className="mt-1.5 space-y-0.5 pl-4">
+          {origen.map((o, i) => <li key={i} className="list-disc">{o}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function InvolucradoRow({ iv, onClick }) {
   // kind is required, not just id: an id without a recognized kind has
   // nowhere to navigate, and a clickable-looking row that silently no-ops
@@ -198,11 +253,23 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy, confidence,
+                               onFeedback, feedbackBusy, confidence, origen = [],
                                onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
+  const dialogRef = useRef(null);
+
+  // Self-contained so every caller (desktop panel+overlay, mobile overlay)
+  // gets the same behavior instead of each screen re-implementing Escape and
+  // initial focus: on open, move focus into the dialog; Esc closes it.
+  useEffect(() => {
+    if (panel || !onCerrar) return;
+    dialogRef.current?.focus();
+    const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panel, onCerrar]);
   const contenido = (
     <>
         <div className="flex items-start justify-between gap-3">
@@ -221,7 +288,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             )}
           </div>
           {!panel && onCerrar && (
-            <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+            <button onClick={onCerrar} aria-label={t("cardneg.cerrar")}
+              className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
           )}
         </div>
 
@@ -231,6 +299,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               <h3 className="text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
               <ConfidenceBadge confidence={confidence} />
             </div>
+            <ConfidenceReason confidence={confidence} />
             <div className="mt-1.5 space-y-1.5">
               {porque.map((p, i) => (
                 <p key={i} className="text-[0.92rem] leading-snug text-tinta">{p}</p>
@@ -284,6 +353,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </p>
         )}
 
+        <BasadoEn origen={origen} />
+
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>
   );
@@ -302,8 +373,9 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
-      <div onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta outline-none">
         <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
         {pie}
       </div>
