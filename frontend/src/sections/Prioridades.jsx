@@ -359,7 +359,12 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             <div>
               <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
               <p className="mt-1 text-[0.9rem] text-tinta-suave">
-                {act.length > 0 ? t("prioridades.sub_count", { n: act.length }) : t("prioridades.sub")}
+                {/* `badge`, not act.length: `act` keeps executed cards visible
+                    (greyed out, stamped "Hecho") while the badge counts only
+                    open work — the header must agree with the sidebar count. */}
+                {act.length > 0
+                  ? t("prioridades.sub_count", { n: data?.badge ?? act.length })
+                  : t("prioridades.sub")}
                 {data?.recuperable?.disponible && (
                   <span className="plata ml-2 font-semibold text-salvia">
                     · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
@@ -441,7 +446,14 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
           </div>
           {!overlay && selected && (
             <div className="min-w-0 flex-1 overflow-y-auto">
-              <DrillNegocio variante="panel" {...drillProps(selected)}
+              {/* Keyed by card: arrow-key navigation only swaps props, so an
+                  unkeyed drill would carry the previous card's local state
+                  over — an armed "¿Seguro? Sí, descartar" in FindingFeedback
+                  could then dismiss the WRONG finding on one click (and
+                  AngelaProposal's `postponed` / BasedOn's `expanded` would
+                  leak across cards too). Remounting resets all of them at once,
+                  the same way the parent-owned confirmingFloorReport is. */}
+              <DrillNegocio key={selectedId} variante="panel" {...drillProps(selected)}
                 acciones={drillAcciones(selected)} />
             </div>
           )}
@@ -449,7 +461,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       )}
 
       {overlay && selected && (
-        <DrillNegocio variante="overlay" {...drillProps(selected)}
+        <DrillNegocio key={selectedId} variante="overlay" {...drillProps(selected)}
           onCerrar={() => setSelectedId(null)}
           acciones={drillAcciones(selected, () => setSelectedId(null))} />
       )}

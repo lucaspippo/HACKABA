@@ -25,7 +25,7 @@ export default function AngelaProposal({ proposal, onApprove, working,
         <span className="plata font-semibold text-tinta">{actionTaken.label}</span>
         {actionTaken.actor && (
           <span className="text-tinta-suave">
-            · {t("angelaprop.hecho_por", { actor: actionTaken.actor })}
+            · {t("angelaprop.approved_by", { actor: actionTaken.actor })}
           </span>
         )}
         {actionTaken.date && (
@@ -36,7 +36,7 @@ export default function AngelaProposal({ proposal, onApprove, working,
         {actionTaken.onOpen && (
           <button type="button" onClick={actionTaken.onOpen}
             className="ml-auto inline-flex items-center gap-1 font-semibold text-tinta-suave hover:text-tinta">
-            {t("angelaprop.ver")} <ArrowRight size={13} />
+            {t("angelaprop.view")} <ArrowRight size={13} />
           </button>
         )}
       </div>
@@ -48,7 +48,7 @@ export default function AngelaProposal({ proposal, onApprove, working,
   return (
     <div className="mt-4 rounded-xl border border-violeta/25 bg-violeta/[0.05] p-4">
       <p className="flex items-center gap-1.5 text-[0.84rem] font-semibold text-violeta">
-        <AngelaMark size={14} /> {t("angelaprop.titulo")}
+        <AngelaMark size={14} /> {t("angelaprop.title")}
       </p>
       <p className="mt-1 font-display text-[1rem] font-bold leading-tight">{proposal.title}</p>
       {proposal.detail && (
@@ -57,14 +57,14 @@ export default function AngelaProposal({ proposal, onApprove, working,
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <button type="button" onClick={onApprove} disabled={working}
           className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
-          <Check size={15} /> {working ? t("angelaprop.trabajando") : t("angelaprop.aprobar")}
+          <Check size={15} /> {working ? t("angelaprop.working") : t("angelaprop.approve")}
         </button>
         <button type="button" onClick={() => { setPostponed(true); onDismiss?.(); }} disabled={working}
           className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
-          {t("angelaprop.despues")}
+          {t("angelaprop.later")}
         </button>
       </div>
-      <p className="mt-2 text-[0.72rem] leading-snug text-tinta-suave">{t("angelaprop.nota")}</p>
+      <p className="mt-2 text-[0.72rem] leading-snug text-tinta-suave">{t("angelaprop.note")}</p>
     </div>
   );
 }

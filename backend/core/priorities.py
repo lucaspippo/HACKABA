@@ -271,7 +271,17 @@ def inbox(lang: str | None = None, features=None) -> dict:
     from . import analisis_cache
     composed = analisis_cache.get_o_computar(
         "prioridades", lang, lambda: _compose(lang))
-    items = visibles_para(list(composed["items"]), features)
+    # `composed` comes out of a PROCESS-LIFETIME cache (core/analisis_cache.py),
+    # so `action_taken` cannot be derived inside `_compose`: the first request
+    # would freeze "not done yet" into the cache and approving would never show
+    # up until the process restarted. Derive it here, per request, on shallow
+    # COPIES — with_action_taken() writes in place, and mutating the cached
+    # dicts would put the stale value straight back into the global cache.
+    # Cost is at most two small SELECTs (only quiebre_inminente and sobrecompra
+    # carry a proposal), and it is what makes cancelling an order release the
+    # card on the next load.
+    items = [dict(c) for c in visibles_para(list(composed["items"]), features)]
+    with_action_taken(items)
     act, watch = split_and_rank(items)
     return {
         "act": act,
@@ -310,7 +320,6 @@ def _compose(lang) -> dict:
     merged = merge_duplicates(items)
     for it in merged:
         it["drill"]["confidence"] = confidence.level_for(it["drill"], lang)
-    with_action_taken(merged)
     hay_ventas = False
     try:
         from . import ventas
