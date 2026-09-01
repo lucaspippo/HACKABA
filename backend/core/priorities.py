@@ -628,19 +628,35 @@ def _alerts_deposito(lang) -> list[dict]:
 
 def _alerts_inventario(lang) -> list[dict]:
     from . import store
-    cv = (store.panorama().get("alertas") or {}).get("costo_viejo") or {}
+    pan = store.panorama()
+    cv = (pan.get("alertas") or {}).get("costo_viejo") or {}
     if not cv.get("cantidad"):
         return []
+    items = sorted(pan.get("grupos", {}).get("costo_viejo") or [],
+                   key=lambda d: -(d.get("inmovilizado") or 0))[:8]
     return [_item(
         id="costo_viejo", tono="oro", chip=_t("core.prio.chip_precio", lang),
         titulo=_t("core.prio.costo_viejo_t", lang),
         resumen=_t("core.prio.costo_viejo_r", lang, n=_num(cv["cantidad"], lang)),
         origen=["alerta:costo_viejo"], modulos=ALERT_MODULOS["costo_viejo"],
         cifra_texto=_num(cv["cantidad"], lang),
+        monto=round(sum(d.get("inmovilizado") or 0 for d in items), 2),
         fuentes=[_t("core.prio.f_costos", lang)],
         navegar="inventario",
         accion_chat=_t("core.prio.costo_viejo_chat", lang),
-        drill=_blank_drill(),
+        drill={
+            "porque": [_t("core.prio.costo_viejo_p", lang, n=_num(cv["cantidad"], lang))],
+            "grafico": _grafico(_t("core.prio.costo_viejo_g", lang),
+                                [{"x": d.get("descripcion") or "", "y": d.get("inmovilizado") or 0}
+                                 for d in items], "$", False),
+            "involucrados": [{"id": d.get("codigo"), "kind": "product",
+                              "nombre": d.get("descripcion") or "",
+                              "monto": d.get("inmovilizado") or 0,
+                              "detalle": _t("core.prio.costo_viejo_i", lang,
+                                            dias=d.get("antiguedad_costo_dias") or 0)}
+                             for d in items],
+            "supuestos": [],
+        },
     )]
 
 
