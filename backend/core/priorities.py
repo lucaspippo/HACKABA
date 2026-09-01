@@ -475,6 +475,7 @@ def _alerts_pagos(lang) -> list[dict]:
     pv = pagos.resumen()
     out = []
     if pv.get("pagos_vencidos"):
+        items = pagos.pagos_vencidos()[:8]
         out.append(_item(
             id="pago_vencido", tono="rojo", chip=_t("core.prio.chip_pagar", lang),
             titulo=_t("core.prio.pago_vencido_t", lang),
@@ -486,11 +487,22 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.pago_vencido_chat", lang),
-            drill={"porque": [_t("core.prio.pago_vencido_p", lang,
-                                 n=_num(pv["pagos_vencidos"], lang))],
-                   "grafico": None, "involucrados": [], "supuestos": []},
+            drill={
+                "porque": [_t("core.prio.pago_vencido_p", lang,
+                              n=_num(pv["pagos_vencidos"], lang))],
+                "grafico": _grafico(_t("core.prio.pago_vencido_g", lang),
+                                    [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
+                                     for x in items], "$", False),
+                "involucrados": [{"nombre": f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
+                                  "monto": x.get("monto"),
+                                  "detalle": _t("core.prio.pago_vencido_i", lang,
+                                                dias=x.get("dias_vencido") or 0)}
+                                 for x in items],
+                "supuestos": [],
+            },
         ))
     if pv.get("por_pagar_semana"):
+        items = pagos.pagos_por_vencer(7)[:8]
         out.append(_item(
             id="pago_semana", tono="azul", chip=_t("core.prio.chip_pagar", lang),
             titulo=_t("core.prio.pago_semana_t", lang),
@@ -501,9 +513,22 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.pago_semana_chat", lang),
-            drill=_blank_drill(),
+            drill={
+                "porque": [_t("core.prio.pago_semana_p", lang,
+                              monto=_pesos(pv["por_pagar_semana"], lang))],
+                "grafico": _grafico(_t("core.prio.pago_semana_g", lang),
+                                    [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
+                                     for x in items], "$", False),
+                "involucrados": [{"nombre": f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
+                                  "monto": x.get("monto"),
+                                  "detalle": _t("core.prio.pago_semana_i", lang,
+                                                dias=x.get("dias_restantes") or 0)}
+                                 for x in items],
+                "supuestos": [],
+            },
         ))
     if pv.get("cheques_cartera"):
+        items = pagos.cheques_en_cartera()[:8]
         out.append(_item(
             id="cheques", tono="azul", chip=_t("core.prio.chip_ver", lang),
             titulo=_t("core.prio.cheques_t", lang),
@@ -515,7 +540,19 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.cheques_chat", lang),
-            drill=_blank_drill(),
+            drill={
+                "porque": [_t("core.prio.cheques_p", lang, n=_num(pv["cheques_cartera"], lang),
+                              monto=_pesos(pv["cheques_total"], lang))],
+                "grafico": _grafico(_t("core.prio.cheques_g", lang),
+                                    [{"x": x.get("cliente") or "", "y": x.get("monto") or 0}
+                                     for x in items], "$", False),
+                "involucrados": [{"nombre": f"{x.get('cliente') or ''} {x.get('numero') or ''}".strip(),
+                                  "monto": x.get("monto"),
+                                  "detalle": _t("core.prio.cheques_i", lang,
+                                                banco=x.get("banco") or "")}
+                                 for x in items],
+                "supuestos": [],
+            },
         ))
     return out
 

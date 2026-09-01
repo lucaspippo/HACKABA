@@ -73,3 +73,20 @@ def test_caja_inusual_drill_has_chart(monkeypatch):
     a = out[0]
     assert a["drill"]["grafico"] is not None
     assert len(a["drill"]["grafico"]["series"][0]["puntos"]) == 6
+
+
+def test_pago_vencido_drill_has_chart_and_text_involucrados(monkeypatch):
+    from core import pagos
+    monkeypatch.setattr(pagos, "resumen", lambda: {
+        "pagos_vencidos": 1, "vencidos_total": 30_000, "por_pagar_semana": 0,
+        "cheques_cartera": 0, "cheques_total": 0})
+    monkeypatch.setattr(pagos, "pagos_vencidos", lambda: [
+        {"proveedor": "Proveedor Uno", "numero": "F-1", "monto": 30_000, "dias_vencido": 5}])
+    out = priorities._alerts_pagos("es")
+    pv = next(i for i in out if i["id"] == "pago_vencido")
+    assert pv["drill"]["grafico"] is not None
+    iv = pv["drill"]["involucrados"][0]
+    # No stable id exists on hand-entered pagos_proveedores rows (spec,
+    # scope decision) — involucrados here stay text-only, non-clickable.
+    assert iv.get("id") is None and iv.get("kind") is None
+    assert "Proveedor Uno" in iv["nombre"]
