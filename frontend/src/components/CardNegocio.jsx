@@ -1,6 +1,7 @@
-import { ArrowRight, ChevronRight, X, Check, Sparkles, Link2 } from "lucide-react";
+import { ArrowRight, ChevronRight, X, Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CuerpoConsulta } from "./Widget";
+import AngelaProposal from "./AngelaProposal";
 import { pesoCorto, peso } from "../lib/format";
 import { useT } from "../lib/i18n";
 
@@ -63,40 +64,6 @@ export function CardNegocio({ tono = "salvia", icon: Icon, chip, chipCls, titulo
 // P38·B — la PROPUESTA con aprobación dentro del drill: Ángela deja la acción
 // armada (una orden de compra, una promoción) y espera el OK. Aprobar no
 // ejecuta contra nadie: deja el borrador firmado. Human-in-the-loop visible.
-function Propuesta({ propuesta, onAprobar, resultado, trabajando }) {
-  const t = useT();
-  const [pospuesta, setPospuesta] = useState(false);
-  if (!propuesta || pospuesta) return null;
-  return (
-    <div className="mt-4 rounded-xl border border-violeta/25 bg-violeta/[0.05] p-4">
-      <p className="flex items-center gap-1.5 text-[0.84rem] font-semibold text-violeta">
-        <Sparkles size={14} /> {t("cardneg.prop_titulo")}
-      </p>
-      <p className="mt-1 font-display text-[1rem] font-bold leading-tight">{propuesta.titulo}</p>
-      {propuesta.detalle && <p className="mt-1 text-[0.88rem] leading-snug text-tinta">{propuesta.detalle}</p>}
-      {resultado ? (
-        <p className="mt-3 flex items-start gap-1.5 text-[0.86rem] font-semibold text-salvia">
-          <Check size={15} className="mt-0.5 shrink-0" /> {resultado}
-        </p>
-      ) : (
-        <>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button onClick={onAprobar} disabled={trabajando}
-              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
-              <Check size={15} /> {trabajando ? t("cardneg.prop_trabajando") : t("cardneg.prop_aprobar")}
-            </button>
-            <button onClick={() => setPospuesta(true)}
-              className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
-              {t("cardneg.prop_despues")}
-            </button>
-          </div>
-          <p className="mt-2 text-[0.72rem] leading-snug text-tinta-suave">{t("cardneg.prop_nota")}</p>
-        </>
-      )}
-    </div>
-  );
-}
-
 // Closing the loop on a finding (core/pattern_feedback.py, shared by
 // core/patrones.py and core/oportunidades_neg.py alike): the owner's
 // reaction to the SPECIFIC instance shown, so it doesn't resurface. Purely
@@ -270,7 +237,7 @@ function InvolucradoRow({ iv, onClick }) {
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
-                               propuesta, onAprobarPropuesta, propuestaResultado,
+                               propuesta, onAprobarPropuesta, actionTaken,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
                                onFeedback, feedbackBusy, confidence, origins = [],
@@ -375,8 +342,12 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </>
         )}
 
-        <Propuesta propuesta={propuesta} onAprobar={onAprobarPropuesta}
-          resultado={propuestaResultado} trabajando={propuestaTrabajando} />
+        <AngelaProposal
+          proposal={propuesta && { title: propuesta.titulo, detail: propuesta.detalle }}
+          onApprove={onAprobarPropuesta}
+          working={propuestaTrabajando}
+          actionTaken={actionTaken}
+        />
 
         {supuestos.length > 0 && (
           <p className="mt-3 rounded-lg bg-papel-hondo/50 px-3 py-2 text-[0.78rem] leading-snug text-tinta-suave">
