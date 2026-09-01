@@ -337,7 +337,8 @@ git commit -m "Add core/insight.py — the structured insight vocabulary"
 
 - [ ] **Step 1: Write the failing test**
 
-Replace `backend/tests/test_confidence.py` entirely:
+**Append** to `backend/tests/test_confidence.py`, keeping the existing `level_for`
+tests — that function is still live until Task 4:
 
 ```python
 """core/confidence.py — the two axes must move independently."""
@@ -414,7 +415,9 @@ Expected: FAIL — `AttributeError: module 'core.confidence' has no attribute 's
 
 - [ ] **Step 3: Add the six i18n keys**
 
-In `backend/i18n.py`, replace the existing `core.confidence.reason_*` entries with:
+**Add** these to `backend/i18n.py`. Do **not** remove the existing three
+`core.confidence.reason_*` entries — `level_for` still renders them until Task 4
+deletes it (see Step 4's note). Task 4 removes the orphaned keys.
 
 ```python
     "core.confidence.data_high": {
@@ -443,9 +446,13 @@ In `backend/i18n.py`, replace the existing `core.confidence.reason_*` entries wi
     },
 ```
 
-- [ ] **Step 4: Rewrite the module**
+- [ ] **Step 4: Add `split_for` alongside the existing `level_for`**
 
-Replace `backend/core/confidence.py` entirely:
+**Keep `level_for` exactly as it is.** `priorities._compose:322` still calls it, and
+deleting it here would break the import until Task 4 rewrites that call site. Task 4
+deletes `level_for`, its three `core.confidence.reason_*` keys, and the old tests
+together. Add the new module content below the existing `level_for`, sharing the
+module docstring:
 
 ```python
 """Confidence for a Prioridades card, split along the seam that matters.
@@ -847,12 +854,59 @@ def _legacy_drill(ins: dict) -> dict:
     }
 ```
 
-Change `_item`'s signature (`:146-149`): replace the `drill=None` keyword with `insight=None`, and replace the two dict entries (`:169`):
+Add the reverse shim next to `_legacy_drill`. **Without it, this task breaks every
+one of the ~25 builders the moment it lands** — they all still pass `drill=` until
+Tasks 5–9 migrate them:
 
 ```python
-        "insight": insight or _blank_insight(),
-        "drill": _legacy_drill(insight or _blank_insight()),  # TEMPORARY, Task 13
+def _insight_from_legacy_drill(drill: dict) -> dict:
+    """TEMPORARY reverse shim: wrap a not-yet-migrated builder's `drill` into a
+    minimal insight, so builders can migrate one task at a time instead of all
+    ~25 in a single commit. The pattern is the drill's first prose line; the
+    rest become supporting metrics with no value, which is honest — legacy
+    prose has no raw number to recover.
+
+    DELETE with `_legacy_drill` and the `drill=` keyword (Task 13)."""
+    from . import insight as ins
+    porque = list(drill.get("porque") or [])
+    evidence = []
+    if drill.get("grafico"):
+        evidence.append(ins.series("legacy_chart", label=porque[0] if porque else "",
+                                   chart=drill["grafico"],
+                                   method={"key": "core.method.legacy", "label": ""}))
+    if drill.get("involucrados"):
+        evidence.append(ins.records(
+            "legacy_records", label="",
+            rows=[ins.record(kind=iv.get("kind"), id=iv.get("id"),
+                             name=iv.get("nombre") or "", amount=iv.get("monto"),
+                             detail=iv.get("detalle"))
+                  for iv in drill["involucrados"]],
+            method={"key": "core.method.legacy", "label": ""}))
+    return ins.build(
+        pattern=ins.pattern(porque[0]) if porque else None,
+        evidence=evidence,
+        assumptions=[ins.assumption(s) for s in (drill.get("supuestos") or [])],
+    )
 ```
+
+Change `_item`'s signature (`:146-149`): keep `drill=None` **and** add `insight=None`.
+`insight=` is the real keyword; `drill=` is transitional. Replace the `"drill"` dict
+entry (`:169`) with:
+
+```python
+        "insight": insight or (_insight_from_legacy_drill(drill) if drill
+                               else _blank_insight()),
+        "drill": _legacy_drill(insight or (_insight_from_legacy_drill(drill) if drill
+                                           else _blank_insight())),  # TEMPORARY, Task 13
+```
+
+Extract that repeated expression into a local before the return rather than writing
+it twice.
+
+Also **delete `level_for` from `core/confidence.py`** and its three
+`core.confidence.reason_*` keys from `i18n.py` — this task replaces its only call
+site, and Task 2 deliberately left it alive for exactly this long. Delete its tests
+from `tests/test_confidence.py` in the same commit.
 
 Replace `_combine` (`:203-227`) — the merge rules are the fix for the duplication bug:
 
@@ -970,8 +1024,10 @@ Expected: the three merge tests PASS. The two `inbox()` tests still FAIL — no 
 
 - [ ] **Step 6: Run the full priorities suite for regressions**
 
-Run: `cd backend && python -m pytest tests/test_priorities.py tests/test_priorities_drill.py -v`
-Expected: everything that passed before still passes — the `_legacy_drill` shim keeps `drill` present and populated, so the existing drill tests are unaffected until Task 5 starts moving builders.
+Run: `cd backend && python -m pytest tests/test_priorities.py tests/test_priorities_drill.py tests/test_api.py -v`
+Expected: everything that passed before still passes. The two shims are what make this true: unmigrated builders still pass `drill=` and `_insight_from_legacy_drill` wraps it, then `_legacy_drill` renders it back, so `drill` stays present and populated for the untouched frontend and the existing drill tests.
+
+**If any test fails with `TypeError: _item() got an unexpected keyword argument 'drill'`, the `drill=` keyword was dropped — re-add it.** Removing it is Task 13's job, not this one.
 
 - [ ] **Step 7: Commit**
 
@@ -1949,7 +2005,11 @@ Expected: FAIL — the shim is still populating `drill`.
 
 - [ ] **Step 3: Delete the shim**
 
-Remove `_legacy_drill` from `priorities.py` and its three call sites: the `"drill":` entry in `_item`, the `out["drill"] =` line in `_combine`, and the `item["drill"] =` line in `_derive`.
+Remove **both** shims from `priorities.py`:
+- `_legacy_drill` and its three call sites: the `"drill":` entry in `_item`, the `out["drill"] =` line in `_combine`, and the `item["drill"] =` line in `_derive`.
+- `_insight_from_legacy_drill` **and the `drill=` keyword on `_item`**. Every builder passes `insight=` by now (Tasks 5–9), so nothing calls it. Verify with `grep -rn "drill" backend/core/ backend/angela.py` — the only surviving hits should be in comments or unrelated identifiers.
+
+The `drill`-free guard test below checks the payload, not the keyword; the grep is what confirms the keyword is gone.
 
 - [ ] **Step 4: Fix the stale badge assertion**
 
