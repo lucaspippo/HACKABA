@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Radar } from "lucide-react";
+import { ArrowRight, Radar, Check } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
@@ -53,6 +53,7 @@ function rowOf(it) {
 }
 
 function Fila({ item, selected, onOpen }) {
+  const t = useT();
   const acc = estiloAccion(item);
   const Icon = acc.icon;
   return (
@@ -66,6 +67,11 @@ function Fila({ item, selected, onOpen }) {
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${acc.cls}`}>
           <Icon size={11} /> {item.chip}
         </span>
+        {item.actionTaken && (
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-[0.68rem] font-semibold text-salvia">
+            <Check size={10} /> {t("prioridades.done")}
+          </span>
+        )}
         <span className="mt-1 block text-[0.9rem] leading-snug text-tinta line-clamp-2">{item.titulo}</span>
       </span>
       {item.monto ? (

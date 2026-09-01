@@ -623,6 +623,7 @@ export const ES = {
   "prioridades.accion_pagar": "Pagar",
   "prioridades.accion_deposito": "Depósito",
   "prioridades.accion_ver": "Mirar",
+  "prioridades.done": "Hecho",
   // P35·E6 — mapa simple (mobile, read-only)
   "mapasimple.volver": "Volver a Hoy",
   "mapasimple.cruces": "{n} cruces",
