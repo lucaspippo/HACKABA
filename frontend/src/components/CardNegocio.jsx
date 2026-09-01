@@ -1,4 +1,4 @@
-import { ArrowRight, X, Check, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronRight, X, Check, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { CuerpoConsulta } from "./Widget";
 import { pesoCorto, peso } from "../lib/format";
@@ -125,17 +125,59 @@ export function FindingFeedback({ onFeedback, busy }) {
   );
 }
 
+// Evidence pills: the same clickable treatment for both "Fuentes" (which
+// section the numbers came from) and "Involucrados" (which specific record).
+// Fuentes all point at the card's single `navegar` target (there's no
+// per-source routing yet) — still a real jump, not a fabricated one.
+function FuentePill({ label, onClick }) {
+  const clickable = !!onClick;
+  const Tag = clickable ? "button" : "span";
+  return (
+    <Tag
+      type={clickable ? "button" : undefined}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-2.5 py-1 text-[0.74rem] font-medium text-tinta-suave ${
+        clickable ? "transition-colors hover:border-hielo/40 hover:text-hielo" : ""
+      }`}
+    >
+      {label}
+      {clickable && <ArrowRight size={11} />}
+    </Tag>
+  );
+}
+
+function InvolucradoRow({ iv, onClick }) {
+  const clickable = !!onClick && iv.id != null;
+  const Tag = clickable ? "button" : "div";
+  return (
+    <Tag
+      type={clickable ? "button" : undefined}
+      onClick={clickable ? () => onClick(iv) : undefined}
+      className={`flex w-full items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-left text-[0.86rem] last:border-0 ${
+        clickable ? "transition-colors hover:bg-papel-hondo/50" : ""
+      }`}
+    >
+      <span className="min-w-0 flex-1">{iv.nombre}{iv.detalle && <span className="text-tinta-suave"> — {iv.detalle}</span>}</span>
+      <span className="flex shrink-0 items-center gap-1">
+        {iv.monto != null && <span className="plata font-medium text-hielo">{pesoCorto(iv.monto)}</span>}
+        {clickable && <ChevronRight size={14} className="text-tinta-suave" />}
+      </span>
+    </Tag>
+  );
+}
+
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy }) {
+                               onFeedback, feedbackBusy,
+                               onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
-  const body = (
+  const contenido = (
     <>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -173,6 +215,17 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </>
         )}
 
+        {fuentes.length > 0 && (
+          <>
+            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_fuentes")}</h3>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {fuentes.map((f, i) => (
+                <FuentePill key={i} label={f} onClick={onVerFuentes} />
+              ))}
+            </div>
+          </>
+        )}
+
         {grafico && (
           <div className="mt-4 rounded-xl border border-linea bg-papel p-3">
             <CuerpoConsulta resultado={grafico} t={t} />
@@ -187,10 +240,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_involucrados")}</h3>
             <div className="mt-1.5 overflow-hidden rounded-xl border border-linea">
               {involucrados.map((iv, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-[0.86rem] last:border-0">
-                  <span className="min-w-0 flex-1">{iv.nombre}{iv.detalle && <span className="text-tinta-suave"> — {iv.detalle}</span>}</span>
-                  {iv.monto != null && <span className="plata shrink-0 font-medium text-hielo">{pesoCorto(iv.monto)}</span>}
-                </div>
+                <InvolucradoRow key={i} iv={iv} onClick={onVerInvolucrado} />
               ))}
             </div>
           </>
@@ -205,27 +255,28 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </p>
         )}
 
-        {fuentes.length > 0 && (
-          <p className="mt-3 text-[0.72rem] text-tinta-suave/80">{t("cardneg.cruce")} {fuentes.join(" · ")}</p>
-        )}
-
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
-
-        {acciones && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-linea pt-4">
-            {acciones}
-          </div>
-        )}
     </>
   );
+  const pie = acciones && (
+    <div className="shrink-0 border-t border-linea bg-crema px-6 py-4">
+      <div className="flex flex-wrap items-center gap-2">{acciones}</div>
+    </div>
+  );
   if (panel) {
-    return <div className="h-full overflow-y-auto p-6">{body}</div>;
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        {pie}
+      </div>
+    );
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
       <div onClick={(e) => e.stopPropagation()}
-        className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
-        {body}
+        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta">
+        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        {pie}
       </div>
     </div>
   );
