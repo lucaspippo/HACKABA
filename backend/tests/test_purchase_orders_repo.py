@@ -40,11 +40,11 @@ def test_upsert_from_odoo_crea_y_luego_actualiza_por_number(db_tenant):
     assert sum(1 for o in todas if o["numero"] == "P00099") == 1
 
 
-def test_find_draft_matches_only_when_codigo_is_none(db_tenant):
-    """Faithful port of the pre-existing (buggy) JSON-file idempotency check
-    — see the comment on purchase_orders_repo.find_draft(). A non-None
-    codigo never matches, since the original never stored one at the order's
-    top level either."""
+def test_find_draft_none_codigo_does_not_match_item_with_a_codigo(db_tenant):
+    """find_draft(codigo=None) must not match a draft whose stored item has a
+    real codigo — it only matches a draft whose item codigo is also None.
+    (Before the fix, a None codigo matched the first draft found for the
+    origin regardless of that draft's own item codigo.)"""
     orden = {
         "numero": "OC-2026-0901", "fecha": "2026-08-24", "proveedor": "Molinos SA",
         "estado": "borrador", "origen": "quiebre_inminente", "motivo": "",
@@ -52,7 +52,35 @@ def test_find_draft_matches_only_when_codigo_is_none(db_tenant):
         "preparada": "2026-08-24T10:00:00", "items": [{"codigo": 1, "producto": "Harina", "cantidad": 50}],
     }
     purchase_orders_repo.create(db_tenant, orden)
-    assert purchase_orders_repo.find_draft(db_tenant, codigo=1, origen="quiebre_inminente") is None
     found = purchase_orders_repo.find_draft(db_tenant, codigo=None, origen="quiebre_inminente")
+    assert found is None
+
+
+def _draft(numero, codigo, origen="quiebre_inminente"):
+    return {
+        "numero": numero, "fecha": "2026-08-24", "proveedor": "Molinos SA",
+        "estado": "borrador", "origen": origen, "motivo": "",
+        "preparada_por": "Ángela", "aprobada_por": "emilio",
+        "preparada": "2026-08-24T10:00:00",
+        "items": [{"codigo": codigo, "producto": "Harina", "cantidad": 50}],
+    }
+
+
+def test_find_draft_matches_on_item_codigo(db_tenant):
+    purchase_orders_repo.create(db_tenant, _draft("OC-2026-0901", 7))
+    found = purchase_orders_repo.find_draft(db_tenant, codigo=7,
+                                            origen="quiebre_inminente")
     assert found is not None
     assert found["numero"] == "OC-2026-0901"
+
+
+def test_find_draft_ignores_other_codigo_same_origin(db_tenant):
+    purchase_orders_repo.create(db_tenant, _draft("OC-2026-0901", 7))
+    assert purchase_orders_repo.find_draft(
+        db_tenant, codigo=8, origen="quiebre_inminente") is None
+
+
+def test_find_draft_ignores_other_origin(db_tenant):
+    purchase_orders_repo.create(db_tenant, _draft("OC-2026-0901", 7, origen="sobrecompra"))
+    assert purchase_orders_repo.find_draft(
+        db_tenant, codigo=7, origen="quiebre_inminente") is None
