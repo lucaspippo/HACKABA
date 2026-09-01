@@ -3230,6 +3230,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.atraso_chat": {
         "es": "¿Qué hago con {nombre}, que se atrasó de más?",
         "en": "What should I do about {nombre}, who is later than usual?"},
+    "core.prio.atraso_i": {"es": "sin pagar hace {dias} días", "en": "unpaid for {dias} days"},
     "core.prio.quiebre_t": {"es": "Productos que se están por acabar",
                             "en": "Products about to run out"},
     "core.prio.quiebre_r": {"es": "{n} SKU debajo de la cobertura de reposición.",
@@ -3238,6 +3239,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "{n} active products with demand will not last until the next restock."},
     "core.prio.quiebre_chat": {"es": "¿Qué tengo que reponer ya?",
                               "en": "What do I need to restock now?"},
+    "core.prio.quiebre_i": {"es": "{dias} días de cobertura",
+                            "en": "{dias} days of coverage"},
     "core.prio.pago_vencido_t": {"es": "Pagos a proveedores ya vencidos",
                                 "en": "Vendor payments already due"},
     "core.prio.pago_vencido_r": {"es": "{n} pagos, {monto}.",
