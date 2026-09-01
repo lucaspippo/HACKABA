@@ -95,6 +95,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "notificación inexistente",
         "en": "no such notification",
     },
+    "api.patron_inexistente": {
+        "es": "Ese hallazgo ya no está activo (puede que alguien ya haya opinado sobre él).",
+        "en": "That finding isn't live anymore (someone may have already given feedback on it).",
+    },
     "api.recordatorio_ajeno": {
         "es": "Esa tarea es de otra persona.",
         "en": "That task belongs to someone else.",
@@ -1703,6 +1707,66 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.sobre_prop_t": {"es": "Pedir sólo lo que se vende", "en": "Order only what sells"},
     "core.opn.sobre_prop_d": {"es": "Orden de {sug} de {producto} a {proveedor}, en vez de las {oferta} que te empujan.",
                                "en": "Order {sug} of {producto} from {proveedor}, instead of the {oferta} they're pushing."},
+
+    # --- core/patrones.py — continuous learning: patterns nobody asked to have calculated --
+    "core.pat.combo_t": {
+        "es": "{a} y {b} viajan juntos casi siempre",
+        "en": "{a} and {b} almost always travel together"},
+    "core.pat.combo_r_falta": {
+        "es": "{pct}% de los pedidos con {a} también llevan {b} — pero {n} no, y ahí se está perdiendo una venta cruzada.",
+        "en": "{pct}% of the orders with {a} also carry {b} — but {n} didn't, and that's a missed cross-sell."},
+    "core.pat.combo_r_conjunto": {
+        "es": "{pct}% de los pedidos con {a} también llevan {b}: un combo tácito que nadie armó todavía.",
+        "en": "{pct}% of the orders with {a} also carry {b}: an unofficial combo nobody's set up yet."},
+    "core.pat.combo_monto_label_potencial": {
+        "es": "venta cruzada sin aprovechar", "en": "unrealized cross-sell"},
+    "core.pat.combo_monto_label_conjunto": {
+        "es": "facturación conjunta ya detectada", "en": "combined revenue already detected"},
+    "core.pat.combo_chat": {
+        "es": "Contame más sobre el combo de {a} y {b}.",
+        "en": "Tell me more about the {a} and {b} combo."},
+    "core.pat.combo_q1": {
+        "es": "Crucé los {n} pedidos de los últimos {clientes} clientes que llevaron {a}: {pct}% de esas veces, {b} viajó en el mismo pedido. Eso no es casualidad — nadie lo cargó como combo, pero el patrón está en los datos.",
+        "en": "I crossed the {n} orders from the {clientes} customers who bought {a}: {pct}% of those times, {b} rode along in the same order. That's not chance — nobody set it up as a combo, but the pattern is right there in the data."},
+    "core.pat.combo_q2_falta": {
+        "es": "Las {n} veces que faltó, es plata que se dejó arriba del mostrador: armar el combo (o simplemente ofrecerlo al cerrar el pedido) puede cerrar esa brecha.",
+        "en": "The {n} times it was missing, that's money left on the counter: setting up the combo (or just offering it when closing the order) can close that gap."},
+    "core.pat.combo_q2_conjunto": {
+        "es": "Hoy esa plata ya entra, pero entra como dos ventas sueltas: empaquetarla (o negociarla junta con el proveedor) puede subir el ticket promedio de quien ya compra los dos.",
+        "en": "That money already comes in today, but as two separate sales: bundling it (or negotiating it jointly with the supplier) can lift the average ticket for whoever already buys both."},
+    "core.pat.combo_i_falta": {
+        "es": "se llevó {a} el {fecha} sin {b}", "en": "bought {a} on {fecha} without {b}"},
+    "core.pat.combo_i_conjunto": {
+        "es": "{fecha}: se llevó los dos juntos", "en": "{fecha}: bought both together"},
+    "core.pat.combo_s1": {
+        "es": "Supuesto: cruce sobre los pedidos abiertos en renglones (qué se lleva cada cliente), no sobre el total facturado.",
+        "en": "Assumption: crossed over itemized orders (what each customer takes home), not over total billing."},
+    "core.pat.combo_g": {"es": "Pedidos con {a}", "en": "Orders with {a}"},
+    "core.pat.combo_g_con": {"es": "con {b}", "en": "with {b}"},
+    "core.pat.combo_g_sin": {"es": "sin {b}", "en": "without {b}"},
+
+    "core.pat.caja_t": {
+        "es": "Cada {dia} la caja falta mucho más que el resto de la semana",
+        "en": "Every {dia} the till comes up short far more than the rest of the week"},
+    "core.pat.caja_r": {
+        "es": "Faltó en el {pct}% de los cierres de {dia} (vs {pct_resto}% el resto), {total} acumulado en {n} cierres.",
+        "en": "Came up short in {pct}% of {dia} closes (vs {pct_resto}% the rest of the week), {total} accumulated over {n} closes."},
+    "core.pat.caja_chat": {
+        "es": "¿Por qué falta tanto la caja los días {dia}?",
+        "en": "Why does the till come up short so often on {dia}s?"},
+    "core.pat.caja_q1": {
+        "es": "De los últimos {n} cierres de {dia}, {faltan} tuvieron faltante — {pct}% de las veces, contra {pct_resto}% el resto de los días de la semana.",
+        "en": "Of the last {n} {dia} closes, {faltan} came up short — {pct}% of the time, against {pct_resto}% the rest of the week."},
+    "core.pat.caja_q2": {
+        "es": "Nadie lo comparó día por día antes: el promedio general de la semana lo tapa. Sumado, son {total} que se fueron sin explicación los días {dia} de este período.",
+        "en": "Nobody compared it day-by-day before: the week's overall average hides it. Added up, that's {total} that went unexplained on {dia}s in this period."},
+    "core.pat.caja_s1": {
+        "es": "Supuesto: compara el faltante promedio de cada día de la semana contra el resto, sobre el historial de cierres disponible.",
+        "en": "Assumption: compares each weekday's average shortfall against the rest, over the available close history."},
+    "core.pat.caja_i": {
+        "es": "{fecha}: faltaron {monto}", "en": "{fecha}: short by {monto}"},
+    "core.pat.caja_g": {"es": "Faltante por cierre", "en": "Shortfall per close"},
+
     # P38·C — los grupos del canal MOSTRADOR (locales propios). El mismo fiambre
     # feteado o entero son dos negocios distintos: por eso son dos grupos.
     # P38·H — vencimientos gestionados (no un campo que nadie mira)
@@ -3136,6 +3200,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.chip_deposito": {"es": "Depósito", "en": "Warehouse"},
     "core.prio.chip_equipo": {"es": "Tu equipo", "en": "Your team"},
     "core.prio.chip_ver": {"es": "Mirar", "en": "Watch"},
+    "core.prio.chip_revisar": {"es": "Revisar", "en": "Review"},
     "core.prio.f_cuentas": {"es": "Cuentas corrientes", "en": "Receivables"},
     "core.prio.f_stock": {"es": "Stock", "en": "Stock"},
     "core.prio.f_ventas": {"es": "Ventas", "en": "Sales"},
@@ -3165,6 +3230,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.atraso_chat": {
         "es": "¿Qué hago con {nombre}, que se atrasó de más?",
         "en": "What should I do about {nombre}, who is later than usual?"},
+    "core.prio.atraso_i": {"es": "sin pagar hace {dias} días", "en": "unpaid for {dias} days"},
     "core.prio.quiebre_t": {"es": "Productos que se están por acabar",
                             "en": "Products about to run out"},
     "core.prio.quiebre_r": {"es": "{n} SKU debajo de la cobertura de reposición.",
@@ -3173,6 +3239,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "{n} active products with demand will not last until the next restock."},
     "core.prio.quiebre_chat": {"es": "¿Qué tengo que reponer ya?",
                               "en": "What do I need to restock now?"},
+    "core.prio.quiebre_i": {"es": "{dias} días de cobertura",
+                            "en": "{dias} days of coverage"},
     "core.prio.pago_vencido_t": {"es": "Pagos a proveedores ya vencidos",
                                 "en": "Vendor payments already due"},
     "core.prio.pago_vencido_r": {"es": "{n} pagos, {monto}.",
@@ -3181,16 +3249,26 @@ CATALOGO: dict[str, dict[str, str]] = {
                                 "en": "There are {n} overdue payments."},
     "core.prio.pago_vencido_chat": {"es": "Mostrame los pagos vencidos a proveedores.",
                                    "en": "Show me the overdue vendor payments."},
+    "core.prio.pago_vencido_g": {"es": "Facturas vencidas por monto", "en": "Overdue bills by amount"},
+    "core.prio.pago_vencido_i": {"es": "vencida hace {dias} días", "en": "overdue by {dias} days"},
     "core.prio.pago_semana_t": {"es": "A pagar esta semana",
                                "en": "Due this week"},
     "core.prio.pago_semana_r": {"es": "{monto} de acá a 7 días.",
                                "en": "{monto} in the next 7 days."},
+    "core.prio.pago_semana_p": {"es": "Vencen esta semana {monto} en facturas de proveedores.",
+                                "en": "{monto} in vendor bills are due this week."},
+    "core.prio.pago_semana_g": {"es": "Por pagar esta semana, por monto", "en": "Due this week, by amount"},
+    "core.prio.pago_semana_i": {"es": "vence en {dias} días", "en": "due in {dias} days"},
     "core.prio.pago_semana_chat": {"es": "¿Qué tengo que pagar esta semana?",
                                   "en": "What do I have to pay this week?"},
     "core.prio.cheques_t": {"es": "Cheques en cartera",
                            "en": "Cheques on hand"},
     "core.prio.cheques_r": {"es": "{n} cheques, {monto}.",
                            "en": "{n} cheques, {monto}."},
+    "core.prio.cheques_p": {"es": "Tenés {n} cheques en cartera por {monto}.",
+                            "en": "You have {n} checks in hand worth {monto}."},
+    "core.prio.cheques_g": {"es": "Cheques en cartera por monto", "en": "Checks in hand by amount"},
+    "core.prio.cheques_i": {"es": "banco {banco}", "en": "bank {banco}"},
     "core.prio.cheques_chat": {"es": "¿Cómo están los cheques en cartera?",
                               "en": "How do the cheques on hand look?"},
     "core.prio.dep_vencidos_t": {"es": "Lotes ya vencidos",
@@ -3205,6 +3283,18 @@ CATALOGO: dict[str, dict[str, str]] = {
                                  "en": "{n} lots in the alert window."},
     "core.prio.dep_porvencer_chat": {"es": "¿Qué vence pronto en el depósito?",
                                     "en": "What expires soon in the warehouse?"},
+    "core.prio.dep_vencidos_p": {
+        "es": "{n} lotes, {monto}, ya pasaron su fecha de vencimiento.",
+        "en": "{n} lots, {monto}, are already past their expiration date."},
+    "core.prio.dep_vencidos_g": {"es": "Lotes vencidos por valor", "en": "Expired lots by value"},
+    "core.prio.dep_vencidos_i": {"es": "vencido hace {dias} días", "en": "expired {dias} days ago"},
+    "core.prio.dep_vencidos_s": {"es": "Valor calculado al costo con IVA cargado en el catálogo.",
+                                 "en": "Value computed at the catalog's costo_iva."},
+    "core.prio.dep_porvencer_p": {
+        "es": "{n} lotes entran en la ventana de vencimiento próximo.",
+        "en": "{n} lots are entering the upcoming-expiration window."},
+    "core.prio.dep_porvencer_g": {"es": "Lotes por vencer por valor", "en": "Expiring lots by value"},
+    "core.prio.dep_porvencer_i": {"es": "vence en {dias} días", "en": "expires in {dias} days"},
     "core.prio.dep_discrep_t": {"es": "El físico no cierra con el sistema",
                                "en": "Physical count doesn't match the system"},
     "core.prio.dep_discrep_r": {"es": "{n} diferencias stock físico vs contable.",
@@ -3221,20 +3311,40 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "{n} lots, {monto}, won't sell at the current pace before they expire."},
     "core.prio.venc_riesgo_chat": {"es": "¿Qué lotes no llego a vender antes de que venzan?",
                                   "en": "Which lots won't I sell before they expire?"},
+    "core.prio.venc_riesgo_g": {"es": "Lotes en riesgo por plata expuesta",
+                                "en": "At-risk lots by exposed value"},
+    "core.prio.venc_riesgo_i": {"es": "vence en {dias} días", "en": "expires in {dias} days"},
+    "core.prio.venc_riesgo_s": {"es": "Ritmo de venta = unidades de los últimos 12 meses / 365.",
+                                "en": "Sale pace = last 12 months' units / 365."},
     "core.prio.costo_viejo_t": {"es": "Costos sin actualizar hace más de un año",
                                "en": "Costs not updated in over a year"},
     "core.prio.costo_viejo_r": {"es": "{n} productos con costo viejo. El margen que ves no es real.",
                                "en": "{n} products with a stale cost. The margin you see isn't real."},
     "core.prio.costo_viejo_chat": {"es": "¿Qué costos tengo que actualizar?",
                                   "en": "Which costs do I need to update?"},
+    "core.prio.costo_viejo_p": {"es": "{n} productos tienen su costo cargado hace más de un año.",
+                                "en": "{n} products have a cost loaded over a year ago."},
+    "core.prio.costo_viejo_g": {"es": "Costo desactualizado por plata parada",
+                                "en": "Outdated cost by immobilized value"},
+    "core.prio.costo_viejo_i": {"es": "costo cargado hace {dias} días",
+                                "en": "cost loaded {dias} days ago"},
     "core.prio.caja_t": {"es": "La caja del día está fuera de lo habitual",
                         "en": "Today's till is off the usual range"},
     "core.prio.caja_r": {"es": "Hoy {total} contra un promedio de {prom}.",
                         "en": "Today {total} vs an average of {prom}."},
     "core.prio.caja_chat": {"es": "¿Por qué la caja de hoy está rara?",
                            "en": "Why does today's till look unusual?"},
+    "core.prio.caja_g": {"es": "Total de caja, últimos cierres", "en": "Cash total, recent closes"},
+    "core.prio.caja_hoy": {"es": "Hoy", "en": "Today"},
+    "core.prio.caja_p": {"es": "El cierre de hoy ({total}) se desvía {pct}% del promedio de los últimos cierres ({prom}).",
+                         "en": "Today's close ({total}) deviates {pct}% from the recent average ({prom})."},
+    "core.prio.caja_s": {"es": "Promedio de los últimos cierres con caja positiva.",
+                         "en": "Average of recent closes with a positive cash total."},
     "core.prio.caida_chat": {"es": "Explícame la caída interanual de la venta real.",
                             "en": "Explain the year-over-year drop in real sales."},
+    "core.prio.caida_g": {"es": "Facturación real, mes a mes", "en": "Real revenue, month by month"},
+    "core.prio.caida_s": {"es": "Deflactado con el IPC del último mes disponible.",
+                          "en": "Deflated using the latest available CPI month."},
     "core.prio.pico_t": {"es": "Se viene un pico de compra",
                         "en": "A buying peak is coming"},
     "core.prio.pico_p": {"es": "En {mes} pega {cat}.",
@@ -3296,6 +3406,15 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Este producto no tiene ventas en el año: no hay ritmo para proyectar cuándo se acaba.",
         "en": "This product has no sales in the year, so there's no rate to project a stockout.",
     },
+    "core.confidence.reason_high": {
+        "es": "Basado en {points} datos, sin supuestos adicionales.",
+        "en": "Based on {points} data points, no additional assumptions."},
+    "core.confidence.reason_medium": {
+        "es": "Basado en {points} datos y {assumptions} supuesto(s).",
+        "en": "Based on {points} data points and {assumptions} assumption(s)."},
+    "core.confidence.reason_low": {
+        "es": "Datos limitados: {points} datos y {assumptions} supuesto(s).",
+        "en": "Limited data: {points} data points and {assumptions} assumption(s)."},
 }
 
 
@@ -3313,6 +3432,22 @@ def mes_nombre(numero: int, lang: str | None = None) -> str:
     """Nombre del mes 1..12 en el idioma pedido (default el del tenant)."""
     lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
     return MESES.get(lang, MESES["es"])[numero - 1]
+
+
+# Weekday names (0=Monday..6=Sunday, same index as datetime.date.weekday())
+# — for findings that call out ONE specific day (core/patrones.py: the cash
+# shortfall pattern that repeats on a fixed weekday).
+WEEKDAYS = {
+    "es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+}
+
+
+def weekday_name(weekday: int, lang: str | None = None) -> str:
+    """Name of weekday 0=Monday..6=Sunday (`datetime.date.weekday()`) in the
+    requested language (defaults to the tenant's)."""
+    lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
+    return WEEKDAYS.get(lang, WEEKDAYS["es"])[weekday]
 
 
 # Rubros del dataset (los 8 `tipo` finitos). El valor crudo español es la clave

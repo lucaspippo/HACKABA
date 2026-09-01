@@ -484,6 +484,21 @@ def generar_ventas_por_cliente(arts, cuentas_, ventas):
                     continue
                 vistos.add(a["codigo"])
                 elegidos.append(a)
+            # Mate isn't drunk alone: an order that already has yerba, most
+            # of the time (not always — the gap IS the opportunity) also
+            # picks up sugar from the same basket. Nobody ever set that
+            # combo up on purpose: it's a pattern that lives in the orders,
+            # waiting for "combo_no_percibido" to notice it.
+            mate = next((a for a in elegidos if a["descripcion"].startswith("YERBA")), None)
+            sugar = next((a for a in canasta if a["descripcion"].startswith("AZUCAR")
+                          and a["codigo"] not in vistos), None)
+            if mate and sugar and len(elegidos) >= 3 and RC.random() < 0.8:
+                swap_at = next((i for i in range(len(elegidos) - 1, -1, -1)
+                                if elegidos[i] is not mate), None)
+                if swap_at is not None:
+                    vistos.discard(elegidos[swap_at]["codigo"])
+                    vistos.add(sugar["codigo"])
+                    elegidos[swap_at] = sugar
             partes = [RC.uniform(0.6, 1.6) for _ in elegidos]
             suma = sum(partes)
             items, acumulado = [], 0.0
@@ -545,7 +560,17 @@ def generar_caja():
         if f.weekday() == 6:  # domingo cerrado
             continue
         total = round(R.uniform(2_200_000, 4_900_000) * (1.25 if f.weekday() == 5 else 1.0))
-        dif = R.choice([0, 0, 0, 0, 0, 0, 0, -R.randint(500, 8000), R.randint(500, 5000)])
+        # Same pair of draws as before (same ranges, same list length for
+        # R.choice): the shared Random stays BYTE IDENTICAL for everything
+        # generated afterward. The only thing that changes is what we build
+        # with them: on Saturdays (busier till, more rush, a backup cashier)
+        # the shortfall shows up far more often than the rest of the week —
+        # a pattern "faltante_caja_patron" can find, that a plain average hides.
+        shortfall, overage = R.randint(500, 8000), R.randint(500, 5000)
+        options = ([0, 0, -shortfall, -shortfall, -shortfall, -shortfall, -shortfall, -shortfall, overage]
+                   if f.weekday() == 5 else
+                   [0, 0, 0, 0, 0, 0, 0, -shortfall, overage])
+        dif = R.choice(options)
         hist.append({"fecha": f.isoformat(), "total": total, "diferencia": dif})
     caja = {
         "abierta": True, "fecha": HOY.isoformat(), "saldo_inicial": 250_000,

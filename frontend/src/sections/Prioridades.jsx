@@ -12,7 +12,7 @@ import { pesoCorto } from "../lib/format";
 import { useT, tRol } from "../lib/i18n";
 import { accionDe, estiloAccion } from "../lib/prioridadAccion";
 
-const OVERLAY_BELOW = 1200;
+const OVERLAY_BELOW = 760;
 
 let _cachePrio = { lang: null, data: null };
 
@@ -31,6 +31,14 @@ function EmptyNoData({ onNavegar, onPreguntar }) {
         </button>
       </div>
     </div>
+  );
+}
+
+function HotkeyBadge({ children }) {
+  return (
+    <kbd className="ml-0.5 rounded border border-current/25 px-1 text-[0.64rem] font-semibold opacity-70">
+      {children}
+    </kbd>
   );
 }
 
@@ -78,6 +86,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [equipo, setEquipo] = useState([]);
   const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const rootRef = useRef(null);
 
   const cargar = () => {
@@ -115,16 +124,46 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   );
   const byId = Object.fromEntries(todos.map((i) => [i.id, i]));
   const selected = byId[selectedId] || null;
+  const visible = useMemo(
+    () => (filtro ? todos.filter((i) => accionDe(i) === filtro) : todos),
+    [todos, filtro],
+  );
 
   useEffect(() => {
-    const visible = filtro ? todos.filter((i) => accionDe(i) === filtro) : todos;
     if (selectedId && visible.some((i) => i.id === selectedId)) return;
     if (overlay) {
       if (selectedId) setSelectedId(null);
       return;
     }
     setSelectedId(visible[0]?.id ?? null);
-  }, [todos, filtro, overlay, selectedId]);
+  }, [visible, overlay, selectedId]);
+
+  // Power-user navigation: arrows walk the visible list, digits fire the
+  // Nth quick-action button in the current drill panel's footer (see the
+  // `data-quick-action` attributes in drillAcciones), Esc closes the
+  // overlay. Ignored while the focus is on a real input so typing in
+  // Ángela's chat box or the "adopt" dropdown never gets hijacked.
+  useEffect(() => {
+    const onKey = (e) => {
+      const el = document.activeElement;
+      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"
+        || el.tagName === "SELECT" || el.isContentEditable);
+      if (typing || !visible.length) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const i = visible.findIndex((it) => it.id === selectedId);
+        const step = e.key === "ArrowDown" ? 1 : -1;
+        const next = visible[(i + step + visible.length) % visible.length];
+        setSelectedId(next.id);
+      } else if (e.key === "Escape" && overlay && selectedId) {
+        setSelectedId(null);
+      } else if (/^[1-9]$/.test(e.key) && selectedId) {
+        document.querySelector(`[data-quick-action="${e.key}"]`)?.click();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [visible, selectedId, overlay]);
 
   const aprobarPropuesta = async (c) => {
     const p = c.propuesta;
@@ -154,6 +193,24 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     }
   };
 
+  // Only ids core/oportunidades_neg.py or core/patrones.py actually produced
+  // can take feedback (core/pattern_feedback.py, shared by both) — a raw
+  // alert or a piso report would just 404 against the endpoint.
+  const canGiveFeedback = (item) =>
+    (item.origen || []).some((o) => o.startsWith("oportunidad:") || o.startsWith("patron:"));
+
+  const giveFeedback = (item, action) => {
+    setFeedbackBusy(true);
+    api.patronFeedback(item.id, action)
+      .then(() => {
+        toast(t("aprendizaje.feedback_ok"));
+        setSelectedId(null);
+        cargar();
+      })
+      .catch(() => toast(t("aprendizaje.feedback_error"), "error"))
+      .finally(() => setFeedbackBusy(false));
+  };
+
   const abrirSelector = async (c) => {
     if (!equipo.length) {
       try { setEquipo(await equipoReal()); } catch { /* network: keep going */ }
@@ -167,12 +224,16 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     toast(t("oportunidades.toast_adoptado_a", { quien: responsable }));
   };
 
+  // Fixed hotkey slots so the meaning stays consistent across every card:
+  // 1 = the primary action (resolve / adopt), 2 = ask Ángela, 3 = view data.
+  // A card that skips slot 1 (already adopted, or no piso/adopt action)
+  // just leaves that hotkey unbound — 2 and 3 keep their own meaning.
   const drillAcciones = (item, closeAfter) => (
     <>
       {item.piso && (
-        <button onClick={() => resolverPiso(item)}
+        <button data-quick-action="1" onClick={() => resolverPiso(item)}
           className="inline-flex items-center gap-1.5 rounded-full bg-hielo px-4 py-2 text-[0.84rem] font-semibold text-crema">
-          <Check size={14} /> {t("oportunidades.piso_marcar")}
+          <Check size={14} /> {t("oportunidades.piso_marcar")} <HotkeyBadge>1</HotkeyBadge>
         </button>
       )}
       {!item.piso && (adoptados[item.id] ? (
@@ -188,25 +249,33 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
           ))}
         </select>
       ) : (
-        <button onClick={() => abrirSelector(item)}
+        <button data-quick-action="1" onClick={() => abrirSelector(item)}
           className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
-          <Plus size={14} /> {t("oportunidades.adoptar")}
+          <Plus size={14} /> {t("oportunidades.adoptar")} <HotkeyBadge>1</HotkeyBadge>
         </button>
       ))}
       {item.accion_chat && (
-        <button onClick={() => { onPreguntar?.(item.accion_chat); closeAfter?.(); }}
+        <button data-quick-action="2" onClick={() => { onPreguntar?.(item.accion_chat); closeAfter?.(); }}
           className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
-          <AngelaMark size={15} /> {t("oportunidades.accionar_angela")}
+          <AngelaMark size={15} /> {t("oportunidades.accionar_angela")} <HotkeyBadge>2</HotkeyBadge>
         </button>
       )}
       {item.navegar && (
-        <button onClick={() => { onNavegar?.(item.navegar); closeAfter?.(); }}
+        <button data-quick-action="3" onClick={() => { onNavegar?.(item.navegar); closeAfter?.(); }}
           className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
-          {t("oportunidades.ver_datos")}
+          {t("oportunidades.ver_datos")} <HotkeyBadge>3</HotkeyBadge>
         </button>
       )}
     </>
   );
+
+  // Where an involucrado's `kind` sends the reader when clicked — mirrors
+  // the data-nav-id anchors that exist today: `cliente-${id}` in
+  // CuentasCorrientes.jsx, `producto-${id}` in Inventario.jsx.
+  const INVOLUCRADO_NAV = {
+    client: { section: "cuentas", anchor: (id) => `cliente-${id}` },
+    product: { section: "inventario", anchor: (id) => `producto-${id}` },
+  };
 
   const drillProps = (item) => {
     const acc = estiloAccion(item);
@@ -221,6 +290,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       grafico: item.drill?.grafico,
       involucrados: item.drill?.involucrados || [],
       supuestos: item.drill?.supuestos || [],
+      confidence: item.drill?.confidence,
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
@@ -229,6 +299,20 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       chip: item.chip,
       chipIcon: acc.icon,
       chipCls: acc.cls,
+      onFeedback: canGiveFeedback(item) ? (action) => giveFeedback(item, action) : undefined,
+      feedbackBusy,
+      // Sources all point at the card's one destination section — there's no
+      // per-source routing yet, but it's a real jump instead of dead text.
+      onVerFuentes: item.navegar ? () => onNavegar?.(item.navegar) : undefined,
+      // Each involucrado routes by its own `kind` (client/product), landing
+      // on the real record via the destination screen's data-nav-id anchor
+      // (cliente-${id} in CuentasCorrientes.jsx, producto-${id} in
+      // Inventario.jsx) — rows without a kind (e.g. Finanzas-sourced text
+      // rows) render non-clickable in CardNegocio.jsx already.
+      onVerInvolucrado: (iv) => {
+        const target = iv.kind && INVOLUCRADO_NAV[iv.kind];
+        if (target && iv.id != null) onNavegar?.(target.section, target.anchor(iv.id));
+      },
     };
   };
 
@@ -236,14 +320,22 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const vacio = data && act.length === 0 && watch.length === 0;
 
   return (
-    <div ref={rootRef} className="-mx-7 -my-6 flex min-h-[calc(100dvh-5.5rem)] flex-col">
+    <div ref={rootRef} className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 border-b border-linea px-7 py-4">
-        <div className="flex items-center gap-2">
-          <Radar size={22} className="text-hielo" />
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("prioridades.sub")}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Radar size={22} className="text-hielo" />
+            <div>
+              <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
+              <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("prioridades.sub")}</p>
+            </div>
           </div>
+          {todos.length > 0 && (
+            <p className="hidden shrink-0 items-center gap-1 pt-1 text-[0.76rem] text-tinta-suave lg:flex">
+              <kbd className="rounded-md border border-linea px-1.5 py-0.5 font-semibold">↑↓</kbd> {t("prioridades.hint_mover")}
+              <kbd className="ml-2 rounded-md border border-linea px-1.5 py-0.5 font-semibold">1-3</kbd> {t("prioridades.hint_accion")}
+            </p>
+          )}
         </div>
         {todos.length > 0 && (
           <div className="mt-3.5">

@@ -119,6 +119,11 @@ export const api = {
   buscar: (q) => get(`/api/buscar?q=${encodeURIComponent(q)}`),
   oportunidades: () => get("/api/oportunidades"),
   prioridades: () => get("/api/prioridades"),
+  // Closing the loop on a continuous-learning finding (core/patrones.py):
+  // the owner's reaction, so the same instance doesn't resurface.
+  patronFeedback: (cardId, action, note) =>
+    post("/api/patrones/feedback", { card_id: cardId, action, note }),
+  patronHistorial: () => get("/api/patrones/historial"),
   // P38·B — el dueño aprueba la orden que Ángela dejó armada (queda en borrador).
   ordenCompraPreparar: (p) => post("/api/orden-compra/preparar", p),
   ordenesPreparadas: () => get("/api/ordenes-preparadas"),
