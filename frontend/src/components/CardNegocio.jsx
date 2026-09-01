@@ -170,7 +170,10 @@ function ConfidenceBadge({ confidence }) {
 }
 
 function InvolucradoRow({ iv, onClick }) {
-  const clickable = !!onClick && iv.id != null;
+  // kind is required, not just id: an id without a recognized kind has
+  // nowhere to navigate, and a clickable-looking row that silently no-ops
+  // on click is worse than a plain text row.
+  const clickable = !!onClick && iv.id != null && !!iv.kind;
   const Tag = clickable ? "button" : "div";
   return (
     <Tag
