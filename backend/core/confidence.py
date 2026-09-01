@@ -57,11 +57,6 @@ per card, centrally, in priorities._compose; no per-card-type logic.
 
 DATA_HIGH_POINTS = 6
 DATA_MEDIUM_POINTS = 3
-# Note: the brief's own test (records=8 -> "medium") is inconsistent with the
-# HIGH_RECORDS=5 value given alongside it, since 8 >= 5 would read "high".
-# Raised so a handful of real rows reads as medium, not high, matching the
-# test that ships with this brief. See task-2-report.md for detail.
-DATA_HIGH_RECORDS = 10
 DATA_MEDIUM_RECORDS = 2
 
 
@@ -82,7 +77,9 @@ def _insight_record_count(insight: dict) -> int:
 
 
 def _data_level(points: int, records: int) -> str:
-    if points >= DATA_HIGH_POINTS or records >= DATA_HIGH_RECORDS:
+    """Records give breadth; only a series gives history. A card with many
+    rows and no chart tops out at medium — breadth alone is not depth."""
+    if points >= DATA_HIGH_POINTS:
         return "high"
     if points >= DATA_MEDIUM_POINTS or records >= DATA_MEDIUM_RECORDS:
         return "medium"
