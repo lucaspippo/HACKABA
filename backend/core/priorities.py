@@ -259,18 +259,22 @@ def inbox(lang: str | None = None, features=None) -> dict:
 
 
 def _compose(lang) -> dict:
+    from . import confidence
     items: list[dict] = []
     items.extend(_opportunity_items(lang))
     items.extend(_pattern_items(lang))
     items.extend(_drop_alerts_for_handled_destinations(_alert_items(lang)))
     items.extend(_piso_items(lang))
+    merged = merge_duplicates(items)
+    for it in merged:
+        it["drill"]["confidence"] = confidence.level_for(it["drill"], lang)
     hay_ventas = False
     try:
         from . import ventas
         hay_ventas = bool(ventas.hay_datos() and ventas.montos_confirmados())
     except Exception:  # noqa: BLE001
         hay_ventas = False
-    return {"items": merge_duplicates(items), "hay_ventas": hay_ventas}
+    return {"items": merged, "hay_ventas": hay_ventas}
 
 
 def _drop_alerts_for_handled_destinations(alert_items: list[dict]) -> list[dict]:
