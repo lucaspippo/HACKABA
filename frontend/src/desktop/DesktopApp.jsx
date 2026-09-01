@@ -463,7 +463,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               />
             </div>
           ) : (
-          <main className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
+          <main className={`min-w-0 flex-1 ${
+            section === "prioridades" ? "flex flex-col overflow-hidden" : "overflow-y-auto px-7 py-6"
+          }`}>
             {/* Banner de fase: SOLO en el Inicio — en el resto de las secciones es
                 ruido que come pantalla y su CTA no aplica (auditoría UX P5).
                 P13: y solo si la fase PIDE algo (foco ≠ panel) — con todo al
@@ -491,7 +493,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               </div>
             )}
             <AnimatePresence mode="wait">
-              <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+                className={section === "prioridades" ? "flex min-h-0 flex-1 flex-col" : undefined}>
                 {/* P29·A2 — nunca una pantalla muda: si una sección revienta,
                     estado de error honesto y navegable. key=section resetea. */}
                 <ErrorBoundary key={section} seccion={section} onInicio={() => navegar("panel", null)}>
