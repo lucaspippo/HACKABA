@@ -114,29 +114,29 @@ const FEEDBACK_ACTIONS = [
 // single-click so the common path isn't slowed down.
 export function FindingFeedback({ onFeedback, busy }) {
   const t = useT();
-  const [confirmando, setConfirmando] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   return (
     <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
       <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {FEEDBACK_ACTIONS.map((f) => {
-          if (f.action === "dismissed" && confirmando) {
+          if (f.action === "dismissed" && confirming) {
             return (
               <span key={f.action} className="inline-flex items-center gap-1.5">
                 <button disabled={busy} onClick={() => onFeedback("dismissed")}
                   className="rounded-full border border-rojo/40 bg-rojo/10 px-3.5 py-1.5 text-[0.82rem] font-semibold text-rojo disabled:opacity-50">
-                  {t("aprendizaje.feedback_descartar_confirmar")}
+                  {t("aprendizaje.feedback_dismiss_confirm")}
                 </button>
-                <button disabled={busy} onClick={() => setConfirmando(false)}
+                <button disabled={busy} onClick={() => setConfirming(false)}
                   className="text-[0.82rem] font-semibold text-tinta-suave hover:text-tinta">
-                  {t("aprendizaje.feedback_cancelar")}
+                  {t("aprendizaje.feedback_cancel")}
                 </button>
               </span>
             );
           }
           return (
             <button key={f.action} disabled={busy}
-              onClick={() => (f.action === "dismissed" ? setConfirmando(true) : onFeedback(f.action))}
+              onClick={() => (f.action === "dismissed" ? setConfirming(true) : onFeedback(f.action))}
               className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
               {t(f.lk)}
             </button>
@@ -205,19 +205,19 @@ function ConfidenceReason({ confidence }) {
 // one card (core/priorities.py::merge_duplicates). Collapsed by default —
 // this is provenance for someone auditing "why does this exist", not
 // something that belongs in the primary reading path.
-function BasadoEn({ origen = [] }) {
+function BasedOn({ origins = [] }) {
   const t = useT();
-  const [abierto, setAbierto] = useState(false);
-  if (origen.length < 2) return null;
+  const [expanded, setExpanded] = useState(false);
+  if (origins.length < 2) return null;
   return (
     <div className="mt-3 text-[0.76rem] text-tinta-suave">
-      <button type="button" onClick={() => setAbierto((v) => !v)}
+      <button type="button" onClick={() => setExpanded((v) => !v)}
         className="inline-flex items-center gap-1 font-semibold hover:text-tinta">
-        <Link2 size={11} /> {t("cardneg.basado_en", { n: origen.length })}
+        <Link2 size={11} /> {t("cardneg.based_on", { n: origins.length })}
       </button>
-      {abierto && (
+      {expanded && (
         <ul className="mt-1.5 space-y-0.5 pl-4">
-          {origen.map((o, i) => <li key={i} className="list-disc">{o}</li>)}
+          {origins.map((o, i) => <li key={i} className="list-disc">{o}</li>)}
         </ul>
       )}
     </div>
@@ -230,14 +230,14 @@ function BasadoEn({ origen = [] }) {
 // replacement for the chart: these are forward-looking day-counts that
 // don't share the chart's (historical, monthly) x-axis, so they render as
 // stats rather than a misleading reference line drawn over past months.
-function Metricas({ items = [] }) {
+function Metrics({ items = [] }) {
   if (!items.length) return null;
   return (
     <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-linea/60 pt-2.5">
       {items.map((m, i) => (
         <div key={i} className="text-[0.78rem]">
           <span className="text-tinta-suave">{m.label}: </span>
-          <span className="plata font-semibold text-tinta">{m.valor}</span>
+          <span className="plata font-semibold text-tinta">{m.value}</span>
         </div>
       ))}
     </div>
@@ -273,8 +273,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy, confidence, origen = [],
-                               metricas = [], onVerFuentes, onVerInvolucrado }) {
+                               onFeedback, feedbackBusy, confidence, origins = [],
+                               metrics = [], onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
@@ -308,7 +308,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             )}
           </div>
           {!panel && onCerrar && (
-            <button onClick={onCerrar} aria-label={t("cardneg.cerrar")}
+            <button onClick={onCerrar} aria-label={t("cardneg.close")}
               className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
           )}
         </div>
@@ -360,7 +360,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             {grafico.meta?.ventana && (
               <p className="mt-1 text-[0.7rem] text-tinta-suave">{grafico.meta.ventana}</p>
             )}
-            <Metricas items={metricas} />
+            <Metrics items={metrics} />
           </div>
         )}
 
@@ -384,7 +384,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </p>
         )}
 
-        <BasadoEn origen={origen} />
+        <BasedOn origins={origins} />
 
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>

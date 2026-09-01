@@ -635,15 +635,15 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
             # scannable without parsing a sentence — see the chart, which is
             # historical monthly sales and can't also host these forward-
             # looking day-counts as a reference line on the same x-axis.
-            "metricas": [
-                {"label": _t("core.opn.qi_m_cobertura", lang),
-                 "valor": _t("core.opn.qi_m_dias", lang, n=int(cob))},
+            "metrics": [
+                {"label": _t("core.opn.qi_m_coverage", lang),
+                 "value": _t("core.opn.qi_m_days", lang, n=int(cob))},
                 {"label": _t("core.opn.qi_m_lead", lang),
-                 "valor": _t("core.opn.qi_m_dias", lang, n=lead)},
-                {"label": _t("core.opn.qi_m_ventana", lang),
-                 "valor": (_t("core.opn.qi_m_dias", lang, n=dias_para_negociar) if dias_para_negociar > 0
-                           else _t("core.opn.qi_m_hoy", lang) if dias_para_negociar == 0
-                           else _t("core.opn.qi_m_tarde", lang, n=-dias_para_negociar))},
+                 "value": _t("core.opn.qi_m_days", lang, n=lead)},
+                {"label": _t("core.opn.qi_m_window", lang),
+                 "value": (_t("core.opn.qi_m_days", lang, n=dias_para_negociar) if dias_para_negociar > 0
+                           else _t("core.opn.qi_m_today", lang) if dias_para_negociar == 0
+                           else _t("core.opn.qi_m_late", lang, n=-dias_para_negociar))},
             ],
         },
     }

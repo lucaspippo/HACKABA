@@ -12,7 +12,7 @@ const VISIBLE_CAP = 5;
 // instead of a wall of scrolling pills.
 export default function FiltrosAccion({ items, filtro, onFiltro }) {
   const t = useT();
-  const [expandido, setExpandido] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const counts = {};
   const label = {};
   for (const it of items) {
@@ -20,14 +20,14 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
     counts[k] = (counts[k] || 0) + 1;
     if (!label[k]) label[k] = t(`prioridades.accion_${k}`) || it.chip || k;
   }
-  const ordenados = Object.keys(counts)
+  const ranked = Object.keys(counts)
     .filter((k) => ACCION[k])
     .sort((a, b) => counts[b] - counts[a]);
-  if (ordenados.length < 2) return null;
-  const oculta = !expandido && ordenados.length > VISIBLE_CAP
-    ? ordenados.slice(VISIBLE_CAP)
+  if (ranked.length < 2) return null;
+  const overflow = !expanded && ranked.length > VISIBLE_CAP
+    ? ranked.slice(VISIBLE_CAP)
     : [];
-  const pills = expandido ? ordenados : ordenados.slice(0, VISIBLE_CAP);
+  const pills = expanded ? ranked : ranked.slice(0, VISIBLE_CAP);
 
   return (
     <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
@@ -50,13 +50,13 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
           </button>
         );
       })}
-      {oculta.length > 0 && (
+      {overflow.length > 0 && (
         <button
           type="button"
-          onClick={() => setExpandido(true)}
+          onClick={() => setExpanded(true)}
           className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.78rem] font-semibold text-tinta-suave hover:text-tinta"
         >
-          {t("prioridades.filtro_mas", { n: oculta.length })}
+          {t("prioridades.filter_more", { n: overflow.length })}
         </button>
       )}
       {filtro && (
