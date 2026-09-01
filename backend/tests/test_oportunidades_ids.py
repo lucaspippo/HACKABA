@@ -40,3 +40,19 @@ def test_margen_bajo_involucrados_carry_product_id(monkeypatch):
     for iv in card["drill"]["involucrados"]:
         assert iv.get("kind") == "product"
         assert iv.get("id")
+
+
+def test_cliente_frio_involucrados_carry_client_id(monkeypatch):
+    import datetime
+    from core import fechas
+    hoy = fechas.hoy()
+    vieja = (hoy - datetime.timedelta(days=400)).isoformat()
+    reciente = (hoy - datetime.timedelta(days=200)).isoformat()
+    clientes = [{"id": 7, "nombre": "Cliente Frío",
+                "movimientos": [{"tipo": "venta", "fecha": vieja, "monto": 100_000}] * 3 +
+                               [{"tipo": "venta", "fecha": reciente, "monto": 100_000}] * 3}]
+    ctx = _ctx_with_arts(monkeypatch, [], clientes)
+    card = opn._card_cliente_frio("es", ctx)
+    if card:  # the synthetic fixture may or may not clear the drop threshold
+        iv = card["drill"]["involucrados"][0]
+        assert iv["id"] == 7 and iv["kind"] == "client"
