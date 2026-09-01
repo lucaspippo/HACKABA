@@ -44,3 +44,34 @@ def test_resolver_failure_is_swallowed(monkeypatch):
     monkeypatch.setattr(proposal_state, "_find_order", boom)
     assert proposal_state.for_proposal(
         {"tipo": "orden_compra", "codigo": 7}, "quiebre_inminente") is None
+
+
+def test_for_proposal_reaches_the_real_lookup_unmocked():
+    """No monkeypatch here: every other test in this module substitutes
+    `_find_order`, so the real wiring down to `ordenes.find_for_origin`
+    (and from there to `purchase_orders_repo.find_for_origin`) is never
+    exercised elsewhere. A wrong keyword argument along that path would be
+    swallowed by `for_proposal`'s own exception handling and every card
+    would silently render as never-acted-on — this test is what would
+    catch that."""
+    from core.db import purchase_orders_repo
+    from core.db import tenant as _tenant
+    from tests.conftest import limpiar_tabla_tenant
+
+    limpiar_tabla_tenant("purchase_orders")
+    tid = _tenant.current_tenant_id()
+    orden = {
+        "numero": "OC-2026-0905", "fecha": "2026-08-24", "proveedor": "Molinos SA",
+        "estado": "borrador", "origen": "quiebre_inminente", "motivo": "",
+        "preparada_por": "Ángela", "aprobada_por": "Aldo",
+        "preparada": "2026-08-24T10:00:00",
+        "items": [{"codigo": 7, "producto": "Harina", "cantidad": 50}],
+    }
+    purchase_orders_repo.create(tid, orden)
+
+    got = proposal_state.for_proposal(
+        {"tipo": "orden_compra", "codigo": 7}, "quiebre_inminente")
+
+    assert got is not None
+    assert got["label"] == orden["numero"]
+    assert got["actor"] == orden["aprobada_por"]
