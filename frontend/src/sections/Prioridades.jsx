@@ -269,6 +269,14 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     </>
   );
 
+  // Where an involucrado's `kind` sends the reader when clicked — mirrors
+  // the data-nav-id anchors that exist today: `cliente-${id}` in
+  // CuentasCorrientes.jsx, `producto-${id}` in Inventario.jsx.
+  const INVOLUCRADO_NAV = {
+    client: { section: "cuentas", anchor: (id) => `cliente-${id}` },
+    product: { section: "inventario", anchor: (id) => `producto-${id}` },
+  };
+
   const drillProps = (item) => {
     const acc = estiloAccion(item);
     return {
@@ -282,6 +290,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       grafico: item.drill?.grafico,
       involucrados: item.drill?.involucrados || [],
       supuestos: item.drill?.supuestos || [],
+      confidence: item.drill?.confidence,
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
@@ -295,12 +304,15 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       // Sources all point at the card's one destination section — there's no
       // per-source routing yet, but it's a real jump instead of dead text.
       onVerFuentes: item.navegar ? () => onNavegar?.(item.navegar) : undefined,
-      // Only accounts-receivable rows carry a real per-client id today
-      // (matches the `cliente-${id}` anchor in CuentasCorrientes.jsx); other
-      // card types render involucrados as plain rows until they get one too.
-      onVerInvolucrado: item.navegar === "cuentas"
-        ? (iv) => { if (iv.id != null) onNavegar?.(item.navegar, `cliente-${iv.id}`); }
-        : undefined,
+      // Each involucrado routes by its own `kind` (client/product), landing
+      // on the real record via the destination screen's data-nav-id anchor
+      // (cliente-${id} in CuentasCorrientes.jsx, producto-${id} in
+      // Inventario.jsx) — rows without a kind (e.g. Finanzas-sourced text
+      // rows) render non-clickable in CardNegocio.jsx already.
+      onVerInvolucrado: (iv) => {
+        const target = iv.kind && INVOLUCRADO_NAV[iv.kind];
+        if (target && iv.id != null) onNavegar?.(target.section, target.anchor(iv.id));
+      },
     };
   };
 
