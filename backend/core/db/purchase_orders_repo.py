@@ -62,6 +62,28 @@ def find_draft(tenant_id: str, *, codigo: int | None, origen: str) -> dict | Non
     return None
 
 
+def find_for_origin(tenant_id: str, *, origen: str, codigo: int | None) -> dict | None:
+    """Any order this origin already produced for `codigo`, whatever its
+    status — unlike find_draft, which only sees 'borrador'.
+
+    A card stays "acted upon" after someone advances its order to aprobada or
+    recibida; only a cancelada order releases it back to open work.
+    """
+    with tenant_connection(tenant_id) as conn:
+        rows = conn.execute(
+            text(f"SELECT {', '.join(_COLS)} FROM purchase_orders "
+                 "WHERE origin = :origen AND status <> 'cancelada' "
+                 "ORDER BY prepared_at DESC, number DESC"),
+            {"origen": origen},
+        ).mappings().all()
+    for row in rows:
+        orden = _to_orden(row)
+        items = orden.get("items") or []
+        if items and items[0].get("codigo") == codigo:
+            return orden
+    return None
+
+
 def create(tenant_id: str, orden: dict) -> None:
     with tenant_connection(tenant_id) as conn:
         conn.execute(

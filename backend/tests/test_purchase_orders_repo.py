@@ -84,3 +84,26 @@ def test_find_draft_ignores_other_origin(db_tenant):
     purchase_orders_repo.create(db_tenant, _draft("OC-2026-0901", 7, origen="sobrecompra"))
     assert purchase_orders_repo.find_draft(
         db_tenant, codigo=7, origen="quiebre_inminente") is None
+
+
+def test_find_for_origin_matches_any_non_cancelled_status(db_tenant):
+    for estado, numero in (("aprobada", "OC-2026-0902"), ("recibida", "OC-2026-0903")):
+        purchase_orders_repo.create(db_tenant, {**_draft(numero, 7), "estado": estado})
+        found = purchase_orders_repo.find_for_origin(
+            db_tenant, origen="quiebre_inminente", codigo=7)
+        assert found is not None, estado
+        assert found["estado"] == estado
+
+
+def test_find_for_origin_ignores_cancelled(db_tenant):
+    purchase_orders_repo.create(
+        db_tenant, {**_draft("OC-2026-0904", 7), "estado": "cancelada"})
+    assert purchase_orders_repo.find_for_origin(
+        db_tenant, origen="quiebre_inminente", codigo=7) is None
+
+
+def test_find_for_origin_matches_draft_too(db_tenant):
+    purchase_orders_repo.create(db_tenant, _draft("OC-2026-0905", 7))
+    found = purchase_orders_repo.find_for_origin(
+        db_tenant, origen="quiebre_inminente", codigo=7)
+    assert found["numero"] == "OC-2026-0905"
