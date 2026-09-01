@@ -640,7 +640,7 @@ def _alerts_inventario(lang) -> list[dict]:
         resumen=_t("core.prio.costo_viejo_r", lang, n=_num(cv["cantidad"], lang)),
         origen=["alerta:costo_viejo"], modulos=ALERT_MODULOS["costo_viejo"],
         cifra_texto=_num(cv["cantidad"], lang),
-        monto=round(sum(d.get("inmovilizado") or 0 for d in items), 2),
+        monto=cv.get("impacto_pesos"),
         fuentes=[_t("core.prio.f_costos", lang)],
         navegar="inventario",
         accion_chat=_t("core.prio.costo_viejo_chat", lang),
