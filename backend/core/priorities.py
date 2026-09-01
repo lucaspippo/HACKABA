@@ -262,7 +262,7 @@ def _compose(lang) -> dict:
     items: list[dict] = []
     items.extend(_opportunity_items(lang))
     items.extend(_pattern_items(lang))
-    items.extend(_alert_items(lang))
+    items.extend(_drop_alerts_for_handled_destinations(_alert_items(lang)))
     items.extend(_piso_items(lang))
     hay_ventas = False
     try:
@@ -271,6 +271,24 @@ def _compose(lang) -> dict:
     except Exception:  # noqa: BLE001
         hay_ventas = False
     return {"items": merge_duplicates(items), "hay_ventas": hay_ventas}
+
+
+def _drop_alerts_for_handled_destinations(alert_items: list[dict]) -> list[dict]:
+    """A raw alert (e.g. "morosos") normally disappears by MERGING into its
+    oportunidad ("cobrar_morosos", via MERGE_INTO) whenever both exist in the
+    same request. Once the owner gives feedback on that oportunidad
+    (core/pattern_feedback.py) it stops existing at all — with nothing left
+    to merge into, the alert would resurface UNMERGED, undoing the very
+    thing the owner just said. Drop it too: it's the same underlying fact,
+    just from a code path pattern_feedback doesn't fingerprint on its own."""
+    from core.db import pattern_feedback_repo
+    from core.db import tenant as _tenant
+    try:
+        handled = pattern_feedback_repo.latest_by_fingerprint(_tenant.current_tenant_id())
+    except Exception:  # noqa: BLE001 — a lookup failure must not hide every alert
+        return alert_items
+    handled_ids = {key.split(":", 1)[0] for key in handled}
+    return [it for it in alert_items if MERGE_INTO.get(it["id"], it["id"]) not in handled_ids]
 
 
 def _opportunity_items(lang) -> list[dict]:

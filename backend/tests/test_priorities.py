@@ -67,6 +67,63 @@ def test_merge_keeps_alert_when_opportunity_absent():
     assert ids == {"morosos", "quiebre"}
 
 
+# --- feedback on the oportunidad must also silence the raw alert it would --------
+# --- otherwise resurface as (see MERGE_INTO) --------------------------------------
+
+def test_drop_alerts_for_handled_destinations_removes_the_merged_ones(monkeypatch, db_tenant):
+    """Regression: dismissing "cobrar_morosos" used to make "morosos" and
+    "moroso_atraso" resurface UNMERGED (nothing left to fold into), growing
+    the inbox instead of shrinking it. Both map to cobrar_morosos via
+    MERGE_INTO, so both must drop once it's been fed back on."""
+    from core.db import tenant as tenant_module, pattern_feedback_repo
+    monkeypatch.setattr(tenant_module, "current_tenant_id", lambda: db_tenant)
+    pattern_feedback_repo.create(db_tenant, pattern_id="cobrar_morosos",
+                                 fingerprint="cliente:Test", action="dismissed",
+                                 actor="aldo", snapshot={})
+    alerts = [_item("morosos", monto=100), _item("moroso_atraso", monto=40),
+              _item("cheques", monto=10)]
+    out = priorities._drop_alerts_for_handled_destinations(alerts)
+    assert {i["id"] for i in out} == {"cheques"}
+
+
+def test_drop_alerts_for_handled_destinations_keeps_unrelated_alerts(monkeypatch, db_tenant):
+    """Feedback on one finding must never touch an unrelated alert."""
+    from core.db import tenant as tenant_module, pattern_feedback_repo
+    monkeypatch.setattr(tenant_module, "current_tenant_id", lambda: db_tenant)
+    pattern_feedback_repo.create(db_tenant, pattern_id="pre_pico", fingerprint="categoria:x",
+                                 action="dismissed", actor="aldo", snapshot={})
+    alerts = [_item("morosos", monto=100), _item("cheques", monto=10)]
+    out = priorities._drop_alerts_for_handled_destinations(alerts)
+    assert {i["id"] for i in out} == {"morosos", "cheques"}
+
+
+def test_feedback_on_cobrar_morosos_shrinks_the_inbox_not_grows_it(monkeypatch, db_tenant):
+    """End-to-end regression for the same bug: the badge must go DOWN after
+    the owner dismisses the overdue-customers finding, never up."""
+    from core import cuentas, oportunidades_neg
+    from core.db import tenant as tenant_module
+    monkeypatch.setattr(tenant_module, "current_tenant_id", lambda: db_tenant)
+    monkeypatch.setattr(cuentas, "listar", lambda: [
+        {"nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
+         "saldo": 50_000, "promedio_pago_dias": 30, "atraso_vs_promedio": 200,
+         "movimientos": []}])
+
+    features = ("cuentas", "oportunidades", "alertas")
+    before = priorities.inbox("es", features=features)
+    before_ids = {i["id"] for i in before["act"] + before["watch"]}
+    assert "cobrar_morosos" in before_ids
+    badge_before = before["badge"]
+
+    oportunidades_neg.record_feedback("cobrar_morosos", "dismissed", actor="aldo", lang="es")
+
+    after = priorities.inbox("es", features=features)
+    after_ids = {i["id"] for i in after["act"] + after["watch"]}
+    assert "cobrar_morosos" not in after_ids
+    assert "morosos" not in after_ids
+    assert "moroso_atraso" not in after_ids
+    assert after["badge"] < badge_before
+
+
 def test_solicitud_pendiente_is_dropped():
     items = [
         _item("solicitud_pendiente", origen=["alerta:solicitud_pendiente"]),

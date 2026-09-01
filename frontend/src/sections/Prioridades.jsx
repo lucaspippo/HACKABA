@@ -78,6 +78,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [equipo, setEquipo] = useState([]);
   const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const rootRef = useRef(null);
 
   const cargar = () => {
@@ -152,6 +153,24 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     } catch {
       toast(t("oportunidades.piso_error"), "error");
     }
+  };
+
+  // Only ids core/oportunidades_neg.py or core/patrones.py actually produced
+  // can take feedback (core/pattern_feedback.py, shared by both) — a raw
+  // alert or a piso report would just 404 against the endpoint.
+  const canGiveFeedback = (item) =>
+    (item.origen || []).some((o) => o.startsWith("oportunidad:") || o.startsWith("patron:"));
+
+  const giveFeedback = (item, action) => {
+    setFeedbackBusy(true);
+    api.patronFeedback(item.id, action)
+      .then(() => {
+        toast(t("aprendizaje.feedback_ok"));
+        setSelectedId(null);
+        cargar();
+      })
+      .catch(() => toast(t("aprendizaje.feedback_error"), "error"))
+      .finally(() => setFeedbackBusy(false));
   };
 
   const abrirSelector = async (c) => {
@@ -229,6 +248,8 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       chip: item.chip,
       chipIcon: acc.icon,
       chipCls: acc.cls,
+      onFeedback: canGiveFeedback(item) ? (action) => giveFeedback(item, action) : undefined,
+      feedbackBusy,
     };
   };
 
