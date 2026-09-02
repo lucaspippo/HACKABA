@@ -14,7 +14,7 @@ from __future__ import annotations
 NO_DOMAIN = "__sin_dominio__"
 
 
-def suggest(modulos) -> dict | None:
+def suggest(modulos: tuple[str, ...]) -> dict | None:
     """The one non-admin teammate whose access covers every module this card
     needs, or None when that person is not unique."""
     needed = {m for m in (modulos or ()) if m != NO_DOMAIN}
