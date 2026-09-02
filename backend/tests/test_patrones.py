@@ -362,6 +362,23 @@ def test_demo_finds_the_saturday_shortfall():
     assert cash_card["monto"] > 0
 
 
+def test_pattern_cards_declare_an_alternative_explanation():
+    """A correlation with no declared confounder is not high-confidence."""
+    from core import patrones
+    for c in patrones.cards("es"):
+        ins = c["insight"]
+        assert ins["pattern"]["label"]
+        assert ins["alternatives"], f"{c['id']} states a correlation with no alternative"
+
+
+def test_floor_reports_have_no_hypothesis():
+    """A team member's report is an observation, not an inference."""
+    from core import piso
+    for c in piso.propuestas("es"):
+        assert c["insight"]["pattern"]["label"]
+        assert c["insight"]["hypothesis"] is None
+
+
 def test_demo_does_not_move_the_oportunidades_canonicals():
     """The new module adds a source to the inbox; it does NOT rewrite the 10
     closed opportunities_neg findings or their recoverable total (test_p27/p38)."""

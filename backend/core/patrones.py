@@ -27,6 +27,8 @@ import collections
 import datetime
 import itertools
 
+from . import insight as ins
+
 # --- combo_no_percibido: cross-purchase thresholds -----------------------------
 MIN_TOTAL_ORDERS = 40           # without enough order volume, the basket says nothing
 MIN_COOCCURRENCES = 5           # the pair has to repeat, not be two one-off customers
@@ -134,11 +136,13 @@ def _unnoticed_combo_card(lang) -> dict | None:
             combined_revenue += float(by_code[partner].get("monto") or 0)
             partner_amounts.append(float(by_code[partner].get("monto") or 0))
             both_present.append({"nombre": order.get("cliente"),
+                                 "cliente_id": order.get("cliente_id"),
                                  "monto": round(float(by_code[partner].get("monto") or 0), 2),
                                  "detalle": _t("core.pat.combo_i_conjunto", lang,
                                                fecha=order.get("fecha"))})
         else:
             missed.append({"nombre": order.get("cliente"), "fecha": order.get("fecha"),
+                           "cliente_id": order.get("cliente_id"),
                            "detalle": _t("core.pat.combo_i_falta", lang,
                                          a=anchor_name, fecha=order.get("fecha"), b=partner_name)})
     attach_pct = round(both_count / n_anchor * 100) if n_anchor else 0
@@ -148,14 +152,13 @@ def _unnoticed_combo_card(lang) -> dict | None:
         amount_label = _t("core.pat.combo_monto_label_potencial", lang)
         summary = _t("core.pat.combo_r_falta", lang, pct=attach_pct, a=anchor_name,
                      b=partner_name, n=len(missed))
-        why_2 = _t("core.pat.combo_q2_falta", lang, n=len(missed))
-        involved = [{"nombre": m["nombre"], "monto": None, "detalle": m["detalle"]}
+        involved = [{"nombre": m["nombre"], "cliente_id": m.get("cliente_id"),
+                    "monto": None, "detalle": m["detalle"]}
                    for m in missed[:6]]
     else:
         amount = round(combined_revenue, 2)
         amount_label = _t("core.pat.combo_monto_label_conjunto", lang)
         summary = _t("core.pat.combo_r_conjunto", lang, pct=attach_pct, a=anchor_name, b=partner_name)
-        why_2 = _t("core.pat.combo_q2_conjunto", lang)
         involved = both_present[:6]
     if amount <= 0:
         return None
@@ -164,6 +167,42 @@ def _unnoticed_combo_card(lang) -> dict | None:
         [{"x": _t("core.pat.combo_g_con", lang, b=partner_name), "y": both_count},
          {"x": _t("core.pat.combo_g_sin", lang, b=partner_name), "y": len(missed)}],
         "#", False)
+    amount_method = ({"key": "core.method.combo_gap_amount",
+                      "label": _t("core.method.combo_gap_amount", lang)}
+                     if has_gap else
+                     {"key": "core.method.combo_combined_amount",
+                      "label": _t("core.method.combo_combined_amount", lang)})
+    cooccurrence_method = {"key": "core.method.combo_cooccurrence",
+                           "label": _t("core.method.combo_cooccurrence", lang)}
+    insight_val = ins.build(
+        pattern=ins.pattern(
+            _t("core.pat.combo_pattern", lang, n=n_anchor, clientes=top["customers"],
+               a=anchor_name, b=partner_name, pct=attach_pct, lift=round(top["lift"], 1)),
+            scope={"kind": "products", "count": 2}),
+        hypothesis=ins.hypothesis(
+            _t("core.pat.combo_hyp_falta" if has_gap else "core.pat.combo_hyp_conjunto",
+               lang, n=len(missed))),
+        evidence=[
+            ins.metric("cooccurrence_rate", label=summary, value=attach_pct, unit="pct",
+                       weight="primary", method=cooccurrence_method),
+            ins.metric("combo_amount", label=_money(amount, lang), value=amount, unit="ars",
+                       weight="primary", method=amount_method),
+            ins.records("combo_customers",
+                        label=_t("core.pat.combo_t", lang, a=anchor_name, b=partner_name),
+                        weight="supporting",
+                        rows=[ins.record(kind="client", id=iv.get("cliente_id"),
+                                         name=iv["nombre"], amount=iv.get("monto"),
+                                         detail=iv["detalle"]) for iv in involved],
+                        method=cooccurrence_method),
+            ins.series("combo_chart", label=_t("core.pat.combo_g", lang, a=anchor_name),
+                       chart=chart, weight="supporting", method=cooccurrence_method),
+        ],
+        assumptions=[ins.assumption(_t("core.pat.combo_s1", lang))],
+        alternatives=[ins.caveat(_t("core.pat.combo_alt1", lang))],
+        recommendation=ins.recommendation(
+            _t("core.pat.combo_t", lang, a=anchor_name, b=partner_name), navigate="cuentas",
+            chat=_t("core.pat.combo_chat", lang, a=anchor_name, b=partner_name)),
+    )
     return {
         "id": "combo_no_percibido", "tipo": "vender",
         # Identifies THIS specific pair across requests, so feedback on it
@@ -180,16 +219,7 @@ def _unnoticed_combo_card(lang) -> dict | None:
         "accion_chat": _t("core.pat.combo_chat", lang, a=anchor_name, b=partner_name),
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang)],
-        "drill": {
-            "porque": [
-                _t("core.pat.combo_q1", lang, n=n_anchor, clientes=top["customers"],
-                   a=anchor_name, b=partner_name, pct=attach_pct),
-                why_2,
-            ],
-            "grafico": chart,
-            "involucrados": involved,
-            "supuestos": [_t("core.pat.combo_s1", lang)],
-        },
+        "insight": insight_val,
     }
 
 
@@ -236,6 +266,44 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
     chart = _chart(_t("core.pat.caja_g", lang),
                    [{"x": f, "y": round(-d, 2) or 0.0} for f, d in sorted(samples)],
                    "$", True)
+    rate_method = {"key": "core.method.weekday_shortfall_rate",
+                   "label": _t("core.method.weekday_shortfall_rate", lang)}
+    insight_val = ins.build(
+        pattern=ins.pattern(
+            _t("core.pat.caja_q1", lang, n=len(diffs), faltan=len(shortfalls),
+               dia=weekday_name, pct=pct, pct_resto=pct_rest),
+            scope={"kind": "weekday", "count": 1}),
+        hypothesis=ins.hypothesis(_t("core.pat.caja_hyp", lang, dia=weekday_name)),
+        evidence=[
+            ins.metric("shortfall_rate",
+                       label=_t("core.pat.caja_r", lang, pct=pct, dia=weekday_name,
+                                pct_resto=pct_rest, total=_money(total, lang), n=len(diffs)),
+                       value=pct, unit="pct",
+                       baseline={"value": pct_rest,
+                                 "label": _t("core.pat.caja_baseline", lang)},
+                       weight="primary", method=rate_method),
+            ins.metric("shortfall_total", label=_money(total, lang), value=total, unit="ars",
+                       weight="primary",
+                       method={"key": "core.method.weekday_shortfall_total",
+                               "label": _t("core.method.weekday_shortfall_total", lang)}),
+            ins.records("shortfall_closes",
+                        label=_t("core.pat.caja_t", lang, dia=weekday_name),
+                        weight="supporting",
+                        rows=[ins.record(kind="cash_close", id=f, name=f,
+                                         amount=round(-d, 2),
+                                         detail=_t("core.pat.caja_i", lang, fecha=f,
+                                                   monto=_money(-d, lang)))
+                              for f, d in sorted(shortfalls, key=lambda x: x[1])[:6]],
+                        method=rate_method),
+            ins.series("weekday_shortfall_chart", label=_t("core.pat.caja_g", lang),
+                       chart=chart, weight="supporting", method=rate_method),
+        ],
+        assumptions=[ins.assumption(_t("core.pat.caja_s1", lang))],
+        alternatives=[ins.caveat(_t("core.pat.caja_alt1", lang, dia=weekday_name))],
+        recommendation=ins.recommendation(
+            _t("core.pat.caja_t", lang, dia=weekday_name), navigate="caja",
+            chat=_t("core.pat.caja_chat", lang, dia=weekday_name)),
+    )
     return {
         "id": "faltante_caja_patron", "tipo": "revisar",
         # Identifies THIS weekday: if a different weekday becomes the
@@ -251,19 +319,7 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
         "accion_chat": _t("core.pat.caja_chat", lang, dia=weekday_name),
         "navegar": "caja",
         "fuentes": [_t("core.prio.f_caja", lang)],
-        "drill": {
-            "porque": [
-                _t("core.pat.caja_q1", lang, n=len(diffs), faltan=len(shortfalls),
-                   dia=weekday_name, pct=pct, pct_resto=pct_rest),
-                _t("core.pat.caja_q2", lang, total=_money(total, lang), dia=weekday_name),
-            ],
-            "grafico": chart,
-            "involucrados": [{"nombre": f, "monto": round(-d, 2),
-                              "detalle": _t("core.pat.caja_i", lang, fecha=f,
-                                            monto=_money(-d, lang))}
-                             for f, d in sorted(shortfalls, key=lambda x: x[1])[:6]],
-            "supuestos": [_t("core.pat.caja_s1", lang)],
-        },
+        "insight": insight_val,
     }
 
 
