@@ -530,6 +530,14 @@ def _formatted(value, unit) -> str:
 #
 # This list may only ever SHRINK. A new (card, evidence) pair appearing here
 # is the defect coming back, and the assertion below is what catches it.
+# Rebuilt against a FRESHLY SEEDED demo tenant. The first version of this set
+# was derived from a polluted database that silently hid three cards
+# (`cliente_frio`, `combo_no_percibido`, `faltante_caja_patron`), so it was
+# both incomplete and untrustworthy. Reseed before trusting this list:
+#   cd backend && python -c "import sys; sys.path.insert(0, '../data-demo'); \
+#       import seed_db; seed_db.ensure_tenant('demo')"
+#   then core.db.reset.truncate_business_data(<demo tenant id>), then
+#   data-demo/generar.py, then seed_db.run('demo')  — that exact order.
 _PATTERN_RESTATEMENT_DEBT = frozenset({
     ("venc_riesgo", "at_risk_value"),
     ("dep_vencidos", "expired_lots_value"),
@@ -538,6 +546,9 @@ _PATTERN_RESTATEMENT_DEBT = frozenset({
     ("pago_semana", "payables_week_total"),
     ("cheques", "checks_total"),
     ("estrella_caida", "revenue_decline_streak"),
+    ("cliente_frio", "cooling_purchase_pace"),
+    ("combo_no_percibido", "cooccurrence_rate"),
+    ("faltante_caja_patron", "shortfall_rate"),
 })
 
 
