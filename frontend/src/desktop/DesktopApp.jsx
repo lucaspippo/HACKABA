@@ -7,9 +7,10 @@ import {
   Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
   ShoppingCart, Plug, Layers, Inbox, PackageCheck, Package, PackagePlus, ShoppingBag,
-  Scale, Lightbulb,
+  Scale, Lightbulb, GripVertical,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { useAngelaPanelWidth } from "../lib/useAngelaPanelWidth";
 import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
 import ChatPanel from "../views/ChatPanel";
@@ -143,6 +144,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const { open: angelaOpen, setOpen: setAngelaOpen, fullscreen, setFullscreen } = useChatDock();
   const vista = useVista();
   const sidebarColapsado = vista.sidebarColapsado;
+  const rowRef = useRef(null);
+  const panelWidth = useAngelaPanelWidth(rowRef, () => setFullscreen(true));
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
@@ -334,8 +337,15 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
         onNavegar={navegar}
         onPreguntar={preguntar}
       />
-      <aside className={`flex shrink-0 flex-col border-r border-linea bg-crema/70 transition-[width] duration-200 ${sidebarColapsado ? "w-16" : "w-64"}`}>
-        <div className={`flex items-center border-b border-linea py-5 ${sidebarColapsado ? "justify-center px-2" : "justify-between px-5"}`}>
+      <aside className={`relative flex shrink-0 flex-col border-r border-linea bg-crema/70 transition-[width] duration-200 ${sidebarColapsado ? "w-16" : "w-64"}`}>
+        <button
+          onClick={() => vistaStore.aplicar({ sidebarColapsado: !sidebarColapsado })}
+          title={t(sidebarColapsado ? "nav.expandir_sidebar" : "nav.colapsar_sidebar")}
+          className="absolute -right-3 top-16 z-10 flex size-6 items-center justify-center rounded-full border border-linea bg-crema text-tinta-suave shadow-md transition-colors hover:text-tinta"
+        >
+          {sidebarColapsado ? <PanelLeftOpen size={13} /> : <PanelLeftClose size={13} />}
+        </button>
+        <div className={`flex items-center border-b border-linea py-5 ${sidebarColapsado ? "justify-center px-2" : "px-5"}`}>
           {!sidebarColapsado && (
             <div className="min-w-0">
               <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto" draggable="false" />
@@ -351,13 +361,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               </div>
             </div>
           )}
-          <button
-            onClick={() => vistaStore.aplicar({ sidebarColapsado: !sidebarColapsado })}
-            title={t(sidebarColapsado ? "nav.expandir_sidebar" : "nav.colapsar_sidebar")}
-            className="shrink-0 rounded-lg p-1.5 text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"
-          >
-            {sidebarColapsado ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-          </button>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -451,7 +454,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           <AccountMenu user={user} onVerPerfil={() => navegar("perfil", null)} />
         </header>
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1" ref={rowRef}>
           {fullscreen ? (
             <div className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
               <ErrorBoundary seccion="angela" onInicio={() => setFullscreen(false)}>
@@ -552,13 +555,30 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           <AnimatePresence>
             {angelaOpen && !fullscreen && (
               <motion.aside
-                initial={{ x: 380, opacity: 0.4 }}
+                initial={{ x: 24, opacity: 0.4 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 380, opacity: 0.4 }}
+                exit={{ x: 24, opacity: 0.4 }}
                 transition={{ type: "spring", stiffness: 320, damping: 34 }}
-                className="flex w-[23.75rem] shrink-0 flex-col border-l border-linea bg-papel"
+                style={{ width: panelWidth.width }}
+                className="relative flex shrink-0 flex-col border-l border-violeta/20 bg-violeta-suave/45"
               >
-                <div className="flex justify-end border-b border-linea px-4 py-1.5">
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={t("angela.ancho_panel")}
+                  onPointerDown={panelWidth.onPointerDown}
+                  onPointerMove={panelWidth.onPointerMove}
+                  onPointerUp={panelWidth.onPointerUp}
+                  onPointerCancel={panelWidth.onPointerUp}
+                  className="group absolute inset-y-0 -left-1.5 z-10 flex w-3 cursor-col-resize touch-none justify-center"
+                >
+                  <span className="h-full w-px bg-transparent transition-colors group-hover:bg-violeta/40" />
+                  <span className="pointer-events-none absolute top-1/2 flex h-9 w-4 -translate-y-1/2 items-center justify-center rounded-full text-tinta-suave opacity-0 transition-opacity group-hover:bg-crema group-hover:opacity-100 group-hover:sombra-alta">
+                    <GripVertical size={12} />
+                  </span>
+                </div>
+
+                <div className="flex justify-end border-b border-violeta/15 px-4 py-1.5">
                   <button onClick={() => setAngelaOpen(false)} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">

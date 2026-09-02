@@ -2302,6 +2302,8 @@ export const EN = {
 
   // --- Ángela's chat (chat shell, not her answers) ---
   "angela.saludo_default": "I'm Ángela. Ask me anything about your money, your stock or your customers — I answer with the real numbers.",
+  "angela.hola": "Hi, I'm Ángela",
+  "angela.ancho_panel": "Ángela panel width",
   "angela.error_conexion": "I lost the connection to the server. Try again in a moment.",
   "angela.modo_datos": "Data mode · hook up the API for free chat",
   "angela.socia": "Your partner who knows the business",
