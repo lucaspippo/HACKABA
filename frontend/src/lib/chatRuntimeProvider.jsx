@@ -10,7 +10,7 @@ import {
   useRemoteThreadListRuntime,
 } from "@assistant-ui/react";
 import { createLocalStorageAdapter, createSimpleTitleAdapter } from "@assistant-ui/core/react";
-import { createChatModelAdapter } from "./chatRuntime";
+import { createChatModelAdapter } from "./chat/adapter";
 
 const browserStorage = {
   async getItem(key) {
@@ -45,7 +45,7 @@ export function ChatRuntimeProvider({ children, storagePrefix = "polpilot.angela
     }),
     [storagePrefix]
   );
-  const modelAdapter = useMemo(() => createChatModelAdapter({ getCurrentView: () => null }), []);
+  const modelAdapter = useMemo(() => createChatModelAdapter(), []);
 
   const runtime = useRemoteThreadListRuntime({
     runtimeHook: () => useLocalRuntime(modelAdapter),

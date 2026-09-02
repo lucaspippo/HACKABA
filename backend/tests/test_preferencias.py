@@ -149,30 +149,30 @@ def test_api_preferencias_valida(cliente_dueno):
 def test_fallback_sin_torta_es():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     r = angela._fallback("no me gustan los gráficos de torta")
-    assert "recordar_preferencia" in r["tools_usadas"]
+    assert "recordar_preferencia" in r["tools_used"]
     assert memoria.vista("emilio").get("sin_torta") is True
-    assert "torta" in r["respuesta"].lower()
+    assert "torta" in r["answer"].lower()
 
 
 def test_fallback_pie_charts_en():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
     r = angela._fallback("I don't like pie charts")
     assert memoria.vista("emilio").get("sin_torta") is True
-    assert "pie chart" in r["respuesta"].lower()
+    assert "pie chart" in r["answer"].lower()
 
 
 def test_fallback_margen_pin():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     r = angela._fallback("todo lo que tenga margen menor a 18 lo quiero fijado arriba")
     assert memoria.vista("emilio").get("margen_pin_umbral") == 18
-    assert "18" in r["respuesta"]
+    assert "18" in r["answer"]
 
 
 def test_fallback_que_recordas():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     memoria.set_vista("emilio", "sin_torta", True)
     r = angela._fallback("¿qué recordás de mí?")
-    assert "torta" in r["respuesta"].lower()
+    assert "torta" in r["answer"].lower()
 
 
 # --- P19·B — el Home se reordena por chat y queda persistido ---
@@ -207,7 +207,7 @@ def test_fallback_oportunidades_arriba_de_decisiones():
     orden = memoria.vista("emilio").get("orden_home")
     assert orden is not None
     assert orden.index("oportunidades") < orden.index("decisiones")
-    assert "reordenar_inicio" in r["tools_usadas"]
+    assert "reordenar_inicio" in r["tools_used"]
 
 
 def test_fallback_volver_a_como_estaba():
@@ -215,7 +215,7 @@ def test_fallback_volver_a_como_estaba():
     angela._fallback("poné las oportunidades arriba de las decisiones")
     r = angela._fallback("volvé a como estaba el inicio")
     assert "orden_home" not in memoria.vista("emilio")
-    assert "reordenar_inicio" in r["tools_usadas"]
+    assert "reordenar_inicio" in r["tools_used"]
 
 
 # --- P19·C — estadísticas a pedido que persisten ---

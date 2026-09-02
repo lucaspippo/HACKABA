@@ -154,28 +154,28 @@ def test_flujo_logistica_completo():
 def test_angela_que_vence_esta_semana():
     _cargar_deposito()
     r = angela._fallback("¿qué vence esta semana?")
-    assert "consultar_deposito" in r["tools_usadas"]
-    assert "vencen" in r["respuesta"] or "vencidos" in r["respuesta"]
+    assert "consultar_deposito" in r["tools_used"]
+    assert "vencen" in r["answer"] or "vencidos" in r["answer"]
 
 
 def test_angela_que_entregas_hay_hoy():
     _cargar_logistica()
     r = angela._fallback("¿qué entregas hay hoy?")
-    assert "consultar_envios" in r["tools_usadas"]
-    assert "3 entregas" in r["respuesta"]
+    assert "consultar_envios" in r["tools_used"]
+    assert "3 entregas" in r["answer"]
 
 
 def test_angela_salio_el_pedido_de_garcia():
     _cargar_logistica()
     r = angela._fallback("¿salió el pedido de García?")
-    assert "Garcia" in r["respuesta"] and "no salió" in r["respuesta"]
+    assert "Garcia" in r["answer"] and "no salió" in r["answer"]
 
 
 def test_angela_sin_datos_es_honesta():
     r = angela._fallback("¿qué vence esta semana?")
-    assert "Cargar datos" in r["respuesta"]  # no inventa: pide el export
+    assert "Cargar datos" in r["answer"]  # no inventa: pide el export
     r = angela._fallback("¿qué entregas hay hoy?")
-    assert "Cargar datos" in r["respuesta"]
+    assert "Cargar datos" in r["answer"]
 
 
 # --- Recordatorios: simples, por condición y por evento ---
@@ -183,7 +183,7 @@ def test_angela_sin_datos_es_honesta():
 def test_recordatorio_condicional_vencimiento_dispara():
     _cargar_deposito()
     r = angela._fallback("avisame si algo del depósito vence en menos de 15 días")
-    assert "crear_recordatorio" in r["tools_usadas"]
+    assert "crear_recordatorio" in r["tools_used"]
     rs = recordatorios.listar("dueño")  # listar evalúa las condiciones
     assert rs and rs[0]["estado"] == "disparado"
     assert "vencen" in rs[0]["detalle_disparo"]
@@ -192,7 +192,7 @@ def test_recordatorio_condicional_vencimiento_dispara():
 def test_recordatorio_entrega_de_garcia_no_sale():
     _cargar_logistica()
     r = angela._fallback("avisame si la entrega de García no sale hoy")
-    assert "crear_recordatorio" in r["tools_usadas"]
+    assert "crear_recordatorio" in r["tools_used"]
     rs = recordatorios.listar("dueño")
     assert rs and rs[0]["estado"] == "disparado"  # sigue pendiente y era para hoy
     assert "Garcia" in rs[0]["detalle_disparo"]

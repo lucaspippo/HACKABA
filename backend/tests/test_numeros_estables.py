@@ -32,7 +32,7 @@ def test_fallback_morosos_usa_el_total_del_core():
     respuestas = set()
     for _ in range(3):
         angela._set_sesion(features=None)
-        respuestas.add(angela._fallback("¿quién me debe plata?")["respuesta"])
+        respuestas.add(angela._fallback("¿quién me debe plata?")["answer"])
     angela._set_sesion()
     assert len(respuestas) == 1   # byte-idéntico las tres veces
 

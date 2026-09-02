@@ -134,8 +134,8 @@ def test_indec_caido_no_inventa_deflactor(monkeypatch):
 def test_angela_tool_existe_y_router_sin_datos():
     assert "consultar_evolucion" in {t["name"] for t in angela.TOOLS}
     r = angela._fallback("¿cómo vengo contra el año pasado?")
-    assert "consultar_evolucion" in r["tools_usadas"]
-    assert "ventas históricas" in r["respuesta"]  # sin datos: lo dice, no inventa
+    assert "consultar_evolucion" in r["tools_used"]
+    assert "ventas históricas" in r["answer"]  # sin datos: lo dice, no inventa
 
 
 def test_angela_router_con_demo(monkeypatch):
@@ -143,5 +143,5 @@ def test_angela_router_con_demo(monkeypatch):
     monkeypatch.setattr(macro, "ipc_serie",
                         lambda: {"disponible": True, "indices": INDICES})
     r = angela._fallback("¿cómo vengo contra el año pasado?")
-    assert "real" in r["respuesta"] and "ajustado por inflación" in r["respuesta"]
-    assert "demostración" in r["respuesta"]  # la demo nunca pasa por real
+    assert "real" in r["answer"] and "ajustado por inflación" in r["answer"]
+    assert "demostración" in r["answer"]  # la demo nunca pasa por real

@@ -157,13 +157,13 @@ def test_angela_consulta_y_revierte_con_confirmacion():
     angela._set_sesion(features=None)
     staging.crear_batch("sucio.csv", CSV_SUCIO)
     r = angela._fallback("¿qué normalizaste del archivo?")
-    assert "Normalicé sola" in r["respuesta"]
+    assert "Normalicé sola" in r["answer"]
 
     r = angela._fallback("revertí la normalización")
-    assert r["opciones"]  # propone, no aplica
+    assert r["options"]  # propone, no aplica
     b = staging.listar()[-1]
     assert b["normalizaciones"] is not None  # sigue intacta
 
     r = angela._fallback("confirmá: revertí la normalización")
-    assert "deshice" in r["respuesta"]
+    assert "deshice" in r["answer"]
     assert staging.listar()[-1]["normalizaciones"] is None
