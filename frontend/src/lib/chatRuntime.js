@@ -15,7 +15,7 @@ function textFromParts(content = []) {
 }
 
 // The backend expects history as {role, content:string}[]; the newest
-// message (what the user just sent) goes separately as `mensaje`.
+// message (what the user just sent) goes separately as `message`.
 function historyAndMessage(messages) {
   const last = messages[messages.length - 1];
   const message = textFromParts(last?.content);
@@ -65,10 +65,10 @@ export function createChatModelAdapter({ getCurrentView } = {}) {
       const toolIndexById = new Map();
       let currentTextIndex = null;
       // The "done" event carries the same shape the non-streaming chat has
-      // always returned (respuesta/modo/tools_usadas/acciones/opciones): it
+      // always returned (answer/mode/tools_used/actions/options): it
       // travels as the message's metadata.custom so whatever orchestrates the
       // chat (side effects: navigate, create widget, deliver a document,
-      // "opciones" chips) can read it without parsing the visible content.
+      // "options" chips) can read it without parsing the visible content.
       let finalResult = null;
 
       const snapshot = () => ({

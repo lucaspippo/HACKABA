@@ -73,7 +73,7 @@ import main
 c = TestClient(main.app)
 
 # (A) sin token en el demo → 401 (NO llama a Claude)
-r = c.post("/api/angela", json={"mensaje": "hola"})
+r = c.post("/api/angela", json={"message": "hola"})
 assert r.status_code == 401, ("A esperaba 401, dio", r.status_code)
 
 # token legítimo por autologin (el demo lo regala: por eso el cap por sesión
@@ -84,17 +84,17 @@ tok = c.post("/api/demo/autologin").json()["token"]
 xff = {"X-Forwarded-For": "9.9.9.9"}
 modos = []
 for _ in range(3):
-    j = c.post("/api/angela", json={"mensaje": "hola", "token": tok}, headers=xff).json()
-    modos.append(j.get("modo"))
+    j = c.post("/api/angela", json={"message": "hola", "token": tok}, headers=xff).json()
+    modos.append(j.get("mode"))
 assert modos[2] == "cap", ("B: la 3ª debía ser cap", modos)
 
 # otra IP arranca de cero (no la frena la primera)
-j2 = c.post("/api/angela", json={"mensaje": "hola", "token": tok},
+j2 = c.post("/api/angela", json={"message": "hola", "token": tok},
             headers={"X-Forwarded-For": "8.8.8.8"}).json()
-assert j2.get("modo") != "cap", "una IP nueva no debe estar topada"
+assert j2.get("mode") != "cap", "una IP nueva no debe estar topada"
 
 # la UI real siempre manda token: ese camino nunca da 401 (regresión)
-assert c.post("/api/angela", json={"mensaje": "hola", "token": tok},
+assert c.post("/api/angela", json={"message": "hola", "token": tok},
               headers={"X-Forwarded-For": "7.7.7.7"}).status_code == 200
 print("OK")
 """

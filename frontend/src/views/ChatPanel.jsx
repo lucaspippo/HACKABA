@@ -102,8 +102,8 @@ export default function ChatPanel({
     if (nav && onNavigate) onNavigate(nav.section, nav.highlight);
   };
 
-  // Every assistant message carries its full result (respuesta/modo/acciones/
-  // opciones) in metadata.custom — the same shape /api/angela has always
+  // Every assistant message carries its full result (answer/mode/actions/
+  // options) in metadata.custom — the same shape /api/angela has always
   // returned (see lib/chatRuntime.js). Side effects apply here ONCE per
   // message, as soon as it finishes running.
   useEffect(() => {
@@ -113,13 +113,13 @@ export default function ChatPanel({
       appliedRef.current.add(m.id);
       const custom = m.metadata?.custom;
       if (!custom) continue;
-      applyActions(custom.acciones || []);
-      if ((custom.acciones || []).some((a) => a.type === "plan_progreso")) onDatosCambiaron?.();
+      applyActions(custom.actions || []);
+      if ((custom.actions || []).some((a) => a.type === "plan_progreso")) onDatosCambiaron?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  const currentMode = [...messages].reverse().find((m) => m.metadata?.custom?.modo)?.metadata?.custom?.modo;
+  const currentMode = [...messages].reverse().find((m) => m.metadata?.custom?.mode)?.metadata?.custom?.mode;
   const width = variant === "fullscreen" ? "mx-auto w-full max-w-3xl" : "";
 
   return (

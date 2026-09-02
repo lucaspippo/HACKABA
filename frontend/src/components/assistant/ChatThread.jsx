@@ -27,7 +27,7 @@ function UserMessage() {
 }
 
 // A message's "extras" (plan checklist, document card, memory chips) are
-// NOT content parts — they travel in metadata.custom.acciones (the same
+// NOT content parts — they travel in metadata.custom.actions (the same
 // shape /api/angela has always returned) or, for memory chips, get pulled
 // out of the tool-call parts themselves (see AssistantMessage, which skips
 // rendering proponer_conocimiento as a plain ToolCallCard so it isn't shown
@@ -35,8 +35,8 @@ function UserMessage() {
 function MessageExtras({ onExecutingChange }) {
   const t = useT();
   const aui = useAui();
-  const actions = useAuiState((s) => s.message.metadata?.custom?.acciones) || [];
-  const options = useAuiState((s) => s.message.metadata?.custom?.opciones) || [];
+  const actions = useAuiState((s) => s.message.metadata?.custom?.actions) || [];
+  const options = useAuiState((s) => s.message.metadata?.custom?.options) || [];
   const isRunning = useAuiState((s) => s.thread.isRunning);
   const propuestas = useAuiState((s) =>
     (s.message.content || [])

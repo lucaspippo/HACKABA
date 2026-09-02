@@ -265,12 +265,12 @@ def test_fallback_compras_con_paridad(h):
     client.post("/api/factura/confirmar", headers=h, json={"extraccion": _factura()})
     angela._set_sesion(features=None)
     r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" in r["tools_usadas"]
-    assert "FA-0001-00091352" in r["respuesta"]
+    assert "consultar_compras" in r["tools_used"]
+    assert "FA-0001-00091352" in r["answer"]
     # y en inglés, la misma tool
     angela._set_sesion(features=None, idioma="en")
     r2 = angela._fallback("what did i just load?")
-    assert "consultar_compras" in r2["tools_usadas"]
+    assert "consultar_compras" in r2["tools_used"]
     angela._set_sesion()
 
 
@@ -279,7 +279,7 @@ def test_fallback_compras_bloqueado_sin_feature():
     angela._set_sesion(usuario="deposito", rol="Depósito",
                        features={"deposito", "perfil", "angela"})
     r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" not in r["tools_usadas"]
+    assert "consultar_compras" not in r["tools_used"]
     angela._set_sesion()
 
 
@@ -381,11 +381,11 @@ def test_fallback_que_acabo_de_cargar_menciona_remito(h):
     client.post("/api/factura/confirmar", headers=h, json={"extraccion": _remito()})
     angela._set_sesion(features=None)
     r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" in r["tools_usadas"]
-    assert "R-0001-00058214" in r["respuesta"]
+    assert "consultar_compras" in r["tools_used"]
+    assert "R-0001-00058214" in r["answer"]
     angela._set_sesion(features=None, idioma="en")
     r2 = angela._fallback("what did i just load?")
-    assert "R-0001-00058214" in r2["respuesta"]
+    assert "R-0001-00058214" in r2["answer"]
     angela._set_sesion()
 
 
