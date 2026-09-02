@@ -3218,16 +3218,12 @@ def responder(
     # Sesión request-scoped (P9·A): features acotan las 3 capas anti-fuga.
     _set_sesion(usuario=nombre, rol=rol, features=features, idioma=idioma)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    if not config.model_disponible():
         return _fallback(mensaje)
 
-    try:
-        import anthropic
-    except ImportError:
+    client = _build_client()
+    if client is None:
         return _fallback(mensaje)
-
-    client = anthropic.Anthropic(api_key=api_key)
     quien = ""
     if nombre or rol:
         quien = (
@@ -3459,10 +3455,14 @@ def _prepare_turn(message, history, role, name, features, language):
     return system, model, available_tools, messages
 
 
-def _build_client(api_key: str):
-    """The Anthropic client, behind a seam so tests can make construction fail."""
-    import anthropic
-    return anthropic.Anthropic(api_key=api_key)
+def _build_client():
+    """The Anthropic client for whichever provider config resolved, behind a
+    seam so tests can make construction fail. Returns None when no provider
+    is configured, or when the `anthropic` package isn't installed."""
+    try:
+        return config.get_client()
+    except ImportError:
+        return None
 
 
 def _degraded_stream(message: str, kind: str):
@@ -3507,13 +3507,14 @@ def stream_response(
             {"type": "error", "code", "retryable"}
             {"type": "done", "result": {"mode", "tools_used", "actions", "options"}}
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    if not config.model_disponible():
         yield from _degraded_stream(message, "fake_model")
         return
 
     try:
-        client = _build_client(api_key)
+        client = _build_client()
+        if client is None:
+            raise RuntimeError("no LLM provider configured")
     except Exception as e:  # noqa: BLE001
         print(f"[angela/stream] client init failed: {e}", flush=True)
         yield {"type": "error", "code": "model_unavailable", "retryable": True}
