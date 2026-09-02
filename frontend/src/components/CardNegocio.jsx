@@ -474,11 +474,6 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
     detail: rawProposal.detail ?? rawProposal.detalle,
   };
   const dataBadge = <ConfidenceBadge confidence={confidence?.data} axis="data" />;
-  // Every card's `titulo` already states the move in the owner's language,
-  // so builders only author `recommendation.label` when the move is
-  // genuinely DIFFERENT from the title. Falling back keeps this section
-  // headed without printing the same sentence twice in one panel.
-  const move = recommendation?.label || titulo;
   // On nine cards `risk.exposure`, `monto` and the primary metric are
   // literally the same expression, so the panel printed one figure three
   // times. Compare the RAW numbers the backend ships — never the formatted
@@ -582,7 +577,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             Risk and recommendation are causally paired — risk is typically one
             short line, too light to earn its own section header — so they
             share this section instead of each getting one. */}
-        {(risk?.label || move || proposal || actionTaken) && (
+        {(risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken) && (
           <DrillSection title={t("cardneg.drill_recommend")}>
             {risk?.label && (
               <p className={`rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
@@ -596,8 +591,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                 )}
               </p>
             )}
-            {move && (
-              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{move}</p>
+            {recommendation?.label && (
+              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
             )}
             {recommendation?.detail && (
               <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">{recommendation.detail}</p>
