@@ -140,6 +140,7 @@ function Composer({ leading }) {
       <ComposerPrimitive.Send asChild>
         <button
           disabled={isRunning}
+          aria-label={t("common.enviar")}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-violeta text-crema transition-transform active:scale-90 disabled:opacity-40"
         >
           <Send size={18} />
