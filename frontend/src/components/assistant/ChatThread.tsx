@@ -5,12 +5,13 @@ import {
   useAuiState,
   ComposerPrimitive,
 } from "@assistant-ui/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import AngelaMark from "../AngelaMark";
 import ToolCallCard from "./ToolCallCard";
 import ErrorState from "./ErrorState";
+import ThinkingIndicator from "./ThinkingIndicator";
 import { toolComponentsByName } from "./tools/registry";
 import PlanChecklist from "./PlanChecklist";
 import DocCard from "./DocCard";
@@ -154,23 +155,9 @@ function MessageNotices() {
   );
 }
 
-// "Thinking" dots: only while the message is running and neither a token nor
-// a tool call has arrived yet (right after the question is sent).
-function ThinkingDots() {
-  return (
-    <span className="flex gap-1 px-0.5 py-1">
-      {[0, 1, 2].map((d) => (
-        <span
-          key={d}
-          className="h-1.5 w-1.5 animate-bounce rounded-full bg-tinta-suave"
-          style={{ animationDelay: `${d * 0.15}s` }}
-        />
-      ))}
-    </span>
-  );
-}
-
 function AssistantMessage({ onExecutingChange }: { onExecutingChange?: ExecutingHandler }) {
+  const isRunning = useAuiState((s) => s.message.status?.type === "running");
+  const startedAt = useRef(Date.now()).current;
   const noContentYet = useAuiState(
     (s) =>
       s.message.status?.type === "running" &&
@@ -182,9 +169,8 @@ function AssistantMessage({ onExecutingChange }: { onExecutingChange?: Executing
       <AngelaMark size={28} estado={undefined} />
       <div className="max-w-[88%]">
         <div className="whitespace-pre-line rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-[0.95rem] leading-snug text-tinta sombra-papel">
-          {noContentYet ? (
-            <ThinkingDots />
-          ) : (
+          {isRunning && <ThinkingIndicator startedAt={startedAt} />}
+          {!noContentYet && (
             <MessagePrimitive.Parts
               components={{
                 Text: ({ text }: { text: string }) => <span>{text}</span>,
