@@ -368,6 +368,23 @@ CATALOGO: dict[str, dict[str, str]] = {
               "para arrancar una nueva.",
         "en": "This demo session reached its chat limit — refresh to start a new one.",
     },
+    "angela.sin_modelo": {
+        "es": "Esto lo saqué de tus datos, sin el modelo conectado.",
+        "en": "I got this from your data, without the model connected.",
+    },
+    "angela.error_modelo": {
+        "es": "No pude responder. Probá de nuevo en un momento.",
+        "en": "I couldn't answer. Try again in a moment.",
+    },
+    "angela.modelo_no_disponible": {
+        "es": "No pude conectarme al modelo.",
+        "en": "I couldn't connect to the model.",
+    },
+    "angela.muchas_vueltas": {
+        "es": "Estoy dando muchas vueltas con esa consulta. "
+              "¿Me la reformulás más simple?",
+        "en": "I'm going in circles with that one. Could you put it more simply?",
+    },
     # Comprobantes por foto (P10) — chequeos, cruces y sync simulado.
     "core.comp.chk_suma": {
         "es": "La suma de los ítems no cierra contra el total declarado "
