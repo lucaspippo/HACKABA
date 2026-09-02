@@ -570,10 +570,11 @@ def _alert_items(lang) -> list[dict]:
 
 
 def _alerts_cuentas(lang) -> list[dict]:
-    from . import cuentas
+    from . import cuentas, insight as ins
     out = []
     al = cuentas.alertas()
     if al.get("cantidad"):
+        morosos = [c for c in cuentas.listar() if c.get("en_mora")]
         out.append(_item(
             id="morosos", tono="rojo", chip=_t("core.prio.chip_cobrar", lang),
             titulo=_t("core.prio.morosos_t", lang),
@@ -584,14 +585,41 @@ def _alerts_cuentas(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_cuentas", lang)],
             navegar="cuentas",
             accion_chat=_t("core.prio.morosos_chat", lang),
-            drill={"porque": [_t("core.prio.morosos_p", lang, n=_num(al["cantidad"], lang),
-                                 monto=_pesos(al["impacto_pesos"], lang))],
-                   "grafico": None, "involucrados": [], "supuestos": []},
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.morosos_p", lang,
+                                       n=_num(al["cantidad"], lang),
+                                       monto=_pesos(al["impacto_pesos"], lang)),
+                                    scope={"kind": "clients", "count": al["cantidad"]}),
+                hypothesis=ins.hypothesis(_t("core.prio.morosos_hyp", lang)),
+                evidence=[
+                    ins.metric("overdue_total",
+                               label=_pesos(al["impacto_pesos"], lang),
+                               value=al["impacto_pesos"], unit="ars", weight="primary",
+                               method={"key": "core.method.mora_total",
+                                       "label": _t("core.method.mora_total", lang)}),
+                    ins.records("overdue_clients",
+                                label=_t("core.prio.morosos_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind="client", id=c.get("id"),
+                                                 name=c["nombre"], amount=c.get("saldo"))
+                                      for c in morosos[:8]],
+                                method={"key": "core.method.mora_total",
+                                        "label": _t("core.method.mora_total", lang)}),
+                ],
+                assumptions=[ins.assumption(_t("core.prio.mora_sup", lang),
+                                            if_wrong=_t("core.prio.mora_sup_if", lang))],
+                risk=ins.risk(_t("core.prio.mora_risk", lang),
+                              exposure=al["impacto_pesos"]),
+                recommendation=ins.recommendation(
+                    _t("core.prio.morosos_t", lang), navigate="cuentas",
+                    chat=_t("core.prio.morosos_chat", lang)),
+            ),
         ))
     atrasados = [c for c in cuentas.listar()
                  if c.get("en_mora") and (c.get("atraso_vs_promedio") or 0) >= 80]
     if atrasados:
         d = max(atrasados, key=lambda c: c.get("atraso_vs_promedio") or 0)
+        prom = d.get("promedio_pago_dias") or 0
         out.append(_item(
             id="moroso_atraso", tono="rojo", chip=_t("core.prio.chip_cobrar", lang),
             titulo=_t("core.prio.atraso_t", lang, nombre=d["nombre"]),
@@ -602,21 +630,44 @@ def _alerts_cuentas(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_cuentas", lang)],
             navegar="cuentas",
             accion_chat=_t("core.prio.atraso_chat", lang, nombre=d["nombre"]),
-            drill={"porque": [_t("core.prio.atraso_p", lang, nombre=d["nombre"],
-                                 dias=_num(d["dias_sin_pagar"], lang),
-                                 prom=_num(d.get("promedio_pago_dias") or 0, lang))],
-                   "grafico": None,
-                   "involucrados": [{"id": d.get("id"), "kind": "client",
-                                     "nombre": d["nombre"], "monto": d.get("saldo"),
-                                     "detalle": _t("core.prio.atraso_i", lang,
-                                                   dias=d["dias_sin_pagar"])}],
-                   "supuestos": []},
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.atraso_p", lang, nombre=d["nombre"],
+                                       dias=_num(d["dias_sin_pagar"], lang),
+                                       prom=_num(prom, lang)),
+                                    scope={"kind": "client", "count": 1}),
+                hypothesis=ins.hypothesis(_t("core.prio.atraso_hyp", lang,
+                                             nombre=d["nombre"])),
+                evidence=[
+                    ins.metric("days_overdue",
+                               label=_t("core.prio.atraso_r", lang,
+                                        dias=_num(d["dias_sin_pagar"], lang),
+                                        atraso=_num(d["atraso_vs_promedio"], lang)),
+                               value=d["dias_sin_pagar"], unit="days", weight="primary",
+                               baseline={"value": prom,
+                                         "label": _t("core.method.prom_pago", lang)},
+                               method={"key": "core.method.dias_mora",
+                                       "label": _t("core.method.dias_mora", lang)},
+                               records=[ins.record(kind="client", id=d.get("id"),
+                                                   name=d["nombre"], amount=d.get("saldo"),
+                                                   detail=_t("core.prio.atraso_i", lang,
+                                                             dias=d["dias_sin_pagar"]))]),
+                ],
+                assumptions=[ins.assumption(_t("core.prio.mora_sup", lang),
+                                            if_wrong=_t("core.prio.mora_sup_if", lang))],
+                alternatives=[ins.caveat(_t("core.prio.atraso_alt", lang))],
+                falsifiers=[ins.caveat(_t("core.prio.atraso_fals", lang))],
+                risk=ins.risk(_t("core.prio.mora_risk", lang), exposure=d.get("saldo")),
+                recommendation=ins.recommendation(
+                    _t("core.prio.atraso_t", lang, nombre=d["nombre"]),
+                    navigate="cuentas",
+                    chat=_t("core.prio.atraso_chat", lang, nombre=d["nombre"])),
+            ),
         ))
     return out
 
 
 def _alerts_ventas(lang) -> list[dict]:
-    from . import ventas
+    from . import ventas, insight as ins
     pan = ventas.panorama(lang)
     if not pan.get("disponible"):
         return []
@@ -624,6 +675,8 @@ def _alerts_ventas(lang) -> list[dict]:
     if not q.get("cantidad"):
         return []
     items = (q.get("items") or [])[:8]
+    metodo = {"key": "core.method.quiebre_conteo",
+              "label": _t("core.method.quiebre_conteo", lang)}
     return [_item(
         id="quiebre", tono="rojo", chip=_t("core.prio.chip_reponer", lang),
         titulo=_t("core.prio.quiebre_t", lang),
@@ -633,15 +686,29 @@ def _alerts_ventas(lang) -> list[dict]:
         fuentes=[_t("core.prio.f_stock", lang), _t("core.prio.f_ventas", lang)],
         navegar="inventario",
         accion_chat=_t("core.prio.quiebre_chat", lang),
-        drill={"porque": [_t("core.prio.quiebre_p", lang, n=_num(q["cantidad"], lang))],
-               "grafico": None,
-               "involucrados": [{"id": x.get("codigo"), "kind": "product",
-                                 "nombre": x.get("descripcion") or "",
-                                 "monto": None,
-                                 "detalle": _t("core.prio.quiebre_i", lang,
-                                               dias=x.get("dias_cobertura") or 0)}
-                                for x in items],
-               "supuestos": []},
+        insight=ins.build(
+            pattern=ins.pattern(_t("core.prio.quiebre_p", lang,
+                                   n=_num(q["cantidad"], lang)),
+                                scope={"kind": "products", "count": q["cantidad"]}),
+            hypothesis=ins.hypothesis(_t("core.prio.quiebre_hyp", lang)),
+            evidence=[
+                ins.metric("stockout_count", label=_num(q["cantidad"], lang),
+                           value=q["cantidad"], unit="products", weight="primary",
+                           method=metodo),
+                ins.records("stockout_items", label=_t("core.prio.quiebre_t", lang),
+                            weight="primary",
+                            rows=[ins.record(kind="product", id=x.get("codigo"),
+                                             name=x.get("descripcion") or "",
+                                             detail=_t("core.prio.quiebre_i", lang,
+                                                       dias=x.get("dias_cobertura") or 0))
+                                  for x in items],
+                            method=metodo),
+            ],
+            risk=ins.risk(_t("core.prio.quiebre_risk", lang)),
+            recommendation=ins.recommendation(
+                _t("core.prio.quiebre_t", lang), navigate="inventario",
+                chat=_t("core.prio.quiebre_chat", lang)),
+        ),
     )]
 
 
