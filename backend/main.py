@@ -2222,6 +2222,58 @@ def patrones_feedback(req: PatternFeedbackRequest, u: dict = Depends(usuario_act
     raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
 
 
+class HallazgoAprenderRequest(BaseModel):
+    card_id: str
+    tipo: str
+    ambito: str
+    nodo: str
+    efecto: str
+    entidad: str | None = None
+    texto: str | None = None
+    texto_en: str | None = None
+    params: dict | None = None
+    note: str | None = None
+
+
+def _learn_sources():
+    """Same dispatch as `_feedback_sources()`, for "Enseñar a Ángela":
+    promoting a live finding into a durable core/conocimiento.py piece
+    instead of just muting it. Any finding source that already has a
+    record_feedback() gets this for free the moment it adds its own
+    record_learn() wrapper (see core/patrones.py, core/oportunidades_neg.py)
+    — no new code needed here or in core/conocimiento.py for a future source."""
+    from core import oportunidades_neg
+    return (
+        (patrones.MODULES_BY_ID, patrones.record_learn),
+        (oportunidades_neg.DOMINIO, oportunidades_neg.record_learn),
+    )
+
+
+@app.post("/api/patrones/aprender")
+def patrones_aprender(req: HallazgoAprenderRequest, u: dict = Depends(require_admin)):
+    """"Enseñar a Ángela": promote a live finding (from any source in
+    _learn_sources()) into durable business knowledge. Owner-only — picking
+    `efecto` changes what Ángela does going forward, the same bar
+    POST /api/conocimiento already holds a hand-taught piece to. Statistics
+    can say a deviation is real; only the owner decides what Ángela should
+    DO about it, so tipo/ambito/nodo/efecto are never inferred here."""
+    for modules_by_id, learn_fn in _learn_sources():
+        if req.card_id not in modules_by_id:
+            continue
+        try:
+            pieza = learn_fn(
+                req.card_id, actor=u["username"], tipo=req.tipo, ambito=req.ambito,
+                nodo=req.nodo, efecto=req.efecto, entidad=req.entidad, texto=req.texto,
+                texto_en=req.texto_en, params=req.params, note=req.note, lang=_lang(u))
+        except conocimiento.ConocimientoInvalido as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except KeyError:
+            raise HTTPException(status_code=404,
+                                detail=i18n.t("api.patron_inexistente", _lang(u)))
+        return {"ok": True, "pieza": pieza}
+    raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
+
+
 @app.get("/api/patrones/historial")
 def patrones_historial(u: dict = Depends(usuario_actual)):
     """What Ángela has flagged — from any source — and what the owner said

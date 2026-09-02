@@ -27,7 +27,7 @@ BUSINESS_DATA_TABLES = (
     "inventory_baseline", "sample_extractions",
     "reminders", "user_memory", "macro_cache", "finance_data",
     "client_sales_data",
-    "collection_actions", "business_knowledge", "data_sections",
+    "collection_actions", "business_knowledge_pieces", "data_sections",
     "sales_validation",
     "floor_reports", "staging_batches", "user_profiles", "supplier_accounts",
     "users",

@@ -102,6 +102,69 @@ def test_feedback_on_a_card_that_is_not_live_is_a_404(tokens, monkeypatch):
     assert r.status_code == 404
 
 
+# --- /api/patrones/aprender ("Enseñar a Ángela") --------------------------------
+
+@pytest.fixture(autouse=True)
+def _clear_business_knowledge():
+    from tests.conftest import limpiar_tabla_tenant
+    limpiar_tabla_tenant("business_knowledge_pieces")
+    yield
+    limpiar_tabla_tenant("business_knowledge_pieces")
+
+
+def _aprender_payload(**kw):
+    base = dict(card_id="combo_no_percibido", tipo="contexto", ambito="global",
+               nodo="ventas", efecto="contexto_para_angela")
+    base.update(kw)
+    return base
+
+
+def test_owner_can_teach_angela_from_a_live_finding(tokens, monkeypatch):
+    _seed_combo(monkeypatch)
+    r = client.post("/api/patrones/aprender", headers=_h(tokens["emilio"]),
+                    json=_aprender_payload())
+    assert r.status_code == 200, r.text
+    pieza = r.json()["pieza"]
+    assert pieza["tipo"] == "contexto"
+    assert pieza["efecto"] == "contexto_para_angela"
+    assert pieza["origen"]["hallazgo_id"] == "combo_no_percibido"
+
+    r = client.get("/api/conocimiento", headers=_h(tokens["emilio"]))
+    assert any(p["id"] == pieza["id"] for p in r.json()["piezas"])
+
+
+def test_non_admin_cannot_teach_angela(tokens, monkeypatch):
+    _seed_combo(monkeypatch)
+    r = client.post("/api/patrones/aprender", headers=_h(tokens["paula"]),
+                    json=_aprender_payload())
+    assert r.status_code == 403
+
+
+def test_invalid_efecto_is_a_400(tokens, monkeypatch):
+    _seed_combo(monkeypatch)
+    r = client.post("/api/patrones/aprender", headers=_h(tokens["emilio"]),
+                    json=_aprender_payload(efecto="not_a_real_effect"))
+    assert r.status_code == 400
+
+
+def test_teaching_from_a_card_that_is_not_live_is_a_404(tokens, monkeypatch):
+    from core import ventas_cliente
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
+    r = client.post("/api/patrones/aprender", headers=_h(tokens["emilio"]),
+                    json=_aprender_payload())
+    assert r.status_code == 404
+
+
+def test_teach_angela_on_an_oportunidad_card(tokens, monkeypatch):
+    _seed_moroso(monkeypatch)
+    r = client.post("/api/patrones/aprender", headers=_h(tokens["emilio"]),
+                    json=_aprender_payload(card_id="cobrar_morosos", ambito="cliente",
+                                          nodo="clientes", entidad="Cliente Uno",
+                                          efecto="requiere_aprobacion"))
+    assert r.status_code == 200, r.text
+    assert r.json()["pieza"]["nodo"] == "clientes"
+
+
 # --- the same endpoint also dispatches to core/oportunidades_neg.py --------------
 
 def test_owner_can_give_feedback_on_an_oportunidad_card(tokens, monkeypatch):

@@ -256,6 +256,42 @@ def test_feedback_hides_the_exact_finding_it_was_given_on(monkeypatch, db_tenant
     assert "combo_no_percibido" not in after
 
 
+def test_learn_creates_a_knowledge_piece_and_hides_the_finding(monkeypatch, db_tenant):
+    """"Enseñar a Ángela": the confirmed finding becomes a durable
+    core/conocimiento.py piece (with the owner-chosen efecto, not an
+    inferred one), and stops resurfacing under its old shape."""
+    from core import conocimiento, ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    before = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" in before
+
+    pieza = patrones.record_learn(
+        "combo_no_percibido", actor="aldo", tipo="contexto", ambito="global",
+        nodo="ventas", efecto="contexto_para_angela", lang="es")
+
+    assert pieza["tipo"] == "contexto"
+    assert pieza["efecto"] == "contexto_para_angela"
+    assert pieza["origen"]["quien"] == "Ángela"
+    assert pieza["origen"]["hallazgo_id"] == "combo_no_percibido"
+    assert conocimiento.detalle(pieza["id"]) == pieza
+
+    after = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" not in after
+
+
+def test_learn_on_a_card_that_is_not_live_raises(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
+    import pytest
+    with pytest.raises(KeyError):
+        patrones.record_learn("combo_no_percibido", actor="aldo", tipo="contexto",
+                              ambito="global", nodo="ventas",
+                              efecto="contexto_para_angela", lang="es")
+
+
 def test_feedback_does_not_hide_a_different_instance_of_the_same_pattern(monkeypatch, db_tenant):
     """Dismissing the yerba/sugar combo shouldn't silence a LATER, genuinely
     different pair that happens to trip the same detector — the fingerprint,
