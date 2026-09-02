@@ -7,6 +7,13 @@ const MONEY_KEY = /monto|inmovilizado|precio|costo|saldo|total|plata|deuda/i;
 
 /** A "small" object (a few scalar keys) as a compact key/value grid. */
 function GenericResult({ result }: { result: Record<string, unknown> }) {
+  if (result.error) {
+    return (
+      <p className="mt-1 text-[0.82rem] text-rojo-hondo">
+        {String(result.error || result.motivo)}
+      </p>
+    );
+  }
   const entries = Object.entries(result).filter(
     ([, v]) =>
       v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean",
@@ -53,14 +60,6 @@ export default function ToolFallback({ toolName, result }: ToolCallMessagePartPr
     return (
       <p className="mt-1 text-[0.82rem] text-tinta-suave">
         → te llevé a <b className="text-tinta">{String(r.navegado_a)}</b>
-      </p>
-    );
-  }
-
-  if (r.error || r.motivo) {
-    return (
-      <p className="mt-1 text-[0.82rem] text-rojo-hondo">
-        {String(r.error || r.motivo)}
       </p>
     );
   }
