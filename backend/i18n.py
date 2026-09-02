@@ -236,6 +236,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Ese conocimiento no existe o no es de tu ámbito.",
         "en": "That knowledge doesn't exist or isn't in your scope.",
     },
+    "api.conocimiento_no_pendiente": {
+        "es": "Esa pieza ya fue revisada — no está pendiente.",
+        "en": "That piece was already reviewed — it isn't pending.",
+    },
     "api.version_inexistente": {
         "es": "Versión inexistente: {version_id}",
         "en": "No such version: {version_id}",
@@ -3088,6 +3092,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                                    "en": "Merged a file into the business data"},
     "audit.acc.crear_apartado": {"es": "Abrió un apartado de datos nuevo",
                                  "en": "Opened a new data section"},
+    "audit.acc.proponer_conocimiento": {"es": "Propuso una pieza de conocimiento del negocio (vía chat)",
+                                        "en": "Proposed a piece of business knowledge (via chat)"},
+    "audit.acc.aprobar_conocimiento": {"es": "Aprobó una propuesta de conocimiento del negocio",
+                                       "en": "Approved a business-knowledge proposal"},
+    "audit.acc.rechazar_conocimiento": {"es": "Rechazó una propuesta de conocimiento del negocio",
+                                        "en": "Rejected a business-knowledge proposal"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {
