@@ -6,7 +6,14 @@ services:
       POSTGRES_PASSWORD: polpilot
       POSTGRES_DB: polpilot
     ports:
-      - "5432:5432"
+      # 5434 on the host, not 5432, and it must match backend/.env's
+      # DATABASE_URL/APP_DATABASE_URL. 5432 is the default port of every other
+      # Postgres container a dev machine tends to accumulate (this workspace
+      # alone has polfin's and older polpilot worktrees'), and when one of them
+      # already holds 5432 this service comes up with NO published port at all
+      # — the app then can't reach it, and `docker compose exec db psql` shows
+      # an empty schema that looks like migrations never ran.
+      - "5434:5432"
     volumes:
       - polpilot_db_data:/var/lib/postgresql/data
       - ./docker/init-app-role.sql:/docker-entrypoint-initdb.d/init-app-role.sql:ro

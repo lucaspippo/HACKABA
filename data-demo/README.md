@@ -37,9 +37,10 @@ congelado, view-as).
 ## Usuarios
 
 El equipo ficticio vive en `backend/usuarios_demo.py` (aldo=dueño, marta,
-celeste, ramón, brian, walter, nahuel, vanesa, diego + polpilot). Las
-contraseñas se generan al primer arranque y quedan en
-`data-demo/credenciales.json` (gitignored) — se imprimen en la consola.
+celeste, ramón, brian, walter, nahuel, vanesa, diego + polpilot). Todos entran
+con la misma contraseña fija que siembra `seed_db.py`: **`demo-password`**
+(`POLPILOT_DEMO_PASSWORD` para cambiarla). Sólo se guarda el hash bcrypt en
+Postgres (`auth_credentials`); no hay `credenciales.json`.
 
 ## Los datos
 
@@ -55,8 +56,8 @@ El uso del demo muta su estado (como el producto real). Para volver al seed:
 
 ```bash
 git checkout -- data-demo/
-# borrar el runtime no versionado si quedó (CONSERVANDO macro_cache.json y
-# credenciales.json): inventory_actual.json, versions/, audit.json,
+# borrar el runtime no versionado si quedó (CONSERVANDO macro_cache.json):
+# inventory_actual.json, versions/, audit.json,
 # staging.json, caja.json, perfiles.json
 python data-demo/generar.py   # OBLIGATORIO: re-siembra caja, staging, la
                               # auditoría (historia de uso), la solicitud de

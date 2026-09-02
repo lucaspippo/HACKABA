@@ -67,6 +67,47 @@ def ensure_tenant(tenant_slug: str = "demo", *, name: str | None = None,
     return str(tid)
 
 
+DEMO_PASSWORD_ENV = "POLPILOT_DEMO_PASSWORD"
+DEFAULT_DEMO_PASSWORD = "demo-password"
+
+
+def demo_password() -> str:
+    """The one password every seeded user gets, so a freshly seeded tenant is
+    always loggable-into. Override per environment with POLPILOT_DEMO_PASSWORD
+    (do set it for any deployment reachable from outside a dev machine).
+
+    Fixed, but never stored in the clear: seed_credentials() bcrypts it with a
+    per-user salt, in every environment.
+    """
+    return os.environ.get(DEMO_PASSWORD_ENV) or DEFAULT_DEMO_PASSWORD
+
+
+def seed_credentials(tid: str, roster) -> None:
+    """Assert demo_password() for every user in the roster.
+
+    ASSERT, not fill-in-if-missing: this is the repair path for a tenant whose
+    hashes drifted (anything that wrote a different hash used to make the
+    documented password permanently wrong, since the old code skipped any user
+    who already had a row). Re-hashing only when the stored hash doesn't
+    already accept the password keeps it idempotent and avoids churning
+    updated_at on every boot.
+    """
+    import bcrypt
+
+    from core.db import credentials_repo
+
+    pw = demo_password().encode("utf-8")
+    for username in roster:
+        actual = credentials_repo.get(tid, username)
+        if actual:
+            try:
+                if bcrypt.checkpw(pw, actual.encode("utf-8")):
+                    continue
+            except ValueError:
+                pass  # unparseable/corrupt hash — fall through and replace it
+        credentials_repo.set(tid, username, bcrypt.hashpw(pw, bcrypt.gensalt()).decode())
+
+
 def run(tenant_slug: str = "demo", *, name: str | None = None,
         short_name: str | None = None, source: str | None = None) -> None:
     tid = ensure_tenant(tenant_slug, name=name, short_name=short_name, source=source)
@@ -80,11 +121,7 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     import auth
     roster = auth.USUARIOS
 
-    for username in roster:
-        if credentials_repo.get(tid, username) is None:
-            import bcrypt
-            credentials_repo.set(tid, username, bcrypt.hashpw(b"demo-password", bcrypt.gensalt()).decode())
-
+    seed_credentials(tid, roster)
     seed_domains()
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 

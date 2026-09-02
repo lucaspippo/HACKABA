@@ -73,22 +73,35 @@ def _admin_de(token: str) -> dict:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     auth.cargar_o_generar_credenciales()
-    # Las credenciales YA NO se imprimen en consola en cada arranque (P9·C6,
-    # M10): viven en credenciales.json (gitignored). Para verlas en desarrollo:
-    # POLPILOT_PRINT_CREDS=1.
-    try:
-        if os.environ.get("POLPILOT_PRINT_CREDS") == "1":
-            creds = auth.credenciales_actuales()
-            lineas = ["", "=== CREDENCIALES (solo con POLPILOT_PRINT_CREDS=1) ==="]
-            for u, pw in creds.items():
-                lineas.append(f"  {u:10s} -> {pw}")
-            lineas.append("=" * 51)
-            print("\n".join(lineas), flush=True)
-        else:
-            print(f"[polpilot] credenciales en {auth.CREDS_FILE} (no se imprimen; "
-                  "POLPILOT_PRINT_CREDS=1 para verlas)", flush=True)
-    except Exception:
-        pass
+    # Los hashes viven en Postgres (auth_credentials); NUNCA se persiste el
+    # plaintext. Un tenant sembrado por data-demo/seed_db.py usa la contraseña
+    # fija de seed_db.demo_password() (POLPILOT_DEMO_PASSWORD, default
+    # "demo-password") — es la que sirve para entrar en desarrollo.
+    # cargar_o_generar_credenciales() sólo genera una al azar para el usuario
+    # que TODAVÍA no tenga fila, y ese plaintext existe únicamente en memoria
+    # de este proceso: POLPILOT_PRINT_CREDS=1 lo imprime.
+    #
+    # Sin `except: pass` a propósito. Este bloque tenía uno, y se tragó en
+    # silencio un AttributeError (auth.CREDS_FILE, borrado al migrar las
+    # credenciales a Postgres) durante meses: el mensaje de arranque no salía
+    # nunca y la desincronización de contraseñas quedaba invisible.
+    if os.environ.get("POLPILOT_PRINT_CREDS") == "1":
+        creds = auth.credenciales_actuales()
+        lineas = ["", "=== CREDENCIALES (solo con POLPILOT_PRINT_CREDS=1) ==="]
+        for u, pw in creds.items():
+            lineas.append(f"  {u:10s} -> {pw}")
+        if not creds:
+            lineas.append("  (ninguna generada en este proceso: todos los "
+                          "usuarios ya tenían credencial)")
+        lineas.append("=" * 51)
+        print("\n".join(lineas), flush=True)
+    else:
+        generadas = len(auth.credenciales_actuales())
+        print(f"[polpilot] credenciales hasheadas en Postgres (auth_credentials); "
+              f"{generadas} generada(s) al azar en este arranque. Tenant sembrado "
+              f"por seed_db: entrar con la contraseña fija "
+              f"(POLPILOT_DEMO_PASSWORD). POLPILOT_PRINT_CREDS=1 para ver las "
+              f"generadas.", flush=True)
     # P11·B4: precálculo de análisis al arrancar — la primera entrada a
     # Oportunidades/Alertas ya sale del cache (clave con YC en la URL pública).
     try:

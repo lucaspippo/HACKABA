@@ -34,8 +34,13 @@ npm run dev          # http://localhost:5173
 O todo junto, con siembra y healthcheck incluidos: `python start_demo.py`.
 
 - **Usuarios:** el equipo ficticio vive en `backend/usuarios_demo.py`
-  (`aldo` es el dueño). Las contraseñas se generan en el primer arranque, se
-  imprimen en consola y quedan en `data-demo/credenciales.json` (gitignored).
+  (`aldo` es el dueño). **Se entra con la contraseña fija sembrada:
+  `demo-password`** (se cambia con `POLPILOT_DEMO_PASSWORD`; en cualquier
+  deploy accesible desde afuera, seteala). Sólo se persiste el hash bcrypt, en
+  Postgres (`auth_credentials`): el plaintext no se escribe nunca a disco y ya
+  no existe ningún `credenciales.json`. `data-demo/seed_db.py` re-afirma la
+  contraseña fija en cada siembra, así que un hash desincronizado se arregla
+  volviendo a sembrar.
 - **Ángela (chat con IA):** opcional. Exportá `ANTHROPIC_API_KEY` antes de
   levantar el backend; sin la key, todo lo demás funciona igual (los análisis
   son deterministas, no dependen de la IA).
