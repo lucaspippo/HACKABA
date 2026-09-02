@@ -403,6 +403,28 @@ def test_merge_keeps_the_canonical_pattern_and_never_concatenates():
     assert out[0]["insight"]["pattern"]["label"] == "canonica"
 
 
+def test_merge_falls_back_to_the_twins_hypothesis_when_canonical_has_none():
+    """Defect A: cobrar_morosos (canonical) sets no hypothesis while its twin
+    moroso_atraso does. Keeping the canonical unconditionally threw away the
+    only interpretation the merged card had. The fallback must not touch
+    pattern, which stays canonical-only and unconditional."""
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("canonica")))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("la del alerta"),
+                                            hypothesis=_ins.hypothesis("la del twin")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["hypothesis"]["label"] == "la del twin"
+    assert out[0]["insight"]["pattern"]["label"] == "canonica"
+
+
+def test_merge_keeps_the_canonical_hypothesis_when_both_have_one():
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"), hypothesis=_ins.hypothesis("la canonica")))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("p"), hypothesis=_ins.hypothesis("la del twin")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["hypothesis"]["label"] == "la canonica"
+
+
 def test_merge_unions_assumptions_by_label():
     a = _with_insight("cobrar_morosos", _ins.build(
         pattern=_ins.pattern("p"), assumptions=[_ins.assumption("mismo supuesto")]))
