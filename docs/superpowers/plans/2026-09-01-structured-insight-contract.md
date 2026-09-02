@@ -18,7 +18,7 @@
 - **Every new user-visible string is born bilingual** — added to `backend/i18n.py` `CATALOGO` with both `"es"` and `"en"` on the same commit (house rule, `i18n.py:1-20`).
 - **Tests write into `data-demo/`.** After any `pytest` run: `git checkout -- data-demo/`.
 - Run backend tests from `backend/`: `python -m pytest`. Dataset "today" is **2026-07-07**.
-- **Pre-existing failures, not to be "fixed":** `tests/test_p27.py::test_demo_set_cerrado_completo` and `::test_demo_numeros_canonicos_del_guion` already fail on `main` (the demo dataset no longer produces a `cliente_frio` card).
+- **Pre-existing failures, not to be "fixed": 7 of them**, confirmed pre-existing on the branch tip by `git stash` during Task 4. They live in `tests/test_cruces.py`, `tests/test_p27.py` and `tests/test_patrones.py`, and are `cliente_frio` / count mismatches against the real `data-demo/` dataset. A full-suite run should read **1377 passed / 7 failed / 36 skipped**. If your run shows more than 7 failures, you broke something; if it shows fewer, say so rather than assuming you fixed one.
 
 ## Runnability during the plan
 
