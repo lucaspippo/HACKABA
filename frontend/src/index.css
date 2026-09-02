@@ -157,7 +157,26 @@
   /* Acción táctil estándar de la casa */
   button {
     transition: color 150ms ease-out, background-color 150ms ease-out,
-      border-color 150ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
+      border-color 150ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out,
+      filter 150ms ease-out;
+  }
+  /* Afordancias base de click: todo botón avisa que es clickeable ANTES del
+     click (cursor + hover), durante (active) y cuando no lo es (disabled) —
+     sin pisar un hover/active más específico definido por el componente
+     (mayor especificidad de las clases hover:/active: de Tailwind siempre gana). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+  button:not(:disabled):hover {
+    filter: brightness(0.96);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.99);
   }
   /* La plata siempre en mono y con cifras tabulares */
   .plata {

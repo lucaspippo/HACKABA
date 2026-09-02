@@ -52,7 +52,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
             <AngelaMark size={28} />
             <h2 className="font-display text-[1.1rem] font-bold leading-tight">{t(`rol.reporte_t_${tipo}`)}</h2>
           </div>
-          <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
         <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">{t(`rol.reporte_sub_${tipo}`)}</p>
 
