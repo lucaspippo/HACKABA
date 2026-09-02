@@ -65,8 +65,10 @@ def test_demo_cards_anatomia_completa():
         assert c["monto"] > 0, c["id"]
         assert c["tipo"] in oportunidades_neg.TIPOS_VALIDOS, c["id"]
         assert c["fuentes"], c["id"]
-        assert c["drill"]["porque"], c["id"]
-        g = c["drill"].get("grafico")
+        ins = c["insight"]
+        assert ins["pattern"] and ins["pattern"]["label"], c["id"]
+        assert ins["evidence"], c["id"]
+        g = next((e["chart"] for e in ins["evidence"] if e.get("chart")), None)
         assert g and g["ok"] and g["series"][0]["puntos"], c["id"]
         assert g["meta"]["unidad"], c["id"]
         # P30·A1 — toda card declara su NATURALEZA (la fuente única anti-doble-conteo)

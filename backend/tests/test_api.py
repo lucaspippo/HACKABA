@@ -165,5 +165,5 @@ def test_prioridades_inbox_shape(h):
     assert r.status_code == 200
     body = r.json()
     assert {"act", "watch", "badge", "hay_ventas"} <= set(body)
-    assert body["badge"] == len(body["act"])
+    assert body["badge"] == sum(1 for c in body["act"] if not c.get("action_taken"))
     assert isinstance(body["act"], list) and isinstance(body["watch"], list)

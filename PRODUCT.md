@@ -98,6 +98,21 @@ when needed.
 - No real customer logos, testimonials, case studies, or press exist yet in this
   repo. Do not fabricate any.
 
+## Insight Structure
+
+Every analysis the product presents follows one fixed shape: Pattern →
+Hypothesis → Evidence → Assumptions → Risk → Recommended action → Owner →
+Deadline. Confidence is always reported on two axes — how much data backs the
+finding, and how big the interpretive leap is — because a card can be
+data-rich and hypothesis-light, or the reverse, and a single confidence number
+would hide which one it is. Every metric states how it was calculated; every
+claim expands to the real records behind it, not a paraphrase of them.
+
+The insight LIFECYCLE (`New` / `Confirmed` / `Acted upon` / `Resolved` /
+`Proven wrong` / `Still being monitored`) and the action workflow it drives are
+the planned next step, not yet implemented — see the "Deferred" section of
+`docs/superpowers/specs/2026-09-01-structured-insight-contract-design.md`.
+
 ## Product Principles
 
 - Every number the user sees traces to a deterministic calculation in `core/`; the

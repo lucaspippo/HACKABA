@@ -1,5 +1,5 @@
-"""Alert-only card types must carry real drill data (chart, involucrados
-with a real product id) instead of an empty/blank drill — see design spec
+"""Alert-only card types must carry real insight evidence (a chart, records
+with a real product id) instead of an empty/blank insight — see design spec
 2026-09-01."""
 import json
 import os
@@ -11,6 +11,14 @@ import pytest
 from core import priorities
 
 _DEMO_INBOX = None
+
+
+def _chart(ins: dict):
+    return next((e["chart"] for e in ins["evidence"] if e.get("chart")), None)
+
+
+def _records(ins: dict) -> list[dict]:
+    return [r for e in ins["evidence"] for r in e.get("records") or []]
 
 
 def _demo_inbox():
@@ -48,7 +56,7 @@ def _card(cid):
     return next((c for c in d["act"] + d["watch"] if c["id"] == cid), None)
 
 
-def test_dep_vencidos_drill_has_product_involucrados(monkeypatch):
+def test_dep_vencidos_insight_has_product_records(monkeypatch):
     from core import deposito, store
     monkeypatch.setattr(deposito, "resumen", lambda: {"vencidos": 1, "por_vencer": 0,
                                                        "discrepancias": 0})
@@ -58,13 +66,14 @@ def test_dep_vencidos_drill_has_product_involucrados(monkeypatch):
         {"codigo": "P1", "descripcion": "Prod Uno", "costo_iva": 1000}])
     out = priorities._alerts_deposito("es")
     dep_venc = next(i for i in out if i["id"] == "dep_vencidos")
-    assert dep_venc["drill"]["porque"]
-    assert dep_venc["drill"]["grafico"] is not None
-    iv = dep_venc["drill"]["involucrados"][0]
+    ins = dep_venc["insight"]
+    assert ins["pattern"]["label"]
+    assert _chart(ins) is not None
+    iv = _records(ins)[0]
     assert iv["id"] == "P1" and iv["kind"] == "product"
 
 
-def test_venc_riesgo_drill_has_product_involucrados(monkeypatch):
+def test_venc_riesgo_insight_has_product_records(monkeypatch):
     from core import vencimientos
     monkeypatch.setattr(vencimientos, "en_riesgo", lambda dias, lang: {
         "disponible": True, "lotes_en_riesgo": 1, "total_en_riesgo": 5000,
@@ -72,12 +81,13 @@ def test_venc_riesgo_drill_has_product_involucrados(monkeypatch):
                   "plata_en_riesgo": 5000}]})
     out = priorities._alerts_deposito("es")
     venc = next(i for i in out if i["id"] == "venc_riesgo")
-    assert venc["drill"]["grafico"] is not None
-    iv = venc["drill"]["involucrados"][0]
+    ins = venc["insight"]
+    assert _chart(ins) is not None
+    iv = _records(ins)[0]
     assert iv["id"] == "P2" and iv["kind"] == "product"
 
 
-def test_costo_viejo_drill_has_product_involucrados(monkeypatch):
+def test_costo_viejo_insight_has_product_records(monkeypatch):
     from core import store
     monkeypatch.setattr(store, "panorama", lambda: {"alertas": {"costo_viejo": {"cantidad": 1}},
                                                      "grupos": {"costo_viejo": [
@@ -86,12 +96,13 @@ def test_costo_viejo_drill_has_product_involucrados(monkeypatch):
                                                           "antiguedad_costo_dias": 400}]}})
     out = priorities._alerts_inventario("es")
     cv = next(i for i in out if i["id"] == "costo_viejo")
-    assert cv["drill"]["grafico"] is not None
-    iv = cv["drill"]["involucrados"][0]
+    ins = cv["insight"]
+    assert _chart(ins) is not None
+    iv = _records(ins)[0]
     assert iv["id"] == "P3" and iv["kind"] == "product"
 
 
-def test_caida_interanual_drill_has_chart(monkeypatch):
+def test_caida_interanual_insight_has_chart(monkeypatch):
     from core import evolucion
     pan = {"hay_datos": True,
           "serie": [{"mes": "2026-01", "nominal": 100, "real": 95},
@@ -101,11 +112,12 @@ def test_caida_interanual_drill_has_chart(monkeypatch):
         {"titulo": "Caída real", "detalle": "cayó"}])
     out = priorities._alerts_evolucion("es")
     a = out[0]
-    assert a["drill"]["grafico"] is not None
-    assert len(a["drill"]["grafico"]["series"][0]["puntos"]) == 2
+    chart = _chart(a["insight"])
+    assert chart is not None
+    assert len(chart["series"][0]["puntos"]) == 2
 
 
-def test_caja_inusual_drill_has_chart(monkeypatch):
+def test_caja_inusual_insight_has_chart(monkeypatch):
     from core import caja
     monkeypatch.setattr(caja, "estado", lambda: {
         "abierta": True,
@@ -115,11 +127,12 @@ def test_caja_inusual_drill_has_chart(monkeypatch):
     })
     out = priorities._alerts_caja("es")
     a = out[0]
-    assert a["drill"]["grafico"] is not None
-    assert len(a["drill"]["grafico"]["series"][0]["puntos"]) == 6
+    chart = _chart(a["insight"])
+    assert chart is not None
+    assert len(chart["series"][0]["puntos"]) == 6
 
 
-def test_pago_vencido_drill_has_chart_and_text_involucrados(monkeypatch):
+def test_pago_vencido_insight_has_chart_and_text_records(monkeypatch):
     from core import pagos
     monkeypatch.setattr(pagos, "resumen", lambda: {
         "pagos_vencidos": 1, "vencidos_total": 30_000, "por_pagar_semana": 0,
@@ -128,12 +141,13 @@ def test_pago_vencido_drill_has_chart_and_text_involucrados(monkeypatch):
         {"proveedor": "Proveedor Uno", "numero": "F-1", "monto": 30_000, "dias_vencido": 5}])
     out = priorities._alerts_pagos("es")
     pv = next(i for i in out if i["id"] == "pago_vencido")
-    assert pv["drill"]["grafico"] is not None
-    iv = pv["drill"]["involucrados"][0]
+    ins = pv["insight"]
+    assert _chart(ins) is not None
+    iv = _records(ins)[0]
     # No stable id exists on hand-entered pagos_proveedores rows (spec,
-    # scope decision) — involucrados here stay text-only, non-clickable.
+    # scope decision) — records here stay text-only, non-clickable.
     assert iv.get("id") is None and iv.get("kind") is None
-    assert "Proveedor Uno" in iv["nombre"]
+    assert "Proveedor Uno" in iv["name"]
 
 
 def test_moroso_atraso_states_the_deviation_as_a_metric():

@@ -85,36 +85,6 @@ def _grafico(nombre: str, puntos: list[dict], unidad: str, temporal: bool,
                      "composicion": False, "deflactado": False}}
 
 
-def _project_drill(insight_val: dict) -> dict:
-    """TEMPORARY one-way projection of an insight back into the old `drill`
-    shape (porque/grafico/involucrados/supuestos).
-
-    Some callers still read a card's `drill` directly instead of going
-    through core/priorities.py's `_item()` — core/grafo.py's `caminos()`, and
-    tests that call a `_card_*` builder standalone (test_oportunidades_ids,
-    test_p25, test_p27). Builders here only ever author `insight`; `drill` is
-    derived from it so those callers keep working while this module and its
-    consumers migrate. Mirrors core/priorities.py::_legacy_drill, kept as a
-    separate copy on purpose: that module's own docstring already declines to
-    reach into this one's private helpers, and the same isolation applies in
-    reverse. Delete both once every direct reader moves to `insight`."""
-    ev = insight_val.get("evidence") or []
-    porque = [p["label"] for p in (insight_val.get("pattern"), insight_val.get("hypothesis")) if p]
-    porque += [e["label"] for e in ev if e["weight"] == "primary"]
-    chart = next((e["chart"] for e in ev if e.get("chart")), None)
-    involucrados = [
-        {"id": r["id"], "kind": r["kind"], "nombre": r["name"],
-         "monto": r["amount"], "detalle": r["detail"]}
-        for e in ev for r in (e.get("records") or [])
-    ]
-    return {
-        "porque": porque,
-        "grafico": chart,
-        "involucrados": involucrados,
-        "supuestos": [a["label"] for a in (insight_val.get("assumptions") or [])],
-    }
-
-
 def _meses_rango(desde: str, hasta: str) -> list[str]:
     """Lista de meses YYYY-MM entre dos meses inclusive (para rellenar ceros:
     un cliente que DEJÓ de comprar se tiene que VER en la curva)."""
@@ -274,7 +244,6 @@ def _card_morosos(lang, ctx) -> dict | None:
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 
@@ -351,7 +320,6 @@ def _card_dormido(lang, ctx) -> dict | None:
             chat=_t("core.opn.dormido_chat", lang)),
     )
     card["insight"] = insight_val
-    card["drill"] = _project_drill(insight_val)  # TEMPORARY, see _project_drill
     return card
 
 def _card_ventana_compra(lang, ctx) -> dict | None:
@@ -484,7 +452,6 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
         "macro": {"inflacion": ipc.get("valor"), "fuente": ipc.get("fuente"),
                   "fecha": ipc.get("fecha")} if ipc.get("disponible") else None,
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
     if aplicadas:
         card["conocimiento_aplicado"] = aplicadas
@@ -584,7 +551,6 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 
@@ -678,7 +644,6 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
         "navegar": "evolucion",
         "fuentes": [_t("core.opn.f_ventas24", lang), _t("core.opn.f_rank", lang)],
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 
@@ -825,7 +790,6 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
                               basis=_t("core.opn.qi_deadline_basis", lang, lead=lead)),
     )
     card["insight"] = insight_val
-    card["drill"] = _project_drill(insight_val)  # TEMPORARY, see _project_drill
     return card
 
 
@@ -916,7 +880,6 @@ def _card_pre_pico(lang, ctx) -> dict | None:
         "fuentes": [_t("core.opn.f_ventas10a", lang), _t("core.opn.f_estacion", lang),
                     _t("core.opn.f_stock", lang)],
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 
@@ -1003,7 +966,6 @@ def _card_concentracion(lang, ctx) -> dict | None:
             chat=_t("core.opn.conc_chat", lang)),
     )
     card["insight"] = insight_val
-    card["drill"] = _project_drill(insight_val)  # TEMPORARY, see _project_drill
     return card
 
 
@@ -1125,7 +1087,6 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
         "navegar": "inventario",
         "fuentes": [_t("core.opn.f_costos", lang), _t("core.opn.f_ventas12", lang)],
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 
@@ -1263,7 +1224,6 @@ def _card_sobrecompra(lang, ctx) -> dict | None:
                     _t("core.opn.f_vida_util", lang)],
         "propuesta": propuesta,
         "insight": insight_val,
-        "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
     }
 
 

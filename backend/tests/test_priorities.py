@@ -24,8 +24,6 @@ def _item(id_, *, monto=0, band=None, tono="salvia", naturaleza=None, **extra):
         "resumen": id_,
         "origen": extra.pop("origen", [f"synthetic:{id_}"]),
         "modulos": extra.pop("modulos", ("oportunidades",)),
-        "drill": extra.pop("drill", {"porque": [], "grafico": None,
-                                     "involucrados": [], "supuestos": []}),
     }
     if band:
         it["band"] = band
@@ -271,7 +269,7 @@ def test_compose_attaches_confidence_to_every_item(monkeypatch):
     composed = priorities._compose("en")
     assert composed["items"], "expected at least one item to check"
     for it in composed["items"]:
-        conf = it["drill"].get("confidence")
+        conf = it["insight"]["confidence"]["data"]
         assert conf and conf["level"] in ("high", "medium", "low")
         assert conf["reason"]
 
@@ -336,8 +334,6 @@ def test_inbox_sees_an_order_created_after_the_first_call(monkeypatch):
         "tipo": "comprar",
         "fuentes": [],
         "propuesta": propuesta,
-        "drill": {"porque": [], "grafico": None, "involucrados": [],
-                  "supuestos": []},
     }])
 
     features = ("inventario", "oportunidades", "alertas")
@@ -467,15 +463,6 @@ def test_derive_handles_a_blank_insight_without_raising():
     assert ins["deadline"] is None
 
 
-def test_insight_from_legacy_drill_on_a_genuinely_blank_drill_stays_blank():
-    """dep_discrep passes exactly this drill today. The wrapper must degrade
-    honestly — no pattern, no evidence — rather than fabricate one."""
-    blank_drill = {"porque": [], "grafico": None, "involucrados": [], "supuestos": []}
-    ins = priorities._insight_from_legacy_drill(blank_drill)
-    assert ins["pattern"] is None
-    assert ins["evidence"] == []
-
-
 def test_compose_derives_confidence_owner_and_urgency_on_every_card():
     inbox = priorities.inbox("es", None)
     for card in inbox["act"] + inbox["watch"]:
@@ -492,3 +479,11 @@ def test_every_card_carries_a_pattern():
     inbox = priorities.inbox("es", None)
     for card in inbox["act"] + inbox["watch"]:
         assert card["insight"]["pattern"]["label"], f"{card['id']} has no pattern"
+
+
+def test_no_card_anywhere_still_emits_a_drill():
+    """The cutover's completeness check: `drill` is gone from the contract,
+    not merely unused by the current frontend."""
+    inbox = priorities.inbox("es", None)
+    for c in inbox["act"] + inbox["watch"]:
+        assert "drill" not in c, f"{c['id']} still emits the legacy drill"

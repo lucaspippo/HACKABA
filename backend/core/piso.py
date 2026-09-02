@@ -224,38 +224,6 @@ def _orden_abierta(proveedor: str) -> dict | None:
     return None
 
 
-def _project_drill(insight_val: dict) -> dict:
-    """TEMPORARY one-way projection of an insight back into the old `drill`
-    shape (porque/grafico/involucrados/supuestos).
-
-    `tests/test_p39.py` still reads a proposal's `drill` directly instead of
-    going through core/priorities.py's `_item()`. Mirrors
-    core/priorities.py::_legacy_drill and core/oportunidades_neg.py's own
-    copy of the same idea, kept separate on purpose (see that module's
-    docstring). Also folds the recommendation's `detail` into `porque` — for
-    a floor report that's where the "I didn't touch stock" disclosure lives,
-    since there is no hypothesis to carry it. Delete once that test reads
-    `insight` instead (Task 13)."""
-    ev = insight_val.get("evidence") or []
-    porque = [p["label"] for p in (insight_val.get("pattern"), insight_val.get("hypothesis")) if p]
-    porque += [e["label"] for e in ev if e["weight"] == "primary"]
-    recommendation = insight_val.get("recommendation") or {}
-    if recommendation.get("detail"):
-        porque.append(recommendation["detail"])
-    chart = next((e["chart"] for e in ev if e.get("chart")), None)
-    involucrados = [
-        {"id": r["id"], "kind": r["kind"], "nombre": r["name"],
-         "monto": r["amount"], "detalle": r["detail"]}
-        for e in ev for r in (e.get("records") or [])
-    ]
-    return {
-        "porque": porque,
-        "grafico": chart,
-        "involucrados": involucrados,
-        "supuestos": [a["label"] for a in (insight_val.get("assumptions") or [])],
-    }
-
-
 def propuestas(lang: str | None = None) -> list[dict]:
     """P39·3 — lo que el equipo reportó, CRUZADO, convertido en decisiones para
     el dueño. Hoy: los faltantes sin resolver se agrupan por proveedor y salen
@@ -337,6 +305,5 @@ def propuestas(lang: str | None = None) -> list[dict]:
             "fuentes": [_t("core.piso.f_reportes", lang), _t("core.piso.f_stock", lang)]
                        + ([_t("core.piso.f_oc", lang)] if oc else []),
             "insight": insight_val,
-            "drill": _project_drill(insight_val),  # TEMPORARY, see _project_drill
         })
     return out
