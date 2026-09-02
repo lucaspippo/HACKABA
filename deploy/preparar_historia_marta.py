@@ -13,8 +13,12 @@ import os
 import urllib.request
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-creds = json.load(open(os.path.join(RAIZ, "data-demo", "credenciales.json"),
-                       encoding="utf-8"))["plain"]
+
+# La contraseña fija con la que data-demo/seed_db.py siembra a todo el roster.
+# Antes se leía de data-demo/credenciales.json, que dejó de existir cuando las
+# credenciales pasaron a Postgres (sólo el hash se persiste, nunca el
+# plaintext) — el archivo quedó huérfano y con contraseñas obsoletas.
+PASSWORD = os.environ.get("POLPILOT_DEMO_PASSWORD") or "demo-password"
 
 
 def api(path, data=None, tok=None):
@@ -26,7 +30,7 @@ def api(path, data=None, tok=None):
     return json.load(urllib.request.urlopen(req, timeout=240))
 
 
-tok = api("/api/login", {"username": "marta", "password": creds["marta"]})["token"]
+tok = api("/api/login", {"username": "marta", "password": PASSWORD})["token"]
 for msg in ("¿quién me debe plata y desde cuándo?", "¿cómo viene la caja de hoy?"):
     api("/api/angela", {"mensaje": msg, "historial": [], "token": tok})
 filas = list(csv.DictReader(open(os.path.join(
