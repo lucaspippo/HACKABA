@@ -606,6 +606,7 @@ function NodoCentro({ data }) {
 }
 
 function NodoDominio({ data }) {
+  const t = useT();
   const Icon = data.icon;
   const conPulso = (data.tono === "rojo" || data.tono === "oro") && !data.enCamino;
   return (
@@ -643,6 +644,8 @@ function NodoDominio({ data }) {
             el doble clic sigue de atajo. Pulso-pista en el primer abrir. */}
         {data.expandible && !data.bombilla && (
           <button data-expand="1"
+            aria-label={t(data.expandida ? "common.contraer" : "common.expandir")}
+            aria-expanded={data.expandida}
             className={`absolute -bottom-2.5 left-1/2 grid h-[24px] w-[24px] -translate-x-1/2 place-items-center rounded-full border border-violeta/35 bg-violeta-suave text-violeta sombra-papel transition-transform hover:scale-110 ${data.pista ? "pista-pulso" : ""}`}>
             {data.expandida ? <Minus size={14} data-expand="1" /> : <Plus size={14} data-expand="1" />}
           </button>
@@ -1212,7 +1215,7 @@ function PanelConocimientoFull({ conocimiento, t, onNavegar, onCerrar }) {
             </h3>
             <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{t("mapa.kpanel_sub", { total: conocimiento.total, hoy: conocimiento.aplicadasHoy })}</p>
           </div>
-          <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
+          <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
         </div>
         <PendingKnowledgeQueue t={t} />
         <div className="flex flex-wrap gap-1.5 px-5 py-3">
@@ -1353,7 +1356,7 @@ function MemoriaPanel({ memoria, t, onNavegar, onPreguntar, onCerrar, onVerRegla
           </span>
           <h3 className="font-display text-[1rem] font-bold leading-tight" style={{ color: K_COLOR }}>{t("mapa.memoria_label")}</h3>
         </div>
-        <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
+        <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
       <p className="mt-1 text-[0.78rem] leading-snug text-tinta-suave">{t("mapa.mem_intro")}</p>
 
@@ -1511,7 +1514,7 @@ function NodoDetalle({ insight, onNavegar, onPreguntar, onCerrar, t, flotante })
           <h3 className="font-display text-[1rem] font-bold leading-tight">{insight.titulo}</h3>
           <span className={`h-2 w-2 rounded-full ${punto}`} />
         </div>
-        <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
+        <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
 
       <SeccionPanel titulo={t("mapa.sec_conclusiones")} abierta={abierto.ver} onToggle={() => tog("ver")}>
@@ -1580,7 +1583,7 @@ function PreguntarAqui({ prompt, onPreguntar, t }) {
           onKeyDown={(e) => e.key === "Enter" && mandar()}
           placeholder={t("mapa.preguntar_ph")}
           className="min-w-0 flex-1 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.76rem] outline-none focus:border-violeta/40" />
-        <button onClick={mandar} disabled={!q.trim()}
+        <button onClick={mandar} disabled={!q.trim()} aria-label={t("common.enviar")}
           className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violeta text-crema disabled:opacity-40">
           <ArrowRight size={13} />
         </button>
@@ -1599,7 +1602,7 @@ function HallazgoDetalle({ h, alCamino, onNavegar, onPreguntar, onCerrar, t, flo
           <Icon size={16} className={c.cls} />
           <h3 className="font-display text-[0.98rem] font-bold leading-tight">{h.titulo}</h3>
         </div>
-        <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
+        <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
       {h.monto != null && (
         <p className="plata mt-1 text-2xl font-medium text-tinta">
