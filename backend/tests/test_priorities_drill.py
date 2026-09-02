@@ -6,6 +6,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 from core import priorities
 
 _DEMO_INBOX = None
@@ -164,3 +166,39 @@ def test_no_alert_card_emits_an_empty_pattern():
     d = _demo_inbox()
     for c in d["act"] + d["watch"]:
         assert c["insight"]["pattern"] and c["insight"]["pattern"]["label"], c["id"]
+
+
+@pytest.mark.parametrize("cid", ["pago_vencido", "pago_semana", "cheques",
+                                 "dep_vencidos", "dep_porvencer", "dep_discrep",
+                                 "venc_riesgo"])
+def test_finance_and_warehouse_alerts_carry_pattern_and_evidence(cid):
+    c = _card(cid)
+    if c is None:
+        pytest.skip(f"{cid} not present in the demo dataset")
+    ins = c["insight"]
+    assert ins["pattern"]["label"], f"{cid} has no pattern"
+    assert ins["evidence"], f"{cid} has no evidence"
+    assert all(e["method"]["label"] for e in ins["evidence"]), \
+        f"{cid} has a metric with no 'how was this calculated'"
+
+
+@pytest.mark.parametrize("cid", ["dep_vencidos", "dep_porvencer", "dep_discrep",
+                                 "venc_riesgo"])
+def test_warehouse_alerts_link_real_products(cid):
+    c = _card(cid)
+    if c is None:
+        pytest.skip(f"{cid} not present in the demo dataset")
+    rows = [r for e in c["insight"]["evidence"] for r in e["records"]]
+    assert rows, f"{cid} lists no products"
+    assert all(r["kind"] == "product" and r["id"] is not None for r in rows)
+
+
+@pytest.mark.parametrize("cid", ["pago_vencido", "pago_semana", "cheques"])
+def test_finance_alert_rows_are_plain_text_not_fake_links(cid):
+    """pagos.py has no stable per-row id. A row that looks clickable and
+    silently no-ops is worse than plain text."""
+    c = _card(cid)
+    if c is None:
+        pytest.skip(f"{cid} not present in the demo dataset")
+    rows = [r for e in c["insight"]["evidence"] for r in e["records"]]
+    assert all(r["id"] is None and r["kind"] is None for r in rows)

@@ -713,11 +713,13 @@ def _alerts_ventas(lang) -> list[dict]:
 
 
 def _alerts_pagos(lang) -> list[dict]:
-    from . import pagos
+    from . import pagos, insight as ins
     pv = pagos.resumen()
     out = []
     if pv.get("pagos_vencidos"):
         items = pagos.pagos_vencidos()[:8]
+        metodo = {"key": "core.method.payables_overdue",
+                  "label": _t("core.method.payables_overdue", lang)}
         out.append(_item(
             id="pago_vencido", tono="rojo", chip=_t("core.prio.chip_pagar", lang),
             titulo=_t("core.prio.pago_vencido_t", lang),
@@ -729,22 +731,43 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.pago_vencido_chat", lang),
-            drill={
-                "porque": [_t("core.prio.pago_vencido_p", lang,
-                              n=_num(pv["pagos_vencidos"], lang))],
-                "grafico": _grafico(_t("core.prio.pago_vencido_g", lang),
-                                    [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
-                                     for x in items], "$", False),
-                "involucrados": [{"nombre": f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
-                                  "monto": x.get("monto"),
-                                  "detalle": _t("core.prio.pago_vencido_i", lang,
-                                                dias=x.get("dias_vencido") or 0)}
-                                 for x in items],
-                "supuestos": [],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.pago_vencido_p", lang,
+                                       n=_num(pv["pagos_vencidos"], lang)),
+                                    scope={"kind": "payables", "count": pv["pagos_vencidos"]}),
+                evidence=[
+                    ins.metric("payables_overdue_total",
+                               label=_pesos(pv["vencidos_total"], lang),
+                               value=pv["vencidos_total"], unit="ars", weight="primary",
+                               method=metodo),
+                    ins.records("payables_overdue_rows",
+                                label=_t("core.prio.pago_vencido_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind=None, id=None,
+                                                 name=f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
+                                                 amount=x.get("monto"),
+                                                 detail=_t("core.prio.pago_vencido_i", lang,
+                                                           dias=x.get("dias_vencido") or 0))
+                                      for x in items],
+                                method=metodo),
+                    ins.series("payables_overdue_chart",
+                               label=_t("core.prio.pago_vencido_g", lang),
+                               chart=_grafico(_t("core.prio.pago_vencido_g", lang),
+                                             [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
+                                              for x in items], "$", False),
+                               method=metodo),
+                ],
+                risk=ins.risk(_t("core.prio.pago_vencido_risk", lang),
+                              exposure=pv["vencidos_total"]),
+                recommendation=ins.recommendation(
+                    _t("core.prio.pago_vencido_t", lang), navigate="finanzas",
+                    chat=_t("core.prio.pago_vencido_chat", lang)),
+            ),
         ))
     if pv.get("por_pagar_semana"):
         items = pagos.pagos_por_vencer(7)[:8]
+        metodo = {"key": "core.method.payables_week",
+                  "label": _t("core.method.payables_week", lang)}
         out.append(_item(
             id="pago_semana", tono="azul", chip=_t("core.prio.chip_pagar", lang),
             titulo=_t("core.prio.pago_semana_t", lang),
@@ -755,22 +778,41 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.pago_semana_chat", lang),
-            drill={
-                "porque": [_t("core.prio.pago_semana_p", lang,
-                              monto=_pesos(pv["por_pagar_semana"], lang))],
-                "grafico": _grafico(_t("core.prio.pago_semana_g", lang),
-                                    [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
-                                     for x in items], "$", False),
-                "involucrados": [{"nombre": f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
-                                  "monto": x.get("monto"),
-                                  "detalle": _t("core.prio.pago_semana_i", lang,
-                                                dias=x.get("dias_restantes") or 0)}
-                                 for x in items],
-                "supuestos": [],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.pago_semana_p", lang,
+                                       monto=_pesos(pv["por_pagar_semana"], lang))),
+                evidence=[
+                    ins.metric("payables_week_total",
+                               label=_pesos(pv["por_pagar_semana"], lang),
+                               value=pv["por_pagar_semana"], unit="ars", weight="primary",
+                               method=metodo),
+                    ins.records("payables_week_rows",
+                                label=_t("core.prio.pago_semana_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind=None, id=None,
+                                                 name=f"{x.get('proveedor') or ''} {x.get('numero') or ''}".strip(),
+                                                 amount=x.get("monto"),
+                                                 detail=_t("core.prio.pago_semana_i", lang,
+                                                           dias=x.get("dias_restantes") or 0))
+                                      for x in items],
+                                method=metodo),
+                    ins.series("payables_week_chart",
+                               label=_t("core.prio.pago_semana_g", lang),
+                               chart=_grafico(_t("core.prio.pago_semana_g", lang),
+                                             [{"x": x.get("proveedor") or "", "y": x.get("monto") or 0}
+                                              for x in items], "$", False),
+                               method=metodo),
+                ],
+                risk=ins.risk(_t("core.prio.pago_semana_risk", lang),
+                              exposure=pv["por_pagar_semana"]),
+                recommendation=ins.recommendation(
+                    _t("core.prio.pago_semana_t", lang), navigate="finanzas",
+                    chat=_t("core.prio.pago_semana_chat", lang)),
+            ),
         ))
     if pv.get("cheques_cartera"):
         items = pagos.cheques_en_cartera()[:8]
+        metodo = {"key": "core.method.checks", "label": _t("core.method.checks", lang)}
         out.append(_item(
             id="cheques", tono="azul", chip=_t("core.prio.chip_ver", lang),
             titulo=_t("core.prio.cheques_t", lang),
@@ -782,31 +824,48 @@ def _alerts_pagos(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_finanzas", lang)],
             navegar="finanzas",
             accion_chat=_t("core.prio.cheques_chat", lang),
-            drill={
-                "porque": [_t("core.prio.cheques_p", lang, n=_num(pv["cheques_cartera"], lang),
-                              monto=_pesos(pv["cheques_total"], lang))],
-                "grafico": _grafico(_t("core.prio.cheques_g", lang),
-                                    [{"x": x.get("cliente") or "", "y": x.get("monto") or 0}
-                                     for x in items], "$", False),
-                "involucrados": [{"nombre": f"{x.get('cliente') or ''} {x.get('numero') or ''}".strip(),
-                                  "monto": x.get("monto"),
-                                  "detalle": _t("core.prio.cheques_i", lang,
-                                                banco=x.get("banco") or "")}
-                                 for x in items],
-                "supuestos": [],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.cheques_p", lang,
+                                       n=_num(pv["cheques_cartera"], lang),
+                                       monto=_pesos(pv["cheques_total"], lang)),
+                                    scope={"kind": "checks", "count": pv["cheques_cartera"]}),
+                evidence=[
+                    ins.metric("checks_total", label=_pesos(pv["cheques_total"], lang),
+                               value=pv["cheques_total"], unit="ars", weight="primary",
+                               method=metodo),
+                    ins.records("checks_rows", label=_t("core.prio.cheques_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind=None, id=None,
+                                                 name=f"{x.get('cliente') or ''} {x.get('numero') or ''}".strip(),
+                                                 amount=x.get("monto"),
+                                                 detail=_t("core.prio.cheques_i", lang,
+                                                           banco=x.get("banco") or ""))
+                                      for x in items],
+                                method=metodo),
+                    ins.series("checks_chart", label=_t("core.prio.cheques_g", lang),
+                               chart=_grafico(_t("core.prio.cheques_g", lang),
+                                             [{"x": x.get("cliente") or "", "y": x.get("monto") or 0}
+                                              for x in items], "$", False),
+                               method=metodo),
+                ],
+                risk=ins.risk(_t("core.prio.cheques_risk", lang), exposure=pv["cheques_total"]),
+                recommendation=ins.recommendation(
+                    _t("core.prio.cheques_t", lang), navigate="finanzas",
+                    chat=_t("core.prio.cheques_chat", lang)),
+            ),
         ))
     return out
 
 
 def _alerts_deposito(lang) -> list[dict]:
-    from . import deposito, vencimientos
+    from . import deposito, vencimientos, insight as ins
     out = []
     dep = deposito.resumen()
     if dep.get("vencidos"):
         valuados = _deposito_lot_value(deposito.vencidos())
         total_valor = round(sum(x["valor"] for x in valuados), 2)
         lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
+        metodo = {"key": "core.method.expired_lots", "label": _t("core.method.expired_lots", lang)}
         out.append(_item(
             id="dep_vencidos", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_vencidos_t", lang),
@@ -817,24 +876,39 @@ def _alerts_deposito(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_vencidos_chat", lang),
-            drill={
-                "porque": [_t("core.prio.dep_vencidos_p", lang, n=_num(dep["vencidos"], lang),
-                              monto=_pesos(total_valor, lang))],
-                "grafico": _grafico(_t("core.prio.dep_vencidos_g", lang),
-                                    [{"x": x.get("producto") or "", "y": x["valor"]}
-                                     for x in lotes], "$", False),
-                "involucrados": [{"id": x.get("codigo"), "kind": "product",
-                                  "nombre": x.get("producto") or "", "monto": x["valor"],
-                                  "detalle": _t("core.prio.dep_vencidos_i", lang,
-                                                dias=x.get("dias_vencido") or 0)}
-                                 for x in lotes],
-                "supuestos": [_t("core.prio.dep_vencidos_s", lang)],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.dep_vencidos_p", lang, n=_num(dep["vencidos"], lang),
+                                       monto=_pesos(total_valor, lang)),
+                                    scope={"kind": "products", "count": dep["vencidos"]}),
+                evidence=[
+                    ins.metric("expired_lots_value", label=_pesos(total_valor, lang),
+                               value=total_valor, unit="ars", weight="primary", method=metodo),
+                    ins.records("expired_lots", label=_t("core.prio.dep_vencidos_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind="product", id=x.get("codigo"),
+                                                 name=x.get("producto") or "", amount=x["valor"],
+                                                 detail=_t("core.prio.dep_vencidos_i", lang,
+                                                           dias=x.get("dias_vencido") or 0))
+                                      for x in lotes],
+                                method=metodo),
+                    ins.series("expired_lots_chart", label=_t("core.prio.dep_vencidos_g", lang),
+                               chart=_grafico(_t("core.prio.dep_vencidos_g", lang),
+                                             [{"x": x.get("producto") or "", "y": x["valor"]}
+                                              for x in lotes], "$", False),
+                               method=metodo),
+                ],
+                assumptions=[ins.assumption(_t("core.prio.dep_vencidos_s", lang))],
+                risk=ins.risk(_t("core.prio.dep_vencidos_risk", lang), exposure=total_valor),
+                recommendation=ins.recommendation(
+                    _t("core.prio.dep_vencidos_t", lang), navigate="deposito",
+                    chat=_t("core.prio.dep_vencidos_chat", lang)),
+            ),
         ))
     if dep.get("por_vencer"):
         valuados = _deposito_lot_value(deposito.vencimientos())
         total_valor = round(sum(x["valor"] for x in valuados), 2)
         lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
+        metodo = {"key": "core.method.expiring_lots", "label": _t("core.method.expiring_lots", lang)}
         out.append(_item(
             id="dep_porvencer", tono="oro", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_porvencer_t", lang),
@@ -845,20 +919,37 @@ def _alerts_deposito(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_porvencer_chat", lang),
-            drill={
-                "porque": [_t("core.prio.dep_porvencer_p", lang, n=_num(dep["por_vencer"], lang))],
-                "grafico": _grafico(_t("core.prio.dep_porvencer_g", lang),
-                                    [{"x": x.get("producto") or "", "y": x["valor"]}
-                                     for x in lotes], "$", False),
-                "involucrados": [{"id": x.get("codigo"), "kind": "product",
-                                  "nombre": x.get("producto") or "", "monto": x["valor"],
-                                  "detalle": _t("core.prio.dep_porvencer_i", lang,
-                                                dias=x.get("dias_restantes") or 0)}
-                                 for x in lotes],
-                "supuestos": [_t("core.prio.dep_vencidos_s", lang)],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.dep_porvencer_p", lang, n=_num(dep["por_vencer"], lang)),
+                                    scope={"kind": "products", "count": dep["por_vencer"]}),
+                hypothesis=ins.hypothesis(_t("core.prio.dep_porvencer_hyp", lang)),
+                evidence=[
+                    ins.metric("expiring_lots_value", label=_pesos(total_valor, lang),
+                               value=total_valor, unit="ars", weight="primary", method=metodo),
+                    ins.records("expiring_lots", label=_t("core.prio.dep_porvencer_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind="product", id=x.get("codigo"),
+                                                 name=x.get("producto") or "", amount=x["valor"],
+                                                 detail=_t("core.prio.dep_porvencer_i", lang,
+                                                           dias=x.get("dias_restantes") or 0))
+                                      for x in lotes],
+                                method=metodo),
+                    ins.series("expiring_lots_chart", label=_t("core.prio.dep_porvencer_g", lang),
+                               chart=_grafico(_t("core.prio.dep_porvencer_g", lang),
+                                             [{"x": x.get("producto") or "", "y": x["valor"]}
+                                              for x in lotes], "$", False),
+                               method=metodo),
+                ],
+                assumptions=[ins.assumption(_t("core.prio.dep_vencidos_s", lang))],
+                risk=ins.risk(_t("core.prio.dep_porvencer_risk", lang), exposure=total_valor),
+                recommendation=ins.recommendation(
+                    _t("core.prio.dep_porvencer_t", lang), navigate="deposito",
+                    chat=_t("core.prio.dep_porvencer_chat", lang)),
+            ),
         ))
     if dep.get("discrepancias"):
+        items = deposito.discrepancias()[:8]
+        metodo = {"key": "core.method.dep_discrep", "label": _t("core.method.dep_discrep", lang)}
         out.append(_item(
             id="dep_discrep", tono="oro", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_discrep_t", lang),
@@ -868,12 +959,31 @@ def _alerts_deposito(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_discrep_chat", lang),
-            drill=_blank_drill(),
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.dep_discrep_p", lang, n=_num(dep["discrepancias"], lang)),
+                                    scope={"kind": "products", "count": dep["discrepancias"]}),
+                evidence=[
+                    ins.metric("discrepancy_count", label=_num(dep["discrepancias"], lang),
+                               value=dep["discrepancias"], unit="products", weight="primary",
+                               method=metodo),
+                    ins.records("discrepancy_rows", label=_t("core.prio.dep_discrep_t", lang),
+                                weight="primary",
+                                rows=[ins.record(kind="product", id=x.get("codigo"),
+                                                 name=x.get("descripcion") or "",
+                                                 amount=x.get("diferencia"))
+                                      for x in items],
+                                method=metodo),
+                ],
+                recommendation=ins.recommendation(
+                    _t("core.prio.dep_discrep_t", lang), navigate="deposito",
+                    chat=_t("core.prio.dep_discrep_chat", lang)),
+            ),
         ))
     venc = vencimientos.en_riesgo(30, lang)
     if venc.get("disponible") and venc.get("lotes_en_riesgo"):
         items = sorted(venc.get("items") or [], key=lambda x: -x["plata_en_riesgo"])[:8]
         top = items[0]
+        metodo = {"key": "core.method.at_risk", "label": _t("core.method.at_risk", lang)}
         out.append(_item(
             id="venc_riesgo", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.venc_riesgo_t", lang, n=_num(venc["lotes_en_riesgo"], lang)),
@@ -886,21 +996,39 @@ def _alerts_deposito(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_deposito", lang), _t("core.prio.f_ventas", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.venc_riesgo_chat", lang),
-            drill={
-                "porque": [_t("core.prio.venc_riesgo_p", lang,
-                              n=_num(venc["lotes_en_riesgo"], lang),
-                              monto=_pesos(venc.get("total_en_riesgo") or 0, lang))],
-                "grafico": _grafico(_t("core.prio.venc_riesgo_g", lang),
-                                    [{"x": x.get("producto") or "", "y": x["plata_en_riesgo"]}
-                                     for x in items], "$", False),
-                "involucrados": [{"id": x.get("codigo"), "kind": "product",
-                                  "nombre": x.get("producto") or "",
-                                  "monto": x["plata_en_riesgo"],
-                                  "detalle": _t("core.prio.venc_riesgo_i", lang,
-                                                dias=x.get("dias_restantes") or 0)}
-                                 for x in items],
-                "supuestos": [_t("core.prio.venc_riesgo_s", lang)],
-            },
+            insight=ins.build(
+                pattern=ins.pattern(_t("core.prio.venc_riesgo_p", lang,
+                                       n=_num(venc["lotes_en_riesgo"], lang),
+                                       monto=_pesos(venc.get("total_en_riesgo") or 0, lang)),
+                                    scope={"kind": "products", "count": venc["lotes_en_riesgo"]}),
+                evidence=[
+                    ins.metric("at_risk_value", label=_pesos(venc.get("total_en_riesgo") or 0, lang),
+                               value=venc.get("total_en_riesgo"), unit="ars", weight="primary",
+                               method=metodo),
+                    ins.records("at_risk_rows", label=_t("core.prio.venc_riesgo_t", lang,
+                                                         n=_num(venc["lotes_en_riesgo"], lang)),
+                                weight="primary",
+                                rows=[ins.record(kind="product", id=x.get("codigo"),
+                                                 name=x.get("producto") or "",
+                                                 amount=x["plata_en_riesgo"],
+                                                 detail=_t("core.prio.venc_riesgo_i", lang,
+                                                           dias=x.get("dias_restantes") or 0))
+                                      for x in items],
+                                method=metodo),
+                    ins.series("at_risk_chart", label=_t("core.prio.venc_riesgo_g", lang),
+                               chart=_grafico(_t("core.prio.venc_riesgo_g", lang),
+                                             [{"x": x.get("producto") or "", "y": x["plata_en_riesgo"]}
+                                              for x in items], "$", False),
+                               method=metodo),
+                ],
+                assumptions=[ins.assumption(_t("core.prio.venc_riesgo_s", lang))],
+                risk=ins.risk(_t("core.prio.venc_riesgo_risk", lang),
+                              exposure=venc.get("total_en_riesgo")),
+                recommendation=ins.recommendation(
+                    _t("core.prio.venc_riesgo_t", lang, n=_num(venc["lotes_en_riesgo"], lang)),
+                    navigate="deposito",
+                    chat=_t("core.prio.venc_riesgo_chat", lang)),
+            ),
         ))
     return out
 
