@@ -2040,9 +2040,29 @@ Expected: FAIL — the shim is still populating `drill`.
 
 - [ ] **Step 3: Delete the shim**
 
-Remove **both** shims from `priorities.py`:
+**First migrate the consumers Task 8 discovered.** `core/grafo.py` reads the drill
+directly in two shallow places — both trivially expressible against the insight:
+
+- `grafo.py:538` — `(card.get("drill") or {}).get("involucrados")`, used only for
+  each row's `nombre` to seed graph nodes. Becomes: iterate
+  `insight["evidence"]`, then each item's `records`, taking `r["name"]`.
+- `grafo.py:629` — `(origen.get("drill") or {}).get("porque")`, exposed as the
+  node's `porque` list. Becomes the same projection `_legacy_drill` performs:
+  `pattern.label`, then `hypothesis.label` if present, then the `label` of each
+  `primary` evidence item.
+
+Then update the three test files that read `oportunidades_neg.cards()["drill"]`
+directly — `tests/test_p27.py`, `tests/test_p25.py`, `tests/test_oportunidades_ids.py`
+— to read `["insight"]` instead. These bypass `priorities.py` entirely, which is why
+the shims did not cover them.
+
+Only once those five files are migrated, remove **all three** shims — the two in
+`priorities.py` plus `_project_drill` in `oportunidades_neg.py`:
 - `_legacy_drill` and its three call sites: the `"drill":` entry in `_item`, the `out["drill"] =` line in `_combine`, and the `item["drill"] =` line in `_derive`.
-- `_insight_from_legacy_drill` **and the `drill=` keyword on `_item`**. Every builder passes `insight=` by now (Tasks 5–9), so nothing calls it. Verify with `grep -rn "drill" backend/core/ backend/angela.py` — the only surviving hits should be in comments or unrelated identifiers.
+- `_insight_from_legacy_drill` **and the `drill=` keyword on `_item`**. Every builder passes `insight=` by now (Tasks 5–9), so nothing calls it.
+- `_project_drill` in `oportunidades_neg.py` (added in Task 8 to keep `grafo.py` and those three tests working), and the `"drill"` key it populates on every opportunity card.
+
+Verify with `grep -rn "drill" backend/core/ backend/angela.py backend/tests/` — the only surviving hits should be in comments or unrelated identifiers. **`_blank_drill` also goes**: Task 4 kept it because unmigrated builders still called it; by now nothing does.
 
 The `drill`-free guard test below checks the payload, not the keyword; the grep is what confirms the keyword is gone.
 
