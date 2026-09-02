@@ -25,13 +25,15 @@ function load() {
     if (VALIDOS.includes(s?.usuario?.idioma)) return s.usuario.idioma;
   } catch { /* sin sesión */ }
   // 1) lo que el usuario ELIGIÓ explícitamente (perfil).
-  const cache = localStorage.getItem(KEY);
+  let cache = null;
+  try { cache = localStorage.getItem(KEY); } catch { /* localStorage no disponible */ }
   if (VALIDOS.includes(cache)) return cache;
   // 2) P37·AJUSTE 1 — el default del TENANT (POLPILOT_DEFAULT_LANG, "en" en la
   //    demo), cacheado tras el primer health: así el path mobile ARRANCA en
   //    inglés como desktop, sin flash de español. El cambio manual (arriba)
   //    siempre gana.
-  const tenantLang = localStorage.getItem(TENANT_LANG_KEY);
+  let tenantLang = null;
+  try { tenantLang = localStorage.getItem(TENANT_LANG_KEY); } catch { /* localStorage no disponible */ }
   if (VALIDOS.includes(tenantLang)) return tenantLang;
   // 3) último recurso, solo antes de conocer el tenant en el primerísimo load.
   return "es";
