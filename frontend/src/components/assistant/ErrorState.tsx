@@ -21,19 +21,13 @@ function useErrorCode(): ChatErrorCode {
   });
 }
 
-/**
- * What the user sees when a run fails. Before this existed, a pre-stream
- * failure was yielded as a normal assistant message ("try again in a moment")
- * with no retry, and a mid-stream failure rendered nothing at all — the
- * bubble just stopped (design doc D5).
- */
+/** What the user sees when a run fails. */
 export default function ErrorState() {
   const t = useT();
   const aui = useAui();
   const code = useErrorCode();
   const retrying = useAuiState((s) => s.message.status?.type === "running");
 
-  // An expired session cannot be fixed by retrying the same request.
   const isSession = code === "session_expired";
 
   return (
