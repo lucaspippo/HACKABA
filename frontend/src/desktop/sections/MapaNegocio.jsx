@@ -259,13 +259,25 @@ function armarModelo(d, t) {
   // riesgo (exposición, jamás en una suma de plata). Solo lo recuperable se suma.
   const hallazgos = [];
   for (const c of cards) {
+    // The cards carry a structured `insight` (backend/core/insight.py), not
+    // the retired prose `drill`. This panel still renders a flat "por qué",
+    // so project the insight down to one — with EXACTLY the projection
+    // `grafo._porque` already applies for the map's own path panel (pattern,
+    // then hypothesis, then each primary evidence label), so the two views
+    // of one finding cannot drift apart.
+    const ins = c.insight || {};
+    const evidence = ins.evidence || [];
     hallazgos.push({
       id: c.id, tipo: c.naturaleza === "riesgo" ? "riesgo" : "oportunidad",
       titulo: c.titulo, monto: c.monto, montoLabel: c.monto_label || null,
       naturaleza: c.naturaleza || "accionable",
       camino: CAMINOS[c.id] || [OPORTUNIDAD_DOMINIO[c.id]].filter(Boolean),
-      fuentes: c.fuentes || [], porque: c.drill?.porque || [],
-      supuestos: c.drill?.supuestos || [], grafico: c.drill?.grafico || null,
+      fuentes: c.fuentes || [],
+      porque: [ins.pattern, ins.hypothesis].filter(Boolean).map((p) => p.label)
+        .concat(evidence.filter((e) => e.weight === "primary").map((e) => e.label))
+        .filter(Boolean),
+      supuestos: (ins.assumptions || []).map((s) => s.label).filter(Boolean),
+      grafico: evidence.find((e) => e.chart)?.chart || null,
       chat: c.accion_chat, seccion: "oportunidades", dominio: OPORTUNIDAD_DOMINIO[c.id],
       conocimiento: c.conocimiento_aplicado || [], chipConocimiento: c.chip_conocimiento || null,
     });

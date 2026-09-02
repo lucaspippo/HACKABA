@@ -210,10 +210,13 @@ def _card_morosos(lang, ctx) -> dict | None:
                              if prom_dias else None),
                    method={"key": "core.method.dias_mora",
                            "label": _t("core.method.dias_mora", lang)},
+                   # No `detail`: it could only repeat the day count this
+                   # metric already carries. The row's `amount` (the saldo)
+                   # is the fact the metric does not show. The multi-row
+                   # `overdue_clients` list above keeps its per-row detail —
+                   # there each row's own day count is new information.
                    records=[ins.record(kind="client", id=peor["id"], name=peor["nombre"],
-                                       amount=peor["saldo"],
-                                       detail=_t("core.opn.morosos_i", lang,
-                                                 dias=peor["dias_sin_pagar"]))]),
+                                       amount=peor["saldo"])]),
     ]
     if grafico:
         evidencia.append(ins.series(
@@ -222,14 +225,12 @@ def _card_morosos(lang, ctx) -> dict | None:
             method={"key": "core.method.debtor_payment_curve",
                     "label": _t("core.method.debtor_payment_curve", lang)}))
     insight_val = ins.build(
-        pattern=ins.pattern(_t("core.opn.morosos_p1", lang, n=len(morosos),
-                               total=_pesos(total, lang)),
+        pattern=ins.pattern(_t("core.opn.morosos_p1", lang, n=len(morosos)),
                             scope={"kind": "clients", "count": len(morosos)}),
         evidence=evidencia,
         risk=ins.risk(_t("core.prio.mora_risk", lang), exposure=total),
         recommendation=ins.recommendation(
-            _t("core.opn.morosos_t", lang, n=len(morosos)), navigate="cuentas",
-            chat=_t("core.opn.morosos_chat", lang)),
+            navigate="cuentas", chat=_t("core.opn.morosos_chat", lang)),
     )
     return {
         "id": "cobrar_morosos", "tipo": "cobrar",
@@ -316,8 +317,7 @@ def _card_dormido(lang, ctx) -> dict | None:
         evidence=evidencia,
         assumptions=assunciones,
         recommendation=ins.recommendation(
-            _t("core.opn.dormido_t", lang), navigate="inventario",
-            chat=_t("core.opn.dormido_chat", lang)),
+            navigate="inventario", chat=_t("core.opn.dormido_chat", lang)),
     )
     card["insight"] = insight_val
     return card
@@ -431,7 +431,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
         evidence=evidencia,
         assumptions=supuestos,
         recommendation=ins.recommendation(
-            _t("core.opn.ventana_t", lang, proveedor=prov), navigate=None,
+            navigate=None,
             chat=_t("core.opn.ventana_chat", lang, proveedor=prov)),
         deadline=ins.deadline(date=proxima.isoformat(),
                               basis=_t("core.opn.ventana_deadline_basis", lang, proveedor=prov)),
@@ -535,7 +535,7 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
         ],
         assumptions=[ins.assumption(_t("core.opn.frio_s1", lang, dias=VENTANA_FRIO_DIAS))],
         recommendation=ins.recommendation(
-            _t("core.opn.frio_t", lang, nombre=peor["c"]["nombre"]), navigate="cuentas",
+            navigate="cuentas",
             chat=_t("core.opn.frio_chat", lang, nombre=peor["c"]["nombre"])),
     )
     return {
@@ -630,7 +630,7 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
         ],
         assumptions=[ins.assumption(_t("core.opn.estrella_s1", lang))],
         recommendation=ins.recommendation(
-            _t("core.opn.estrella_t", lang), navigate="evolucion",
+            navigate="evolucion",
             chat=_t("core.opn.estrella_chat", lang, producto=prod)),
     )
     return {
@@ -705,8 +705,12 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     evidencia = [
         ins.metric("stockout_count", label=_t("core.opn.stockout_count_ev", lang), value=len(cands),
                    unit="products", weight="primary", method=metodo_qi),
+        # A generic list heading: the rows are cands[1:6], the RUNNERS-UP.
+        # `qi_i` names one product's coverage and rank, and cands[0] is
+        # exactly the product excluded from this list — heading five products
+        # with a sixth one's figures asserts something about none of them.
         ins.records("stockout_items",
-                    label=_t("core.opn.qi_i", lang, dias=int(cob), pos=pos),
+                    label=_t("core.opn.stockout_items_lbl", lang),
                     weight="primary",
                     rows=[ins.record(kind="product", id=_a.get("codigo"), name=p, amount=None,
                                      detail=_t("core.opn.qi_i", lang, dias=int(c), pos=ps))
@@ -784,7 +788,7 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
         assumptions=supuestos,
         risk=ins.risk(_t("core.prio.quiebre_risk", lang), exposure=semanal),
         recommendation=ins.recommendation(
-            card["titulo"], proposal=card.get("propuesta"), navigate="inventario",
+            proposal=card.get("propuesta"), navigate="inventario",
             chat=_t("core.opn.qi_chat", lang, producto=prod)),
         deadline=ins.deadline(date=(ctx["hoy"] + datetime.timedelta(days=lead)).isoformat(),
                               basis=_t("core.opn.qi_deadline_basis", lang, lead=lead)),
@@ -861,7 +865,7 @@ def _card_pre_pico(lang, ctx) -> dict | None:
         ],
         assumptions=[ins.assumption(_t("core.opn.pico_s1", lang))],
         recommendation=ins.recommendation(
-            _t("core.opn.pico_t", lang, cat=cat_disp), navigate="evolucion",
+            navigate="evolucion",
             chat=_t("core.opn.pico_chat", lang, cat=cat_disp, mes=nombre_pico)),
         deadline=ins.deadline(date=fecha_pico.isoformat(),
                               basis=_t("core.opn.pico_deadline_basis", lang, mes=nombre_pico)),
@@ -962,8 +966,7 @@ def _card_concentracion(lang, ctx) -> dict | None:
         assumptions=asunciones,
         risk=ins.risk(_t("core.opn.conc_q2", lang), exposure=monto),
         recommendation=ins.recommendation(
-            _t("core.opn.conc_t", lang), navigate="cuentas",
-            chat=_t("core.opn.conc_chat", lang)),
+            navigate="cuentas", chat=_t("core.opn.conc_chat", lang)),
     )
     card["insight"] = insight_val
     return card
@@ -1050,9 +1053,10 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
                        value=ganancia_total, unit="ars", weight="supporting",
                        method={"key": "core.method.margin_extra_total",
                                "label": _t("core.method.margin_extra_total", lang)}),
+            # No `m=`: that percentage is `margin_gap_pct`'s own value, the
+            # sibling metric two items up.
             ins.records("low_margin_products", label=_t("core.opn.margen_t2", lang,
-                                                         producto=peor["producto"],
-                                                         m=f"{peor['margen']:.1f}"),
+                                                         producto=peor["producto"]),
                         weight="supporting",
                         rows=[ins.record(kind=b["kind"], id=b["id"], name=b["nombre"],
                                          amount=b["monto"], detail=b["detalle"])
@@ -1066,15 +1070,13 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
         ],
         assumptions=[ins.assumption(_t("core.opn.margen_s1", lang))],
         recommendation=ins.recommendation(
-            _t("core.opn.margen_t2", lang, producto=peor["producto"], m=f"{peor['margen']:.1f}"),
             navigate="inventario",
             chat=_t("core.opn.margen_chat2", lang, producto=peor["producto"])),
     )
     return {
         "id": "margen_bajo", "tipo": "ajustar_precio",
         "fingerprint": f"producto:{peor['producto']}",
-        "titulo": _t("core.opn.margen_t2", lang, producto=peor["producto"],
-                     m=f"{peor['margen']:.1f}"),
+        "titulo": _t("core.opn.margen_t2", lang, producto=peor["producto"]),
         "monto": round(ganancia_total, 2),
         "datos": {"producto": peor["producto"], "margen_pct": round(peor["margen"], 1),
                   "promedio_grupo_pct": round(peor["prom"], 1), "grupo": peor["cat"],
@@ -1201,7 +1203,6 @@ def _card_sobrecompra(lang, ctx) -> dict | None:
         assumptions=[ins.assumption(_t("core.opn.sobre_s1", lang, fecha=of.get("vencimiento_lote"))),
                      ins.assumption(_t("core.opn.qi_s1", lang))],
         recommendation=ins.recommendation(
-            _t("core.opn.sobre_t", lang, proveedor=prov, producto=prod, desc=f"{mejor['desc']:g}"),
             proposal=propuesta, navigate="inventario",
             chat=_t("core.opn.sobre_chat", lang, producto=prod)),
     )

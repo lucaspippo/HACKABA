@@ -274,7 +274,14 @@ def test_opportunity_cards_carry_structured_insight(cid):
     assert ins["evidence"]
     assert any(e["weight"] == "primary" for e in ins["evidence"]), \
         f"{cid} declares nothing load-bearing"
-    assert ins["recommendation"]["label"]
+    # `recommendation.label` is optional on purpose: the card's `titulo` IS
+    # the move, and repeating it here printed the same sentence twice in one
+    # panel (the UI falls back to `titulo`). What the recommendation must
+    # still carry is a way to act on it.
+    rec = ins["recommendation"]
+    assert rec, f"{cid} carries no recommendation"
+    assert rec.get("chat") or rec.get("navigate") or rec.get("proposal"), \
+        f"{cid} recommends nothing actionable"
 
 
 def test_restock_card_keeps_its_day_counts_as_supporting_metrics():

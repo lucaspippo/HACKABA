@@ -142,10 +142,18 @@ def risk(label: str, *, exposure=None) -> dict:
     return {"level": None, "label": label, "exposure": exposure}
 
 
-def recommendation(label: str, *, detail: str | None = None, proposal=None,
-                   navigate: str | None = None, chat: str | None = None) -> dict:
+def recommendation(label: str | None = None, *, detail: str | None = None,
+                   proposal=None, navigate: str | None = None,
+                   chat: str | None = None) -> dict:
     """The move. Consolidates what the card envelope scatters across
-    titulo/chip/propuesta/navegar/accion_chat."""
+    titulo/chip/propuesta/navegar/accion_chat.
+
+    `label` is OPTIONAL and belongs here only when the move is genuinely
+    different from the card's own title: every card's `titulo` is already
+    the move stated in the owner's language, and passing it again printed
+    the same sentence twice in one panel (once as the heading, once as the
+    recommendation). When it is absent the UI falls back to `titulo`.
+    """
     return {"label": label, "detail": detail, "proposal": proposal,
             "navigate": navigate, "chat": chat}
 

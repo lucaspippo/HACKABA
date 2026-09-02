@@ -288,7 +288,6 @@ def propuestas(lang: str | None = None) -> list[dict]:
             evidence=evidence,
             assumptions=[ins.assumption(_t("core.piso.reclamo_s1", lang))],
             recommendation=ins.recommendation(
-                _t("core.piso.reclamo_t", lang, proveedor=prov),
                 detail=_t("core.piso.reclamo_q2", lang), navigate=None,
                 chat=_t("core.piso.reclamo_chat", lang, proveedor=prov)),
         )
