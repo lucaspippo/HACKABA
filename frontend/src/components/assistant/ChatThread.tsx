@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import AngelaMark from "../AngelaMark";
 import ToolCallCard from "./ToolCallCard";
+import ErrorState from "./ErrorState";
 import { toolComponentsByName } from "./tools/registry";
 import PlanChecklist from "./PlanChecklist";
 import DocCard from "./DocCard";
@@ -194,6 +195,9 @@ function AssistantMessage({ onExecutingChange }: { onExecutingChange?: Executing
           <MessageNotices />
           <MessageExtras onExecutingChange={onExecutingChange} />
         </div>
+        <MessagePrimitive.Error>
+          <ErrorState />
+        </MessagePrimitive.Error>
       </div>
     </MessagePrimitive.Root>
   );

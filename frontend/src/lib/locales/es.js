@@ -3041,4 +3041,19 @@ export const ES = {
   "chat.notice.fake_model": "Esto lo saqué de tus datos, sin el modelo conectado.",
   "chat.notice.tool_loop_exhausted": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
   "chat.notice.generico": "Ángela respondió en modo degradado.",
+
+  // --- errores del chat ---
+  "chat.error.reintentar": "Probar de nuevo",
+  "chat.error.reintentando": "Probando…",
+  "chat.error.rate_limit.titulo": "Demasiadas consultas",
+  "chat.error.rate_limit.detalle": "El modelo está limitado por ahora. Probá de nuevo en un momento.",
+  "chat.error.session_expired.titulo": "Se cerró tu sesión",
+  "chat.error.session_expired.detalle": "Volvé a entrar para seguir hablando con Ángela.",
+  "chat.error.session_expired.accion": "Volver a entrar",
+  "chat.error.network.titulo": "Sin conexión",
+  "chat.error.network.detalle": "No llego al servidor. Revisá tu conexión y probá de nuevo.",
+  "chat.error.server.titulo": "No pude responder",
+  "chat.error.server.detalle": "Se cortó la consulta. Probá de nuevo en un momento.",
+  "chat.error.stream.titulo": "Se cortó la respuesta",
+  "chat.error.stream.detalle": "La respuesta se interrumpió a mitad de camino. Probá de nuevo.",
 };
