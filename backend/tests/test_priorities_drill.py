@@ -243,3 +243,36 @@ def test_whole_business_alerts_carry_a_chart_instead_of_records():
         ev = c["insight"]["evidence"]
         assert any(e["kind"] == "series" and e["chart"] for e in ev), cid
         assert not [r for e in ev for r in e["records"]], cid
+
+
+OPPORTUNITY_IDS = ["cobrar_morosos", "despertar_dormido", "ventana_compra",
+                   "cliente_frio", "estrella_caida", "quiebre_inminente",
+                   "pre_pico", "concentracion", "margen_bajo", "sobrecompra"]
+
+
+@pytest.mark.parametrize("cid", OPPORTUNITY_IDS)
+def test_opportunity_cards_carry_structured_insight(cid):
+    c = _card(cid)
+    if c is None:
+        pytest.skip(f"{cid} not present in the demo dataset")
+    ins = c["insight"]
+    assert ins["pattern"]["label"]
+    assert ins["evidence"]
+    assert any(e["weight"] == "primary" for e in ins["evidence"]), \
+        f"{cid} declares nothing load-bearing"
+    assert ins["recommendation"]["label"]
+
+
+def test_restock_card_keeps_its_day_counts_as_supporting_metrics():
+    """The retired `metrics` strip: same numbers, now first-class evidence."""
+    c = _card("quiebre_inminente")
+    if c is None:
+        pytest.skip("quiebre_inminente not present")
+    ids = {e["id"] for e in c["insight"]["evidence"]}
+    assert {"days_of_coverage", "supplier_lead_time"} <= ids
+
+
+def test_no_card_anywhere_still_carries_metrics_on_the_insight():
+    d = _demo_inbox()
+    for c in d["act"] + d["watch"]:
+        assert "metrics" not in c["insight"], c["id"]
