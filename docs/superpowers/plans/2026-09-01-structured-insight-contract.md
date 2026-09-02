@@ -18,7 +18,8 @@
 - **Every new user-visible string is born bilingual** — added to `backend/i18n.py` `CATALOGO` with both `"es"` and `"en"` on the same commit (house rule, `i18n.py:1-20`).
 - **Tests write into `data-demo/`.** After any `pytest` run: `git checkout -- data-demo/`.
 - Run backend tests from `backend/`: `python -m pytest`. Dataset "today" is **2026-07-07**.
-- **Pre-existing failures, not to be "fixed": 7 of them**, confirmed pre-existing on the branch tip by `git stash` during Task 4. They live in `tests/test_cruces.py`, `tests/test_p27.py` and `tests/test_patrones.py`, and are `cliente_frio` / count mismatches against the real `data-demo/` dataset. A full-suite run should read **1377 passed / 7 failed / 36 skipped**. If your run shows more than 7 failures, you broke something; if it shows fewer, say so rather than assuming you fixed one.
+- **Pre-existing failures, not to be "fixed": 7 of them**, confirmed pre-existing on the branch tip by `git stash` during Task 4. They live in `tests/test_cruces.py`, `tests/test_p27.py` and `tests/test_patrones.py`, and are `cliente_frio` / count mismatches against the real `data-demo/` dataset. If your run shows more than 7 failures, you broke something; if it shows fewer, say so rather than assuming you fixed one. (Pass/skip counts rise as this plan adds tests — judge by the failure count and the failing file names, not the totals.)
+- **Also pre-existing: 13 ERRORS under a full-suite run only**, in `tests/test_ver_como.py` and `tests/test_whatsapp_endpoints.py`. These are test-ordering pollution, not defects: both files pass 17/17 in isolation, with or without this plan's changes (verified by stash during Task 10). Do not chase them.
 
 ## Runnability during the plan
 
