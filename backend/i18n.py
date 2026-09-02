@@ -1459,6 +1459,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "Against the SAME month last year ({prev}) that's {perdida} less per month — it's not seasonality."},
     "core.opn.estrella_q3": {"es": "Desde el arranque de la racha dejó de facturar ~{perdida} por mes.",
                               "en": "Since the streak began it stopped billing ~{perdida} per month."},
+    "core.opn.estrella_loss_lbl": {"es": "Pérdida de facturación mensual",
+                                    "en": "Monthly revenue loss"},
     "core.opn.estrella_i": {"es": "también cae hace {n} meses", "en": "also falling for {n} months"},
     "core.opn.estrella_s1": {"es": "Serie en pesos corrientes: con inflación, una caída nominal es una caída real aún mayor.",
                               "en": "Series in current pesos: with inflation, a nominal drop is an even bigger real drop."},
@@ -1490,6 +1492,7 @@ CATALOGO: dict[str, dict[str, str]] = {
                          "en": "If you wait until it's gone, you'll buy in a rush and pay for it."},
     "core.opn.qi_q3_ventana": {"es": "Tenés {n} días para negociar con tiempo.",
                                 "en": "You have {n} days to negotiate properly."},
+    "core.opn.qi_q3_window_lbl": {"es": "Ventana para negociar", "en": "Negotiating window"},
     "core.opn.qi_q3_ventana_1": {"es": "Te queda un solo día de margen para negociar: mañana ya comprás apurado.",
                                   "en": "You have exactly one day of slack to negotiate: tomorrow you're buying in a rush."},
     "core.opn.qi_q3_justo": {"es": "Llegás justo: el pedido tiene que salir hoy para no quebrar.",
@@ -1539,10 +1542,14 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "Estimated peak-month purchase (to plan for {plan})"},
     "core.opn.pico_s1": {"es": "Supuesto: el pico repite el patrón histórico (índice normalizado por año: la inflación no lo ensucia).",
                           "en": "Assumption: the peak repeats the historical pattern (index normalized per year: inflation doesn't distort it)."},
+    "core.opn.peak_multiplier_lbl": {"es": "Multiplicador de pico estacional",
+                                      "en": "Seasonal peak multiplier"},
     "core.opn.pico_g": {"es": "Estacionalidad de {cat} (índice por mes)", "en": "{cat} seasonality (index by month)"},
     "core.opn.pico_g_v": {"es": "{anios} años de historia", "en": "{anios} years of history"},
     # P27·A7 — concentración de clientes
     "core.opn.conc_t": {"es": "3 clientes concentran demasiado", "en": "3 customers carry too much"},
+    "core.opn.client_concentration_lbl": {"es": "Concentración en los principales clientes",
+                                           "en": "Concentration in top clients"},
     "core.opn.conc_monto_label": {"es": "facturado en 12 meses (no es deuda)",
                                    "en": "billed over 12 months (not debt)"},
     "core.opn.conc_r": {"es": "El {pct}% de tu facturación en cuenta corriente de los últimos 12 meses — {monto} — está en 3 clientes. Es exposición, no plata a cobrar: si uno se cae, duele.",
@@ -1575,6 +1582,8 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Arranca el pico estacional de {mes}.",
         "en": "The {mes} seasonal peak begins."},
     "core.opn.margen_prom_label": {"es": "promedio de su categoría", "en": "category average"},
+    "core.opn.margin_gap_lbl": {"es": "Margen actual vs. el promedio de su categoría",
+                                 "en": "Current margin vs. category average"},
     # --- Task 8: structured insight — new method explanations ------------------
     "core.method.debtor_payment_curve": {
         "es": "Pagos registrados del cliente, mes a mes, con los meses sin pago en cero.",
@@ -1848,6 +1857,9 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.combo_r_conjunto": {
         "es": "{pct}% de los pedidos con {a} también llevan {b}: un combo tácito que nadie armó todavía.",
         "en": "{pct}% of the orders with {a} also carry {b}: an unofficial combo nobody's set up yet."},
+    "core.pat.combo_rate_lbl": {
+        "es": "Tasa de coocurrencia del combo",
+        "en": "Combo co-occurrence rate"},
     "core.pat.combo_monto_label_potencial": {
         "es": "venta cruzada sin aprovechar", "en": "unrealized cross-sell"},
     "core.pat.combo_monto_label_conjunto": {
@@ -3674,6 +3686,14 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.caida_hyp": {
         "es": "La caída es de volumen, no de precio.",
         "en": "The drop is in volume, not price.",
+    },
+    "core.prio.yoy_change_lbl": {
+        "es": "Variación interanual real",
+        "en": "Real year-over-year change",
+    },
+    "core.prio.peak_multiplier_lbl": {
+        "es": "Multiplicador de pico estacional",
+        "en": "Seasonal peak multiplier",
     },
     "core.method.stale_cost_value": {
         "es": "Suma del valor inmovilizado (cantidad × costo) de los productos con costo cargado hace más de un año.",

@@ -636,10 +636,6 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
                           "detalle": _t("core.opn.estrella_i", lang, n=r2)})
     grafico = _grafico(prod, [{"x": m, "y": v} for m, v in zip(meses, serie)],
                        "$", True, f"{meses[0]} → {meses[-1]}")
-    perdida_label = (_t("core.opn.estrella_q2", lang, prev=_pesos(y_prev, lang),
-                        perdida=_pesos(perdida, lang))
-                     if y_prev > ultimo else
-                     _t("core.opn.estrella_q3", lang, perdida=_pesos(perdida, lang)))
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.estrella_q1", lang, producto=prod, pos=pos,
                                n=racha, ultimo=_pesos(ultimo, lang)),
@@ -650,7 +646,8 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
                        value=racha, unit="months", weight="primary",
                        method={"key": "core.method.streak_decline",
                                "label": _t("core.method.streak_decline", lang)}),
-            ins.metric("revenue_loss", label=perdida_label, value=perdida, unit="ars",
+            ins.metric("revenue_loss", label=_t("core.opn.estrella_loss_lbl", lang),
+                       value=perdida, unit="ars",
                        weight="primary",
                        method={"key": "core.method.streak_loss",
                                "label": _t("core.method.streak_loss", lang)}),
@@ -738,14 +735,6 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     # se pide por peso lleva su decimal.
     sugerido = round(sugerido, 1) if pricing.es_por_peso(art) else float(round(sugerido))
 
-    if dias_para_negociar > 1:
-        ventana = _t("core.opn.qi_q3_ventana", lang, n=dias_para_negociar)
-    elif dias_para_negociar == 1:
-        ventana = _t("core.opn.qi_q3_ventana_1", lang)
-    elif dias_para_negociar == 0:
-        ventana = _t("core.opn.qi_q3_justo", lang)
-    else:
-        ventana = _t("core.opn.qi_q3_tarde", lang, n=-dias_para_negociar)
     metodo_qi = {"key": "core.method.qi_stockout",
                  "label": _t("core.method.qi_stockout", lang)}
     evidencia = [
@@ -770,8 +759,8 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
                    value=lead, unit="days", weight="supporting",
                    method={"key": "core.method.supplier_lead_time",
                            "label": _t("core.method.supplier_lead_time", lang)}),
-        ins.metric("negotiating_window", label=ventana, value=dias_para_negociar,
-                   unit="days", weight="supporting",
+        ins.metric("negotiating_window", label=_t("core.opn.qi_q3_window_lbl", lang),
+                   value=dias_para_negociar, unit="days", weight="supporting",
                    method={"key": "core.method.negotiating_window",
                            "label": _t("core.method.negotiating_window", lang)}),
     ]
@@ -887,7 +876,8 @@ def _card_pre_pico(lang, ctx) -> dict | None:
         pattern=ins.pattern(_t("core.opn.pico_q1", lang, mes=nombre_pico, idx=f"{idx:g}",
                                cat=cat_disp, anios=est.get("anios_analizados") or 0)),
         evidence=[
-            ins.metric("peak_multiplier", label=f"×{idx:g}", value=idx, unit="×",
+            ins.metric("peak_multiplier", label=_t("core.opn.peak_multiplier_lbl", lang),
+                       value=idx, unit="×",
                        weight="primary",
                        method={"key": "core.method.peak_multiplier",
                                "label": _t("core.method.peak_multiplier", lang)}),
@@ -988,7 +978,8 @@ def _card_concentracion(lang, ctx) -> dict | None:
                                monto=_pesos(monto, lang)),
                             scope={"kind": "clients", "count": 3}),
         evidence=[
-            ins.metric("client_concentration_pct", label=f"{pct:.0f}%", value=round(pct, 1),
+            ins.metric("client_concentration_pct",
+                       label=_t("core.opn.client_concentration_lbl", lang), value=round(pct, 1),
                        unit="pct", weight="primary",
                        method={"key": "core.method.client_concentration",
                                "label": _t("core.method.client_concentration", lang)}),
@@ -1079,7 +1070,8 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
                                cat=cat_disp),
                             scope={"kind": "product", "count": 1}),
         evidence=[
-            ins.metric("margin_gap_pct", label=f"{peor['margen']:.1f}%", value=round(peor["margen"], 1),
+            ins.metric("margin_gap_pct", label=_t("core.opn.margin_gap_lbl", lang),
+                       value=round(peor["margen"], 1),
                        unit="pct", weight="primary",
                        baseline={"value": round(peor["prom"], 1),
                                  "label": _t("core.opn.margen_prom_label", lang)},
