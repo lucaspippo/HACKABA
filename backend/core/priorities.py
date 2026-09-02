@@ -948,7 +948,11 @@ def _alerts_deposito(lang) -> list[dict]:
             ),
         ))
     if dep.get("discrepancias"):
-        items = deposito.discrepancias()[:8]
+        # `visibles` is suppression-filtered — same set `dep["discrepancias"]` is
+        # counted from (deposito.discrepancias_conocimiento()). The unfiltered
+        # deposito.discrepancias() would let the card contradict its own count,
+        # and would resurface rows an owner's rule explicitly silenced.
+        items = deposito.discrepancias_conocimiento()["visibles"][:8]
         metodo = {"key": "core.method.dep_discrep", "label": _t("core.method.dep_discrep", lang)}
         out.append(_item(
             id="dep_discrep", tono="oro", chip=_t("core.prio.chip_deposito", lang),
