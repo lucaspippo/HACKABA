@@ -1,43 +1,66 @@
-"""Shared confidence signal: generic, not per-card-type (see design spec
-2026-09-01). Signals: chart data points (sample size proxy) and number of
-declared assumptions."""
+"""core/confidence.py — the two axes must move independently."""
 from core import confidence
+from core import insight
 
 
-def _drill(points=0, assumptions=0):
-    grafico = None
+def _chart(points: int) -> dict:
+    return {"ok": True,
+            "series": [{"nombre": "s", "puntos": [{"x": i, "y": i} for i in range(points)]}],
+            "meta": {}}
+
+
+def _insight(*, points=0, records=0, assumptions=0, alternatives=0):
+    ev = []
     if points:
-        grafico = {"ok": True, "series": [{"nombre": "x",
-                   "puntos": [{"x": i, "y": i} for i in range(points)]}],
-                   "meta": {}}
-    return {"grafico": grafico, "supuestos": ["a"] * assumptions}
+        ev.append(insight.series("s", label="l", chart=_chart(points),
+                                 method={"key": "k", "label": "l"}))
+    if records:
+        ev.append(insight.records(
+            "r", label="l",
+            rows=[insight.record(kind="client", id=i, name=str(i)) for i in range(records)],
+            method={"key": "k", "label": "l"}))
+    return insight.build(
+        pattern=insight.pattern("p"),
+        evidence=ev,
+        assumptions=[insight.assumption(f"a{i}") for i in range(assumptions)],
+        alternatives=[insight.caveat(f"c{i}") for i in range(alternatives)],
+    )
 
 
-def test_high_confidence_needs_enough_points_and_no_assumptions():
-    out = confidence.level_for(_drill(points=6, assumptions=0), "en")
-    assert out["level"] == "high"
-    assert "6" in out["reason"]
+def test_rich_data_and_many_assumptions_disagree():
+    """The assertion that was impossible before the split."""
+    c = confidence.split_for(_insight(points=12, assumptions=3))
+    assert c["data"]["level"] == "high"
+    assert c["hypothesis"]["level"] == "low"
 
 
-def test_medium_confidence_with_some_points_or_one_assumption():
-    assert confidence.level_for(_drill(points=3, assumptions=0), "en")["level"] == "medium"
-    assert confidence.level_for(_drill(points=1, assumptions=1), "en")["level"] == "medium"
+def test_thin_data_and_no_assumptions_disagree_the_other_way():
+    c = confidence.split_for(_insight(points=0, assumptions=0))
+    assert c["data"]["level"] == "low"
+    assert c["hypothesis"]["level"] == "high"
 
 
-def test_low_confidence_with_little_data_and_multiple_assumptions():
-    out = confidence.level_for(_drill(points=1, assumptions=2), "en")
-    assert out["level"] == "low"
+def test_records_count_toward_data_confidence_without_a_chart():
+    """An alert with no chart but eight real rows is not low-data."""
+    c = confidence.split_for(_insight(points=0, records=8))
+    assert c["data"]["level"] == "medium"
 
 
-def test_no_chart_and_no_assumptions_is_still_low():
-    """A finding with nothing behind it (no chart, no declared assumptions)
-    must not read as confident by default — absence of assumptions is not
-    evidence of confidence."""
-    out = confidence.level_for(_drill(points=0, assumptions=0), "en")
-    assert out["level"] == "low"
+def test_declared_alternatives_lower_hypothesis_confidence():
+    """More competing explanations means LESS certainty, not more."""
+    few = confidence.split_for(_insight(points=6, alternatives=0))
+    many = confidence.split_for(_insight(points=6, alternatives=3))
+    order = {"low": 0, "medium": 1, "high": 2}
+    assert order[many["hypothesis"]["level"]] < order[few["hypothesis"]["level"]]
 
 
-def test_reason_is_translated():
-    out_es = confidence.level_for(_drill(points=6, assumptions=0), "es")
-    out_en = confidence.level_for(_drill(points=6, assumptions=0), "en")
-    assert out_es["reason"] != out_en["reason"]
+def test_signals_are_exposed_for_the_ui():
+    c = confidence.split_for(_insight(points=12, records=3, assumptions=1))
+    assert c["data"]["signals"]["chart_points"] == 12
+    assert c["data"]["signals"]["record_count"] == 3
+    assert c["hypothesis"]["signals"]["assumptions"] == 1
+
+
+def test_both_axes_always_carry_a_reason_string():
+    c = confidence.split_for(_insight())
+    assert c["data"]["reason"] and c["hypothesis"]["reason"]

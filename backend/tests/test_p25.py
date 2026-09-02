@@ -31,7 +31,7 @@ def limpio():
     limpiar_tabla_tenant("user_memory")
 
 
-# --- A · las tarjetas: cada una con plata + acción + drill honesto -------------
+# --- A · las tarjetas: cada una con plata + acción + insight honesto -----------
 
 def test_cards_solo_plata_con_accion():
     """El criterio duro: toda card tiene $, tipo-acción, porqué y (si aplica)
@@ -41,7 +41,9 @@ def test_cards_solo_plata_con_accion():
     for c in cards:
         assert c["monto"] and c["monto"] > 0, c["id"]
         assert c["tipo"] in oportunidades_neg.TIPOS_VALIDOS
-        assert c["drill"]["porque"], c["id"]
+        ins = c["insight"]
+        assert ins["pattern"] and ins["pattern"]["label"], c["id"]
+        assert ins["evidence"], c["id"]
         assert c["accion_chat"]
         assert c["fuentes"], c["id"]  # P27·C: toda card declara qué crucé
     ids = {c["id"] for c in cards}

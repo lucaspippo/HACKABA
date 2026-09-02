@@ -1555,6 +1555,58 @@ def _con_pesos(obj, lang: str | None = None):
     return out
 
 
+_SLIM_KEYS = ("id", "chip", "titulo", "resumen", "monto", "cifra_texto", "tono", "band")
+_SLIM_MAX_RECORDS = 3
+
+
+def _slim(item: dict) -> dict:
+    """One priority, trimmed for the model.
+
+    Carries the REASONING and drops the BULK: charts and supporting evidence
+    are for the screen, not for a prompt, and twenty cards' worth of series
+    points would crowd out the answer.
+
+    This SELECTS from the finished insight — it never recomputes or
+    reformats a value. Every number Ángela says traces back to core/.
+    """
+    out = {k: item.get(k) for k in _SLIM_KEYS}
+    ins = item.get("insight") or {}
+    conf = ins.get("confidence") or {}
+    risk = ins.get("risk") or {}
+    deadline = ins.get("deadline") or {}
+    owner = ins.get("owner") or {}
+    labels = lambda rows: [r["label"] for r in (rows or [])]
+
+    out["insight"] = {
+        "pattern": (ins.get("pattern") or {}).get("label"),
+        "hypothesis": (ins.get("hypothesis") or {}).get("label"),
+        "evidence": [_slim_evidence(e) for e in (ins.get("evidence") or [])
+                     if e.get("weight") == "primary"],
+        "assumptions": labels(ins.get("assumptions")),
+        "alternatives": labels(ins.get("alternatives")),
+        "falsifiers": labels(ins.get("falsifiers")),
+        "confidence": {"data": (conf.get("data") or {}).get("level"),
+                       "hypothesis": (conf.get("hypothesis") or {}).get("level")},
+        "risk": {"level": risk.get("level"), "exposure": risk.get("exposure")},
+        "deadline": {"date": deadline.get("date"), "urgency": deadline.get("urgency")},
+        "owner": owner.get("suggested"),
+    }
+    return out
+
+
+def _slim_evidence(e: dict) -> dict:
+    rows = e.get("records") or []
+    return {
+        "id": e.get("id"), "label": e.get("label"), "value": e.get("value"),
+        "unit": e.get("unit"), "baseline": e.get("baseline"),
+        "deviation": e.get("deviation"),
+        "method": (e.get("method") or {}).get("label"),
+        "records": [{"name": r.get("name"), "amount": r.get("amount"),
+                     "detail": r.get("detail")} for r in rows[:_SLIM_MAX_RECORDS]],
+        "records_total": len(rows),
+    }
+
+
 def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     """Devuelve (resultado_para_claude, accion_para_frontend|None)."""
     # CAPA 2 — el candado real: aunque una tool se cuele (router simulado, o el
@@ -1953,10 +2005,6 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
                     "motivo": "tu rol no ve Prioridades; esto lo mira otra persona del equipo."}, None
         from core import priorities
         inbox = priorities.inbox(_idioma_actual(), _features_actuales())
-
-        def _slim(it: dict) -> dict:
-            return {k: it.get(k) for k in (
-                "id", "chip", "titulo", "resumen", "monto", "cifra_texto", "tono", "band")}
 
         return {
             "act": [_slim(i) for i in inbox["act"]],

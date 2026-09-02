@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, Radar, Check } from "lucide-react";
+import { ArrowRight, Radar, Check, CalendarClock } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
@@ -37,12 +37,7 @@ function rowOf(it) {
     cifraTexto: it.cifra_texto,
     fuentes: it.fuentes || [],
     origins: it.origen || [],
-    porque: it.drill?.porque || [],
-    grafico: it.drill?.grafico,
-    involucrados: it.drill?.involucrados || [],
-    supuestos: it.drill?.supuestos || [],
-    confidence: it.drill?.confidence,
-    metrics: it.drill?.metrics || [],
+    insight: it.insight,
     macro: it.macro,
     chat: it.accion_chat,
     navegar: it.navegar,
@@ -50,6 +45,25 @@ function rowOf(it) {
     actionTaken: it.action_taken,
     reportes: it.reportes,
   };
+}
+
+// Same treatment as Prioridades.jsx's WorkRow: a chip only for the two
+// urgencies that need action today — "this_week"/"later" would fire on
+// nearly every card.
+const DEADLINE_CHIP_CLS = {
+  overdue: "bg-rojo/10 text-rojo",
+  today: "bg-oro/15 text-oro-tinta",
+};
+
+function DeadlineChip({ urgency }) {
+  const t = useT();
+  const cls = DEADLINE_CHIP_CLS[urgency];
+  if (!cls) return null;
+  return (
+    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${cls}`}>
+      <CalendarClock size={10} /> {t(urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")}
+    </span>
+  );
 }
 
 function Fila({ item, selected, onOpen }) {
@@ -72,6 +86,7 @@ function Fila({ item, selected, onOpen }) {
             <Check size={10} /> {t("prioridades.done")}
           </span>
         )}
+        <DeadlineChip urgency={item.insight?.deadline?.urgency} />
         <span className="mt-1 block text-[0.9rem] leading-snug text-tinta line-clamp-2">{item.titulo}</span>
       </span>
       {item.monto ? (
@@ -256,15 +271,10 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           monto={abierta.monto}
           montoLabel={abierta.montoLabel}
           cifraTexto={abierta.cifraTexto}
-          porque={abierta.porque || []}
+          insight={abierta.insight}
           macro={abierta.macro}
-          grafico={abierta.grafico}
-          involucrados={abierta.involucrados || []}
-          supuestos={abierta.supuestos || []}
           fuentes={abierta.fuentes || []}
           origins={abierta.origins || []}
-          confidence={abierta.confidence}
-          metrics={abierta.metrics || []}
           propuesta={abierta.propuesta}
           propuestaTrabajando={proposalWorking}
           actionTaken={abierta.actionTaken && {

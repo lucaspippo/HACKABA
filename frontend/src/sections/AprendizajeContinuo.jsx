@@ -60,8 +60,15 @@ const UPCOMING = [
 ];
 
 // A hand-written stand-in with the exact anatomy a live card would have,
-// used only when this tenant has no matching live finding right now.
+// used only when this tenant has no matching live finding right now. Shaped
+// as an `insight` (backend/core/insight.py) exactly like a real card's, so
+// DrillNegocio renders it the same way — pattern → hypothesis → evidence →
+// assumptions — just with illustrative content instead of live numbers.
 function illustrativeExample(example, t) {
+  const [porquePattern, porqueHypothesis] = example.porque.map((k) => t(k));
+  const involvedRows = example.involucrados.map((iv) => ({
+    kind: null, id: null, name: t(iv.nombre), amount: null, detail: null,
+  }));
   return {
     id: example.id,
     tono: example.tono,
@@ -71,11 +78,24 @@ function illustrativeExample(example, t) {
     montoLabel: t(example.montoLabel),
     cifraTexto: null,
     fuentes: [],
-    drill: {
-      porque: example.porque.map((k) => t(k)),
-      grafico: null,
-      involucrados: example.involucrados.map((iv) => ({ nombre: t(iv.nombre) })),
-      supuestos: example.supuestos.map((k) => t(k)),
+    insight: {
+      pattern: { label: porquePattern, since: null, scope: null },
+      hypothesis: porqueHypothesis ? { label: porqueHypothesis } : null,
+      evidence: involvedRows.length > 0
+        ? [{
+            id: null, kind: "records", label: t(example.titulo),
+            value: null, unit: null, baseline: null, deviation: null,
+            weight: "primary", method: null, records: involvedRows, chart: null,
+          }]
+        : [],
+      assumptions: example.supuestos.map((k) => ({ label: t(k), if_wrong: null })),
+      alternatives: [],
+      falsifiers: [],
+      risk: null,
+      recommendation: null,
+      owner: null,
+      deadline: null,
+      confidence: null,
     },
     isIllustrative: true,
     summary: t(example.dato),
@@ -127,7 +147,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
     return {
       id: found.id, tono: found.tono, chip: found.chip, titulo: found.titulo,
       monto: found.monto, montoLabel: found.monto_label, cifraTexto: found.cifra_texto,
-      fuentes: found.fuentes || [], drill: found.drill, isIllustrative: false,
+      fuentes: found.fuentes || [], insight: found.insight, isIllustrative: false,
       summary: found.resumen,
     };
   });
@@ -222,8 +242,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
           <div onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
             <DrillNegocio variante="panel" tono={selected.tono} titulo={selected.titulo}
               monto={selected.monto} montoLabel={selected.montoLabel} cifraTexto={selected.cifraTexto}
-              porque={selected.drill?.porque || []} grafico={selected.drill?.grafico}
-              involucrados={selected.drill?.involucrados || []} supuestos={selected.drill?.supuestos || []}
+              insight={selected.insight}
               fuentes={selected.fuentes || []}
               onFeedback={selected.isIllustrative ? undefined : (action) => giveFeedback(selected.id, action)}
               feedbackBusy={feedbackBusy} />

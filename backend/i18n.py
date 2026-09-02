@@ -26,6 +26,25 @@ from __future__ import annotations
 
 from core import paths
 
+# TODO(i18n direction) — UI-facing copy should move to the frontend.
+#
+# The mainstream shape for a web app is: the server ships keys + params, the
+# client renders with Intl (plurals, dates, currency are locale rules the
+# browser already implements, and this module hand-rolls them in Python).
+#
+# What blocks a straight migration: Ángela and external MCP clients consume
+# FINISHED sentences and will never run frontend/src/lib/locales/. The
+# narrative templates here are also coupled to the calculations they explain
+# (see core.opn.qi_q1b), so they are authored next to the code that computes
+# their numbers, not as UI chrome.
+#
+# The agreed split (docs/superpowers/specs/2026-09-01-structured-insight-
+# contract-design.md, §"i18n direction"):
+#   - narrative sentences (pattern, hypothesis, method labels) stay here;
+#   - raw numbers ship as typed data and are formatted client-side;
+#   - section headings, badge labels and button copy belong in the frontend
+#     locales — move them as they are touched.
+
 CATALOGO: dict[str, dict[str, str]] = {
     # --- authz / errores transversales -----------------------------------------
     "authz.sin_token": {
@@ -194,6 +213,12 @@ CATALOGO: dict[str, dict[str, str]] = {
     },
     "core.piso.f_stock": {"es": "costos del catálogo", "en": "catalog costs"},
     "core.piso.f_oc": {"es": "órdenes de compra abiertas", "en": "open purchase orders"},
+    "core.method.floor_report_claim": {
+        "es": "Cantidad reportada por el equipo × costo de catálogo del producto.",
+        "en": "Quantity reported by the team × the product's catalog cost."},
+    "core.method.floor_report_po_check": {
+        "es": "Controlado contra la orden de compra abierta de ese proveedor.",
+        "en": "Checked against that supplier's open purchase order."},
     "api.reporte_inexistente": {
         "es": "ese reporte no existe",
         "en": "no such report",
@@ -1357,11 +1382,16 @@ CATALOGO: dict[str, dict[str, str]] = {
                             "en": "Worst: {peor}, {dias} days without paying."},
     "core.opn.morosos_chat": {"es": "ayudame a cobrarles a los morosos",
                                "en": "help me collect from the overdue customers"},
-    "core.opn.morosos_p1": {"es": "{n} clientes en mora suman {total} vencidos.",
-                             "en": "{n} overdue customers add up to {total} past due."},
+    # No {total}: the overdue sum is `overdue_total`'s own value. This exact
+    # line, next to that chip, is the duplication the owner reported.
+    "core.opn.morosos_p1": {"es": "{n} clientes tienen saldo vencido sin pagar.",
+                             "en": "{n} customers are carrying an unpaid overdue balance."},
     "core.opn.morosos_p2": {"es": "{peor} lleva {dias} días sin pagar cuando su promedio histórico es {prom} — el desvío es la señal.",
                              "en": "{peor} is {dias} days without paying vs a {prom}-day historical average — the deviation is the signal."},
+    "core.opn.morosos_p2_lbl": {"es": "Días sin pagar vs. su promedio histórico ({peor})",
+                                 "en": "Days unpaid vs. historical average ({peor})"},
     "core.opn.morosos_i": {"es": "{dias} días sin pagar", "en": "{dias} days without paying"},
+    "core.opn.overdue_total_ev": {"es": "Saldo vencido total", "en": "Total overdue balance"},
     "core.opn.dormido_t": {"es": "Despertar el stock dormido", "en": "Wake up the sleeping stock"},
     "core.opn.dormido_r": {"es": "{pct}% de tu stock no rota; liquidar los 5 peores libera {top5}.",
                             "en": "{pct}% of your stock doesn't turn; clearing the worst 5 frees {top5}."},
@@ -1375,6 +1405,9 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.dormido_sin_venta": {"es": "sin una venta en el año", "en": "no sale in a year"},
     "core.opn.dormido_s1": {"es": "Supuesto: liquidación al costo actual (sin remate por debajo del costo).",
                              "en": "Assumption: clearance at current cost (no below-cost fire sale)."},
+    "core.opn.dormant_value_ev": {"es": "Valor de stock dormido", "en": "Value of dormant stock"},
+    "core.opn.dormant_top5_ev": {"es": "Valor de los 5 productos dormidos principales",
+                                "en": "Value of the top 5 dormant products"},
     "core.opn.morosos_g": {"es": "Pagos de {nombre}", "en": "{nombre}'s payments"},
     "core.opn.dormido_g": {"es": "Los peores dormidos (plata parada)", "en": "Worst sleepers (money sitting)"},
     # P27·A3 — la ventana de compra con razonamiento de dueño
@@ -1401,6 +1434,10 @@ CATALOGO: dict[str, dict[str, str]] = {
                              "en": "Assumption: the next list repeats the rise (~{suba}%), like the last {n} lists on record."},
     "core.opn.ventana_g": {"es": "Subas de lista de {proveedor}", "en": "{proveedor} price-list increases"},
     "core.opn.ventana_g_v": {"es": "últimas {n} listas", "en": "last {n} lists"},
+    "core.opn.window_purchase_ev": {"es": "Monto de la compra en esta ventana",
+                                   "en": "Purchase amount in this window"},
+    "core.opn.window_savings_ev": {"es": "Ahorro estimado por comprar ahora",
+                                  "en": "Estimated savings from buying now"},
     # E2·piezas 7+8 — conocimiento de Aldo sobre el proveedor
     "core.opn.ventana_k_suba": {
         "es": "Vos me contaste que {proveedor} sube la lista todos los meses hace un año — por eso conviene comprar antes.",
@@ -1421,14 +1458,20 @@ CATALOGO: dict[str, dict[str, str]] = {
                           "en": "{nombre} bought {actual} in the last 6 months vs {esperado} at their historical pace — a {pct}% drop."},
     "core.opn.frio_q2": {"es": "Es tu {pos}° mejor cliente por historial: la diferencia son {monto} que dejaron de entrar.",
                           "en": "They're your #{pos} best customer by history: the gap is {monto} that stopped coming in."},
+    "core.opn.frio_q2_lbl": {"es": "Caída de facturación vs. lo esperado (tu {pos}° mejor cliente)",
+                              "en": "Revenue gap vs. expected (your #{pos} customer by history)"},
     "core.opn.frio_i": {"es": "compró {pct}% menos que su histórico", "en": "bought {pct}% less than their usual"},
     "core.opn.frio_s1": {"es": "Ventana: últimos {dias} días vs SU promedio histórico (los ciclos de compra en cuenta corriente son bimestrales; una ventana menor confunde ciclo con enfriamiento).",
                           "en": "Window: last {dias} days vs THEIR historical average (account purchase cycles run every other month; a shorter window confuses cycle with cooling)."},
     "core.opn.frio_g": {"es": "Compras de {nombre}, mes a mes", "en": "{nombre}'s purchases, month by month"},
+    "core.opn.cooling_pace_ev": {"es": "Ritmo de compra actual del cliente",
+                                "en": "Client's current purchase pace"},
     # P27·A8 — producto estrella en caída
     "core.opn.estrella_t": {"es": "Un producto estrella viene en caída", "en": "A star product is slipping"},
     "core.opn.estrella_r": {"es": "{producto} es tu #{pos} por facturación y cae hace {n} meses seguidos.",
                              "en": "{producto} is your #{pos} by revenue and has fallen {n} months straight."},
+    "core.opn.estrella_r_lbl": {"es": "Meses seguidos de caída ({producto}, #{pos} por facturación)",
+                                 "en": "Consecutive months of decline ({producto}, #{pos} by revenue)"},
     "core.opn.estrella_chat": {"es": "mostrame qué está pasando con {producto}: viene cayendo hace meses",
                                 "en": "show me what's happening with {producto}: it's been falling for months"},
     "core.opn.estrella_q1": {"es": "{producto} (tu #{pos} por facturación) encadena {n} meses seguidos de caída; el último mes cerró en {ultimo}.",
@@ -1437,6 +1480,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "Against the SAME month last year ({prev}) that's {perdida} less per month — it's not seasonality."},
     "core.opn.estrella_q3": {"es": "Desde el arranque de la racha dejó de facturar ~{perdida} por mes.",
                               "en": "Since the streak began it stopped billing ~{perdida} per month."},
+    "core.opn.estrella_loss_lbl": {"es": "Pérdida de facturación mensual",
+                                    "en": "Monthly revenue loss"},
     "core.opn.estrella_i": {"es": "también cae hace {n} meses", "en": "also falling for {n} months"},
     "core.opn.estrella_s1": {"es": "Serie en pesos corrientes: con inflación, una caída nominal es una caída real aún mayor.",
                               "en": "Series in current pesos: with inflation, a nominal drop is an even bigger real drop."},
@@ -1450,8 +1495,17 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.qi_q2": {"es": "Cada semana sin él en la góndola son ~{semanal} que no facturás.",
                         "en": "Every week without it on the shelf is ~{semanal} you don't bill."},
     "core.opn.qi_i": {"es": "se agota en {dias} días (#{pos} por facturación)", "en": "runs out in {dias} days (#{pos} by revenue)"},
+    # The heading over the OTHER items about to run out. `qi_i` cannot serve
+    # here: it names one product's coverage and rank, and the rows below are
+    # the runners-up — the excluded leader's figures would head someone
+    # else's list.
+    "core.opn.stockout_items_lbl": {"es": "Otros productos por quebrar",
+                                     "en": "Other items about to run out"},
     "core.opn.qi_s1": {"es": "Supuesto: ritmo de venta estable (promedio de los últimos 12 meses).",
                         "en": "Assumption: stable sales pace (12-month average)."},
+    "core.opn.stockout_count_ev": {"es": "Productos por quebrar", "en": "Products about to stock out"},
+    "core.opn.weekly_revenue_ev": {"es": "Facturación semanal en juego",
+                                  "en": "Weekly revenue at stake"},
     # P38·B — el quiebre con ANTICIPACIÓN: el tiempo del proveedor adentro del
     # cálculo. Lo que te queda menos lo que él tarda = los días que tenés para
     # negociar. Sin ese resto, "te quedan 7 días" no es una decisión.
@@ -1465,6 +1519,7 @@ CATALOGO: dict[str, dict[str, str]] = {
                          "en": "If you wait until it's gone, you'll buy in a rush and pay for it."},
     "core.opn.qi_q3_ventana": {"es": "Tenés {n} días para negociar con tiempo.",
                                 "en": "You have {n} days to negotiate properly."},
+    "core.opn.qi_q3_window_lbl": {"es": "Ventana para negociar", "en": "Negotiating window"},
     "core.opn.qi_q3_ventana_1": {"es": "Te queda un solo día de margen para negociar: mañana ya comprás apurado.",
                                   "en": "You have exactly one day of slack to negotiate: tomorrow you're buying in a rush."},
     "core.opn.qi_q3_justo": {"es": "Llegás justo: el pedido tiene que salir hoy para no quebrar.",
@@ -1486,6 +1541,8 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.qi_m_lead": {"es": "Repone en", "en": "Restocks in"},
     "core.opn.qi_m_window": {"es": "Margen para negociar", "en": "Room to negotiate"},
     "core.opn.qi_m_days": {"es": "{n} días", "en": "{n} days"},
+    "core.opn.qi_m_coverage_lbl": {"es": "Días de cobertura", "en": "Days of coverage"},
+    "core.opn.qi_m_lead_lbl": {"es": "Lead time del proveedor", "en": "Supplier lead time"},
     "core.opn.qi_m_today": {"es": "sale hoy", "en": "ships today"},
     "core.opn.qi_m_late": {"es": "{n} días tarde", "en": "{n} days late"},
     # E2 — línea genérica de conocimiento en el porqué de una card
@@ -1504,14 +1561,22 @@ CATALOGO: dict[str, dict[str, str]] = {
                           "en": "Across {anios} years of history, {mes} multiplies {cat} sales ×{idx} — it happens every year, it's not a hunch."},
     "core.opn.pico_q2": {"es": "Con el stock de hoy, a ritmo de pico cubrís {dias} días.",
                           "en": "With today's stock, at peak pace you cover {dias} days."},
+    "core.opn.pico_q2_lbl": {"es": "Días de cobertura a ritmo de pico",
+                              "en": "Days of coverage at peak pace"},
     "core.opn.pico_q3": {"es": "La compra del mes de pico ronda {compra}. Nada urge hoy: se planifica en {plan}, con el proveedor y el precio negociados.",
                           "en": "The peak-month purchase is around {compra}. Nothing is urgent today: it gets planned in {plan}, with supplier and price negotiated."},
+    "core.opn.pico_q3_lbl": {"es": "Compra estimada para el pico (a planificar en {plan})",
+                              "en": "Estimated peak-month purchase (to plan for {plan})"},
     "core.opn.pico_s1": {"es": "Supuesto: el pico repite el patrón histórico (índice normalizado por año: la inflación no lo ensucia).",
                           "en": "Assumption: the peak repeats the historical pattern (index normalized per year: inflation doesn't distort it)."},
+    "core.opn.peak_multiplier_lbl": {"es": "Multiplicador de pico estacional",
+                                      "en": "Seasonal peak multiplier"},
     "core.opn.pico_g": {"es": "Estacionalidad de {cat} (índice por mes)", "en": "{cat} seasonality (index by month)"},
     "core.opn.pico_g_v": {"es": "{anios} años de historia", "en": "{anios} years of history"},
     # P27·A7 — concentración de clientes
     "core.opn.conc_t": {"es": "3 clientes concentran demasiado", "en": "3 customers carry too much"},
+    "core.opn.client_concentration_lbl": {"es": "Concentración en los principales clientes",
+                                           "en": "Concentration in top clients"},
     "core.opn.conc_monto_label": {"es": "facturado en 12 meses (no es deuda)",
                                    "en": "billed over 12 months (not debt)"},
     "core.opn.conc_r": {"es": "El {pct}% de tu facturación en cuenta corriente de los últimos 12 meses — {monto} — está en 3 clientes. Es exposición, no plata a cobrar: si uno se cae, duele.",
@@ -1533,6 +1598,95 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.f_movs": {"es": "movimientos históricos por cliente", "en": "per-customer history"},
     "core.opn.f_ventas12": {"es": "ventas de 12 meses", "en": "12-month sales"},
     "core.opn.f_ventas24": {"es": "ventas por producto (24 meses)", "en": "per-product sales (24 months)"},
+    # --- Task 8: structured insight — deadlines and one relabeled baseline -----
+    "core.opn.ventana_deadline_basis": {
+        "es": "Vence cuando llegue la próxima lista de {proveedor}.",
+        "en": "Due when {proveedor}'s next price list lands."},
+    "core.opn.qi_deadline_basis": {
+        "es": "El proveedor tarda {lead} días en reponer: pedilo para esta fecha o menos.",
+        "en": "The supplier takes {lead} days to restock: order by this date or sooner."},
+    "core.opn.pico_deadline_basis": {
+        "es": "Arranca el pico estacional de {mes}.",
+        "en": "The {mes} seasonal peak begins."},
+    "core.opn.margen_prom_label": {"es": "promedio de su categoría", "en": "category average"},
+    "core.opn.margin_gap_lbl": {"es": "Margen actual vs. el promedio de su categoría",
+                                 "en": "Current margin vs. category average"},
+    # --- Task 8: structured insight — new method explanations ------------------
+    "core.method.debtor_payment_curve": {
+        "es": "Pagos registrados del cliente, mes a mes, con los meses sin pago en cero.",
+        "en": "The client's recorded payments, month by month, with no-payment months at zero."},
+    "core.method.dormant_value": {
+        "es": "Valor inmovilizado (cantidad × costo) de los productos sin rotación real en el período analizado.",
+        "en": "Immobilized value (quantity × cost) of products with no real turnover in the analyzed period."},
+    "core.method.dormant_products": {
+        "es": "Productos sin rotación real, ordenados por valor inmovilizado.",
+        "en": "Products with no real turnover, sorted by immobilized value."},
+    "core.method.dormant_top5_value": {
+        "es": "Suma del valor inmovilizado de los 5 productos con mayor plata parada.",
+        "en": "Sum of the immobilized value of the 5 products with the most money sitting idle."},
+    "core.method.window_purchase": {
+        "es": "Faltante proyectado hasta la lista siguiente (ritmo de venta × frecuencia de lista, menos el stock que va a quedar), valuado al costo actual.",
+        "en": "Projected shortfall through the following price list (sales pace × list frequency, minus the stock left over), valued at current cost."},
+    "core.method.window_savings": {
+        "es": "Monto de la compra segura multiplicado por la suba promedio de la última lista del proveedor.",
+        "en": "The safe-purchase amount multiplied by the supplier's average recent price-list increase."},
+    "core.method.price_rise_history": {
+        "es": "Suba promedio de cada lista de precios del proveedor, en orden cronológico.",
+        "en": "The average increase of each of the supplier's price lists, in chronological order."},
+    "core.method.client_cooling": {
+        "es": "Compras del cliente en los últimos {dias} días contra su propio promedio histórico proyectado a la misma ventana.",
+        "en": "The client's purchases in the last {dias} days against their own historical average projected to the same window."},
+    "core.method.client_cooling_gap": {
+        "es": "Diferencia entre lo que el cliente compraría a su ritmo histórico y lo que compró en la ventana.",
+        "en": "The gap between what the client would buy at their historical pace and what they actually bought in the window."},
+    "core.method.streak_decline": {
+        "es": "Meses consecutivos de facturación en baja para ese producto, sobre la serie mensual completa.",
+        "en": "Consecutive months of declining revenue for that product, over the full monthly series."},
+    "core.method.streak_loss": {
+        "es": "Facturación del último mes contra el mismo mes del año anterior (o, si no cayó interanual, contra el arranque de la racha).",
+        "en": "Last month's revenue against the same month last year (or, if it didn't drop year over year, against the start of the streak)."},
+    "core.method.qi_stockout": {
+        "es": "Productos del ranking de facturación cuya cobertura proyectada cae dentro de la ventana de quiebre inminente.",
+        "en": "Top-revenue products whose projected coverage falls within the imminent-stockout window."},
+    "core.method.qi_weekly_revenue": {
+        "es": "Facturación de los últimos 12 meses del producto dividida en 52 semanas.",
+        "en": "The product's trailing-12-month revenue divided across 52 weeks."},
+    "core.method.days_of_coverage": {
+        "es": "Stock proyectado dividido por el ritmo de venta diario del producto.",
+        "en": "Projected stock divided by the product's daily sales pace."},
+    "core.method.supplier_lead_time": {
+        "es": "Días que ese proveedor tarda en reponer, según su historial de entregas.",
+        "en": "Days that supplier takes to restock, based on their delivery history."},
+    "core.method.negotiating_window": {
+        "es": "Días de cobertura menos el tiempo de reposición del proveedor.",
+        "en": "Days of coverage minus the supplier's lead time."},
+    "core.method.critical_rule": {
+        "es": "Regla declarada por el dueño marcando este producto como crítico.",
+        "en": "An owner-declared rule flagging this product as critical."},
+    "core.method.peak_purchase": {
+        "es": "Faltante proyectado para cubrir el mes de pico al ritmo esperado, menos el stock actual, valuado al costo.",
+        "en": "Projected shortfall to cover the peak month at expected pace, minus current stock, valued at cost."},
+    "core.method.peak_coverage": {
+        "es": "Stock actual de la categoría dividido por el ritmo de venta proyectado en el pico.",
+        "en": "The category's current stock divided by the projected sales pace at the peak."},
+    "core.method.client_concentration": {
+        "es": "Facturación en cuenta corriente de los últimos 12 meses de los 3 clientes más grandes, sobre el total.",
+        "en": "Last-12-month account-sales revenue of the 3 biggest customers, over the total."},
+    "core.method.margin_gap": {
+        "es": "Margen del producto (PVP menos costo con IVA, sobre PVP) contra el promedio de su categoría.",
+        "en": "The product's margin (PVP minus cost with VAT, over PVP) against its category average."},
+    "core.method.margin_extra_profit": {
+        "es": "Unidades vendidas por mes multiplicadas por la diferencia entre el precio que igualaría el promedio de categoría y el precio actual.",
+        "en": "Units sold per month multiplied by the gap between the price that would match the category average and the current price."},
+    "core.method.margin_extra_total": {
+        "es": "Suma de la ganancia extra mensual de todos los productos con margen por debajo del promedio de su categoría.",
+        "en": "Sum of the extra monthly profit across every product priced below its category's average margin."},
+    "core.method.overbuy_waste": {
+        "es": "Cantidad de la oferta que no se vende antes de que venza el lote, valuada al costo con el descuento de la oferta.",
+        "en": "The portion of the deal that won't sell before the lot expires, valued at cost net of the deal's discount."},
+    "core.method.overbuy_savings": {
+        "es": "Cantidad absorbible antes del vencimiento, multiplicada por el descuento de la oferta.",
+        "en": "The quantity absorbable before expiration, multiplied by the deal's discount."},
     # --- core/cruces.py · los hallazgos que cruzan 3+ dominios -----------------
     # Fuentes (las etiquetas de "Crucé: …")
     "core.cru.f_ventas_cliente": {"es": "qué compra cada cliente",
@@ -1704,8 +1858,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "You sell ~{u} {unidad} a month: that quantity is {meses} months of sales, and the batch they're offering expires in {dias} days."},
     "core.opn.sobre_q3": {"es": "O sea que {sobrante} {unidad} se te vencerían en el depósito: {tirar} a la basura, con descuento y todo.",
                            "en": "Which means {sobrante} {unidad} would expire in your warehouse: {tirar} in the bin, discount and all."},
+    "core.opn.sobre_q3_lbl": {"es": "Valor a pérdida: {sobrante} {unidad} que vencerían sin vender",
+                               "en": "Value at risk: {sobrante} {unidad} that would expire unsold"},
     "core.opn.sobre_q4": {"es": "Comprando {sug} aprovechás el descuento en todo lo que SÍ vas a vender: {ahorro} de ahorro real, sin tirar nada.",
                            "en": "Buying {sug} you get the discount on everything you WILL sell: {ahorro} of real savings, nothing wasted."},
+    "core.opn.sobre_q4_lbl": {"es": "Ahorro por comprar {sug} aprovechando el descuento",
+                               "en": "Savings from buying {sug} at the discount"},
     "core.opn.sobre_g": {"es": "La oferta contra lo que vendés ({unidad})", "en": "The offer against what you sell ({unidad})"},
     "core.opn.sobre_g_oferta": {"es": "Te ofrecen", "en": "Offered"},
     "core.opn.sobre_g_vendible": {"es": "Vendés antes del vto.", "en": "You sell before expiry"},
@@ -1726,6 +1884,9 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.combo_r_conjunto": {
         "es": "{pct}% de los pedidos con {a} también llevan {b}: un combo tácito que nadie armó todavía.",
         "en": "{pct}% of the orders with {a} also carry {b}: an unofficial combo nobody's set up yet."},
+    "core.pat.combo_rate_lbl": {
+        "es": "Tasa de coocurrencia del combo",
+        "en": "Combo co-occurrence rate"},
     "core.pat.combo_monto_label_potencial": {
         "es": "venta cruzada sin aprovechar", "en": "unrealized cross-sell"},
     "core.pat.combo_monto_label_conjunto": {
@@ -1752,6 +1913,8 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.combo_g": {"es": "Pedidos con {a}", "en": "Orders with {a}"},
     "core.pat.combo_g_con": {"es": "con {b}", "en": "with {b}"},
     "core.pat.combo_g_sin": {"es": "sin {b}", "en": "without {b}"},
+    "core.pat.combo_amount_ev": {"es": "Monto combinado de la pareja de productos",
+                                "en": "Combined amount for the product pair"},
 
     "core.pat.caja_t": {
         "es": "Cada {dia} la caja falta mucho más que el resto de la semana",
@@ -1759,6 +1922,11 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.caja_r": {
         "es": "Faltó en el {pct}% de los cierres de {dia} (vs {pct_resto}% el resto), {total} acumulado en {n} cierres.",
         "en": "Came up short in {pct}% of {dia} closes (vs {pct_resto}% the rest of the week), {total} accumulated over {n} closes."},
+    # No {total}/{n} here on purpose: the accumulated shortfall is
+    # `shortfall_total`'s own value, the very next evidence item.
+    "core.pat.caja_r_lbl": {
+        "es": "Faltante los {dia} vs. el resto de la semana",
+        "en": "Shortfall rate on {dia}s vs. the rest of the week"},
     "core.pat.caja_chat": {
         "es": "¿Por qué falta tanto la caja los días {dia}?",
         "en": "Why does the till come up short so often on {dia}s?"},
@@ -1774,6 +1942,45 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.caja_i": {
         "es": "{fecha}: faltaron {monto}", "en": "{fecha}: short by {monto}"},
     "core.pat.caja_g": {"es": "Faltante por cierre", "en": "Shortfall per close"},
+    "core.pat.shortfall_total_ev": {"es": "Total de faltantes de caja ese día",
+                                   "en": "Total cash shortfall on that day"},
+    "core.pat.caja_hyp": {
+        "es": "Parece algo propio del {dia} — un problema de proceso ese día puntual, no ruido repartido entre toda la semana.",
+        "en": "It looks like something specific to {dia}s — a process gap on that particular day, not noise spread across the week."},
+    "core.pat.caja_alt1": {
+        "es": "Puede ser un tema de quién atiende ese día, no del día en sí: si suele cerrar caja la misma persona los {dia}, el patrón podría seguir a quien trabaja, no a la fecha.",
+        "en": "It might be about who's working that day, not the day itself: if the same person usually closes the till on {dia}s, the pattern could be tracking the employee, not the date."},
+    "core.pat.caja_baseline": {
+        "es": "% de faltante el resto de la semana", "en": "% short the rest of the week"},
+
+    # --- structured insight (Task 9): pattern/hypothesis/alternatives for the combo card --
+    "core.pat.combo_pattern": {
+        "es": "En los últimos {n} pedidos de los {clientes} clientes que llevaron {a}, {b} viajó en el mismo pedido el {pct}% de las veces — {lift}× más seguido de lo que explicaría el azar.",
+        "en": "Across the last {n} orders from the {clientes} customers who bought {a}, {b} rode along in the same order {pct}% of the time — {lift}× more often than chance would explain."},
+    "core.pat.combo_hyp_falta": {
+        "es": "Eso no es casualidad: parece demanda complementaria real, y las {n} veces que faltó son venta cruzada que se está dejando sobre el mostrador.",
+        "en": "That's not chance: it looks like real complementary demand, and the {n} times it was missing are cross-sell being left on the counter."},
+    "core.pat.combo_hyp_conjunto": {
+        "es": "Eso no es casualidad: parece demanda complementaria real que hoy ya entra, pero como dos ventas sueltas en vez de un combo armado.",
+        "en": "That's not chance: it looks like real complementary demand that already comes in today, but as two separate sales instead of a bundled one."},
+    "core.pat.combo_alt1": {
+        "es": "Puede que los dos productos simplemente vendan más en la misma época del año, sin que exista una relación real de compra conjunta entre clientes.",
+        "en": "The two products may simply sell more during the same time of year, with no real joint-purchase relationship between customers."},
+    "core.method.combo_cooccurrence": {
+        "es": "Tasa de coocurrencia en pedidos: pedidos con ambos productos ÷ pedidos con el producto ancla.",
+        "en": "Order co-occurrence rate: orders with both products ÷ orders with the anchor product."},
+    "core.method.combo_gap_amount": {
+        "es": "Pedidos sin la pareja × el monto promedio que agrega la pareja cuando sí aparece.",
+        "en": "Orders missing the partner × the average amount the partner adds when it does appear."},
+    "core.method.combo_combined_amount": {
+        "es": "Suma de lo facturado por ambos productos en los pedidos donde viajaron juntos.",
+        "en": "Sum of what both products billed in the orders where they traveled together."},
+    "core.method.weekday_shortfall_rate": {
+        "es": "% de cierres de ese día de la semana con faltante, contra el % del resto de los días.",
+        "en": "% of that weekday's closes that came up short, against the % for the rest of the week."},
+    "core.method.weekday_shortfall_total": {
+        "es": "Suma de los faltantes de ese día de la semana en el historial analizado.",
+        "en": "Sum of that weekday's shortfalls over the analyzed history."},
 
     # P38·C — los grupos del canal MOSTRADOR (locales propios). El mismo fiambre
     # feteado o entero son dos negocios distintos: por eso son dos grupos.
@@ -1810,12 +2017,16 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "show me the low-margin products and what price you'd set"},
     "core.opn.margen_p1": {"es": "{n} productos venden con margen anómalamente bajo vs su categoría: llevarlos al promedio suma ~{extra}/mes.",
                             "en": "{n} products sell at an anomalously low margin vs their category: bringing them to average adds ~{extra}/mo."},
+    "core.opn.margen_p1_lbl": {"es": "Ganancia extra total si {n} productos vuelven al promedio",
+                                "en": "Total extra profit if {n} products return to average"},
     "core.opn.margen_i": {"es": "margen {m}% vs {prom}% promedio de {cat}",
                            "en": "{m}% margin vs {cat}'s {prom}% average"},
     # P38·C — el hallazgo de margen NOMBRA al producto (un conteo no mueve a
     # nadie; "estás vendiendo X al 12% cuando su grupo deja 21%" sí).
-    "core.opn.margen_t2": {"es": "Estás vendiendo {producto} con {m}% de margen",
-                            "en": "You're selling {producto} at a {m}% margin"},
+    # No {m} here: the margin percentage is `margin_gap_pct`'s own value,
+    # rendered as its evidence chip right below the title.
+    "core.opn.margen_t2": {"es": "Estás vendiendo {producto} con margen bajo",
+                            "en": "You're selling {producto} at a low margin"},
     "core.opn.margen_r2": {"es": "Muy por debajo del {prom}% promedio de {cat}. Hay {n} más en la misma situación.",
                             "en": "Way below the {prom}% average for {cat}. There are {n} more in the same spot."},
     "core.opn.margen_r2_solo": {"es": "Muy por debajo del {prom}% promedio de {cat}. ¿Revisamos el precio?",
@@ -1826,6 +2037,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                             "en": "{producto} leaves a {m}% margin; the average for {cat} is {prom}%."},
     "core.opn.margen_p2": {"es": "Hoy lo vendés a {pvp}. A {objetivo} quedaría en el promedio de su grupo: {extra} más por mes sólo con ese producto.",
                             "en": "Today you sell it at {pvp}. At {objetivo} it'd sit at its group's average: {extra} more a month from that product alone."},
+    "core.opn.margen_p2_lbl": {"es": "Vendés a {pvp}; al precio objetivo {objetivo} quedaría en el promedio de su grupo",
+                                "en": "You sell at {pvp}; at the target price {objetivo} it would match its group's average"},
     "core.opn.margen_s1": {"es": "Supuesto: el volumen no cae con el ajuste (subas chicas, al promedio de la categoría).",
                             "en": "Assumption: volume holds after the adjustment (small raises, up to category average)."},
     # P24·G4 — la pantalla de revisión, re-localizada al leer (por tipo de obs)
@@ -3209,6 +3422,25 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.chip_equipo": {"es": "Tu equipo", "en": "Your team"},
     "core.prio.chip_ver": {"es": "Mirar", "en": "Watch"},
     "core.prio.chip_revisar": {"es": "Revisar", "en": "Review"},
+    # --- Prioridades evidence labels (short claims — value/unit carry the number) --
+    "core.prio.overdue_total_ev": {"es": "Saldo vencido total", "en": "Total overdue balance"},
+    "core.prio.stockout_count_ev": {"es": "Artículos sin stock", "en": "Items out of stock"},
+    "core.prio.payables_overdue_ev": {"es": "Total vencido a proveedores",
+                                     "en": "Total overdue to suppliers"},
+    "core.prio.payables_week_ev": {"es": "A pagar esta semana", "en": "Due this week"},
+    "core.prio.checks_total_ev": {"es": "Total en cheques en cartera",
+                                 "en": "Total value of checks on hand"},
+    "core.prio.expired_lots_ev": {"es": "Valor de los lotes vencidos",
+                                 "en": "Value of the expired lots"},
+    "core.prio.expiring_lots_ev": {"es": "Valor de los lotes por vencer",
+                                  "en": "Value of the lots about to expire"},
+    "core.prio.discrepancy_count_ev": {"es": "Diferencias entre el físico y el sistema",
+                                      "en": "Differences between physical count and system"},
+    "core.prio.at_risk_value_ev": {"es": "Plata en riesgo por vencimiento",
+                                  "en": "Value at risk from expiration"},
+    "core.prio.stale_cost_value_ev": {"es": "Valor inmovilizado por costo desactualizado",
+                                     "en": "Value stuck due to a stale cost"},
+    "core.prio.cash_today_ev": {"es": "Caja de hoy", "en": "Today's till"},
     "core.prio.f_cuentas": {"es": "Cuentas corrientes", "en": "Receivables"},
     "core.prio.f_stock": {"es": "Stock", "en": "Stock"},
     "core.prio.f_ventas": {"es": "Ventas", "en": "Sales"},
@@ -3232,9 +3464,14 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.atraso_r": {
         "es": "{dias} días sin pagar, {atraso}% más que su promedio.",
         "en": "{dias} days without paying, {atraso}% above their average."},
+    "core.prio.atraso_r_lbl": {
+        "es": "Días sin pagar vs. su promedio",
+        "en": "Days unpaid vs. their average"},
+    # No {dias}/{prom}: both are `days_overdue`'s value and baseline, shown
+    # as its evidence chip immediately below.
     "core.prio.atraso_p": {
-        "es": "{nombre} lleva {dias} días; su promedio era {prom}.",
-        "en": "{nombre} is at {dias} days; their average was {prom}."},
+        "es": "{nombre} está pagando más lento que su propio histórico.",
+        "en": "{nombre} is paying more slowly than their own track record."},
     "core.prio.atraso_chat": {
         "es": "¿Qué hago con {nombre}, que se atrasó de más?",
         "en": "What should I do about {nombre}, who is later than usual?"},
@@ -3249,6 +3486,58 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "What do I need to restock now?"},
     "core.prio.quiebre_i": {"es": "{dias} días de cobertura",
                             "en": "{dias} days of coverage"},
+    "core.method.mora_total": {
+        "es": "Suma de saldos vencidos de clientes con al menos un comprobante impago pasada su fecha.",
+        "en": "Sum of overdue balances for clients with at least one unpaid invoice past its due date.",
+    },
+    "core.method.dias_mora": {
+        "es": "Días entre la última cobranza registrada del cliente y hoy.",
+        "en": "Days between the client's last recorded payment and today.",
+    },
+    "core.method.prom_pago": {
+        "es": "Promedio de días entre cobranzas de ese cliente en su historia.",
+        "en": "That client's historical average days between payments.",
+    },
+    "core.method.quiebre_conteo": {
+        "es": "Artículos cuya cobertura proyectada, al ritmo de venta actual, es menor al lead time del proveedor.",
+        "en": "Items whose projected coverage at the current sales rate is below supplier lead time.",
+    },
+    "core.prio.morosos_hyp": {
+        "es": "La mora está concentrada: son pocos clientes, no una caída general de la cobranza.",
+        "en": "The overdue balance is concentrated — a few clients, not a general collections slump.",
+    },
+    "core.prio.atraso_hyp": {
+        "es": "{nombre} cambió su comportamiento de pago, no necesariamente su capacidad.",
+        "en": "{nombre}'s payment behaviour changed — not necessarily their ability to pay.",
+    },
+    "core.prio.atraso_alt": {
+        "es": "Puede haber un pago hecho y todavía no registrado.",
+        "en": "There may be a payment made but not yet recorded.",
+    },
+    "core.prio.atraso_fals": {
+        "es": "Un comprobante de pago posterior a la última cobranza registrada.",
+        "en": "A payment receipt dated after the last recorded collection.",
+    },
+    "core.prio.mora_sup": {
+        "es": "Asumo que no hubo pagos en efectivo sin registrar.",
+        "en": "I assume there were no unrecorded cash payments.",
+    },
+    "core.prio.mora_sup_if": {
+        "es": "La mora real sería menor.",
+        "en": "The real overdue figure would be lower.",
+    },
+    "core.prio.quiebre_hyp": {
+        "es": "El faltante es de reposición, no de demanda: se vende igual que siempre.",
+        "en": "This is a restocking gap, not a demand drop — sales are unchanged.",
+    },
+    "core.prio.quiebre_risk": {
+        "es": "Venta perdida mientras el artículo no esté en góndola.",
+        "en": "Lost sales for as long as the item is off the shelf.",
+    },
+    "core.prio.mora_risk": {
+        "es": "Capital inmovilizado en la calle.",
+        "en": "Working capital stuck with customers.",
+    },
     "core.prio.pago_vencido_t": {"es": "Pagos a proveedores ya vencidos",
                                 "en": "Vendor payments already due"},
     "core.prio.pago_vencido_r": {"es": "{n} pagos, {monto}.",
@@ -3324,6 +3613,66 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.venc_riesgo_i": {"es": "vence en {dias} días", "en": "expires in {dias} days"},
     "core.prio.venc_riesgo_s": {"es": "Ritmo de venta = unidades de los últimos 12 meses / 365.",
                                 "en": "Sale pace = last 12 months' units / 365."},
+    "core.prio.dep_discrep_p": {
+        "es": "{n} artículo(s) tienen diferencia entre el stock del sistema y el del depósito.",
+        "en": "{n} item(s) differ between system stock and warehouse stock.",
+    },
+    "core.method.dep_discrep": {
+        "es": "Comparación entre la existencia registrada y el último conteo de depósito.",
+        "en": "Recorded stock compared against the latest warehouse count.",
+    },
+    "core.prio.dep_porvencer_hyp": {
+        "es": "Es un problema de rotación, no de compra de más: el lote entró y no salió a tiempo.",
+        "en": "A turnover problem, not over-buying — the lot came in and did not move in time.",
+    },
+    "core.method.payables_overdue": {
+        "es": "Suma de facturas de proveedores en estado pendiente cuya fecha de vencimiento ya pasó.",
+        "en": "Sum of pending vendor bills whose due date has already passed.",
+    },
+    "core.method.payables_week": {
+        "es": "Suma de facturas de proveedores en estado pendiente que vencen dentro de los próximos 7 días.",
+        "en": "Sum of pending vendor bills due within the next 7 days.",
+    },
+    "core.method.checks": {
+        "es": "Suma de cheques recibidos que todavía no fueron cobrados.",
+        "en": "Sum of received checks not yet collected.",
+    },
+    "core.method.expired_lots": {
+        "es": "Lotes de depósito cuya fecha de vencimiento ya pasó, valuados al costo con IVA del catálogo.",
+        "en": "Warehouse lots past their expiration date, valued at the catalog's cost including VAT.",
+    },
+    "core.method.expiring_lots": {
+        "es": "Lotes de depósito que vencen dentro de la ventana de alerta, valuados al costo con IVA del catálogo.",
+        "en": "Warehouse lots expiring within the alert window, valued at the catalog's cost including VAT.",
+    },
+    "core.method.at_risk": {
+        "es": "Lotes cuyo ritmo de venta actual no alcanza para agotarlos antes de vencer.",
+        "en": "Lots whose current sale pace won't clear them before they expire.",
+    },
+    "core.prio.pago_vencido_risk": {
+        "es": "Intereses o corte de suministro del proveedor si no se paga.",
+        "en": "Interest charges or a supplier cutting off supply if left unpaid.",
+    },
+    "core.prio.pago_semana_risk": {
+        "es": "Quiebre de caja si el pago no se planifica con anticipación.",
+        "en": "A cash crunch if the payment isn't planned for ahead of time.",
+    },
+    "core.prio.cheques_risk": {
+        "es": "Plata en cartera hasta la fecha de cobro de cada cheque.",
+        "en": "Money held up until each check's collection date.",
+    },
+    "core.prio.dep_vencidos_risk": {
+        "es": "Mercadería vencida que ya no se puede vender.",
+        "en": "Expired merchandise that can no longer be sold.",
+    },
+    "core.prio.dep_porvencer_risk": {
+        "es": "Se pierde si no rota antes de la fecha de vencimiento.",
+        "en": "Lost if it doesn't turn over before its expiration date.",
+    },
+    "core.prio.venc_riesgo_risk": {
+        "es": "Plata inmovilizada en lotes que no llegan a venderse a tiempo.",
+        "en": "Money tied up in lots that won't sell in time.",
+    },
     "core.prio.costo_viejo_t": {"es": "Costos sin actualizar hace más de un año",
                                "en": "Costs not updated in over a year"},
     "core.prio.costo_viejo_r": {"es": "{n} productos con costo viejo. El margen que ves no es real.",
@@ -3344,8 +3693,11 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "Why does today's till look unusual?"},
     "core.prio.caja_g": {"es": "Total de caja, últimos cierres", "en": "Cash total, recent closes"},
     "core.prio.caja_hoy": {"es": "Hoy", "en": "Today"},
-    "core.prio.caja_p": {"es": "El cierre de hoy ({total}) se desvía {pct}% del promedio de los últimos cierres ({prom}).",
-                         "en": "Today's close ({total}) deviates {pct}% from the recent average ({prom})."},
+    # States the observation only: the total, the average it is measured
+    # against and the gap between them are `cash_today`'s value, baseline and
+    # deviation, rendered as chips right below this line.
+    "core.prio.caja_p": {"es": "El cierre de hoy se despegó del promedio de los últimos cierres.",
+                         "en": "Today's close pulled away from the average of the recent closes."},
     "core.prio.caja_s": {"es": "Promedio de los últimos cierres con caja positiva.",
                          "en": "Average of recent closes with a positive cash total."},
     "core.prio.caida_chat": {"es": "Explícame la caída interanual de la venta real.",
@@ -3359,6 +3711,58 @@ CATALOGO: dict[str, dict[str, str]] = {
                         "en": "{cat} spikes in {mes}."},
     "core.prio.pico_chat": {"es": "¿Cómo me preparo para el pico de {cat}?",
                            "en": "How do I prepare for the {cat} peak?"},
+    "core.prio.costo_viejo_hyp": {
+        "es": "El precio quedó viejo frente al costo, no es un problema de demanda.",
+        "en": "The price fell behind the cost — this isn't a demand problem.",
+    },
+    "core.prio.caja_hyp": {
+        "es": "Un movimiento puntual, no un cambio de nivel.",
+        "en": "A one-off movement, not a level shift.",
+    },
+    "core.prio.caida_hyp": {
+        "es": "La caída es de volumen, no de precio.",
+        "en": "The drop is in volume, not price.",
+    },
+    "core.prio.yoy_change_lbl": {
+        "es": "Variación interanual real",
+        "en": "Real year-over-year change",
+    },
+    "core.prio.peak_multiplier_lbl": {
+        "es": "Multiplicador de pico estacional",
+        "en": "Seasonal peak multiplier",
+    },
+    "core.method.stale_cost_value": {
+        "es": "Suma del valor inmovilizado (cantidad × costo) de los productos con costo cargado hace más de un año.",
+        "en": "Sum of the immobilized value (quantity × cost) of products whose cost was loaded over a year ago.",
+    },
+    "core.method.stale_cost_rows": {
+        "es": "Productos con costo cargado hace más de un año, ordenados por valor inmovilizado.",
+        "en": "Products with a cost loaded over a year ago, sorted by immobilized value.",
+    },
+    "core.method.stale_cost_chart": {
+        "es": "Valor inmovilizado por producto con costo desactualizado, de mayor a menor.",
+        "en": "Immobilized value per product with a stale cost, highest to lowest.",
+    },
+    "core.method.cash_today": {
+        "es": "Total de caja del cierre de hoy.",
+        "en": "Today's closing cash total.",
+    },
+    "core.method.cash_history": {
+        "es": "Total de caja de los últimos cierres con caja positiva, en orden cronológico.",
+        "en": "Cash total of recent closes with a positive balance, in chronological order.",
+    },
+    "core.method.yoy_change": {
+        "es": "Variación interanual de la facturación real (deflactada por IPC) del último mes contra el mismo mes del año anterior.",
+        "en": "Year-over-year change in real (CPI-deflated) revenue for the latest month vs the same month last year.",
+    },
+    "core.method.yoy_series": {
+        "es": "Facturación real mensual, deflactada por IPC, mes a mes.",
+        "en": "Monthly real revenue, CPI-deflated, month by month.",
+    },
+    "core.method.peak_multiplier": {
+        "es": "Índice de estacionalidad de la categoría para el mes: veces la venta promedio de un mes normal.",
+        "en": "The category's seasonality index for the month: multiple of an average month's sales.",
+    },
     # --- conciliación depósito (conteo vs sistema) --------------------------------
     "conc.hip.conteo_incompleto": {
         "es": "Este lote se contó, pero {n} lote(s) del mismo producto todavía no. Hasta completar el conteo no se puede explicar el hueco.",
@@ -3414,15 +3818,30 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Este producto no tiene ventas en el año: no hay ritmo para proyectar cuándo se acaba.",
         "en": "This product has no sales in the year, so there's no rate to project a stockout.",
     },
-    "core.confidence.reason_high": {
-        "es": "Basado en {points} datos, sin supuestos adicionales.",
-        "en": "Based on {points} data points, no additional assumptions."},
-    "core.confidence.reason_medium": {
-        "es": "Basado en {points} datos y {assumptions} supuesto(s).",
-        "en": "Based on {points} data points and {assumptions} assumption(s)."},
-    "core.confidence.reason_low": {
-        "es": "Datos limitados: {points} datos y {assumptions} supuesto(s).",
-        "en": "Limited data: {points} data points and {assumptions} assumption(s)."},
+    "core.confidence.data_high": {
+        "es": "Basado en {points} puntos de historia y {records} registros.",
+        "en": "Based on {points} data points and {records} records.",
+    },
+    "core.confidence.data_medium": {
+        "es": "Basado en {points} puntos y {records} registros — alcanza para la señal, no para el detalle.",
+        "en": "Based on {points} points and {records} records — enough for the signal, not the detail.",
+    },
+    "core.confidence.data_low": {
+        "es": "Poca evidencia detrás: {points} puntos, {records} registros.",
+        "en": "Thin evidence behind this: {points} points, {records} records.",
+    },
+    "core.confidence.hyp_high": {
+        "es": "No apoya en supuestos: la lectura sale directo de los datos.",
+        "en": "Rests on no assumptions — the reading comes straight from the data.",
+    },
+    "core.confidence.hyp_medium": {
+        "es": "Apoya en {assumptions} supuesto(s) y {alternatives} explicación(es) alternativa(s).",
+        "en": "Rests on {assumptions} assumption(s) with {alternatives} alternative explanation(s).",
+    },
+    "core.confidence.hyp_low": {
+        "es": "Lectura frágil: {assumptions} supuesto(s) y {alternatives} explicación(es) alternativa(s).",
+        "en": "Fragile reading: {assumptions} assumption(s) and {alternatives} alternative explanation(s).",
+    },
 }
 
 

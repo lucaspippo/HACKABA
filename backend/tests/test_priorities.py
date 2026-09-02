@@ -24,8 +24,6 @@ def _item(id_, *, monto=0, band=None, tono="salvia", naturaleza=None, **extra):
         "resumen": id_,
         "origen": extra.pop("origen", [f"synthetic:{id_}"]),
         "modulos": extra.pop("modulos", ("oportunidades",)),
-        "drill": extra.pop("drill", {"porque": [], "grafico": None,
-                                     "involucrados": [], "supuestos": []}),
     }
     if band:
         it["band"] = band
@@ -271,7 +269,7 @@ def test_compose_attaches_confidence_to_every_item(monkeypatch):
     composed = priorities._compose("en")
     assert composed["items"], "expected at least one item to check"
     for it in composed["items"]:
-        conf = it["drill"].get("confidence")
+        conf = it["insight"]["confidence"]["data"]
         assert conf and conf["level"] in ("high", "medium", "low")
         assert conf["reason"]
 
@@ -336,8 +334,6 @@ def test_inbox_sees_an_order_created_after_the_first_call(monkeypatch):
         "tipo": "comprar",
         "fuentes": [],
         "propuesta": propuesta,
-        "drill": {"porque": [], "grafico": None, "involucrados": [],
-                  "supuestos": []},
     }])
 
     features = ("inventario", "oportunidades", "alertas")
@@ -367,3 +363,245 @@ def test_badge_counts_only_open_act_cards():
     open_["action_taken"] = None
     act, watch = priorities.split_and_rank([done, open_])
     assert priorities.badge_of({"act": act, "watch": watch}) == 1
+
+
+# --- structured insight contract ------------------------------------------
+
+from core import insight as _ins
+
+
+def _with_insight(cid, ins, **kw):
+    return _item(cid, **kw) | {"insight": ins}
+
+
+def test_merge_unions_evidence_by_id_instead_of_concatenating_prose():
+    """The duplicate-prose bug: `morosos` and `cobrar_morosos` both state the
+    same fact in different words, so string de-dup kept both. Keyed evidence
+    makes the duplicate structurally impossible."""
+    ev = lambda w: _ins.metric("overdue_total", label="3 clientes por $85.700.000",
+                               value=85700000, unit="ars", weight=w,
+                               method={"key": "k", "label": "l"})
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("p"),
+                                                   evidence=[ev("supporting")]))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("otra redaccion"),
+                                            evidence=[ev("primary")]))
+    out = priorities.merge_duplicates([a, b])
+    assert len(out) == 1
+    evidence = out[0]["insight"]["evidence"]
+    assert len(evidence) == 1
+    assert evidence[0]["weight"] == "primary", "primary must win over supporting"
+
+
+def test_merge_keeps_the_canonical_pattern_and_never_concatenates():
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("canonica")))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("la del alerta")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["pattern"]["label"] == "canonica"
+
+
+def test_merge_falls_back_to_the_twins_hypothesis_when_canonical_has_none():
+    """Defect A: cobrar_morosos (canonical) sets no hypothesis while its twin
+    moroso_atraso does. Keeping the canonical unconditionally threw away the
+    only interpretation the merged card had. The fallback must not touch
+    pattern, which stays canonical-only and unconditional."""
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("canonica")))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("la del alerta"),
+                                            hypothesis=_ins.hypothesis("la del twin")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["hypothesis"]["label"] == "la del twin"
+    assert out[0]["insight"]["pattern"]["label"] == "canonica"
+
+
+def test_merge_keeps_the_canonical_hypothesis_when_both_have_one():
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"), hypothesis=_ins.hypothesis("la canonica")))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("p"), hypothesis=_ins.hypothesis("la del twin")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["hypothesis"]["label"] == "la canonica"
+
+
+def test_merge_unions_assumptions_by_label():
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"), assumptions=[_ins.assumption("mismo supuesto")]))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("p"),
+        assumptions=[_ins.assumption("mismo supuesto"), _ins.assumption("otro")]))
+    out = priorities.merge_duplicates([a, b])
+    assert len(out[0]["insight"]["assumptions"]) == 2
+
+
+def test_merge_appends_the_twins_unique_evidence_instead_of_dropping_it():
+    """The other half of the union: an evidence id only the twin carries must
+    survive the merge, not just the ids the canonical card already has."""
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"),
+        evidence=[_ins.metric("overdue_total", label="l", value=1, unit="ars",
+                              method={"key": "k", "label": "l"})]))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("otra redaccion"),
+        evidence=[_ins.metric("client_count", label="l2", value=3, unit="clientes",
+                              method={"key": "k", "label": "l"})]))
+    out = priorities.merge_duplicates([a, b])
+    ids = {e["id"] for e in out[0]["insight"]["evidence"]}
+    assert ids == {"overdue_total", "client_count"}
+
+
+def test_derive_handles_a_blank_insight_without_raising():
+    """The case the inbox-level tests can't reach: a card whose insight has
+    no pattern yet (dep_discrep today, any not-yet-migrated builder in
+    general). `_derive` must still resolve confidence/owner and leave
+    risk/deadline alone rather than blow up on missing fields."""
+    item = _item("dep_discrep", modulos=("deposito",), insight=_ins.blank())
+    priorities._derive(item, "es")
+    ins = item["insight"]
+    assert ins["pattern"] is None
+    assert ins["confidence"]["data"]["level"] in ("high", "medium", "low")
+    assert ins["confidence"]["hypothesis"]["level"] in ("high", "medium", "low")
+    assert "owner" in ins
+    assert ins["risk"] is None
+    assert ins["deadline"] is None
+
+
+def test_compose_derives_confidence_owner_and_urgency_on_every_card():
+    inbox = priorities.inbox("es", None)
+    for card in inbox["act"] + inbox["watch"]:
+        ins = card["insight"]
+        assert ins["confidence"]["data"]["level"] in ("high", "medium", "low")
+        assert ins["confidence"]["hypothesis"]["level"] in ("high", "medium", "low")
+        assert "owner" in ins           # may be None; must be resolved, not missing
+        if ins["deadline"]:
+            assert ins["deadline"]["urgency"] in (
+                "overdue", "today", "this_week", "later")
+
+
+def test_every_card_carries_a_pattern():
+    inbox = priorities.inbox("es", None)
+    for card in inbox["act"] + inbox["watch"]:
+        assert card["insight"]["pattern"]["label"], f"{card['id']} has no pattern"
+
+
+def test_no_card_anywhere_still_emits_a_drill():
+    """The cutover's completeness check: `drill` is gone from the contract,
+    not merely unused by the current frontend."""
+    inbox = priorities.inbox("es", None)
+    for c in inbox["act"] + inbox["watch"]:
+        assert "drill" not in c, f"{c['id']} still emits the legacy drill"
+
+
+# --- the duplication guard ---------------------------------------------------
+
+_DEMO_INBOX = None
+
+
+def _demo_inbox():
+    """The real demo dataset's inbox, fetched once per module.
+
+    Same subprocess pattern (and cache) as `test_priorities_drill._demo_inbox`:
+    this suite's fixture pins the `piloto` tenant over a near-empty scratch
+    dataset, so an in-process `inbox()` carries almost no cards and a payload
+    walk would pass vacuously.
+    """
+    global _DEMO_INBOX
+    if _DEMO_INBOX is None:
+        _DEMO_INBOX = _en_demo(
+            "__import__('core.priorities', fromlist=['x']).inbox('es', "
+            "['alertas','oportunidades','cuentas','inventario','deposito',"
+            "'finanzas','caja','evolucion'])")
+    return _DEMO_INBOX
+
+
+def _formatted(value, unit) -> str:
+    """The figure exactly as the backend renders it, so a substring match
+    against server-rendered copy is meaningful: `i18n.pesos` for money, the
+    inbox's own `_num` for everything else."""
+    import i18n
+    if unit == "ars":
+        return i18n.pesos(value, "es")
+    return priorities._num(value, "es")
+
+
+# Cards whose `pattern` still re-quotes a primary metric's figure. The three
+# worst — cobrar_morosos, moroso_atraso and caja_inusual, the ones whose copy
+# restated value AND baseline AND deviation — were reworded in this wave; the
+# rest were reviewed and recorded as follow-ups rather than fixed blind, since
+# the spec does allow a narrative pattern to carry figures
+# (`core.opn.qi_q1b` is its blessed model).
+#
+# This list may only ever SHRINK. A new (card, evidence) pair appearing here
+# is the defect coming back, and the assertion below is what catches it.
+# Rebuilt against a FRESHLY SEEDED demo tenant. The first version of this set
+# was derived from a polluted database that silently hid three cards
+# (`cliente_frio`, `combo_no_percibido`, `faltante_caja_patron`), so it was
+# both incomplete and untrustworthy. Reseed before trusting this list:
+#   cd backend && python -c "import sys; sys.path.insert(0, '../data-demo'); \
+#       import seed_db; seed_db.ensure_tenant('demo')"
+#   then core.db.reset.truncate_business_data(<demo tenant id>), then
+#   data-demo/generar.py, then seed_db.run('demo')  — that exact order.
+_PATTERN_RESTATEMENT_DEBT = frozenset({
+    ("venc_riesgo", "at_risk_value"),
+    ("dep_vencidos", "expired_lots_value"),
+    ("dep_discrep", "discrepancy_count"),
+    ("despertar_dormido", "dormant_value"),
+    ("pago_semana", "payables_week_total"),
+    ("cheques", "checks_total"),
+    ("estrella_caida", "revenue_decline_streak"),
+    ("cliente_frio", "cooling_purchase_pace"),
+    ("combo_no_percibido", "cooccurrence_rate"),
+    ("faltante_caja_patron", "shortfall_rate"),
+})
+
+
+def test_no_metric_figure_is_restated_in_surrounding_copy():
+    """No metric's own figure may be re-printed in the prose around it.
+
+    This defect has now recurred FOUR times in four different syntactic
+    forms, which is why this guard is deliberately broad:
+
+      1. a metric's label interpolating its own value;
+      2. the same, but built through a local variable or an f-string, so a
+         key-text review missed it;
+      3. a metric's label interpolating a SIBLING evidence item's value —
+         each label passed the "not its own value" rule in isolation;
+      4. a record's `detail` restating the metric's value the row hangs off.
+
+    Plus the original, product-owner-reported form: a `pattern` re-quoting
+    the value of the primary metric rendered as a chip right below it.
+
+    The insight contract exists so each fact is stated ONCE, in the field
+    that owns it. Structure — not prose review — has to enforce that, so
+    this walks the real demo payload rather than a fixture.
+
+    `pattern` is checked only against PRIMARY evidence, minus the recorded
+    `_PATTERN_RESTATEMENT_DEBT`: the spec explicitly blesses a narrative
+    pattern that weaves in supporting context (`core.opn.qi_q1b` is its
+    model). What it does not bless is a pattern re-reading the load-bearing
+    chip printed immediately underneath it.
+    """
+    d = _demo_inbox()
+    problems = []
+    for card in d["act"] + d["watch"]:
+        ins = card.get("insight") or {}
+        evidence = ins.get("evidence") or []
+        pattern = ((ins.get("pattern") or {}).get("label") or "")
+        for e in evidence:
+            if e.get("value") is None:
+                continue
+            figure = _formatted(e["value"], e.get("unit"))
+            if not figure:
+                continue
+            where = [("its own label", e.get("label") or "")]
+            where += [(f"sibling evidence {s['id']}'s label", s.get("label") or "")
+                      for s in evidence if s is not e]
+            where += [(f"its record {r.get('name')!r}'s detail", r.get("detail") or "")
+                      for r in (e.get("records") or [])]
+            if e.get("weight") == "primary" and \
+                    (card["id"], e["id"]) not in _PATTERN_RESTATEMENT_DEBT:
+                where.append(("the insight's pattern", pattern))
+            for place, text in where:
+                if figure in text:
+                    problems.append(
+                        f"{card['id']} · {e['id']} = {figure} is restated in "
+                        f"{place}: {text!r}")
+    assert not problems, "figures restated instead of stated once:\n" + \
+        "\n".join(f"  · {p}" for p in problems)
