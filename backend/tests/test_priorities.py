@@ -413,6 +413,47 @@ def test_merge_unions_assumptions_by_label():
     assert len(out[0]["insight"]["assumptions"]) == 2
 
 
+def test_merge_appends_the_twins_unique_evidence_instead_of_dropping_it():
+    """The other half of the union: an evidence id only the twin carries must
+    survive the merge, not just the ids the canonical card already has."""
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"),
+        evidence=[_ins.metric("overdue_total", label="l", value=1, unit="ars",
+                              method={"key": "k", "label": "l"})]))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("otra redaccion"),
+        evidence=[_ins.metric("client_count", label="l2", value=3, unit="clientes",
+                              method={"key": "k", "label": "l"})]))
+    out = priorities.merge_duplicates([a, b])
+    ids = {e["id"] for e in out[0]["insight"]["evidence"]}
+    assert ids == {"overdue_total", "client_count"}
+
+
+def test_derive_handles_a_blank_insight_without_raising():
+    """The case the inbox-level tests can't reach: a card whose insight has
+    no pattern yet (dep_discrep today, any not-yet-migrated builder in
+    general). `_derive` must still resolve confidence/owner and leave
+    risk/deadline alone rather than blow up on missing fields."""
+    item = _item("dep_discrep", modulos=("deposito",), insight=_ins.blank())
+    priorities._derive(item, "es")
+    ins = item["insight"]
+    assert ins["pattern"] is None
+    assert ins["confidence"]["data"]["level"] in ("high", "medium", "low")
+    assert ins["confidence"]["hypothesis"]["level"] in ("high", "medium", "low")
+    assert "owner" in ins
+    assert ins["risk"] is None
+    assert ins["deadline"] is None
+
+
+def test_insight_from_legacy_drill_on_a_genuinely_blank_drill_stays_blank():
+    """dep_discrep passes exactly this drill today. The wrapper must degrade
+    honestly — no pattern, no evidence — rather than fabricate one."""
+    blank_drill = {"porque": [], "grafico": None, "involucrados": [], "supuestos": []}
+    ins = priorities._insight_from_legacy_drill(blank_drill)
+    assert ins["pattern"] is None
+    assert ins["evidence"] == []
+
+
 def test_compose_derives_confidence_owner_and_urgency_on_every_card():
     inbox = priorities.inbox("es", None)
     for card in inbox["act"] + inbox["watch"]:
