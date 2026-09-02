@@ -8,12 +8,13 @@ import {
   TrendingUp, Boxes, Warehouse, Truck, Users, Landmark, Banknote, Globe,
   ZoomIn, ZoomOut, Maximize, X, ArrowRight, Bell, Sparkles, GitMerge, Lightbulb,
   ChevronRight, Plus, Minus, Shield, Info, GraduationCap, BookOpen, ChevronDown, Check,
-  Brain, FileText, Expand, Waypoints, Store,
+  Brain, FileText, Expand, Waypoints, Store, Loader2,
 } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import { CuerpoConsulta } from "../../components/Widget";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { api } from "../../lib/api";
+import { toast } from "../../lib/toastStore";
 import { cargarSenales, alertasVivas, contarAlertas } from "../../lib/centroAlertas";
 import { armarDecisiones } from "../../lib/decisiones";
 import { GRAFICO } from "../../lib/paleta";
@@ -1120,6 +1121,71 @@ function ConocimientoNodo({ piezas, nodoLabel, t, onNavegar }) {
   );
 }
 
+// The review queue for what any user left via Ángela's chat
+// (proponer_conocimiento) — not part of `conocimiento` (that prop already
+// carries only CONFIRMED pieces, aggregated server-side); fetched separately
+// because nobody else in this panel needs to know unreviewed proposals
+// exist. Node/feature scope is enforced by the backend itself
+// (GET /api/conocimiento/pendientes reuses visibles_para) — nothing gets
+// filtered again here.
+function PendingKnowledgeQueue({ t }) {
+  const [pieces, setPieces] = useState(null); // null = loading
+  const [actionInFlight, setActionInFlight] = useState(null); // id of the piece with an action in flight
+
+  useEffect(() => {
+    let alive = true;
+    api.conocimientoPendientes().then((r) => { if (alive) setPieces(r.piezas); })
+      .catch(() => { if (alive) setPieces([]); });
+    return () => { alive = false; };
+  }, []);
+
+  const review = async (pid, action) => {
+    setActionInFlight(pid);
+    try {
+      if (action === "approve") await api.conocimientoAprobar(pid);
+      else await api.conocimientoRechazar(pid);
+      setPieces((prev) => prev.filter((p) => p.id !== pid));
+    } catch {
+      toast(t("memoria_chips.error"), "error");
+    } finally {
+      setActionInFlight(null);
+    }
+  };
+
+  if (!pieces || pieces.length === 0) return null;
+  return (
+    <div className="border-b border-linea bg-violeta/[0.04] px-5 py-3">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-violeta">
+        {t("conocimiento_pendiente.titulo")} · {pieces.length}
+      </p>
+      <div className="mt-2 space-y-1.5">
+        {pieces.map((p) => (
+          <div key={p.id} className="rounded-lg border border-violeta/20 bg-crema px-3 py-2">
+            <p className="text-[0.82rem] leading-snug text-tinta">{p.texto}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span className="text-[0.68rem] text-tinta-suave">
+                {t(DOMINIOS[p.nodo]?.lk || p.nodo)}
+                {p.origen?.quien && ` · ${t("conocimiento_pendiente.propuesto_por", { actor: p.origen.quien })}`}
+              </span>
+              <div className="ml-auto flex gap-1.5">
+                <button onClick={() => review(p.id, "reject")} disabled={actionInFlight === p.id}
+                  className="rounded-full border border-linea px-2.5 py-1 text-[0.72rem] font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
+                  {t("conocimiento_pendiente.rechazar")}
+                </button>
+                <button onClick={() => review(p.id, "approve")} disabled={actionInFlight === p.id}
+                  className="inline-flex items-center gap-1 rounded-full bg-violeta px-2.5 py-1 text-[0.72rem] font-semibold text-crema disabled:opacity-50">
+                  {actionInFlight === p.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  {t("conocimiento_pendiente.aprobar")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // E3·6 — el panel COMPLETO de conocimiento (lo abre la franja "Lo que me
 // enseñaste"): todas las piezas, filtrables por tipo (mueven un número / dan
 // contexto) y por nodo.
@@ -1148,6 +1214,7 @@ function PanelConocimientoFull({ conocimiento, t, onNavegar, onCerrar }) {
           </div>
           <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
         </div>
+        <PendingKnowledgeQueue t={t} />
         <div className="flex flex-wrap gap-1.5 px-5 py-3">
           <Chip activo={fTipo === "todos"} onClick={() => setFTipo("todos")}>{t("mapa.kpanel_todos")}</Chip>
           <Chip activo={fTipo === "prof"} onClick={() => setFTipo("prof")}>{t("mapa.kpanel_profundas")}</Chip>

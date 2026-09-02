@@ -6,10 +6,22 @@ excepción, protocolos ante eventos y contexto que explica los datos. Vive hoy e
 la cabeza del dueño; acá se vuelve un registro real, consultable y con efecto
 verificable en lo que el usuario ve (ver core/*.py que llaman a `aplicables`).
 
-Persiste en <DATA_DIR>/conocimiento_negocio.json (por-tenant, como toda la data:
-el piloto no tiene archivo → git diff de data/ queda en cero). Es conocimiento
-COMPARTIDO del negocio (no memoria por-usuario): el dueño ve todo y escribe; cada
-empleado ve lo de su ámbito (ver `visibles_para`).
+Persists in Postgres, one row per piece (table `business_knowledge_pieces`,
+migration 0039 — see `core/db/business_knowledge_repo.py`). The only tenant
+seeded from a file is demo (<DATA_DIR>/conocimiento_negocio.json — the
+piloto tenant has no file, so git diff of data-demo/ stays at zero); that
+seed runs once, the first time the tenant reads with no rows of its own yet.
+This is SHARED business knowledge (not per-user memory): the owner sees and
+writes everything; each employee sees only their scope (see `visibles_para`).
+
+Besides the owner writing one by hand, a piece can also be born from a
+finding Ángela detected and the owner confirmed — see `pattern_feedback.learn()`,
+the generic "Teach Ángela" mechanism any detection engine (core/patrones.py,
+core/oportunidades_neg.py, and whatever gets added later) can use with no
+new code here. A piece can also start as a chat-proposed "pendiente" state —
+see `crear()`/`aprobar()`/`rechazar()` below and angela.py's
+proponer_conocimiento tool — never active until someone with that node
+reviews it.
 
 Diseño del contador `veces_aplicada`: es acumulado y PERSISTIDO, se siembra con
 la historia real de la pieza y solo lo mueve un evento discreto (re-enseñar /
@@ -38,7 +50,7 @@ EFECTOS = {"ajusta_umbral", "suprime_alerta", "genera_alerta",
 # Dominio del mapa donde nace la pieza (los 8 nodos del Business Map).
 NODOS = {"ventas", "inventario", "deposito", "proveedores",
          "clientes", "caja", "equipo", "contexto"}
-ESTADOS = {"activo", "pausado"}
+ESTADOS = {"activo", "pausado", "pendiente"}
 
 # Scope por rol: qué feature (módulo del perfil) habilita ver las piezas de cada
 # nodo. El dueño (es_admin) ve todo; un empleado ve un nodo si tiene su módulo,
@@ -69,21 +81,15 @@ def _seed_inicial() -> dict:
         return {"piezas": []}
 
 
-def _load() -> dict:
-    from core.db import blob_repo
+def _todas() -> list[dict]:
+    """Every piece for the current tenant, one row per piece (see migration
+    0039 — this used to be a single JSONB blob, see business_knowledge_repo.py's
+    module docstring)."""
+    from core.db import business_knowledge_repo
     from core.db import tenant as _tenant
     tid = _tenant.current_tenant_id()
-    data = blob_repo.get_blob("business_knowledge", tid)
-    if data is None:
-        data = _seed_inicial()
-        blob_repo.save_blob("business_knowledge", tid, data)
-    return data
-
-
-def _save(data: dict) -> None:
-    from core.db import blob_repo
-    from core.db import tenant as _tenant
-    blob_repo.save_blob("business_knowledge", _tenant.current_tenant_id(), data)
+    business_knowledge_repo.seed_if_empty(tid, _seed_inicial())
+    return business_knowledge_repo.list_pieces(tid)
 
 
 def _norm(s) -> str:
@@ -94,11 +100,16 @@ def _norm(s) -> str:
 
 def listar(nodo: str | None = None, tipo: str | None = None,
            entidad: str | None = None, ambito: str | None = None,
-           incluir_pausadas: bool = True) -> list[dict]:
-    """Piezas que matchean los filtros. Por defecto incluye las pausadas (Mi
-    perfil las lista para reactivarlas); los motores piden incluir_pausadas=False
-    vía `aplicables`."""
-    piezas = _load()["piezas"]
+           incluir_pausadas: bool = True, estado: str | None = None) -> list[dict]:
+    """Pieces matching the filters. Includes paused ones by default (Mi perfil
+    lists them so they can be reactivated) but NEVER pending ones — an
+    unreviewed proposal isn't the same as a paused piece, and mixing it into
+    the general listing would show it as if it were already confirmed
+    knowledge. Engines ask for incluir_pausadas=False via `aplicables`
+    (which also never sees pending ones: it still requires estado=="activo").
+    To see pending pieces, ask explicitly with estado="pendiente" (see
+    `pendientes`), which also ignores incluir_pausadas."""
+    piezas = _todas()
     out = []
     for p in piezas:
         if nodo and p.get("nodo") != nodo:
@@ -109,14 +120,30 @@ def listar(nodo: str | None = None, tipo: str | None = None,
             continue
         if entidad and _norm(p.get("entidad")) != _norm(entidad):
             continue
-        if not incluir_pausadas and p.get("estado") != "activo":
+        if estado:
+            if p.get("estado") != estado:
+                continue
+        elif not incluir_pausadas:
+            if p.get("estado") != "activo":
+                continue
+        elif p.get("estado") == "pendiente":
             continue
         out.append(p)
     return out
 
 
+def pendientes(nodo: str | None = None) -> list[dict]:
+    """Unreviewed proposals — what a user left via `proponer_conocimiento`
+    (angela.py) and nobody has activated or rejected yet. Role scope is
+    applied by the caller via `visibles_para(usuario, conocimiento.pendientes())`:
+    the same node/feature criterion that already governs which ACTIVE
+    knowledge each user sees also governs what's theirs to review — no
+    separate permission catalog."""
+    return listar(nodo=nodo, estado="pendiente")
+
+
 def detalle(pid: str) -> dict | None:
-    for p in _load()["piezas"]:
+    for p in _todas():
         if p.get("id") == pid:
             return p
     return None
@@ -187,7 +214,7 @@ def visibles_para(usuario: dict, piezas: list[dict] | None = None) -> list[dict]
     """Filtra las piezas a lo que ESTE usuario puede ver. El dueño (es_admin) ve
     todo. Un empleado ve: lo global, lo que es sobre su propia persona, y los
     nodos cuyos módulos tiene habilitados. Server-side, sin escalada por body."""
-    piezas = _load()["piezas"] if piezas is None else piezas
+    piezas = _todas() if piezas is None else piezas
     if usuario.get("es_admin"):
         return list(piezas)
     from . import perfiles
@@ -221,50 +248,41 @@ def _validar(tipo: str, ambito: str, nodo: str, efecto: str, estado: str) -> Non
 
 
 def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
-          entidad: str | None = None, origen: dict | None = None,
+          entidad: str | None = None, texto_en: str | None = None,
+          efecto_profundo: bool = False, origen: dict | None = None,
           params: dict | None = None, estado: str = "activo",
           veces_aplicada: int = 0) -> dict:
-    """Crea y persiste una pieza validada. `origen` = {quien, cuando} (quién la
-    enseñó y cuándo). Lanza ConocimientoInvalido si algún campo cae fuera de
-    catálogo — el que llama decide qué mensaje mostrar."""
+    """Creates and persists a validated piece. `origen` = {quien, cuando}
+    (who taught it and when — a human, or origen.quien="Ángela" when the
+    piece comes from a learned finding, see pattern_feedback.learn()). Raises
+    ConocimientoInvalido if any field falls outside the catalog — the caller
+    decides what message to show."""
     if not (texto or "").strip():
         raise ConocimientoInvalido("el texto no puede estar vacío")
     _validar(tipo, ambito, nodo, efecto, estado)
     if ambito != "global" and not (entidad or "").strip():
         raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
-    pieza = {
-        "id": "k" + secrets.token_hex(4),
-        "texto": texto.strip(),
-        "tipo": tipo,
-        "ambito": ambito,
-        "entidad": (entidad or "").strip() or None,
-        "nodo": nodo,
-        "efecto": efecto,
-        "params": params or {},
-        "origen": origen or {},
-        "estado": estado,
-        "veces_aplicada": int(veces_aplicada),
-    }
-    data = _load()
-    data["piezas"].append(pieza)
-    _save(data)
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    pieza = business_knowledge_repo.create(
+        _tenant.current_tenant_id(), id="k" + secrets.token_hex(4),
+        texto=texto.strip(), texto_en=texto_en, tipo=tipo, ambito=ambito,
+        entidad=(entidad or "").strip() or None, nodo=nodo, efecto=efecto,
+        efecto_profundo=efecto_profundo, params=params or {}, origen=origen or {},
+        estado=estado, veces_aplicada=int(veces_aplicada))
+    if estado == "pendiente":
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record((origen or {}).get("quien", ""), "proponer_conocimiento",
+                              None, {"id": pieza["id"], "nodo": pieza["nodo"]})
     return pieza
-
-
-def _mutar(pid: str, cambio) -> dict | None:
-    data = _load()
-    for p in data["piezas"]:
-        if p.get("id") == pid:
-            cambio(p)
-            _save(data)
-            return p
-    return None
 
 
 def set_estado(pid: str, estado: str) -> dict | None:
     if estado not in ESTADOS:
         raise ConocimientoInvalido(f"estado desconocido: {estado!r}")
-    return _mutar(pid, lambda p: p.__setitem__("estado", estado))
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.set_status(_tenant.current_tenant_id(), pid, estado)
 
 
 def pausar(pid: str) -> dict | None:
@@ -276,18 +294,39 @@ def activar(pid: str) -> dict | None:
 
 
 def borrar(pid: str) -> bool:
-    data = _load()
-    antes = len(data["piezas"])
-    data["piezas"] = [p for p in data["piezas"] if p.get("id") != pid]
-    if len(data["piezas"]) != antes:
-        _save(data)
-        return True
-    return False
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.delete(_tenant.current_tenant_id(), pid)
+
+
+def aprobar(pid: str, actor: str) -> dict | None:
+    """A reviewer confirms a pending proposal: it becomes active (only then
+    do `aplicables()`/`para()` see it), audited with who approved it."""
+    pieza = set_estado(pid, "activo")
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "aprobar_conocimiento", None,
+                              {"id": pieza["id"], "nodo": pieza["nodo"]})
+    return pieza
+
+
+def rechazar(pid: str, actor: str) -> bool:
+    """A reviewer discards a pending proposal — it's deleted, not paused
+    (there's nothing useful about reactivating something that never got
+    confirmed). The audit log is the permanent record, not the row."""
+    pieza = detalle(pid)
+    ok = borrar(pid)
+    if ok:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "rechazar_conocimiento", None,
+                              {"id": pid, "nodo": (pieza or {}).get("nodo")})
+    return ok
 
 
 def marcar_aplicada(pid: str, n: int = 1) -> dict | None:
     """Suma al contador acumulado REAL. Solo lo llaman eventos discretos (re-
     enseñar / aplicar explícito), JAMÁS el recálculo del análisis (correría en
     cada request y ensuciaría el snapshot sembrado)."""
-    return _mutar(pid, lambda p: p.__setitem__(
-        "veces_aplicada", int(p.get("veces_aplicada", 0)) + n))
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.increment_applied(_tenant.current_tenant_id(), pid, n)

@@ -104,6 +104,89 @@ def test_combo_no_percibido_is_not_forced_with_thin_support(monkeypatch):
     assert "combo_no_percibido" not in ids
 
 
+# --- 3 · cruce_no_programado (generic cross-dimension discovery) --------------
+
+def _cruce_orders(n_both, n_customers=4):
+    """`n_both` orders that fall on a Monday AND carry an "importado" line —
+    the cross the scanner should find is (dia_semana:Monday, categoria:
+    importado), a pair NOBODY hardcodes anywhere in core/patrones.py, unlike
+    combo_no_percibido's product-vs-product search. Filler orders spread
+    across the other six weekdays with a UNIQUE category each, so no filler
+    (weekday, category) pair can ever repeat and accidentally clear
+    MIN_COOCCURRENCES — the only real signal in the data is the injected one."""
+    import datetime as _dt
+    monday = _dt.date(2026, 1, 5)
+    assert monday.weekday() == 0
+    orders = []
+    for i in range(n_both):
+        customer = f"customer_{i % n_customers}"
+        fecha = (monday + _dt.timedelta(weeks=i)).isoformat()
+        orders.append(_order(customer, fecha,
+                             [{"codigo": 900 + i, "producto": "IMPORTADO X",
+                               "categoria": "importado", "cantidad": 1,
+                               "precio": 1000.0, "monto": 1000.0}]))
+    filler = max(patrones.MIN_TOTAL_ORDERS, int(patrones.MIN_LIFT * n_both * 3))
+    for i in range(filler):
+        fecha = (monday + _dt.timedelta(days=1 + (i % 6), weeks=i)).isoformat()
+        orders.append(_order(f"noise_{i}", fecha,
+                             [{"codigo": 1000 + i, "producto": f"FILLER {i}",
+                               "categoria": f"filler_cat_{i}", "cantidad": 1,
+                               "precio": 500.0, "monto": 500.0}]))
+    return orders
+
+
+def test_cruce_no_programado_finds_a_cross_dimension_pattern(monkeypatch):
+    """No developer told this detector to compare weekdays against product
+    categories — it tried every cross-dimension pair the data offered and
+    this is the one that cleared the bar."""
+    from core import ventas_cliente
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: _cruce_orders(n_both=8))
+    c = next(x for x in patrones.cards("es") if x["id"] == "cruce_no_programado")
+    assert {c["datos"]["dimension_a"], c["datos"]["dimension_b"]} == {"dia_semana", "categoria"}
+    valores = {c["datos"]["valor_a"], c["datos"]["valor_b"]}
+    assert valores == {"0", "importado"}
+    assert c["datos"]["coocurrencias"] == 8
+    assert c["datos"]["clientes"] == 4
+    assert c["naturaleza"] == "accionable"
+    assert c["monto"] is None
+
+
+def test_cruce_no_programado_is_not_forced_with_thin_support(monkeypatch):
+    from core import ventas_cliente
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: _cruce_orders(n_both=2))
+    ids = [c["id"] for c in patrones.cards("es")]
+    assert "cruce_no_programado" not in ids
+
+
+def test_cruce_no_programado_does_not_fire_on_same_dimension_pairs(monkeypatch):
+    """cliente×cliente or categoria×categoria pairs are combo_no_percibido's
+    job, not this scanner's — same-dimension pairs must never surface here
+    even if they'd otherwise clear the statistical bar."""
+    from core import ventas_cliente
+    orders = _cruce_orders(n_both=8)
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: orders)
+    c = next(x for x in patrones.cards("es") if x["id"] == "cruce_no_programado")
+    assert c["datos"]["dimension_a"] != c["datos"]["dimension_b"]
+
+
+def test_cruce_no_programado_supports_the_teach_angela_loop(monkeypatch, db_tenant):
+    """The generic finding plugs into the SAME shared feedback/learn
+    mechanism as the two hand-coded patterns — no special-casing needed for
+    a genuinely discovered finding to become durable knowledge."""
+    from core import conocimiento, ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: _cruce_orders(n_both=8))
+
+    pieza = patrones.record_learn(
+        "cruce_no_programado", actor="aldo", tipo="contexto", ambito="global",
+        nodo="ventas", efecto="contexto_para_angela", lang="es")
+    assert pieza["origen"]["hallazgo_id"] == "cruce_no_programado"
+    assert conocimiento.detalle(pieza["id"]) == pieza
+
+    ids = [c["id"] for c in patrones.cards("es")]
+    assert "cruce_no_programado" not in ids  # handled — durable knowledge took over
+
+
 def test_combo_no_percibido_ignores_pairs_without_lift(monkeypatch):
     """Two popular products that often appear together only because both are
     popular (low lift) don't count as a combo."""
@@ -254,6 +337,42 @@ def test_feedback_hides_the_exact_finding_it_was_given_on(monkeypatch, db_tenant
 
     after = [c["id"] for c in patrones.cards("es")]
     assert "combo_no_percibido" not in after
+
+
+def test_learn_creates_a_knowledge_piece_and_hides_the_finding(monkeypatch, db_tenant):
+    """"Enseñar a Ángela": the confirmed finding becomes a durable
+    core/conocimiento.py piece (with the owner-chosen efecto, not an
+    inferred one), and stops resurfacing under its old shape."""
+    from core import conocimiento, ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    before = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" in before
+
+    pieza = patrones.record_learn(
+        "combo_no_percibido", actor="aldo", tipo="contexto", ambito="global",
+        nodo="ventas", efecto="contexto_para_angela", lang="es")
+
+    assert pieza["tipo"] == "contexto"
+    assert pieza["efecto"] == "contexto_para_angela"
+    assert pieza["origen"]["quien"] == "Ángela"
+    assert pieza["origen"]["hallazgo_id"] == "combo_no_percibido"
+    assert conocimiento.detalle(pieza["id"]) == pieza
+
+    after = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" not in after
+
+
+def test_learn_on_a_card_that_is_not_live_raises(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
+    import pytest
+    with pytest.raises(KeyError):
+        patrones.record_learn("combo_no_percibido", actor="aldo", tipo="contexto",
+                              ambito="global", nodo="ventas",
+                              efecto="contexto_para_angela", lang="es")
 
 
 def test_feedback_does_not_hide_a_different_instance_of_the_same_pattern(monkeypatch, db_tenant):

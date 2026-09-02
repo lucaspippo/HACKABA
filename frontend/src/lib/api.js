@@ -173,6 +173,11 @@ export const api = {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return get("/api/conocimiento" + (q ? `?${q}` : ""));
   },
+  // Proposals from chat (angela.py: proponer_conocimiento) waiting for
+  // someone with that node to approve or reject them before they take effect.
+  conocimientoPendientes: (nodo) => get("/api/conocimiento/pendientes" + (nodo ? `?nodo=${encodeURIComponent(nodo)}` : "")),
+  conocimientoAprobar: (pid) => post(`/api/conocimiento/${encodeURIComponent(pid)}/aprobar`, {}),
+  conocimientoRechazar: (pid) => post(`/api/conocimiento/${encodeURIComponent(pid)}/rechazar`, {}),
   analisis: () => get("/api/analisis"),
   // Bloque D — qué reponer primero, ordenado por la plata que cuesta no hacerlo
   reponer: () => get("/api/reponer"),

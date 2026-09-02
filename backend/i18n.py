@@ -261,6 +261,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Ese conocimiento no existe o no es de tu ámbito.",
         "en": "That knowledge doesn't exist or isn't in your scope.",
     },
+    "api.conocimiento_no_pendiente": {
+        "es": "Esa pieza ya fue revisada — no está pendiente.",
+        "en": "That piece was already reviewed — it isn't pending.",
+    },
     "api.version_inexistente": {
         "es": "Versión inexistente: {version_id}",
         "en": "No such version: {version_id}",
@@ -1982,6 +1986,29 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Suma de los faltantes de ese día de la semana en el historial analizado.",
         "en": "Sum of that weekday's shortfalls over the analyzed history."},
 
+    # cruce_no_programado — generic cross-dimension discovery (see
+    # core/patrones.py's module docstring): nobody hand-picked this pair,
+    # so the dimension names themselves need translating, not just the
+    # values plugged into {a}/{b}.
+    "core.pat.cruce_dim_cliente": {"es": "cliente", "en": "customer"},
+    "core.pat.cruce_dim_dia_semana": {"es": "día", "en": "weekday"},
+    "core.pat.cruce_dim_categoria": {"es": "categoría", "en": "category"},
+    "core.pat.cruce_t": {
+        "es": "{a} y {b} aparecen juntos mucho más de lo esperable",
+        "en": "{a} and {b} show up together far more than chance would explain"},
+    "core.pat.cruce_r": {
+        "es": "En {n} pedidos de {clientes} clientes distintos, {a_dim} «{a}» viene acompañado de {b_dim} «{b}» {lift} veces más seguido de lo que la casualidad explicaría — una cruza que nadie le pidió buscar.",
+        "en": "Across {n} orders from {clientes} different customers, {a_dim} \"{a}\" shows up with {b_dim} \"{b}\" {lift}x more often than chance would predict — a cross nobody asked it to look for."},
+    "core.pat.cruce_chat": {
+        "es": "Contame más sobre este cruce entre {a} y {b}.",
+        "en": "Tell me more about this cross between {a} and {b}."},
+    "core.pat.cruce_q1": {
+        "es": "Encontré esto probando combinaciones de cliente, día de la semana y categoría — no fue una pregunta que alguien programó de antemano: {clientes} clientes distintos, {n} pedidos, {lift}x más frecuente de lo esperado por azar.",
+        "en": "I found this by trying combinations of customer, weekday, and category — nobody programmed this specific question in advance: {clientes} different customers, {n} orders, {lift}x more frequent than chance would predict."},
+    "core.pat.cruce_s1": {
+        "es": "Supuesto: cruza pares de dimensiones (cliente, día de la semana, categoría de producto) sobre los pedidos disponibles; exige el mismo mínimo de pedidos, repeticiones y clientes distintos que combo_no_percibido antes de mostrarse.",
+        "en": "Assumption: cross-references pairs of dimensions (customer, weekday, product category) over available orders; requires the same minimum of orders, repeats, and distinct customers as combo_no_percibido before showing."},
+
     # P38·C — los grupos del canal MOSTRADOR (locales propios). El mismo fiambre
     # feteado o entero son dos negocios distintos: por eso son dos grupos.
     # P38·H — vencimientos gestionados (no un campo que nadie mira)
@@ -3278,6 +3305,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                                    "en": "Merged a file into the business data"},
     "audit.acc.crear_apartado": {"es": "Abrió un apartado de datos nuevo",
                                  "en": "Opened a new data section"},
+    "audit.acc.proponer_conocimiento": {"es": "Propuso una pieza de conocimiento del negocio (vía chat)",
+                                        "en": "Proposed a piece of business knowledge (via chat)"},
+    "audit.acc.aprobar_conocimiento": {"es": "Aprobó una propuesta de conocimiento del negocio",
+                                       "en": "Approved a business-knowledge proposal"},
+    "audit.acc.rechazar_conocimiento": {"es": "Rechazó una propuesta de conocimiento del negocio",
+                                        "en": "Rejected a business-knowledge proposal"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {
