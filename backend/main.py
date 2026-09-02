@@ -2113,8 +2113,7 @@ def chat_stream(req: ChatRequest, request: Request):
         nothing. See the design doc, D5.
         """
         return (
-            line({"type": "notice", "kind": "cap",
-                  "text": i18n.t("angela.cap_alcanzado", _lang(u))})
+            line({"type": "notice", "kind": "cap"})
             + line({"type": "done", "result": {
                 "mode": "cap", "tools_used": [], "actions": [], "options": []}})
         )

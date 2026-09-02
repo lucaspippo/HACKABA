@@ -3362,7 +3362,7 @@ def responder(
             }
 
         return {
-            "answer": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
+            "answer": i18n.t("angela.muchas_vueltas", idioma),
             "mode": "claude",
             "tools_used": tools_usadas,
             "actions": acciones,
@@ -3473,8 +3473,7 @@ def _degraded_stream(message: str, kind: str):
     itself off as Ángela: the `notice` says where the answer came from.
     """
     fb = _fallback(message)
-    yield {"type": "notice", "kind": kind,
-           "text": i18n.t("angela.sin_modelo", _idioma_actual())}
+    yield {"type": "notice", "kind": kind}
     if fb.get("answer"):
         yield {"type": "text", "delta": fb["answer"]}
     yield {"type": "done", "result": {
@@ -3504,8 +3503,8 @@ def stream_response(
     Events: {"type": "text", "delta": str}
             {"type": "tool_call", "id", "name", "input"}
             {"type": "tool_result", "id", "result"}
-            {"type": "notice", "kind", "text"}
-            {"type": "error", "code", "message", "retryable"}
+            {"type": "notice", "kind"}
+            {"type": "error", "code", "retryable"}
             {"type": "done", "result": {"mode", "tools_used", "actions", "options"}}
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -3517,9 +3516,7 @@ def stream_response(
         client = _build_client(api_key)
     except Exception as e:  # noqa: BLE001
         print(f"[angela/stream] client init failed: {e}", flush=True)
-        yield {"type": "error", "code": "model_unavailable",
-               "message": i18n.t("angela.modelo_no_disponible", _idioma_actual()),
-               "retryable": True}
+        yield {"type": "error", "code": "model_unavailable", "retryable": True}
         yield {"type": "done", "result": {"mode": "error", "tools_used": [],
                                           "actions": [], "options": []}}
         return
@@ -3568,17 +3565,14 @@ def stream_response(
                 "actions": actions, "options": []}}
             return
 
-        yield {"type": "notice", "kind": "tool_loop_exhausted",
-               "text": i18n.t("angela.muchas_vueltas", _idioma_actual())}
+        yield {"type": "notice", "kind": "tool_loop_exhausted"}
         yield {"type": "done", "result": {
             "mode": "claude", "tools_used": tools_used,
             "actions": actions, "options": []}}
     except Exception as e:  # noqa: BLE001
         # The technical detail is logged, never shipped: it leaks internals.
         print(f"[angela/stream] failed after tools={tools_used}: {e}", flush=True)
-        yield {"type": "error", "code": "model_failed",
-               "message": i18n.t("angela.error_modelo", _idioma_actual()),
-               "retryable": True}
+        yield {"type": "error", "code": "model_failed", "retryable": True}
         yield {"type": "done", "result": {
             "mode": "error", "tools_used": tools_used,
             "actions": actions, "options": []}}
