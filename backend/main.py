@@ -3013,15 +3013,15 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
     return {"ok": True, "vista": m.get("vista", {}), "notas": m.get("preferencias", {})}
 
 
-# --- Conocimiento del negocio ("lo que Aldo le enseñó a Ángela") ---
-# La capa no estructurada: reglas, excepciones, protocolos y contexto que ningún
-# ERP tiene. Lectura scopeada por rol (el dueño ve todo; el empleado, lo suyo).
-# Crear/pausar/borrar una pieza CONFIRMADA sigue siendo solo el dueño
-# (require_admin). Pero cualquier usuario puede PROPONER una vía el chat de
-# Ángela (proponer_conocimiento en angela.py) — nace en estado "pendiente",
-# sin efecto, hasta que alguien con el nodo la aprueba o la rechaza
-# (/aprobar, /rechazar — mismo scope que visibles_para, no admin-only).
-# Persiste por-tenant en business_knowledge_pieces (core/db/business_knowledge_repo.py).
+# --- Business knowledge ("what Aldo taught Ángela") ---
+# The unstructured layer: rules, exceptions, protocols, and context no ERP
+# has. Reading is role-scoped (the owner sees everything; an employee sees
+# their own scope). Creating/pausing/deleting a CONFIRMED piece is still
+# owner-only (require_admin). But any user can PROPOSE one via Ángela's chat
+# (proponer_conocimiento in angela.py) — it's born in "pendiente" state, with
+# no effect, until someone with that node approves or rejects it (/aprobar,
+# /rechazar — same scope as visibles_para, not admin-only).
+# Persists per-tenant in business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
@@ -3034,11 +3034,11 @@ def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
 
 @app.get("/api/conocimiento/pendientes")
 def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_actual)):
-    """Propuestas que alguien dejó vía chat (proponer_conocimiento) y todavía
-    no se activaron ni se rechazaron — la cola de revisión de ESTE usuario:
-    mismo scope por nodo/feature que ya rige qué conocimiento activo ve cada
-    uno (`visibles_para`), no un permiso aparte. Declarado ANTES de
-    /{pid} — si no, "pendientes" matchea ahí como si fuera un id."""
+    """Proposals someone left via chat (proponer_conocimiento) that haven't
+    been activated or rejected yet — THIS user's review queue: same
+    node/feature scope that already governs which active knowledge each
+    user sees (`visibles_para`), not a separate permission. Declared BEFORE
+    /{pid} — otherwise "pendientes" would match there as if it were an id."""
     piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
     return {"piezas": piezas, "total": len(piezas)}
 
@@ -3097,11 +3097,11 @@ def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
 
 
 def _revisor_o_404(pid: str, u: dict) -> dict:
-    """Sólo puede revisar (aprobar/rechazar) una propuesta quien YA la vería
-    como conocimiento activo — mismo scope de nodo/feature que visibles_para,
-    no un permiso de "revisor" aparte. Devuelve la pieza o levanta 404 (tanto
-    si no existe como si no le toca: no distinguimos, mismo criterio que
-    conocimiento_detalle)."""
+    """Only someone who'd already see this as active knowledge can review
+    (approve/reject) a proposal — same node/feature scope as visibles_para,
+    not a separate "reviewer" permission. Returns the piece or raises 404
+    (whether it doesn't exist or it just isn't this user's: we don't
+    distinguish, same criterion as conocimiento_detalle)."""
     p = conocimiento.detalle(pid)
     if not p or p not in conocimiento.visibles_para(u, [p]):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))

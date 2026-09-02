@@ -66,8 +66,8 @@ ACCIONES: dict[str, dict] = {
     # queda con respaldo. Es el ejemplo vivo de autonomía graduada.
     "normalizacion_nivel1": {"clase": "datos", "gate": "sistema", "reversible": True},
     "crear_apartado":       {"clase": "datos", "gate": "sistema"},
-    # --- conocimiento del negocio vía chat: cualquier usuario propone, el
-    # que tiene el nodo revisa (core/conocimiento.py — estado "pendiente").
+    # --- business knowledge via chat: any user proposes, whoever has the
+    # node reviews (core/conocimiento.py — "pendiente" state).
     "proponer_conocimiento": {"clase": "datos", "gate": "propia"},
     "aprobar_conocimiento":  {"clase": "datos", "gate": "aprobacion"},
     "rechazar_conocimiento": {"clase": "datos", "gate": "aprobacion"},

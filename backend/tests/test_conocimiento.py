@@ -1,7 +1,7 @@
-"""E1 — modelo de conocimiento del negocio: CRUD, catálogo, scope por rol y la
-capa REST. Aísla las filas por-tenant truncando business_knowledge_pieces
-antes/después: el piloto no tiene archivo de siembra, así que git diff de
-data-demo/ queda en 0."""
+"""E1 — business knowledge model: CRUD, catalog, role scope, and the REST
+layer. Isolates per-tenant rows by truncating business_knowledge_pieces
+before/after: the piloto tenant has no seed file, so git diff of
+data-demo/ stays at 0."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -49,11 +49,11 @@ def test_crear_y_leer():
     assert len(conocimiento.listar()) == 1
 
 
-# --- estado "pendiente" (propuesta vía chat, ver angela.py) -------------------
+# --- "pendiente" state (chat-proposed, see angela.py) -------------------------
 
 def test_pendiente_no_aparece_en_listar_por_defecto():
     _pieza(estado="pendiente")
-    _pieza()  # activa
+    _pieza()  # active
     assert len(conocimiento.listar()) == 1
     assert len(conocimiento.listar(estado="pendiente")) == 1
     assert len(conocimiento.pendientes()) == 1
@@ -68,10 +68,10 @@ def test_pendiente_no_es_aplicable_hasta_aprobarse():
 
 
 def test_aprobar_solo_actua_sobre_pendientes():
-    p = _pieza()  # ya activa
-    # aprobar() solo tiene sentido semántico sobre una pendiente, pero
-    # técnicamente activar() de nuevo no rompe nada — lo que sí exige el
-    # 400 de la capa REST es que el estado sea "pendiente" (ver test REST).
+    p = _pieza()  # already active
+    # aprobar() only makes semantic sense on a pending piece, but technically
+    # re-activating one again doesn't break anything — the REST layer's own
+    # 400 (see the REST test) is what actually requires estado=="pendiente".
     assert conocimiento.aprobar(p["id"], "emilio")["estado"] == "activo"
 
 
@@ -300,7 +300,7 @@ def test_rest_pendientes_scopeadas_por_nodo_no_por_admin(tokens):
 def test_rest_aprobar_por_rol_no_admin(tokens):
     pid = _pieza(estado="pendiente", nodo="clientes",
                  entidad="Despensa Doña Elsa")["id"]
-    # paula no es admin pero SÍ tiene el nodo -> puede aprobar
+    # paula isn't admin but DOES have the node -> can approve
     r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["paula"]))
     assert r.status_code == 200, r.text
     assert r.json()["pieza"]["estado"] == "activo"
@@ -310,7 +310,7 @@ def test_rest_aprobar_por_rol_no_admin(tokens):
 def test_rest_aprobar_fuera_de_nodo_es_404(tokens):
     pid = _pieza(estado="pendiente", nodo="clientes",
                  entidad="Despensa Doña Elsa")["id"]
-    # deposito no tiene 'cuentas' -> ni ve ni puede aprobar esta pendiente
+    # deposito doesn't have 'cuentas' -> can neither see nor approve this pending piece
     r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["deposito"]))
     assert r.status_code == 404
     assert conocimiento.detalle(pid)["estado"] == "pendiente"
@@ -325,16 +325,16 @@ def test_rest_rechazar_por_rol_no_admin(tokens):
 
 
 def test_rest_aprobar_ya_activa_es_400(tokens):
-    pid = _pieza(nodo="deposito", ambito="global", entidad=None)["id"]  # ya activa
+    pid = _pieza(nodo="deposito", ambito="global", entidad=None)["id"]  # already active
     r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["deposito"]))
     assert r.status_code == 400
 
 
 def test_rest_cualquier_usuario_puede_proponer_via_chat(tokens):
-    """El chat de Ángela llama proponer_conocimiento sin gate de admin — la
-    prueba end-to-end real vive en tests de angela.py; acá alcanza con
-    confirmar que el modelo no exige ambito=='global' cuando hay entidad,
-    que es lo que el tool infiere del lado de angela.py."""
+    """Ángela's chat calls proponer_conocimiento with no admin gate — the
+    real end-to-end test lives in angela.py's own tests; here it's enough
+    to confirm the model doesn't have to pass ambito=='global' when there's
+    an entidad, which is what the tool infers on angela.py's side."""
     p = conocimiento.crear(texto="El vendedor dijo que Doña Elsa paga siempre en fecha.",
                            tipo="contexto", ambito="categoria", nodo="clientes",
                            efecto="contexto_para_angela", entidad="Despensa Doña Elsa",
