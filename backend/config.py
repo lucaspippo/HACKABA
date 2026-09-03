@@ -42,12 +42,8 @@ if os.name == "nt":
 PROVIDER_ANTHROPIC = "anthropic"
 PROVIDER_GATEWAY = "gateway"
 
-# AI Gateway's Anthropic-compatible base URL when ANTHROPIC_BASE_URL is unset.
+# AI Gateway's Anthropic-compatible base URL when AI_GATEWAY_BASE_URL is unset.
 DEFAULT_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh"
-
-
-def _anthropic_configured() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
 
 def _anthropic_client_kwargs() -> dict:
@@ -55,37 +51,56 @@ def _anthropic_client_kwargs() -> dict:
     return {"api_key": os.environ.get("ANTHROPIC_API_KEY")}
 
 
-def _gateway_configured() -> bool:
-    return bool(os.environ.get("ANTHROPIC_AUTH_TOKEN"))
-
-
 def _gateway_client_kwargs() -> dict:
     # AI Gateway authenticates with `Authorization: Bearer`, which is
     # auth_token=, NOT api_key= (api_key= sends `x-api-key` and gets a 401
     # that looks like a bad key, when the real problem is the wrong header).
+    # So AI_GATEWAY_API_KEY — "key" in its name notwithstanding — goes in
+    # auth_token=.
     return {
-        "base_url": os.environ.get("ANTHROPIC_BASE_URL") or DEFAULT_GATEWAY_BASE_URL,
-        "auth_token": os.environ.get("ANTHROPIC_AUTH_TOKEN"),
+        "base_url": os.environ.get("AI_GATEWAY_BASE_URL") or DEFAULT_GATEWAY_BASE_URL,
+        "auth_token": os.environ.get("AI_GATEWAY_API_KEY"),
     }
 
 
-# One entry per provider: whether it's configured, the kwargs to build its
-# client, and the model slug to use when ANGELA_MODEL doesn't override it.
+# One entry per provider: the env var holding its credential (its presence is
+# what "configured" means), the kwargs to build its client, the env vars that
+# can override its model slug (first one set wins), and the slug to use when
+# none of them is set.
 # Gateway model slugs need a provider prefix and a DOTTED version — a
 # hyphenated slug (the direct-Anthropic style) returns HTTP 400 through the
-# gateway — so the two defaults below are deliberately NOT the same string.
+# gateway — so the two defaults below are deliberately NOT the same string,
+# and each provider gets its own override var so one .env can hold both
+# shapes at once: GATEWAY_MODEL for the gateway, ANGELA_MODEL for direct.
 _PROVIDERS = {
     PROVIDER_ANTHROPIC: {
-        "configured": _anthropic_configured,
+        "credential_env": "ANTHROPIC_API_KEY",
         "client_kwargs": _anthropic_client_kwargs,
+        "model_env": ("ANGELA_MODEL",),
         "default_model": "claude-sonnet-4-6",
     },
     PROVIDER_GATEWAY: {
-        "configured": _gateway_configured,
+        "credential_env": "AI_GATEWAY_API_KEY",
         "client_kwargs": _gateway_client_kwargs,
+        "model_env": ("GATEWAY_MODEL", "ANGELA_MODEL"),
         "default_model": "anthropic/claude-sonnet-4.6",
     },
 }
+
+
+def _configured(name: str) -> bool:
+    """A provider is usable when its own credential var is set and non-empty."""
+    return bool(os.environ.get(_PROVIDERS[name]["credential_env"]))
+
+
+def credential_vars() -> tuple[str, ...]:
+    """Every provider credential var. Callers that need to express "no
+    provider configured" — tests, mostly — must clear the whole set, not one
+    var: clearing ANTHROPIC_API_KEY while AI_GATEWAY_API_KEY is set in
+    backend/.env leaves a provider configured, which sends a test meant to
+    exercise the degraded path at a REAL provider instead. Deriving the list
+    from here means adding or renaming a provider can't leave that behind."""
+    return tuple(p["credential_env"] for p in _PROVIDERS.values())
 
 
 def _resolve_provider() -> str | None:
@@ -98,7 +113,7 @@ def _resolve_provider() -> str | None:
        with no credential falls through to "not configured" (None), it does
        not silently borrow the other provider's credential.
     2. Otherwise auto-detect: a direct ANTHROPIC_API_KEY means anthropic; no
-       direct key but an ANTHROPIC_AUTH_TOKEN means gateway.
+       direct key but an AI_GATEWAY_API_KEY means gateway.
        TIE-BREAK (both configured, no explicit LLM_PROVIDER): anthropic wins
        — it is the direct, one-hop path, so it's the safer deterministic
        default when nothing told us otherwise.
@@ -106,10 +121,10 @@ def _resolve_provider() -> str | None:
     """
     explicit = os.environ.get("LLM_PROVIDER", "").strip().lower()
     if explicit in _PROVIDERS:
-        return explicit if _PROVIDERS[explicit]["configured"]() else None
+        return explicit if _configured(explicit) else None
 
     for name in (PROVIDER_ANTHROPIC, PROVIDER_GATEWAY):
-        if _PROVIDERS[name]["configured"]():
+        if _configured(name):
             return name
     return None
 
@@ -137,25 +152,40 @@ def get_client():
     return anthropic.Anthropic(**_PROVIDERS[selected]["client_kwargs"]())
 
 
-def _default_model() -> str:
-    """The provider-appropriate default model when ANGELA_MODEL is unset.
-    Falls back to the anthropic-shaped default if nothing is configured
-    (matches historical behaviour: MODELO_VALIDACION always had a value)."""
-    return _PROVIDERS[_resolve_provider() or PROVIDER_ANTHROPIC]["default_model"]
-
-
 def modelo_validacion() -> str:
-    """Runtime-evaluated model for validation mode (ROUTING_ACTIVO=False):
-    ANGELA_MODEL always wins verbatim when set — we never rewrite an
-    explicit user-provided slug, only the default we'd pick ourselves."""
-    return os.environ.get("ANGELA_MODEL") or _default_model()
+    """Runtime-evaluated model for validation mode (ROUTING_ACTIVO=False).
+
+    The selected provider's own override vars are tried in order (GATEWAY_MODEL
+    then ANGELA_MODEL through the gateway; ANGELA_MODEL when direct), and the
+    first one set wins VERBATIM — we never rewrite an explicit user-provided
+    slug, only the default we'd pick ourselves. Falls back to the
+    anthropic-shaped default if nothing is configured (matches historical
+    behaviour: MODELO_VALIDACION always had a value)."""
+    entry = _PROVIDERS[_resolve_provider() or PROVIDER_ANTHROPIC]
+    for var in entry["model_env"]:
+        explicit = os.environ.get(var)
+        if explicit:
+            return explicit
+    return entry["default_model"]
+
+
+def modelo_feature(env_var: str) -> str:
+    """The model for a SECONDARY feature (voice notes, invoice vision, the
+    WhatsApp bot), each of which keeps its own env knob.
+
+    `env_var` wins verbatim when set; otherwise we fall back to the main
+    validation model, which is provider-aware. The point is that NO call site
+    may bake in a slug of its own: a hyphenated slug returns HTTP 400 through
+    the gateway, so a hardcoded default breaks silently the moment the
+    configured provider changes."""
+    return os.environ.get(env_var) or modelo_validacion()
 
 
 # --- EL SWITCH ---------------------------------------------------------------
 # Modo de Ángela: "claude" si CUALQUIER proveedor está totalmente configurado
 # (ver _resolve_provider), si no "simulado" (router de intenciones). Enchufar
 # el modelo real = setear ANTHROPIC_API_KEY (directo) o LLM_PROVIDER=gateway +
-# ANTHROPIC_AUTH_TOKEN (AI Gateway). Nada más.
+# AI_GATEWAY_API_KEY (AI Gateway). Nada más.
 # OJO: se computa en runtime (ver modo()). MODO queda como snapshot de import-time
 # sólo por compatibilidad; el código nuevo debe llamar modo().
 MODO = "claude" if model_disponible() else "simulado"
@@ -176,10 +206,10 @@ def modo() -> str:
 ROUTING_ACTIVO = False
 
 # Modelo para TODO mientras ROUTING_ACTIVO sea False. Default = Sonnet (calidad/costo
-# conocido), resuelto por proveedor (ver _default_model): direct usa el slug con
-# guiones, gateway el slug con prefijo y versión con punto. Se puede overridear con
-# ANGELA_MODEL sin tocar código — eso hace TRIVIAL la prueba A/B Sonnet vs Fable 5:
-# ANGELA_MODEL=claude-fable-5 (direct) / ANGELA_MODEL=anthropic/claude-fable-5 (gateway).
+# conocido), resuelto por proveedor (ver modelo_validacion): direct usa el slug con
+# guiones, gateway el slug con prefijo y versión con punto. Se puede overridear sin
+# tocar código — eso hace TRIVIAL la prueba A/B Sonnet vs Fable 5:
+# ANGELA_MODEL=claude-fable-5 (direct) / GATEWAY_MODEL=anthropic/claude-fable-5 (gateway).
 # OJO: snapshot de import-time por compatibilidad; el código nuevo debe llamar
 # modelo_validacion() (evaluado en runtime, igual que modo()).
 MODELO_VALIDACION = modelo_validacion()
