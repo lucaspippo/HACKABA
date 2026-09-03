@@ -341,17 +341,10 @@ export const api = {
   notificacionAvisar: (para, titulo, cuerpo = "") =>
     post("/api/notificaciones/avisar", { para, titulo, cuerpo }),
   health: () => get("/api/health"),
-  angela: async (mensaje, historial = [], extra = {}) => {
-    const res = await fetch("/api/angela", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
-    });
-    if (!res.ok) throw new Error(`angela → ${res.status}`);
-    return res.json();
-  },
-  // Same as angela() but streaming (NDJSON): returns the raw Response so the
-  // assistant-ui runtime can read the body as it arrives.
+  // Streaming (NDJSON): returns the raw Response so the assistant-ui runtime
+  // can read the body as it arrives. The non-streaming /api/angela endpoint
+  // still exists server-side (WhatsApp and backend tests use it) but nothing
+  // in the frontend calls it anymore — this is the only client-side entry point.
   chatStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
     let res;
     try {
