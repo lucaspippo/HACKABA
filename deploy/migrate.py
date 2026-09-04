@@ -1,20 +1,16 @@
 """Render's preDeployCommand: bring the schema to head before any instance
 of the new version starts.
 
-Why this is not in boot.py any more: when Alembic ran inside the container,
-a failed migration exited the process, the healthcheck failed, and the
-service went DOWN. As a pre-deploy step the deploy fails and the previously
-running instance keeps serving — the failure stops being an outage.
+Why this is not in boot.py any more: when Alembic ran inside the container, a
+failed migration exited the process, failed the healthcheck and took the
+service DOWN. As a pre-deploy step the deploy fails instead and the running
+instance keeps serving. It also keeps migrations single-writer if the service
+is ever split (D2).
 
-It is also what keeps migrations single-writer if the service is ever split
-into several (see D2 in the design doc): a pre-deploy step runs once per
-deploy, while N booting containers would race.
-
-Not here yet, deliberately: creating the restricted NOBYPASSRLS role that
-APP_DATABASE_URL connects as. On Supabase that role already exists
-(docker/init-app-role.sql is its local equivalent). A managed Render Postgres
-has no docker-entrypoint-initdb.d hook, so when the database moves (D12),
-this is the file that role bootstrap belongs in.
+Deliberately absent: creating the NOBYPASSRLS role APP_DATABASE_URL connects
+as. It already exists on Supabase (docker/init-app-role.sql is the local
+equivalent); a managed Render Postgres has no docker-entrypoint-initdb.d, so
+that bootstrap belongs here when the database moves (D12).
 """
 from __future__ import annotations
 
