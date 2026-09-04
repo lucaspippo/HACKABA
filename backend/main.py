@@ -585,7 +585,7 @@ def health():
     from core import fechas
     return {
         "ok": True,
-        "servicio": "polpilot-demo",
+        "servicio": "polpilot-app",  # the service, not the tenant — `tenant` below says which
         "angela_online": config.model_disponible(),
         "modo_angela": config.modo(),          # "simulado" o "claude", evaluado en runtime
         "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
@@ -3424,8 +3424,18 @@ def admin_reset_demo(token: str):
          staging, perfiles, etc., ver core/db/MIGRATING_A_MODULE.md) — se
          vacía para este tenant y se re-siembra desde el dataset real en
          disco (seed_db.seed_domains(), el mismo camino que un tenant recién
-         montado)."""
+         montado).
+
+    DEMO ONLY. On any other tenant it 404s before doing anything, even with
+    the right token: POLPILOT_CANONICAL_DIR is image-wide and boot.py always
+    makes the canonical copy, so a productive service that set
+    POLPILOT_RESET_TOKEN (render.yaml declares it for every copy of the
+    service block) would otherwise expose an endpoint that truncates a paying
+    client's data. A productive tenant simply omits the token — this gate is
+    what makes that not merely a convention."""
     import shutil
+    if not _es_demo():
+        raise HTTPException(status_code=404, detail="Not Found")
     esperado = os.environ.get("POLPILOT_RESET_TOKEN")
     canonical = os.environ.get("POLPILOT_CANONICAL_DIR")
     if not esperado or token != esperado or not canonical or not os.path.isdir(canonical):
