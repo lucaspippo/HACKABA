@@ -191,5 +191,9 @@ no published port and an apparently empty schema.
 ## Deploy
 
 `render.yaml` + `Dockerfile` bring everything up as a single Docker service
-(compiled frontend served by the backend). See `deploy/DEPLOY.md`. The only
-secret is `ANTHROPIC_API_KEY` (set in the hosting dashboard, never in the repo).
+(`polpilot-app`, compiled frontend served by the backend). See
+`deploy/DEPLOY.md` for the runbook and `deploy/ARCHITECTURE.md` for the
+topology and why it's shaped this way. There are four secrets, all set in the
+hosting dashboard, never in the repo: `ANTHROPIC_API_KEY`,
+`POLPILOT_RESET_TOKEN`, `DATABASE_URL` (owner role), and `APP_DATABASE_URL`
+(`NOBYPASSRLS` role).
