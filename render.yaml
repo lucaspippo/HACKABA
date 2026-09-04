@@ -21,7 +21,9 @@ services:
     # failed migration fails the deploy and the running instance keeps
     # serving. Inside the container it used to exit the process instead,
     # which took the service down. See deploy/migrate.py.
-    preDeployCommand: python deploy/migrate.py
+    # The path is absolute: the Dockerfile's WORKDIR is /app, so this is the
+    # same file, without depending on an undocumented working directory.
+    preDeployCommand: python /app/deploy/migrate.py
 
     envVars:
       # --- secrets: set in the dashboard, never in the repo -----------------
