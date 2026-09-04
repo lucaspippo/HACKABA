@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { langStore } from "./i18n.js";
 import { equipoStore } from "./equipoStore.js";
+import { apiUrl } from "./apiUrl.js";
 
 // La identidad del tenant (empresa, tenant, LOGO) viene ENTERA de /api/health.
 // P37 — INCIDENTE DE PRIVACIDAD: el frontend NO hardcodea ningún cliente. Hasta
@@ -14,7 +15,7 @@ export function useEmpresa() {
   const [meta, setMeta] = useState(_cache);
   useEffect(() => {
     if (_cache) { setMeta(_cache); return; }
-    fetch("/api/health")
+    fetch(apiUrl("/api/health"))
       .then((r) => r.json())
       .then((h) => {
         _cache = {

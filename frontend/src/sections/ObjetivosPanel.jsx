@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Target, TrendingUp, PauseCircle, CheckCircle2, User } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
+import { apiUrl } from "../lib/apiUrl";
 import { useSession } from "../lib/auth";
 import { pesoCorto, num } from "../lib/format";
 import { useT, useLang } from "../lib/i18n";
@@ -85,7 +86,7 @@ export default function ObjetivosPanel() {
 
   useEffect(() => {
     if (!session?.token) return;
-    fetch(`/api/objetivos-medidos?token=${encodeURIComponent(session.token)}`)
+    fetch(apiUrl(`/api/objetivos-medidos?token=${encodeURIComponent(session.token)}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then(setData)
       .catch(() => setData({ objetivos: [], resumen: {} }));
