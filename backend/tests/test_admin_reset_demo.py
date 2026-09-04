@@ -42,6 +42,13 @@ from fastapi.testclient import TestClient
 import main
 from core import piso, store
 
+# The endpoint is demo-only (see main.admin_reset_demo). This test runs
+# against a THROWAWAY tenant on purpose — see the module docstring for why it
+# must not be pointed at the real "demo" tenant — so the demo gate is opened
+# explicitly here. The gate itself is covered by
+# test_reset_demo_is_404_on_a_productive_tenant.
+main._es_demo = lambda: True
+
 client = TestClient(main.app)
 
 antes_articulos = len(store.raw_actual())
@@ -99,3 +106,29 @@ def test_reset_demo_clears_postgres_mutations_and_reseeds():
         from sqlalchemy import text
         with get_admin_engine().begin() as conn:
             conn.execute(text("DELETE FROM tenants WHERE slug = :slug"), {"slug": tenant_slug})
+
+
+def test_reset_demo_is_404_on_a_productive_tenant(tmp_path, monkeypatch):
+    """A productive service must not be able to wipe its own data. Everything
+    the endpoint needs is in place here — the exact token and a real canonical
+    dir — and it still must not exist, because the tenant is not the demo.
+    404 rather than 403, the same answer a wrong token gets: the endpoint does
+    not reveal that it is there.
+
+    The suite runs as tenant "piloto", which IS the productive shape."""
+    from fastapi.testclient import TestClient
+
+    import main
+    from core import paths, store
+
+    assert paths.TENANT != "demo", "this test only means something off the demo tenant"
+    canonical = tmp_path / "canonical"
+    canonical.mkdir()
+    monkeypatch.setenv("POLPILOT_RESET_TOKEN", RESET_TOKEN)
+    monkeypatch.setenv("POLPILOT_CANONICAL_DIR", str(canonical))
+
+    antes = len(store.raw_actual())
+    r = TestClient(main.app).post("/api/admin/reset-demo", params={"token": RESET_TOKEN})
+    assert r.status_code == 404, r.text
+    # Nothing was truncated on the way to that 404.
+    assert len(store.raw_actual()) == antes

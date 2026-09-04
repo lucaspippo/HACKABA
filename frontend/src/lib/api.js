@@ -2,6 +2,7 @@
 import { authStore } from "./auth";
 import { t } from "./i18n";
 import { ChatStreamError, chatErrorCodeFromStatus } from "./chat/errors";
+import { apiUrl } from "./apiUrl";
 
 // El token de sesión viaja en el header Authorization en TODA llamada: el backend
 // saca la identidad de ahí (nunca del body). Un solo lugar, sin tocar cada llamada.
@@ -29,7 +30,7 @@ function _error(path, res) {
 }
 
 async function get(path) {
-  const res = await fetch(path, { headers: _headers() });
+  const res = await fetch(apiUrl(path), { headers: _headers() });
   if (!res.ok) throw _error(path, res);
   return res.json();
 }
@@ -44,7 +45,7 @@ function qs(params = {}) {
 }
 
 async function downloadCsv(path, fallbackName) {
-  const res = await fetch(path, { headers: _headers() });
+  const res = await fetch(apiUrl(path), { headers: _headers() });
   if (!res.ok) throw _error(path, res);
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -60,7 +61,7 @@ async function downloadCsv(path, fallbackName) {
 }
 
 async function post(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method: "POST",
     headers: _headers({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
@@ -70,7 +71,7 @@ async function post(path, body) {
 }
 
 async function put(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(apiUrl(path), {
     method: "PUT",
     headers: _headers({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
@@ -80,7 +81,7 @@ async function put(path, body) {
 }
 
 async function del(path) {
-  const res = await fetch(path, { method: "DELETE", headers: _headers() });
+  const res = await fetch(apiUrl(path), { method: "DELETE", headers: _headers() });
   if (!res.ok) throw _error(path, res);
   return res.json();
 }
@@ -111,7 +112,7 @@ export const api = {
     post("/api/voz/confirmar", { tipo, datos, transcripcion }),
   vozMuestras: () => get("/api/voz/muestras"),
   blob: async (path) => {
-    const res = await fetch(path, { headers: _headers() });
+    const res = await fetch(apiUrl(path), { headers: _headers() });
     if (!res.ok) throw _error(path, res);
     return res.blob();
   },
@@ -257,7 +258,7 @@ export const api = {
   // PDF real (P17): manda el draft EDITADO (la única copia con los cambios
   // del usuario vive en el docStore) y vuelve el binario para descargar.
   documentoPdf: async (documento) => {
-    const res = await fetch("/api/documentos/pdf", {
+    const res = await fetch(apiUrl("/api/documentos/pdf"), {
       method: "POST",
       headers: _headers({ "Content-Type": "application/json" }),
       body: JSON.stringify({ documento }),
@@ -316,7 +317,7 @@ export const api = {
   preferencias: () => get("/api/preferencias"),
   preferenciaSet: (clave, valor) => post("/api/preferencias", { clave, valor }),
   preferenciaBorrar: async (clave) => {
-    const res = await fetch(`/api/preferencias/${encodeURIComponent(clave)}`, {
+    const res = await fetch(apiUrl(`/api/preferencias/${encodeURIComponent(clave)}`), {
       method: "DELETE", headers: _headers(),
     });
     if (!res.ok) throw _error("/api/preferencias", res);
@@ -348,7 +349,7 @@ export const api = {
   chatStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
     let res;
     try {
-      res = await fetch("/api/angela/stream", {
+      res = await fetch(apiUrl("/api/angela/stream"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
