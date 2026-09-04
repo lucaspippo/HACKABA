@@ -506,7 +506,7 @@ def seed_on_boot(env: Mapping[str, str] | None = None) -> bool:
 cd backend && python -m pytest tests/test_deploy_guard.py -v
 ```
 
-Expected: **PASS** (11 tests, counting the parametrized cases).
+Expected: **PASS** (10 tests: 1 + 3 parametrized + 1 + 1 + 3 parametrized + 1).
 
 - [ ] **Step 5: Commit**
 
