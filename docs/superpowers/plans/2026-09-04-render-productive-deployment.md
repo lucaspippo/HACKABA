@@ -14,7 +14,17 @@
 
 - **All code, identifiers, comments, docstrings and commit messages are in English** (root `CLAUDE.md`). Several files you will touch have Spanish comments — that is fine, do not mass-translate them; write new and modified lines in English.
 - **Do not restructure unrelated code.** Migrate a file's naming only when already working substantially in it.
-- **Backend tests:** run from `backend/` with `python -m pytest`. Single test: `python -m pytest tests/test_x.py -k pattern`.
+- **Use the repo venv's interpreter, never bare `python`.** On this machine bare
+  `python` is **3.11.5 without `python-dotenv`**, while the project requires 3.12+ and
+  `.venv/Scripts/python.exe` is **3.12.10** with the dependencies installed. With
+  `python-dotenv` absent, `backend/.env` is never loaded — `core/db/engine.py` and
+  `tests/dbsetup.py` both swallow the `ImportError` (`dbsetup.py:139` says so) — which
+  makes `ODOO_ENCRYPTION_KEY`, `WHATSAPP_ENCRYPTION_KEY` and the database URLs look
+  unset and produces dozens of spurious failures. This cost Task 1 a full round of
+  bogus test evidence.
+- **Backend tests:** run from `backend/` with `../.venv/Scripts/python.exe -m pytest`.
+  Single test: `../.venv/Scripts/python.exe -m pytest tests/test_x.py -k pattern`.
+  Every `python -m pytest` shown in a task below means that interpreter.
 - **After running the backend suite, restore the seeds:** `git checkout -- data-demo/` (the suite writes into the data dir).
 - **The suite has its own database** (`polpilot_test`, provisioned by `tests/dbsetup.py`). Never point it at the dev database.
 - **The suite runs as tenant `piloto`**, pinned in `tests/conftest.py`. Tests that need `demo` behavior shell out to a subprocess with `POLPILOT_TENANT=demo` — see `tests/test_deploy_hardening.py` for the established pattern.
