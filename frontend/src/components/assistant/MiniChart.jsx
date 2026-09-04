@@ -9,7 +9,7 @@ import { peso, num } from "../../lib/format";
 // widget — so this is always a handful of categories, never a timeline.
 export default function MiniChart({ points, format = "moneda" }) {
   if (!Array.isArray(points) || points.length === 0) return null;
-  const fmt = format === "moneda" ? peso : num;
+  const fmt = format === "moneda" ? peso : format === "porcentaje" ? (v) => `${num(v)}%` : num;
   const data = points.slice(0, 8).map((p) => ({ name: String(p.x ?? p.etiqueta ?? ""), value: p.y ?? p.valor ?? 0 }));
 
   return (

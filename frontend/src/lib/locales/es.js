@@ -3,6 +3,8 @@
 export const ES = {
   // --- común / accesibilidad (nombres accesibles para botones solo-ícono) ---
   "common.cerrar": "Cerrar",
+  "common.si": "sí",
+  "common.no": "no",
   "common.editar": "Editar",
   "common.eliminar": "Eliminar",
   "common.enviar": "Enviar",
@@ -3068,4 +3070,48 @@ export const ES = {
   "chat.error.server.detalle": "Se cortó la consulta. Probá de nuevo en un momento.",
   "chat.error.stream.titulo": "Se cortó la respuesta",
   "chat.error.stream.detalle": "La respuesta se interrumpió a mitad de camino. Probá de nuevo.",
+
+  // --- Phase 3: presentadores de tools en el chat (design doc D1/D10) ---
+  "toolui.caja.abierta": "Abierta",
+  "toolui.caja.cerrada": "Cerrada",
+  "toolui.caja.total": "Total en caja",
+  "toolui.caja.ingresos": "Ingresos",
+  "toolui.caja.egresos": "Egresos",
+  "toolui.caja.saldo_inicial": "Saldo inicial",
+
+  "toolui.negocio.inmovilizado": "Inmovilizado total",
+  "toolui.negocio.articulos": "Artículos activos",
+  "toolui.negocio.stock_cero": "Stock en cero",
+  "toolui.negocio.stock_negativo": "Stock negativo",
+  "toolui.negocio.alertas_fantasmas": "Fantasmas",
+  "toolui.negocio.alertas_negativos": "Negativos",
+  "toolui.negocio.alertas_sin_pvp": "Sin precio",
+  "toolui.negocio.alertas_balanza": "Balanza",
+  "toolui.negocio.alertas_costo_viejo": "Costo viejo",
+
+  "toolui.cuentas.no_encontrado": "No encontré a «{cliente}» en cuentas corrientes.",
+  "toolui.cuentas.col_cliente": "Cliente",
+  "toolui.cuentas.col_saldo": "Saldo",
+  "toolui.cuentas.col_dias": "Días sin pagar",
+  "toolui.cuentas.disponible": "Disponible",
+  "toolui.cuentas.total_adeudado": "Total adeudado",
+  "toolui.cuentas.clientes_con_deuda": "Clientes con deuda",
+  "toolui.cuentas.total_morosos": "Total en mora",
+  "toolui.cuentas.cantidad_morosos": "Clientes morosos",
+
+  "toolui.items.col_desc": "Producto",
+  "toolui.items.col_stock": "Stock",
+  "toolui.items.col_costo": "Costo",
+  "toolui.items.col_inmovilizado": "Inmovilizado",
+  "toolui.items.total": "Total listado",
+
+  "toolui.tabla.mas": "+{n} más",
+
+  "toolui.prioridades.act": "Para actuar",
+  "toolui.prioridades.watch": "Para mirar",
+
+  "toolui.serie.max": "máx",
+  "toolui.serie.total": "total",
+  "toolui.serie.deflactado": "a precios de {base}",
+  "toolui.serie.fijado": "Lo fijé para vos",
 };
