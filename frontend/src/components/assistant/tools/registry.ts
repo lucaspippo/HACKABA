@@ -5,9 +5,8 @@
  * ToolPresenter, then add one line here. Do NOT add a branch to ChatThread
  * (design doc D1) — it must stay free of per-tool logic.
  *
- * An empty entry set is CORRECT and complete: every tool renders through the
- * shape-based Fallback until a presenter overrides it. Phase 3 fills this in
- * with the series, table and KPI-tile presenters.
+ * A tool with no entry here is CORRECT and complete: it renders through the
+ * shape-based Fallback until a presenter overrides it.
  */
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import type { ToolName } from "../../../lib/chat/toolArgs.generated";

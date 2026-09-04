@@ -2,18 +2,14 @@ import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import ResultTable from "../ResultTable";
 import MiniChart from "../MiniChart";
 import { peso, num } from "../../../lib/format";
+import { toolErrorMessage, ToolErrorText } from "./toolError";
 
 const MONEY_KEY = /monto|inmovilizado|precio|costo|saldo|total|plata|deuda/i;
 
 /** A "small" object (a few scalar keys) as a compact key/value grid. */
 function GenericResult({ result }: { result: Record<string, unknown> }) {
-  if (result.error) {
-    return (
-      <p className="mt-1 text-[0.82rem] text-rojo-hondo">
-        {String(result.error || result.motivo)}
-      </p>
-    );
-  }
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const entries = Object.entries(result).filter(
     ([, v]) =>
       v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean",

@@ -1,14 +1,14 @@
 import type { ToolPresenter, ToolRenderProps } from "./types";
 import { toolLabels } from "./labels";
+import { toolErrorMessage, ToolErrorText } from "./toolError";
 import { peso } from "../../../lib/format";
 import { t } from "../../../lib/i18n";
 
 /**
- * Phase 3 presenter for listar_prioridades. Its result (`{act, watch, badge}`)
- * has no top-level `items`/`recordatorios` array, so Fallback's GenericResult
- * dropped `act`/`watch` (both objects/arrays) and rendered only `badge`/`orden`
- * — the actual priority list never showed. `tono` mirrors the rojo/oro/salvia
- * vocabulary used everywhere else in the app (see desktop/sections/Inicio.jsx).
+ * listar_prioridades' result has no top-level `items` array, so Fallback's
+ * GenericResult dropped `act`/`watch` and rendered only `badge`/`orden` — the
+ * actual priority list never showed. `tono` mirrors the rojo/oro/salvia
+ * vocabulary used elsewhere (see desktop/sections/Inicio.jsx).
  */
 
 const TONO_CHIP: Record<string, string> = {
@@ -52,11 +52,13 @@ function Fila({ p }: { p: Prioridad }) {
   );
 }
 
-type PrioridadesResult = { act?: Prioridad[]; watch?: Prioridad[]; error?: string };
+type PrioridadesResult = { act?: Prioridad[]; watch?: Prioridad[] };
 
 export function Prioridades({ result }: ToolRenderProps) {
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const r = result as PrioridadesResult;
-  if (!r || r.error) return null;
+  if (!r) return null;
   const act = r.act || [];
   const watch = r.watch || [];
   if (act.length === 0 && watch.length === 0) return null;

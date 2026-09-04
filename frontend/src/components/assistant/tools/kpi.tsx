@@ -1,14 +1,13 @@
 import type { ToolPresenter, ToolRenderProps } from "./types";
 import { toolLabels } from "./labels";
+import { toolErrorMessage, ToolErrorText } from "./toolError";
 import { peso, num } from "../../../lib/format";
 import { t } from "../../../lib/i18n";
 
 /**
- * Phase 3 (design doc): KPI tiles for estado_caja / resumen_negocio — the two
- * most-consulted "how are we doing" tools. Both previously fell through to
- * Fallback's GenericResult, which only prints top-level scalar keys: since
- * estado_caja's numbers live under `totales` and resumen_negocio's under
- * `resumen`/`alertas`, neither ever showed anything useful in chat.
+ * estado_caja / resumen_negocio previously rendered empty in chat: their
+ * numbers live under `totales`/`resumen`/`alertas`, and Fallback's
+ * GenericResult only reads top-level scalar keys.
  */
 
 export function Tile({
@@ -32,12 +31,13 @@ type CajaResult = {
   abierta?: boolean;
   saldo_inicial?: number;
   totales?: { ingresos?: number; egresos?: number; total?: number; por_medio?: Record<string, number> };
-  error?: string;
 };
 
 export function CajaTile({ result }: ToolRenderProps) {
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const r = result as CajaResult;
-  if (!r || r.error) return null;
+  if (!r) return null;
   const tot = r.totales || {};
   const porMedio = Object.entries(tot.por_medio || {}).filter(([, v]) => v);
   return (
@@ -78,7 +78,6 @@ type NegocioResult = {
     salud?: { nivel?: string; label?: string };
   };
   alertas?: Record<string, { cantidad?: number; impacto_pesos?: number } | undefined>;
-  error?: string;
 };
 
 /** Only en_orden/atencion are known levels; anything else reads as a problem. */
@@ -97,6 +96,8 @@ const ALERTA_LABEL_KEY: Record<string, string> = {
 };
 
 export function NegocioResumen({ result }: ToolRenderProps) {
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const r = result as NegocioResult;
   const res = r?.resumen;
   if (!res) return null;

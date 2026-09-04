@@ -3,20 +3,17 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import type { ToolPresenter, ToolRenderProps } from "./types";
 import { toolLabels } from "./labels";
 import { Tile } from "./kpi";
+import { toolErrorMessage, ToolErrorText } from "./toolError";
 import { peso, num } from "../../../lib/format";
 import { t } from "../../../lib/i18n";
 
 /**
- * Phase 3 (design doc): ResultTable promoted to a real presenter for
- * cuentas_corrientes / listar_grupo / top_inmovilizado — sortable,
- * right-aligned numerics, unit-aware. The generic Fallback already tables
- * `items`-shaped results, but cuentas_corrientes' no-cliente-arg shape
- * (`{totales, clientes, morosos, alertas}`) has no top-level array, so it
- * fell through Fallback to an empty GenericResult — this presenter is a
- * real fix, not just polish, for that one.
+ * cuentas_corrientes' no-cliente-arg shape (`{totales, clientes, morosos,
+ * alertas}`) has no top-level array, so it previously fell through Fallback
+ * to an empty GenericResult.
  */
 
-export type Column = { key: string; label: string; money?: boolean };
+export type Column = { key: string; label: string; money?: boolean; numeric?: boolean };
 
 export function sortRows(rows: Record<string, unknown>[], key: string, dir: 1 | -1) {
   return [...rows].sort((a, b) => {
@@ -59,25 +56,35 @@ function SortableTable({
       <table className="w-full text-left text-[0.78rem]">
         <thead>
           <tr className="border-b border-linea bg-papel/60">
-            {columns.map((c) => (
-              <th key={c.key} className="p-0">
-                <button
-                  onClick={() => toggle(c.key)}
-                  className="flex w-full items-center gap-1 whitespace-nowrap px-2.5 py-1.5 font-semibold text-tinta-suave hover:text-tinta"
-                >
-                  {c.label}
-                  {sort.key === c.key &&
-                    (sort.dir === 1 ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
-                </button>
-              </th>
-            ))}
+            {columns.map((c) => {
+              const alignRight = c.money || c.numeric;
+              return (
+                <th key={c.key} className="p-0">
+                  <button
+                    onClick={() => toggle(c.key)}
+                    className={`flex w-full items-center gap-1 whitespace-nowrap px-2.5 py-1.5 font-semibold text-tinta-suave hover:text-tinta ${
+                      alignRight ? "justify-end" : ""
+                    }`}
+                  >
+                    {c.label}
+                    {sort.key === c.key &&
+                      (sort.dir === 1 ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+                  </button>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
           {sorted.slice(0, limit).map((r, i) => (
             <tr key={i} className={i % 2 ? "bg-crema/40" : ""}>
               {columns.map((c) => (
-                <td key={c.key} className="whitespace-nowrap px-2.5 py-1.5 tabular-nums text-tinta">
+                <td
+                  key={c.key}
+                  className={`whitespace-nowrap px-2.5 py-1.5 tabular-nums text-tinta ${
+                    c.money || c.numeric ? "text-right" : ""
+                  }`}
+                >
                   {formatVal(r[c.key], c.money)}
                 </td>
               ))}
@@ -103,16 +110,14 @@ type ClienteRow = Record<string, unknown> & {
 };
 
 type CuentasResult = {
-  error?: string;
   encontrado?: boolean;
   cliente?: string;
-  // shape when a `cliente` arg was given and matched — the enriched client itself.
+  // single matched client (a `cliente` arg was given) vs. the full ledger below.
   nombre?: string;
   saldo?: number;
   en_mora?: boolean;
   dias_sin_pagar?: number;
   disponible?: number;
-  // shape when no `cliente` arg was given — the full ledger.
   totales?: {
     total_adeudado?: number;
     clientes_con_deuda?: number;
@@ -123,8 +128,10 @@ type CuentasResult = {
 };
 
 export function CuentasCorrientes({ result }: ToolRenderProps) {
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const r = result as CuentasResult;
-  if (!r || r.error) return null;
+  if (!r) return null;
 
   if (r.encontrado === false) {
     return (
@@ -139,7 +146,7 @@ export function CuentasCorrientes({ result }: ToolRenderProps) {
     const columns: Column[] = [
       { key: "nombre", label: t("toolui.cuentas.col_cliente") },
       { key: "saldo", label: t("toolui.cuentas.col_saldo"), money: true },
-      { key: "dias_sin_pagar", label: t("toolui.cuentas.col_dias") },
+      { key: "dias_sin_pagar", label: t("toolui.cuentas.col_dias"), numeric: true },
     ];
     return (
       <div className="mt-1.5">
@@ -180,15 +187,16 @@ export function CuentasCorrientes({ result }: ToolRenderProps) {
 type ItemsResult = {
   items?: Record<string, unknown>[];
   total_inmovilizado_listado?: number;
-  error?: string;
 };
 
 export function ItemsTable({ result }: ToolRenderProps) {
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
   const r = result as ItemsResult;
   if (!r || !Array.isArray(r.items) || r.items.length === 0) return null;
   const columns: Column[] = [
     { key: "descripcion", label: t("toolui.items.col_desc") },
-    { key: "stock", label: t("toolui.items.col_stock") },
+    { key: "stock", label: t("toolui.items.col_stock"), numeric: true },
     { key: "costo_iva", label: t("toolui.items.col_costo"), money: true },
     { key: "inmovilizado", label: t("toolui.items.col_inmovilizado"), money: true },
   ];
