@@ -265,10 +265,20 @@ a future move to Render Postgres is a URL swap rather than a crash.
 
 ### D11 · Consolidate the frontend API layer; defer the cross-origin work
 
-**Decision:** collapse the ~15 scattered `fetch("/api/…")` call sites in
-`frontend/src/lib/` (`api.js`, `auth.js`, `hoy.js`, `i18n.js`,
-`useEmpresa.js`) behind one client that prefixes a `VITE_API_BASE` defaulting
-to `""`.
+**Decision:** route every `fetch` at a PolPilot endpoint through one
+`apiUrl(path)` helper that prefixes a `VITE_API_BASE` defaulting to `""`.
+
+**Correction to the original scope.** This was first written as "~15 call
+sites in `frontend/src/lib/`". The actual count is **19 across 9 files**, and
+four of them are *outside* `lib/` — `App.jsx:53,55`,
+`mobile/EquipoMobile.jsx:23`, `sections/GestionEquipo.jsx:883`,
+`sections/ObjetivosPanel.jsx:88`. Six of the `lib/api.js` sites (lines 32, 47,
+63, 73, 83, 114) take `path` as a parameter and are already centralized, so
+they need the prefix applied once each rather than at every caller.
+
+`apiUrl` lives in its own module, not in `api.js`: `api.js` already imports
+`authStore` from `./auth`, so putting the helper in `api.js` and importing it
+from `auth.js` would create a cycle.
 
 Default `""` means byte-identical request URLs and **no behavior change**
 today. The value is hygiene now, and that the static-site split in D2 becomes
@@ -318,7 +328,8 @@ revisit — and D10 is what makes revisiting it a URL swap.
 | `deploy/boot.py` | Drops step 1; seed path gated on `POLPILOT_SEED_ON_BOOT` (D8, D9); refuses to run with `POLPILOT_TENANT` unset (D6). |
 | `backend/core/db/engine.py` | Scheme normalization helper (D10). |
 | `backend/mcp_server.py` | `asyncio.to_thread` at the `_run_tool` call (D4). |
-| `frontend/src/lib/*.js` | One API client behind `VITE_API_BASE` (D11). |
+| `frontend/src/lib/apiUrl.js` | New. `apiUrl(path)` — the single `VITE_API_BASE` prefix point (D11). |
+| `frontend/src/**` | 19 `fetch` sites across 9 files routed through `apiUrl` (D11) — note four live outside `lib/`. |
 | `deploy/DEPLOY.md` | Rewritten in English for the renamed service; documents the D2 target and what D9's flag means for a productive tenant. |
 
 ## Testing
