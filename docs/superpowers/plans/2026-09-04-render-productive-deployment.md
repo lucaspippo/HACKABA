@@ -716,8 +716,12 @@ def test_boot_refuses_without_an_explicit_tenant():
 def test_boot_no_longer_runs_alembic():
     # Migrations belong to deploy/migrate.py (the preDeployCommand) so that a
     # failed migration fails the deploy instead of taking the service down.
+    # Forbid the INVOCATION, not the word: boot.py's docstring is expected to
+    # explain where migrations went, and naming alembic in prose is correct.
     source = open(BOOT, encoding="utf-8").read()
-    assert "alembic" not in source.lower()
+    assert '"alembic"' not in source
+    assert "'alembic'" not in source
+    assert "upgrade" not in source, "no `alembic upgrade head` argv may remain"
 
 
 def test_boot_seeding_is_gated_on_the_flag():
