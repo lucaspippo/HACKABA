@@ -67,11 +67,17 @@ single-origin shape.
 
 **One event loop, and an asymmetry on it.** `/api/*` handlers are plain
 `def`, so FastAPI hands them to a threadpool and they never block the loop.
-The `/mcp` path does not have that property: `mcp_server.py:143` is an
-`async def` that calls `angela._run_tool` synchronously. On a single uvicorn
-worker, one MCP client calling a heavy tool stalls every concurrent web
+The `/mcp` path did not have that property: `mcp_server.py`'s `call_tool` is an
+`async def` that called `angela._run_tool` synchronously. On a single uvicorn
+worker, one MCP client calling a heavy tool stalled every concurrent web
 request, the `/api/angela/stream` chat stream included. This is finding F2
-in the design doc, and §2 fixes it.
+in the design doc.
+
+**Status:** fixed in code, not yet deployed. The call now goes through
+`asyncio.to_thread`, so it runs off the event loop while the contextvars
+session installed before it still applies. What is *running on Render* is
+still the old behavior until the next deploy, which is why this stays
+described in the present section rather than moved to §2.
 
 **Two database roles, on purpose.** `DATABASE_URL` is the elevated/owner
 connection used by Alembic and by tenant-row lookups. `APP_DATABASE_URL` is
