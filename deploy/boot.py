@@ -1,37 +1,47 @@
-"""
-P22·C — Arranque del contenedor (Render): el seed + healthcheck de start_demo,
-portado. El servidor JAMÁS levanta sin datos: si el seed falla, este proceso
-sale con error, el contenedor no queda healthy y Render no lo publica.
+"""Container entrypoint (Render): the seed + healthcheck from start_demo,
+ported. The server NEVER comes up without data: if the seed fails, this
+process exits with an error, the container never goes healthy, and Render
+does not publish it.
 
-Pasos:
-  1. Alembic (backend/migrations): el schema de Postgres queda al día antes
-     de que el server toque una sola tabla.
-  2. seed_db.ensure_tenant(): crea la fila de `tenants` si no existe.
-     TIENE que pasar ANTES de generar.py, no después: generar.py llama
-     directo a módulos ya-Postgres (core.staging, core.perfiles,
-     core.comprobantes) a mitad de camino (sembrar_staging/sembrar_
-     auditoria/etc.), y esas llamadas fallan sin una fila de tenant. En
-     un boot repetido esto quedaba enmascarado (la fila ya existía de un
-     boot anterior) — un Postgres genuinamente nuevo (primer boot real, o
-     CI) lo revienta de entrada. Ver el bug real documentado en
+Steps:
+  1. deploy_guard.require_tenant(): refuses to boot without an explicit
+     POLPILOT_TENANT, so a misconfigured deployment cannot silently serve
+     the demo tenant's data.
+  2. seed_db.ensure_tenant(): creates the `tenants` row if it does not exist
+     yet. MUST run before generar.py, not after: generar.py calls straight
+     into already-Postgres modules (core.staging, core.perfiles,
+     core.comprobantes) partway through (sembrar_staging/sembrar_
+     auditoria/etc.), and those calls fail without a tenant row. On a
+     repeated boot this was masked (the row already existed from a previous
+     boot) — a genuinely new Postgres (first real boot, or CI) breaks
+     immediately. See the real bug documented in
      backend/core/db/MIGRATING_A_MODULE.md.
-  3. generar.py (idempotente, determinista): regenera en DATA_DIR el dataset
-     fuente que Postgres siembra desde disco (inventory.json y el resto), Y
-     siembra directo algunos dominios ya-Postgres (staging, auditoría,
-     perfiles, comprobantes) por el mismo camino que un uso real. Ya no es
-     storage en vivo — todo dominio de core/*.py vive en Postgres (ver
-     backend/core/db/MIGRATING_A_MODULE.md).
-  4. seed_db.run(): siembra Postgres — auth_credentials y TODOS los
-     dominios migrados que generar.py no haya sembrado ya directo (ver
-     backend/core/db/MIGRATING_A_MODULE.md). Idempotente: re-crear la fila
-     de tenant acá es un no-op (ensure_tenant() ya la creó en el paso 2).
-  5. Verificación dura: el inventario quedó sembrado en POSTGRES (no el
-     JSON de disco, que el server ya no lee en runtime).
-  6. Copia canónica para el RESET (DATA_DIR → POLPILOT_CANONICAL_DIR): el
-     endpoint admin de reset restaura ESTE estado sin reiniciar el contenedor.
-     (Además, el filesystem de Render es efímero: cada restart/redeploy ya
-     vuelve solo al estado de la imagen.)
-  7. exec uvicorn en $PORT — el precalentado del análisis corre en el lifespan.
+  3-4. generar.py + seed_db.run(): DEMO ONLY, gated behind
+     deploy_guard.seed_on_boot() (POLPILOT_SEED_ON_BOOT=1). generar.py
+     rewrites the whole source dataset in DATA_DIR (inventory.json and the
+     rest) deterministically, and also seeds some already-Postgres domains
+     (staging, auditoria, perfiles, comprobantes) directly, the same way a
+     real usage would. That is exactly right for the public demo — it makes
+     the dataset self-healing on Render's ephemeral filesystem — and it is
+     data loss on a productive tenant, so it defaults to off. seed_db.run()
+     then seeds Postgres: auth_credentials and every migrated domain
+     generar.py has not already seeded directly (see
+     backend/core/db/MIGRATING_A_MODULE.md). Idempotent: re-creating the
+     tenant row here is a no-op (ensure_tenant() already created it in
+     step 2).
+  5. Hard verification: the inventory landed in POSTGRES (not the JSON file
+     on disk, which the server no longer reads at runtime). This still
+     guards a misconfigured productive tenant correctly — it is true for a
+     real tenant with real data and false otherwise.
+  6. Canonical copy for RESET (DATA_DIR -> POLPILOT_CANONICAL_DIR): the
+     admin reset endpoint restores THIS state without restarting the
+     container. (Render's filesystem is also ephemeral: every
+     restart/redeploy already reverts to the image's own state.)
+  7. exec uvicorn on $PORT — the analysis warm-up runs in the lifespan.
+
+Migrations are NOT here: they moved to deploy/migrate.py, which Render runs
+as the preDeployCommand. That way a failed migration fails the deploy
+instead of exiting this process and taking a running instance down.
 """
 from __future__ import annotations
 
@@ -46,6 +56,9 @@ BACKEND = os.path.join(RAIZ, "backend")
 DATA_DIR = os.environ.get("POLPILOT_DATA_DIR") or os.path.join(RAIZ, "data-demo")
 CANONICAL = os.environ.get("POLPILOT_CANONICAL_DIR")
 
+sys.path.insert(0, BACKEND)
+import deploy_guard  # noqa: E402  (needs BACKEND on the path first)
+
 
 def fallar(msg: str) -> None:
     print(f"[boot][X] {msg}", flush=True)
@@ -53,48 +66,43 @@ def fallar(msg: str) -> None:
 
 
 def main() -> None:
-    # 1 · migraciones (Alembic) — el server NO levanta con un schema viejo.
-    r = subprocess.run(
-        [sys.executable, "-m", "alembic", "upgrade", "head"],
-        capture_output=True, text=True, cwd=BACKEND, timeout=120,
-    )
-    if r.returncode != 0:
-        print(r.stdout[-1500:] + r.stderr[-1500:], flush=True)
-        fallar("alembic upgrade head falló — el server NO levanta con un schema desactualizado")
-    print("[boot] migraciones aplicadas", flush=True)
-
-    # 2 · asegurar la fila de tenant ANTES de generar.py — ver el docstring
-    #     de arriba y el de seed_db.ensure_tenant() para el porqué del orden.
-    tenant = os.environ.get("POLPILOT_TENANT", "demo")
+    # Migrations are NOT here any more: deploy/migrate.py runs them as
+    # Render's preDeployCommand, so a failed migration fails the deploy
+    # instead of taking the running service down.
+    tenant = deploy_guard.require_tenant()
     sys.path.insert(0, DATA_DIR)
-    sys.path.insert(0, BACKEND)
     import seed_db
+
+    # 2 · the tenant row must exist before generar.py — see the module
+    #     docstring for the ordering bug this prevents.
     try:
         seed_db.ensure_tenant(tenant)
     except Exception as e:  # noqa: BLE001
-        fallar(f"seed_db.ensure_tenant() falló ({e}) — el server NO levanta sin datos")
-    print(f"[boot] fila de tenant asegurada (tenant={tenant})", flush=True)
+        fallar(f"seed_db.ensure_tenant() failed ({e}) — the server does NOT come up without data")
+    print(f"[boot] tenant row ensured (tenant={tenant})", flush=True)
 
-    # 3 · seed idempotente (el mismo generar.py de siempre — regenera el
-    #     dataset FUENTE en disco Y siembra directo algunos dominios ya-
-    #     Postgres; ver el paso 2 de arriba para por qué esto va DESPUÉS)
-    gen = os.path.join(DATA_DIR, "generar.py")
-    if not os.path.exists(gen):
-        fallar(f"no existe {gen} — ¿la imagen copió data-demo/?")
-    r = subprocess.run([sys.executable, gen], capture_output=True, text=True,
-                       cwd=DATA_DIR, timeout=180)
-    if r.returncode != 0:
-        print(r.stdout[-1500:] + r.stderr[-1500:], flush=True)
-        fallar("generar.py falló — el server NO levanta sin datos")
-    print("[boot] seed verificado (generar.py)", flush=True)
+    # 3-4 · dataset regeneration + seed: DEMO ONLY. generar.py rewrites the
+    #       whole dataset deterministically, which is what makes the public
+    #       demo self-healing on Render's ephemeral filesystem — and is data
+    #       loss on a productive tenant. Opt-in, defaulting to off.
+    if deploy_guard.seed_on_boot():
+        gen = os.path.join(DATA_DIR, "generar.py")
+        if not os.path.exists(gen):
+            fallar(f"{gen} does not exist — did the image copy data-demo/?")
+        r = subprocess.run([sys.executable, gen], capture_output=True, text=True,
+                           cwd=DATA_DIR, timeout=180)
+        if r.returncode != 0:
+            print(r.stdout[-1500:] + r.stderr[-1500:], flush=True)
+            fallar("generar.py failed — the server does NOT come up without data")
+        print("[boot] seed verified (generar.py)", flush=True)
 
-    # 4 · seed idempotente de Postgres (auth + todos los dominios migrados
-    #     que generar.py no haya sembrado ya directo en el paso 3)
-    try:
-        seed_db.run(tenant)
-    except Exception as e:  # noqa: BLE001
-        fallar(f"seed_db.run() falló ({e}) — el server NO levanta sin datos")
-    print(f"[boot] Postgres seed ok (tenant={tenant})", flush=True)
+        try:
+            seed_db.run(tenant)
+        except Exception as e:  # noqa: BLE001
+            fallar(f"seed_db.run() failed ({e}) — the server does NOT come up without data")
+        print(f"[boot] Postgres seed ok (tenant={tenant})", flush=True)
+    else:
+        print("[boot] seeding skipped (POLPILOT_SEED_ON_BOOT is not 1)", flush=True)
 
     # 5 · verificación dura del dataset — contra POSTGRES, la fuente real en
     #     runtime (inventory.json en disco es sólo el seed source de arriba)
