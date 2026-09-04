@@ -215,7 +215,7 @@ def test_an_empty_productive_tenant_still_comes_up():
     canonical = tempfile.mkdtemp(prefix="polpilot-bootcanon-")
     os.rmdir(canonical)  # step 6 copies onto a path that must not exist yet
     try:
-        code, markers, out = _boot_with_sentinel_data_dir(
+        _code, markers, out = _boot_with_sentinel_data_dir(
             seed_flag=None, tenant=slug, reachable_db=True, canonical=canonical)
         assert "[boot][X]" not in out, out[-2000:]
         assert "has no inventory in Postgres yet" in out, out[-2000:]
@@ -223,12 +223,12 @@ def test_an_empty_productive_tenant_still_comes_up():
         # Step 6 only runs once step 5 has let the boot through, so the
         # canonical copy existing is the proof it did.
         assert os.path.isdir(canonical), out[-2000:]
-        # `code` is deliberately NOT asserted on: this run does reach step 7,
-        # and os.execvp on Windows spawns a new process and exits this one
-        # with 0 whatever the exec'd command then does. What keeps that
-        # process from surviving the test is _UNBINDABLE_PORT — uvicorn's CLI
-        # rejects a non-integer --port before it opens any socket.
-        assert code == 0
+        # The exit code is deliberately NOT asserted on. This is the one test
+        # whose run reaches step 7, and what it exits with depends on how
+        # os.execvp's replacement propagates uvicorn's own rejection of
+        # _UNBINDABLE_PORT — which varies by platform and timing (observed both
+        # 0 and 2). That is scaffolding, not behaviour under test: the four
+        # assertions above already prove step 5 let the boot through.
     finally:
         shutil.rmtree(canonical, ignore_errors=True)
         with engine.begin() as conn:
