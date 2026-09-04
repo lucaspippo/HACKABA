@@ -187,6 +187,17 @@ def _analisis_cache_limpio():
     analisis_cache.limpiar()
 
 
+@pytest.fixture(autouse=True)
+def _app_events_empty():
+    """Same reasoning for core/app_events.py: the queue is process-global, so
+    a test that POSTs to an endpoint which records an event would otherwise
+    leave it there for whichever later test next prepares a turn as that user."""
+    from core import app_events
+    app_events.clear()
+    yield
+    app_events.clear()
+
+
 @pytest.fixture
 def articulos_raw():
     """Cuatro artículos que cubren cada categoría de issue + uno sano."""

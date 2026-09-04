@@ -43,7 +43,7 @@ from core import (store, saneamiento, fase, memoria, importer, staging, anomalia
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
                   evolucion, ventas, pagos, paths, conocimiento, piso, onboarding,
-                  whatsapp_channel, patrones)
+                  whatsapp_channel, patrones, app_events)
 import whatsapp_bot
 
 
@@ -2203,6 +2203,35 @@ class PatternFeedbackRequest(BaseModel):
     note: str | None = None
 
 
+# --- Narrating a decision back to Ángela (core/app_events.py) ---------------
+# Only decisions go here, never data changes: `core/` recalculates every
+# figure, so she already sees a corrected row or a recorded payment. What she
+# cannot see is that someone CHOSE something — dismissed a finding, taught a
+# rule, dropped a widget. Params come from what the endpoint did, never from
+# the request body, and the sentence is an i18n key rendered in the language
+# of whichever conversation reads it.
+
+# The whole vocabulary: the three buttons on a finding card
+# (frontend/src/components/CardNegocio.jsx) and `pattern_feedback.learn`'s
+# "accepted". `action` is a bare str on the request, hence the fallback key.
+_FEEDBACK_EVENT = {
+    "accepted": "core.app_events.finding_accepted",
+    "already_knew": "core.app_events.finding_already_knew",
+    "dismissed": "core.app_events.finding_dismissed",
+}
+
+
+def _who(u: dict) -> str:
+    return u.get("nombre") or u.get("username") or "—"
+
+
+def _finding_title(row: dict, card_id: str) -> str:
+    """The finding's own title, which `pattern_feedback` snapshots when it
+    records the reaction; its id is the fallback."""
+    snapshot = (row or {}).get("snapshot") or {}
+    return snapshot.get("titulo") or card_id
+
+
 def _feedback_sources():
     """Every source of findings that can receive feedback through the one
     endpoint below: (module-gating dict, record_feedback function). Checked
@@ -2232,13 +2261,18 @@ def patrones_feedback(req: PatternFeedbackRequest, u: dict = Depends(usuario_act
             raise HTTPException(status_code=403,
                                 detail=i18n.t("authz.sin_feature", _lang(u), feature=req.card_id))
         try:
-            return record_fn(req.card_id, req.action, actor=u["username"],
-                             note=req.note, lang=_lang(u))
+            row = record_fn(req.card_id, req.action, actor=u["username"],
+                            note=req.note, lang=_lang(u))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except KeyError:
             raise HTTPException(status_code=404,
                                 detail=i18n.t("api.patron_inexistente", _lang(u)))
+        app_events.record(
+            u["username"],
+            _FEEDBACK_EVENT.get(req.action, "core.app_events.finding_feedback_other"),
+            who=_who(u), title=_finding_title(row, req.card_id), action=req.action)
+        return row
     raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
 
 
@@ -2290,6 +2324,9 @@ def patrones_aprender(req: HallazgoAprenderRequest, u: dict = Depends(require_ad
         except KeyError:
             raise HTTPException(status_code=404,
                                 detail=i18n.t("api.patron_inexistente", _lang(u)))
+        app_events.record(u["username"], "core.app_events.rule_taught",
+                          who=_who(u), effect=req.efecto, node=req.nodo,
+                          text=(pieza or {}).get("texto") or req.card_id)
         return {"ok": True, "pieza": pieza}
     raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
 
@@ -3021,6 +3058,8 @@ def preferencias_set(req: PrefRequest, u: dict = Depends(usuario_actual)):
         vista = memoria.set_vista(u["username"], req.clave, req.valor)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    app_events.record(u["username"], "core.app_events.view_pref_set",
+                      who=_who(u), key=req.clave)
     return {"ok": True, "vista": vista}
 
 
@@ -3029,6 +3068,8 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
     borrada = memoria.borrar_vista(u["username"], clave)
     if not borrada:
         raise HTTPException(status_code=404, detail="esa preferencia no existe")
+    app_events.record(u["username"], "core.app_events.view_pref_removed",
+                      who=_who(u), key=clave)
     m = memoria.get(u["username"])
     return {"ok": True, "vista": m.get("vista", {}), "notas": m.get("preferencias", {})}
 

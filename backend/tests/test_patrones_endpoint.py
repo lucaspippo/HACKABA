@@ -178,6 +178,39 @@ def test_owner_can_give_feedback_on_an_oportunidad_card(tokens, monkeypatch):
     assert any(h["pattern_id"] == "cobrar_morosos" for h in r.json()["historial"])
 
 
+def test_dismissing_a_card_is_narrated_into_the_next_turn(tokens, monkeypatch):
+    """The decision, not the data: `core/` recalculates every figure, so what
+    Ángela could not otherwise know is that Emilio reacted to this finding."""
+    import angela
+    from core import app_events
+    _seed_moroso(monkeypatch)
+    r = client.post("/api/patrones/feedback", headers=_h(tokens["emilio"]),
+                    json={"card_id": "cobrar_morosos", "action": "dismissed"})
+    assert r.status_code == 200, r.text
+
+    try:
+        _s, _m, _t, messages = angela._prepare_turn(
+            "¿y los morosos?", [], "dueño", "emilio", None, "es")
+    finally:
+        angela._set_sesion()
+    note = messages[-1]["content"][0]["text"]
+    assert app_events.LABEL in note
+    assert "descartó" in note
+
+
+def test_a_rejected_feedback_call_narrates_nothing(tokens, monkeypatch):
+    """403 and 404 paths must not queue an event: the sentence is a record of
+    something that happened."""
+    from core import app_events
+    _seed_moroso(monkeypatch)
+    client.post("/api/patrones/feedback", headers=_h(tokens["deposito"]),
+                json={"card_id": "cobrar_morosos", "action": "dismissed"})
+    client.post("/api/patrones/feedback", headers=_h(tokens["emilio"]),
+                json={"card_id": "no_existe_este_hallazgo", "action": "dismissed"})
+    assert app_events.pending("deposito") == 0
+    assert app_events.pending("emilio") == 0
+
+
 def test_role_missing_the_oportunidad_domain_is_rejected(tokens, monkeypatch):
     _seed_moroso(monkeypatch)
     # deposito has neither "cuentas" nor "oportunidades": cobrar_morosos needs "cuentas".
