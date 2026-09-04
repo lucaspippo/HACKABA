@@ -89,6 +89,26 @@ describe("tool calls", () => {
     expect(part.args).toEqual({ categoria: "lacteos" });
     expect(part.result).toEqual({ total: 42 });
   });
+
+  it("keeps a call's status line in metadata, keyed by call id", async () => {
+    const results = await runAll([
+      '{"type":"tool_call","id":"t1","name":"plata_en","input":{},"label":"mirando la caja"}\n',
+      '{"type":"tool_result","id":"t1","result":{"total":42}}\n',
+      '{"type":"done","result":{"mode":"claude","tools_used":["plata_en"],"actions":[]}}\n',
+    ]);
+    const last = results.at(-1)!;
+    expect(last.metadata!.custom!.toolLabels).toEqual({ t1: "mirando la caja" });
+    expect((last.content![0] as { args: unknown }).args).toEqual({});
+  });
+
+  it("omits toolLabels entirely when no call sent a status line", async () => {
+    const results = await runAll([
+      '{"type":"tool_call","id":"t1","name":"plata_en","input":{}}\n',
+      '{"type":"tool_result","id":"t1","result":{"total":42}}\n',
+      '{"type":"done","result":{"mode":"claude","tools_used":["plata_en"],"actions":[]}}\n',
+    ]);
+    expect(results.at(-1)!.metadata!.custom!.toolLabels).toBeUndefined();
+  });
 });
 
 describe("notices", () => {
