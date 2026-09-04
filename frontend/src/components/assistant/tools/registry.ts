@@ -11,10 +11,10 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import type { ToolName } from "../../../lib/chat/toolArgs.generated";
 import type { ToolPresenter } from "./types";
-import { estadoCajaPresenter, resumenNegocioPresenter } from "./kpi";
-import { cuentasCorrientesPresenter, listarGrupoPresenter, topInmovilizadoPresenter } from "./tables";
-import { listarPrioridadesPresenter } from "./priorities";
-import { consultarSeriePresenter } from "./series";
+import { cashDrawerPresenter, businessSummaryPresenter } from "./kpi";
+import { accountsReceivablePresenter, itemGroupPresenter, topTiedUpCapitalPresenter } from "./tables";
+import { prioritiesPresenter } from "./priorities";
+import { seriesPresenter } from "./series";
 
 /**
  * Typed as Partial<Record<ToolName, ...>> on purpose: a key that is not a real
@@ -23,13 +23,13 @@ import { consultarSeriePresenter } from "./series";
  * Fallback — a bug nobody notices.
  */
 export const TOOL_PRESENTERS: Partial<Record<ToolName, ToolPresenter>> = {
-  consultar_serie: consultarSeriePresenter,
-  cuentas_corrientes: cuentasCorrientesPresenter,
-  listar_grupo: listarGrupoPresenter,
-  top_inmovilizado: topInmovilizadoPresenter,
-  listar_prioridades: listarPrioridadesPresenter,
-  estado_caja: estadoCajaPresenter,
-  resumen_negocio: resumenNegocioPresenter,
+  consultar_serie: seriesPresenter,
+  cuentas_corrientes: accountsReceivablePresenter,
+  listar_grupo: itemGroupPresenter,
+  top_inmovilizado: topTiedUpCapitalPresenter,
+  listar_prioridades: prioritiesPresenter,
+  estado_caja: cashDrawerPresenter,
+  resumen_negocio: businessSummaryPresenter,
 };
 
 export function presenterFor(name: string): ToolPresenter | undefined {

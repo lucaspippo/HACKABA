@@ -13,54 +13,56 @@ import { t } from "../../../lib/i18n";
 export function Tile({
   label,
   value,
-  tono = "text-tinta",
+  tone = "text-tinta",
 }: {
   label: string;
   value: string;
-  tono?: string;
+  tone?: string;
 }) {
   return (
     <div className="rounded-xl border border-linea bg-papel/50 px-3 py-2">
-      <p className={`plata text-[1.05rem] font-medium leading-none ${tono}`}>{value}</p>
+      <p className={`plata text-[1.05rem] font-medium leading-none ${tone}`}>{value}</p>
       <p className="mt-1 text-[0.72rem] leading-snug text-tinta-suave">{label}</p>
     </div>
   );
 }
 
-type CajaResult = {
+// Field names below mirror estado_caja's JSON response (backend/core/caja.py)
+// verbatim — not identifiers of ours to translate.
+type CashDrawerResult = {
   abierta?: boolean;
   saldo_inicial?: number;
   totales?: { ingresos?: number; egresos?: number; total?: number; por_medio?: Record<string, number> };
 };
 
-export function CajaTile({ result }: ToolRenderProps) {
+export function CashDrawerTile({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
-  const r = result as CajaResult;
-  if (!r) return null;
-  const tot = r.totales || {};
-  const porMedio = Object.entries(tot.por_medio || {}).filter(([, v]) => v);
+  const data = result as CashDrawerResult;
+  if (!data) return null;
+  const totals = data.totales || {};
+  const byMethod = Object.entries(totals.por_medio || {}).filter(([, amount]) => amount);
   return (
     <div className="mt-1.5">
       <span
         className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${
-          r.abierta ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"
+          data.abierta ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"
         }`}
       >
-        {r.abierta ? t("toolui.caja.abierta") : t("toolui.caja.cerrada")}
+        {data.abierta ? t("toolui.caja.abierta") : t("toolui.caja.cerrada")}
       </span>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tile label={t("toolui.caja.total")} value={peso(tot.total || 0)} />
-        <Tile label={t("toolui.caja.ingresos")} value={peso(tot.ingresos || 0)} tono="text-salvia" />
-        <Tile label={t("toolui.caja.egresos")} value={peso(tot.egresos || 0)} tono="text-rojo" />
-        <Tile label={t("toolui.caja.saldo_inicial")} value={peso(r.saldo_inicial || 0)} />
+        <Tile label={t("toolui.caja.total")} value={peso(totals.total || 0)} />
+        <Tile label={t("toolui.caja.ingresos")} value={peso(totals.ingresos || 0)} tone="text-salvia" />
+        <Tile label={t("toolui.caja.egresos")} value={peso(totals.egresos || 0)} tone="text-rojo" />
+        <Tile label={t("toolui.caja.saldo_inicial")} value={peso(data.saldo_inicial || 0)} />
       </div>
-      {porMedio.length > 0 && (
+      {byMethod.length > 0 && (
         <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.78rem]">
-          {porMedio.map(([medio, v]) => (
-            <div key={medio} className="flex items-center gap-1.5">
-              <dt className="capitalize text-tinta-suave">{medio.replaceAll("_", " ")}</dt>
-              <dd className="tabular-nums text-tinta">{peso(v)}</dd>
+          {byMethod.map(([method, amount]) => (
+            <div key={method} className="flex items-center gap-1.5">
+              <dt className="capitalize text-tinta-suave">{method.replaceAll("_", " ")}</dt>
+              <dd className="tabular-nums text-tinta">{peso(amount)}</dd>
             </div>
           ))}
         </dl>
@@ -69,7 +71,9 @@ export function CajaTile({ result }: ToolRenderProps) {
   );
 }
 
-type NegocioResult = {
+// Field names below mirror resumen_negocio's JSON response
+// (backend/core/store.py::_compute_panorama) verbatim.
+type BusinessSummaryResult = {
   resumen?: {
     inmovilizado_total?: number;
     activos?: number;
@@ -81,13 +85,14 @@ type NegocioResult = {
 };
 
 /** Only en_orden/atencion are known levels; anything else reads as a problem. */
-export function saludTono(nivel?: string): string {
-  if (nivel === "en_orden") return "bg-salvia/12 text-salvia";
-  if (nivel === "atencion") return "bg-oro/15 text-oro-tinta";
+export function healthTone(level?: string): string {
+  if (level === "en_orden") return "bg-salvia/12 text-salvia";
+  if (level === "atencion") return "bg-oro/15 text-oro-tinta";
   return "bg-rojo/10 text-rojo";
 }
 
-const ALERTA_LABEL_KEY: Record<string, string> = {
+// Keys match `alertas`' own JSON keys (backend/core/store.py) — not ours to rename.
+const ALERT_LABEL_KEYS: Record<string, string> = {
   fantasmas: "toolui.negocio.alertas_fantasmas",
   negativos: "toolui.negocio.alertas_negativos",
   sin_pvp: "toolui.negocio.alertas_sin_pvp",
@@ -95,41 +100,45 @@ const ALERTA_LABEL_KEY: Record<string, string> = {
   costo_viejo: "toolui.negocio.alertas_costo_viejo",
 };
 
-export function NegocioResumen({ result }: ToolRenderProps) {
+export function BusinessSummary({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
-  const r = result as NegocioResult;
-  const res = r?.resumen;
-  if (!res) return null;
-  const alertas = Object.entries(r.alertas || {}).filter(([, v]) => (v?.cantidad || 0) > 0);
+  const data = result as BusinessSummaryResult;
+  const summary = data?.resumen;
+  if (!summary) return null;
+  const alerts = Object.entries(data.alertas || {}).filter(([, alert]) => (alert?.cantidad || 0) > 0);
   return (
     <div className="mt-1.5">
-      {res.salud?.label && (
+      {summary.salud?.label && (
         <span
-          className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${saludTono(res.salud.nivel)}`}
+          className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${healthTone(summary.salud.nivel)}`}
         >
-          {res.salud.label}
+          {summary.salud.label}
         </span>
       )}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Tile label={t("toolui.negocio.inmovilizado")} value={peso(res.inmovilizado_total || 0)} tono="text-hielo" />
-        <Tile label={t("toolui.negocio.articulos")} value={num(res.activos || 0)} />
-        <Tile label={t("toolui.negocio.stock_cero")} value={num(res.stock_cero || 0)} />
+        <Tile
+          label={t("toolui.negocio.inmovilizado")}
+          value={peso(summary.inmovilizado_total || 0)}
+          tone="text-hielo"
+        />
+        <Tile label={t("toolui.negocio.articulos")} value={num(summary.activos || 0)} />
+        <Tile label={t("toolui.negocio.stock_cero")} value={num(summary.stock_cero || 0)} />
         <Tile
           label={t("toolui.negocio.stock_negativo")}
-          value={num(res.stock_negativo || 0)}
-          tono={res.stock_negativo ? "text-rojo" : undefined}
+          value={num(summary.stock_negativo || 0)}
+          tone={summary.stock_negativo ? "text-rojo" : undefined}
         />
       </div>
-      {alertas.length > 0 && (
+      {alerts.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {alertas.map(([k, v]) => (
+          {alerts.map(([key, alert]) => (
             <span
-              key={k}
+              key={key}
               className="inline-flex items-center gap-1 rounded-full border border-linea px-2 py-1 text-[0.74rem] text-tinta-suave"
             >
-              {t(ALERTA_LABEL_KEY[k] || k)} <b className="text-tinta">{num(v?.cantidad || 0)}</b>
-              {v?.impacto_pesos ? <span> · {peso(v.impacto_pesos)}</span> : null}
+              {t(ALERT_LABEL_KEYS[key] || key)} <b className="text-tinta">{num(alert?.cantidad || 0)}</b>
+              {alert?.impacto_pesos ? <span> · {peso(alert.impacto_pesos)}</span> : null}
             </span>
           ))}
         </div>
@@ -138,5 +147,8 @@ export function NegocioResumen({ result }: ToolRenderProps) {
   );
 }
 
-export const estadoCajaPresenter: ToolPresenter = { labels: toolLabels("estado_caja"), render: CajaTile };
-export const resumenNegocioPresenter: ToolPresenter = { labels: toolLabels("resumen_negocio"), render: NegocioResumen };
+export const cashDrawerPresenter: ToolPresenter = { labels: toolLabels("estado_caja"), render: CashDrawerTile };
+export const businessSummaryPresenter: ToolPresenter = {
+  labels: toolLabels("resumen_negocio"),
+  render: BusinessSummary,
+};

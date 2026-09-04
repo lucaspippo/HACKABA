@@ -11,17 +11,19 @@ import { t } from "../../../lib/i18n";
  * vocabulary used elsewhere (see desktop/sections/Inicio.jsx).
  */
 
-const TONO_CHIP: Record<string, string> = {
+// Keys/values below are the actual `tono` values angela.py sends — not ours to rename.
+const TONE_CHIP_CLASSES: Record<string, string> = {
   rojo: "bg-rojo/10 text-rojo",
   oro: "bg-oro/15 text-oro-tinta",
   salvia: "bg-salvia/12 text-salvia",
 };
 
-export function tonoChip(tono?: string): string {
-  return TONO_CHIP[tono || ""] || "bg-papel-hondo text-tinta-suave";
+export function toneChipClass(tone?: string): string {
+  return TONE_CHIP_CLASSES[tone || ""] || "bg-papel-hondo text-tinta-suave";
 }
 
-type Prioridad = {
+// Field names below mirror one priority's JSON shape (backend/angela.py::_slim).
+type Priority = {
   id?: string;
   chip?: string;
   titulo?: string;
@@ -31,36 +33,39 @@ type Prioridad = {
   tono?: string;
 };
 
-function Fila({ p }: { p: Prioridad }) {
+function PriorityRow({ priority }: { priority: Priority }) {
   return (
     <div className="flex items-start gap-2 border-b border-linea/60 py-2 last:border-0">
-      {p.chip && (
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${tonoChip(p.tono)}`}>
-          {p.chip}
+      {priority.chip && (
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${toneChipClass(priority.tono)}`}
+        >
+          {priority.chip}
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-[0.86rem] leading-snug text-tinta">{p.titulo}</p>
-        {p.resumen && <p className="text-[0.78rem] leading-snug text-tinta-suave">{p.resumen}</p>}
+        <p className="text-[0.86rem] leading-snug text-tinta">{priority.titulo}</p>
+        {priority.resumen && <p className="text-[0.78rem] leading-snug text-tinta-suave">{priority.resumen}</p>}
       </div>
-      {(p.cifra_texto || p.monto != null) && (
+      {(priority.cifra_texto || priority.monto != null) && (
         <span className="shrink-0 whitespace-nowrap text-[0.82rem] font-medium text-tinta">
-          {p.cifra_texto || peso(p.monto || 0)}
+          {priority.cifra_texto || peso(priority.monto || 0)}
         </span>
       )}
     </div>
   );
 }
 
-type PrioridadesResult = { act?: Prioridad[]; watch?: Prioridad[] };
+// `act`/`watch` are the response's own top-level keys (backend/core/priorities.py).
+type PrioritiesResult = { act?: Priority[]; watch?: Priority[] };
 
-export function Prioridades({ result }: ToolRenderProps) {
+export function Priorities({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
-  const r = result as PrioridadesResult;
-  if (!r) return null;
-  const act = r.act || [];
-  const watch = r.watch || [];
+  const data = result as PrioritiesResult;
+  if (!data) return null;
+  const act = data.act || [];
+  const watch = data.watch || [];
   if (act.length === 0 && watch.length === 0) return null;
   return (
     <div className="mt-1.5 space-y-2">
@@ -69,8 +74,8 @@ export function Prioridades({ result }: ToolRenderProps) {
           <p className="mb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">
             {t("toolui.prioridades.act")}
           </p>
-          {act.map((p, i) => (
-            <Fila key={p.id ?? i} p={p} />
+          {act.map((priority, i) => (
+            <PriorityRow key={priority.id ?? i} priority={priority} />
           ))}
         </div>
       )}
@@ -79,8 +84,8 @@ export function Prioridades({ result }: ToolRenderProps) {
           <p className="mb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">
             {t("toolui.prioridades.watch")}
           </p>
-          {watch.map((p, i) => (
-            <Fila key={p.id ?? i} p={p} />
+          {watch.map((priority, i) => (
+            <PriorityRow key={priority.id ?? i} priority={priority} />
           ))}
         </div>
       )}
@@ -88,7 +93,7 @@ export function Prioridades({ result }: ToolRenderProps) {
   );
 }
 
-export const listarPrioridadesPresenter: ToolPresenter = {
+export const prioritiesPresenter: ToolPresenter = {
   labels: toolLabels("listar_prioridades"),
-  render: Prioridades,
+  render: Priorities,
 };

@@ -17,18 +17,18 @@ export type Column = { key: string; label: string; money?: boolean; numeric?: bo
 
 export function sortRows(rows: Record<string, unknown>[], key: string, dir: 1 | -1) {
   return [...rows].sort((a, b) => {
-    const av = a[key];
-    const bv = b[key];
-    if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
-    return String(av ?? "").localeCompare(String(bv ?? "")) * dir;
+    const left = a[key];
+    const right = b[key];
+    if (typeof left === "number" && typeof right === "number") return (left - right) * dir;
+    return String(left ?? "").localeCompare(String(right ?? "")) * dir;
   });
 }
 
-function formatVal(v: unknown, money?: boolean) {
-  if (v == null) return "—";
-  if (typeof v === "number") return money ? peso(v) : num(v);
-  if (typeof v === "boolean") return v ? t("common.si") : t("common.no");
-  return String(v);
+function formatValue(value: unknown, money?: boolean) {
+  if (value == null) return "—";
+  if (typeof value === "number") return money ? peso(value) : num(value);
+  if (typeof value === "boolean") return value ? t("common.si") : t("common.no");
+  return String(value);
 }
 
 function SortableTable({
@@ -56,18 +56,18 @@ function SortableTable({
       <table className="w-full text-left text-[0.78rem]">
         <thead>
           <tr className="border-b border-linea bg-papel/60">
-            {columns.map((c) => {
-              const alignRight = c.money || c.numeric;
+            {columns.map((column) => {
+              const alignRight = column.money || column.numeric;
               return (
-                <th key={c.key} className="p-0">
+                <th key={column.key} className="p-0">
                   <button
-                    onClick={() => toggle(c.key)}
+                    onClick={() => toggle(column.key)}
                     className={`flex w-full items-center gap-1 whitespace-nowrap px-2.5 py-1.5 font-semibold text-tinta-suave hover:text-tinta ${
                       alignRight ? "justify-end" : ""
                     }`}
                   >
-                    {c.label}
-                    {sort.key === c.key &&
+                    {column.label}
+                    {sort.key === column.key &&
                       (sort.dir === 1 ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
                   </button>
                 </th>
@@ -76,16 +76,16 @@ function SortableTable({
           </tr>
         </thead>
         <tbody>
-          {sorted.slice(0, limit).map((r, i) => (
+          {sorted.slice(0, limit).map((row, i) => (
             <tr key={i} className={i % 2 ? "bg-crema/40" : ""}>
-              {columns.map((c) => (
+              {columns.map((column) => (
                 <td
-                  key={c.key}
+                  key={column.key}
                   className={`whitespace-nowrap px-2.5 py-1.5 tabular-nums text-tinta ${
-                    c.money || c.numeric ? "text-right" : ""
+                    column.money || column.numeric ? "text-right" : ""
                   }`}
                 >
-                  {formatVal(r[c.key], c.money)}
+                  {formatValue(row[column.key], column.money)}
                 </td>
               ))}
             </tr>
@@ -101,7 +101,9 @@ function SortableTable({
   );
 }
 
-type ClienteRow = Record<string, unknown> & {
+// Field names below mirror cuentas_corrientes' JSON response
+// (backend/core/cuentas.py) verbatim — not identifiers of ours to translate.
+type CustomerRow = Record<string, unknown> & {
   nombre?: string;
   saldo?: number;
   en_mora?: boolean;
@@ -109,10 +111,10 @@ type ClienteRow = Record<string, unknown> & {
   disponible?: number;
 };
 
-type CuentasResult = {
+type AccountsReceivableResult = {
   encontrado?: boolean;
   cliente?: string;
-  // single matched client (a `cliente` arg was given) vs. the full ledger below.
+  // single matched customer (a `cliente` arg was given) vs. the full ledger below.
   nombre?: string;
   saldo?: number;
   en_mora?: boolean;
@@ -124,25 +126,25 @@ type CuentasResult = {
     total_morosos?: number;
     cantidad_morosos?: number;
   };
-  clientes?: ClienteRow[];
+  clientes?: CustomerRow[];
 };
 
-export function CuentasCorrientes({ result }: ToolRenderProps) {
+export function AccountsReceivable({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
-  const r = result as CuentasResult;
-  if (!r) return null;
+  const data = result as AccountsReceivableResult;
+  if (!data) return null;
 
-  if (r.encontrado === false) {
+  if (data.encontrado === false) {
     return (
       <p className="mt-1 text-[0.82rem] text-tinta-suave">
-        {t("toolui.cuentas.no_encontrado", { cliente: r.cliente ?? "" })}
+        {t("toolui.cuentas.no_encontrado", { cliente: data.cliente ?? "" })}
       </p>
     );
   }
 
-  if (Array.isArray(r.clientes)) {
-    const tot = r.totales || {};
+  if (Array.isArray(data.clientes)) {
+    const totals = data.totales || {};
     const columns: Column[] = [
       { key: "nombre", label: t("toolui.cuentas.col_cliente") },
       { key: "saldo", label: t("toolui.cuentas.col_saldo"), money: true },
@@ -151,31 +153,31 @@ export function CuentasCorrientes({ result }: ToolRenderProps) {
     return (
       <div className="mt-1.5">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Tile label={t("toolui.cuentas.total_adeudado")} value={peso(tot.total_adeudado || 0)} />
-          <Tile label={t("toolui.cuentas.clientes_con_deuda")} value={num(tot.clientes_con_deuda || 0)} />
+          <Tile label={t("toolui.cuentas.total_adeudado")} value={peso(totals.total_adeudado || 0)} />
+          <Tile label={t("toolui.cuentas.clientes_con_deuda")} value={num(totals.clientes_con_deuda || 0)} />
           <Tile
             label={t("toolui.cuentas.total_morosos")}
-            value={peso(tot.total_morosos || 0)}
-            tono={tot.total_morosos ? "text-rojo" : undefined}
+            value={peso(totals.total_morosos || 0)}
+            tone={totals.total_morosos ? "text-rojo" : undefined}
           />
-          <Tile label={t("toolui.cuentas.cantidad_morosos")} value={num(tot.cantidad_morosos || 0)} />
+          <Tile label={t("toolui.cuentas.cantidad_morosos")} value={num(totals.cantidad_morosos || 0)} />
         </div>
-        <SortableTable rows={r.clientes} columns={columns} initialSort="saldo" />
+        <SortableTable rows={data.clientes} columns={columns} initialSort="saldo" />
       </div>
     );
   }
 
-  if (r.nombre) {
+  if (data.nombre) {
     return (
       <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Tile
           label={t("toolui.cuentas.col_saldo")}
-          value={peso(r.saldo || 0)}
-          tono={r.en_mora ? "text-rojo" : undefined}
+          value={peso(data.saldo || 0)}
+          tone={data.en_mora ? "text-rojo" : undefined}
         />
-        {r.disponible != null && <Tile label={t("toolui.cuentas.disponible")} value={peso(r.disponible)} />}
-        {r.dias_sin_pagar != null && (
-          <Tile label={t("toolui.cuentas.col_dias")} value={num(r.dias_sin_pagar)} />
+        {data.disponible != null && <Tile label={t("toolui.cuentas.disponible")} value={peso(data.disponible)} />}
+        {data.dias_sin_pagar != null && (
+          <Tile label={t("toolui.cuentas.col_dias")} value={num(data.dias_sin_pagar)} />
         )}
       </div>
     );
@@ -184,16 +186,16 @@ export function CuentasCorrientes({ result }: ToolRenderProps) {
   return null;
 }
 
-type ItemsResult = {
+type ItemGroupResult = {
   items?: Record<string, unknown>[];
   total_inmovilizado_listado?: number;
 };
 
-export function ItemsTable({ result }: ToolRenderProps) {
+export function ItemGroupTable({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
-  const r = result as ItemsResult;
-  if (!r || !Array.isArray(r.items) || r.items.length === 0) return null;
+  const data = result as ItemGroupResult;
+  if (!data || !Array.isArray(data.items) || data.items.length === 0) return null;
   const columns: Column[] = [
     { key: "descripcion", label: t("toolui.items.col_desc") },
     { key: "stock", label: t("toolui.items.col_stock"), numeric: true },
@@ -202,22 +204,22 @@ export function ItemsTable({ result }: ToolRenderProps) {
   ];
   return (
     <div className="mt-1.5">
-      {r.total_inmovilizado_listado != null && (
+      {data.total_inmovilizado_listado != null && (
         <p className="text-[0.82rem] text-tinta">
-          {t("toolui.items.total")}: <b className="plata">{peso(r.total_inmovilizado_listado)}</b>
+          {t("toolui.items.total")}: <b className="plata">{peso(data.total_inmovilizado_listado)}</b>
         </p>
       )}
-      <SortableTable rows={r.items} columns={columns} initialSort="inmovilizado" />
+      <SortableTable rows={data.items} columns={columns} initialSort="inmovilizado" />
     </div>
   );
 }
 
-export const cuentasCorrientesPresenter: ToolPresenter = {
+export const accountsReceivablePresenter: ToolPresenter = {
   labels: toolLabels("cuentas_corrientes"),
-  render: CuentasCorrientes,
+  render: AccountsReceivable,
 };
-export const listarGrupoPresenter: ToolPresenter = { labels: toolLabels("listar_grupo"), render: ItemsTable };
-export const topInmovilizadoPresenter: ToolPresenter = {
+export const itemGroupPresenter: ToolPresenter = { labels: toolLabels("listar_grupo"), render: ItemGroupTable };
+export const topTiedUpCapitalPresenter: ToolPresenter = {
   labels: toolLabels("top_inmovilizado"),
-  render: ItemsTable,
+  render: ItemGroupTable,
 };
