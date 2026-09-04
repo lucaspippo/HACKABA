@@ -1,48 +1,81 @@
-# P22·C — Blueprint de Render para el DEMO público (link de la aplicación a YC).
-# SOLO el tenant demo: los data dirs de otros tenants no viajan — los excluye
-# .dockerignore y lo verifica la guardia del Dockerfile (el build falla si se cuela).
+# Render Blueprint. One Docker service: the API plus the compiled frontend on
+# one port, backed by an external Postgres.
 #
-# "New +" → "Blueprint" → conectar este repo → Render lee este archivo.
-# Los cuatro secrets (sync: false) se cargan a mano en el dashboard:
-#   ANTHROPIC_API_KEY   → la key real (jamás en el repo)
-#   POLPILOT_RESET_TOKEN → cualquier string largo random (protege el reset manual)
-#   DATABASE_URL         → Supabase pooler, transaction mode, puerto 6543,
-#                          sslmode=require — el rol ADMIN (Alembic y tenants).
-#   APP_DATABASE_URL      → un rol Postgres SIN BYPASSRLS ni superuser (ver
-#                          docker/init-app-role.sql para el equivalente local)
-#                          — todo lo tenant-scoped pasa por acá. Reusar
-#                          DATABASE_URL acá haría que Row-Level Security no
-#                          se aplique nunca, sin ningún error visible.
+# The image is tenant-agnostic — POLPILOT_TENANT below is what decides which
+# tenant this service serves. A second (productive) tenant is a copy of this
+# service block with a different tenant and its own database, NOT a routing
+# layer: one process serves one tenant (see backend/core/db/tenant.py).
+#
+# The documented target topology, and the triggers that would justify
+# building it, are in deploy/ARCHITECTURE.md §3.
+#
+# "New +" -> "Blueprint" -> connect this repo -> Render reads this file.
 services:
   - type: web
-    name: polpilot-demo
+    name: polpilot-app
     runtime: docker
-    plan: starter          # 512 MB alcanzan; free se duerme y arruina la primera impresión
+    plan: starter          # 512 MB is enough; free sleeps and ruins first impressions
     healthCheckPath: /api/health
+
+    # Migrations run BEFORE any instance of the new version starts, so a
+    # failed migration fails the deploy and the running instance keeps
+    # serving. Inside the container it used to exit the process instead,
+    # which took the service down. See deploy/migrate.py.
+    preDeployCommand: python deploy/migrate.py
+
     envVars:
+      # --- secrets: set in the dashboard, never in the repo -----------------
       - key: ANTHROPIC_API_KEY
-        sync: false        # secret: se carga en el dashboard, nunca en el repo
+        sync: false
       - key: POLPILOT_RESET_TOKEN
-        sync: false        # secret: token del reset manual (/api/admin/reset-demo)
+        sync: false        # guards POST /api/admin/reset-demo
       - key: DATABASE_URL
-        sync: false        # secret: Supabase pooler, rol admin (Alembic + tenants)
+        sync: false        # owner role: Alembic + tenant-row lookups
       - key: APP_DATABASE_URL
-        sync: false        # secret: rol restringido sin BYPASSRLS (todo lo tenant-scoped)
-      # El modelo de Ángela. NO es un secreto (es config), pero tampoco puede
-      # quedar implícito: sin esta línea el código cae a su default histórico
-      # (`claude-sonnet-4-6`, ver backend/config.MODELO_VALIDACION) y producción
-      # correría con un modelo distinto al que se validó. Comprobado el 04/08:
-      # /api/health del demo público devolvía `modelo_angela: claude-sonnet-4-6`.
+        sync: false        # NOBYPASSRLS role: every tenant-scoped query.
+                           # Reusing DATABASE_URL here would make Row-Level
+                           # Security silently do nothing, with no error.
+                           # docker/init-app-role.sql is the local equivalent.
+
+      # --- which tenant this service is ------------------------------------
+      # Mandatory. deploy/migrate.py and deploy/boot.py both refuse to run
+      # without it: core/paths.py falls back to "demo", so an unset variable
+      # would silently serve the demo tenant's users and data.
+      - key: POLPILOT_TENANT
+        value: demo
+
+      # Regenerate and reseed the dataset on every boot. Correct for the
+      # demo — Render's filesystem is ephemeral, so each restart returns it
+      # to a clean state, and /api/admin/reset-demo depends on the canonical
+      # copy. NEVER set this on a productive tenant: data-demo/generar.py
+      # rewrites the whole dataset.
+      - key: POLPILOT_SEED_ON_BOOT
+        value: "1"
+
+      # --- demo-only behavior (was baked into the image; see D6/F1) --------
+      # Do NOT copy this block to a productive service.
+      - key: POLPILOT_DEMO_AUTOLOGIN
+        value: "1"         # no login screen: the public link lands on Home
+      - key: POLPILOT_DEMO_ROLE_SWITCH
+        value: "1"         # "View as" role switcher
+      - key: POLPILOT_DEMO_TODAY
+        value: "2026-07-07"  # the seeded history's "today"
+      - key: POLPILOT_DEMO_MSG_CAP
+        value: "35"        # per-session message cap
+      - key: POLPILOT_DEMO_IP_CAP
+        value: "60"        # per-IP/day spend brake, survives a re-login
+      - key: POLPILOT_DEFAULT_LANG
+        value: en
+
+      # --- config, deliberately explicit -----------------------------------
+      # Not a secret, but it cannot be implicit either: without this line the
+      # code falls back to its historical default (claude-sonnet-4-6, see
+      # backend/config.MODELO_VALIDACION) and production would run a
+      # different model than the one validated. Verified via /api/health ->
+      # modelo_angela.
       - key: ANGELA_MODEL
         value: claude-sonnet-5
-      # El resto ya viene con defaults correctos en el Dockerfile (ENV):
-      # POLPILOT_TENANT=demo, POLPILOT_DATA_DIR, POLPILOT_DEFAULT_LANG=en,
-      # POLPILOT_DEMO_TODAY=2026-07-07, POLPILOT_DEMO_ROLE_SWITCH=1,
-      # POLPILOT_DEMO_AUTOLOGIN=1, POLPILOT_DEMO_MSG_CAP=35 (cap por sesión),
-      # POLPILOT_DEMO_IP_CAP=60 (freno de gasto por IP/día, sobrevive al
-      # re-login), POLPILOT_STATIC_DIR, POLPILOT_CANONICAL_DIR.
-      # Para pisar alguno, agregarlo acá con su valor.
-      #
-      # OJO (techo duro real del gasto): el cap por IP es una barrera blanda.
-      # El límite que NO se puede evadir se pone FUERA de la app: en la consola
-      # de Anthropic, un spend limit / budget alert sobre la API key.
+
+# The real ceiling on LLM spend is NOT in this file. The per-IP cap above is a
+# soft brake; the limit that cannot be evaded is set outside the app — a spend
+# limit or budget alert on the API key in the Anthropic console.
