@@ -15,6 +15,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import auth
+import config
 import main
 from core import comprobantes, esquema, store, vision_facturas
 
@@ -140,7 +141,11 @@ def test_extraccion_nunca_inventa_es_contrato_del_schema():
 # --- endpoint /api/factura/leer (visión mockeada) -------------------------------
 
 def test_leer_sin_api_key_es_honesto(h, monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # "No vision configured" is the WHOLE credential set, not just the direct
+    # key: with a gateway credential still set, this posts a 4-byte image at a
+    # real provider and gets `vision_fallo` instead of the honest `sin_vision`.
+    for var in config.credential_vars():
+        monkeypatch.delenv(var, raising=False)
     r = client.post("/api/factura/leer", headers=h,
                     json={"imagen": "aG9sYQ==", "media_type": "image/jpeg"})
     assert r.status_code == 200 and r.json()["error"] == "sin_vision"

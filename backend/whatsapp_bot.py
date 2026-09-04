@@ -9,8 +9,9 @@ sesión de tool-use CHICA Y APARTE, con su propio prompt y sus 4 tools, que
 sólo sabe: buscar en el catálogo, levantar un pedido, levantar un
 presupuesto, o avisar que la conversación necesita a una persona.
 
-Igual que angela.py: sin ANTHROPIC_API_KEY degrada con elegancia (un mensaje
-fijo, nunca inventa nada ni se cuelga).
+Igual que angela.py: el proveedor y el modelo los resuelve config.py (directo
+contra Anthropic o por el AI Gateway), y sin ninguno configurado degrada con
+elegancia (un mensaje fijo, nunca inventa nada ni se cuelga).
 
 Todo lo que estas tools EJECUTAN vive en core/whatsapp_channel.py (el canal:
 credenciales, envío, y el registro de pedidos como reportes de piso que el
@@ -21,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 
+import config
 from core import paths, whatsapp_channel
 
 MAX_TOKENS = int(os.environ.get("POLPILOT_MAX_TOKENS", "512"))
@@ -155,15 +157,15 @@ def responder_cliente(mensaje: str, historial: list[dict], telefono: str,
     """El equivalente de angela.responder() pero para esta sesión chica y
     aparte. Nunca toca los contextvars de angela.py ni su TOOLS: aislamiento
     completo entre el chat interno y el bot de cara al cliente."""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return _fallback(mensaje)
+    # config is the single provider switch (direct Anthropic or the AI
+    # Gateway); reading a key here would disagree with it.
     try:
-        import anthropic
-    except ImportError:
+        client = config.get_client()
+    except ImportError:                  # sin el paquete `anthropic`
+        client = None
+    if client is None:
         return _fallback(mensaje)
 
-    client = anthropic.Anthropic(api_key=api_key)
     system = SYSTEM_PROMPT.format(
         empresa=paths.EMPRESA,
         saludo=(f"\nSi es el primer mensaje de la conversación, empezá con algo como: "
@@ -177,7 +179,7 @@ def responder_cliente(mensaje: str, historial: list[dict], telefono: str,
     try:
         for _ in range(MAX_TOOL_TURNS):
             resp = client.messages.create(
-                model=os.environ.get("ANGELA_MODEL", "claude-sonnet-4-6"),
+                model=config.modelo_para(),
                 max_tokens=MAX_TOKENS, system=system, tools=TOOLS, messages=messages,
             )
             if resp.stop_reason == "tool_use":

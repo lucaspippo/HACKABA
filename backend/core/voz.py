@@ -25,16 +25,32 @@ La transcripción vive aparte, en core/transcripcion.py.
 """
 from __future__ import annotations
 
-import os
 import re
 import unicodedata
 
+import config
 import i18n
 
 from . import store, validacion
 
+
 # Mismo criterio que la visión: el modelo se puede cambiar por env sin tocar código.
-MODELO_VOZ = os.environ.get("POLPILOT_VOZ_MODEL", "claude-sonnet-4-6")
+def _modelo_voz() -> str:
+    """POLPILOT_VOZ_MODEL, or the provider-appropriate default. Resolved at
+    call time, never baked into a constant: the right slug depends on which
+    provider config resolved."""
+    return config.modelo_feature("POLPILOT_VOZ_MODEL")
+
+
+def _client():
+    """The configured provider's client (config is the single switch — direct
+    Anthropic or the AI Gateway), or None when no provider is configured or
+    the `anthropic` package isn't installed."""
+    try:
+        return config.get_client()
+    except ImportError:
+        return None
+
 
 # --- lo que el frontline puede pedir por voz --------------------------------
 # Deliberadamente CHICO. Cada intención tiene un riel que ya existe y una
@@ -167,14 +183,12 @@ def interpretar(texto: str, lang: str | None = None) -> dict:
     preparada = _canonica(texto)
     if preparada:
         return preparada
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    client = _client()
+    if client is None:
         return _fallback(texto)          # sin LLM el flujo NO se cae: degrada
     try:
-        import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
         resp = client.messages.create(
-            model=MODELO_VOZ,
+            model=_modelo_voz(),
             max_tokens=1024,
             system=_SISTEMA,
             tools=[_ESQUEMA],
