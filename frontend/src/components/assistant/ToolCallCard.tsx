@@ -1,5 +1,5 @@
 import { Loader2, Wrench } from "lucide-react";
-import type { ToolCallMessagePartProps } from "@assistant-ui/react";
+import { useAuiState, type ToolCallMessagePartProps } from "@assistant-ui/react";
 import ToolFallback from "./tools/Fallback";
 import { presenterFor } from "./tools/registry";
 import { toolLabels } from "./tools/labels";
@@ -8,11 +8,20 @@ import { toolLabels } from "./tools/labels";
  * The card for ONE tool call: the label while it runs, the rendered result
  * once it arrives. The body comes from the tool's presenter if it has one,
  * otherwise from the shape-based Fallback (design doc D1).
+ *
+ * While it runs the line is Ángela's `status` text when she sent one, and the
+ * tool's i18n label otherwise.
  */
 export default function ToolCallCard(props: ToolCallMessagePartProps) {
-  const { toolName, status, result } = props;
+  const { toolName, toolCallId, status, result } = props;
   const isRunning = status?.type === "running" && result === undefined;
   const labels = toolLabels(toolName);
+  const modelLabel = useAuiState(
+    (s) =>
+      (s.message.metadata?.custom?.toolLabels as Record<string, string> | undefined)?.[
+        toolCallId
+      ],
+  );
   const presenter = presenterFor(toolName);
   const Body = presenter?.render;
 
@@ -31,7 +40,7 @@ export default function ToolCallCard(props: ToolCallMessagePartProps) {
         ) : (
           <Wrench size={14} className="shrink-0 text-violeta" />
         )}
-        <span>{isRunning ? labels.running : labels.done}</span>
+        <span>{isRunning ? (modelLabel ?? labels.running) : labels.done}</span>
       </div>
       {!isRunning && (Body ? Body(props as never) : <ToolFallback {...props} />)}
     </div>

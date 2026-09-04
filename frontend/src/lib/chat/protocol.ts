@@ -6,7 +6,15 @@ export type NoticeKind = "cap" | "tool_loop_exhausted" | "fake_model";
 
 export type StreamEvent =
   | { type: "text"; delta: string }
-  | { type: "tool_call"; id: string; name: string; input?: Record<string, unknown> }
+  // `label` is the call's `status` line. Model content, not app copy: the
+  // i18n label in tools/labels.ts is the fallback.
+  | {
+      type: "tool_call";
+      id: string;
+      name: string;
+      input?: Record<string, unknown>;
+      label?: string;
+    }
   | { type: "tool_result"; id: string; result?: unknown }
   | { type: "notice"; kind: NoticeKind }
   | { type: "error"; code: string; retryable?: boolean }
