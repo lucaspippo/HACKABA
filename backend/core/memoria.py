@@ -106,6 +106,9 @@ VISTA_CATALOGO = {
     "margen_pin_umbral": _val_umbral,
     "orden_home": _val_orden,
     "widgets": _val_widgets,
+    # Both default True when absent: read them with .get(key, True).
+    "knowledge_capture": _val_bool,
+    "knowledge_in_context": _val_bool,
 }
 
 

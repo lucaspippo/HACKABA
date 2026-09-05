@@ -3122,7 +3122,7 @@ class ConocimientoNuevo(BaseModel):
     params: dict | None = None
 
 
-class ConocimientoPropuesta(BaseModel):
+class KnowledgeProposal(BaseModel):
     texto: str
     nodo: str
     tipo: str = "contexto"
@@ -3131,7 +3131,7 @@ class ConocimientoPropuesta(BaseModel):
     entidad: str | None = None
 
 
-def _puede_activar(u: dict, nodo: str, ambito: str) -> bool:
+def _can_activate(u: dict, nodo: str, ambito: str) -> bool:
     """Whether this user's confirmation activates a piece outright or only
     queues it. A global piece reaches everyone, so it stays admin-only —
     `visibles_para` would wave it through for any employee."""
@@ -3143,29 +3143,29 @@ def _puede_activar(u: dict, nodo: str, ambito: str) -> bool:
     return conocimiento.NODO_FEATURE.get(nodo) in set(perfiles.features_efectivas(u["username"]))
 
 
-@app.post("/api/conocimiento/confirmar")
-def conocimiento_confirmar(req: ConocimientoPropuesta, u: dict = Depends(usuario_actual)):
+@app.post("/api/conocimiento/confirm")
+def conocimiento_confirm(req: KnowledgeProposal, u: dict = Depends(usuario_actual)):
     """The user taps 'keep' on a chip Ángela proposed (angela.py's
     proponer_conocimiento writes nothing). Lands active when they could have
     reviewed it anyway, pending otherwise."""
     from core import fechas
     try:
-        propuesta = conocimiento.validar_propuesta(
+        proposal = conocimiento.validate_proposal(
             texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
             efecto=req.efecto, entidad=req.entidad)
     except conocimiento.ConocimientoInvalido as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    ya = conocimiento.equivalente(texto=propuesta["texto"], nodo=propuesta["nodo"],
-                                  entidad=propuesta["entidad"])
-    if ya:
-        return {"ok": True, "pieza": ya, "estado": ya["estado"], "ya_existia": True}
+    existing = conocimiento.find_duplicate(texto=proposal["texto"], nodo=proposal["nodo"],
+                                           entidad=proposal["entidad"])
+    if existing:
+        return {"ok": True, "piece": existing, "state": existing["estado"], "already_existed": True}
 
-    estado = "activo" if _puede_activar(u, propuesta["nodo"], propuesta["ambito"]) else "pendiente"
-    pieza = conocimiento.crear(
-        **propuesta, estado=estado,
+    state = "activo" if _can_activate(u, proposal["nodo"], proposal["ambito"]) else "pendiente"
+    piece = conocimiento.crear(
+        **proposal, estado=state,
         origen={"quien": u["username"], "cuando": fechas.hoy().isoformat()})
-    return {"ok": True, "pieza": pieza, "estado": estado, "ya_existia": False}
+    return {"ok": True, "piece": piece, "state": state, "already_existed": False}
 
 
 @app.post("/api/conocimiento")
