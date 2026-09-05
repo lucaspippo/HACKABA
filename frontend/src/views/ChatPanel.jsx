@@ -24,6 +24,7 @@ import { authStore } from "../lib/auth";
 import { equipoStore } from "../lib/equipoStore";
 import { vistaStore } from "../lib/vistaStore";
 import { useT } from "../lib/i18n";
+import { useHasCamera } from "../lib/useMediaQuery";
 
 // The chat body — SHARED between the side panel (desktop), the fullscreen
 // page (desktop, see ChatFullscreen) and mobile. Assumes it's already mounted
@@ -46,6 +47,7 @@ export default function ChatPanel({
 }) {
   const t = useT();
   const aui = useAui();
+  const hasCamera = useHasCamera();
   const messages = useAuiState((s) => s.thread.messages);
   const isRunning = useAuiState((s) => s.thread.isRunning);
   const activeThreadTitle = useActiveThreadTitle(
@@ -264,8 +266,9 @@ export default function ChatPanel({
           onExecutingChange={setExecuting}
           emptyState={emptyState}
           composerLeading={
-            authStore.tiene("cargar") && (
-              // The composer's mic is dictation now. This stays the document
+            hasCamera && authStore.tiene("cargar") && (
+              // Only where there is a camera to take the photo with. The
+              // composer's mic is dictation now; this stays the document
               // path: FacturaFlow reads the photo and stages it for an OK.
               <IconButton
                 label={t("chat.control.photo")}
