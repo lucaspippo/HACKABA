@@ -15,11 +15,9 @@ import FacturaFlow from "../components/FacturaFlow";
 import VozAngela from "../components/VozAngela";
 import ChatThread from "../components/assistant/ChatThread";
 import IconButton from "../components/assistant/IconButton";
-import {
-  NewChatButton,
-  HistoryDropdown,
-  useActiveThreadTitle,
-} from "../components/assistant/ChatToolbar";
+import NewChatButton from "../components/assistant/NewChatButton";
+import HistoryDropdown from "../components/assistant/HistoryDropdown";
+import { useActiveThreadTitle } from "../components/assistant/threads";
 import { textoFeed } from "../components/ActividadFeed";
 import { fecha } from "../lib/format";
 import { api } from "../lib/api";
