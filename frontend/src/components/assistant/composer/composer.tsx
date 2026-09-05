@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, ReactNode } from "react";
 import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
+import { cn } from "@/lib/utils";
 import {
   ComposerActions,
   ComposerAttachButton,
@@ -253,10 +254,17 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
               )}
               <ComposerSend
                 streaming={isRunning}
-                idle={canSend}
+                // The element reads `idle` as "nothing to send" and inks the
+                // button on its negation.
+                idle={!canSend}
+                disabled={!canSend && !isRunning}
                 sendLabel={t("chat.composer.send")}
                 stopLabel={t("chat.composer.stop")}
                 onClick={() => (isRunning ? aui.composer.cancel() : aui.composer.send())}
+                className={cn(
+                  "disabled:cursor-not-allowed",
+                  (canSend || isRunning) && "bg-violeta text-crema",
+                )}
               />
             </ComposerActions>
           </ComposerToolbar>
