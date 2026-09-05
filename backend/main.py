@@ -587,7 +587,7 @@ def health():
         "ok": True,
         "servicio": "polpilot-app",  # the service, not the tenant — `tenant` below says which
         "angela_online": config.model_disponible(),
-        "modo_angela": config.modo(),          # "simulado" o "claude", evaluado en runtime
+        "modo_angela": config.modo(),          # "claude" or "offline", evaluated at runtime
         "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
         "routing_modelos": config.ROUTING_ACTIVO,  # apagado durante validación
         "idioma_default": paths.DEFAULT_LANG,  # default del tenant (Login lo usa pre-sesión)
@@ -3120,6 +3120,52 @@ class ConocimientoNuevo(BaseModel):
     efecto: str
     entidad: str | None = None
     params: dict | None = None
+
+
+class KnowledgeProposal(BaseModel):
+    texto: str
+    nodo: str
+    tipo: str = "contexto"
+    ambito: str = "global"
+    efecto: str = "contexto_para_angela"
+    entidad: str | None = None
+
+
+def _can_activate(u: dict, nodo: str, ambito: str) -> bool:
+    """Whether this user's confirmation activates a piece outright or only
+    queues it. A global piece reaches everyone, so it stays admin-only —
+    `visibles_para` would wave it through for any employee."""
+    if u.get("es_admin"):
+        return True
+    if ambito == "global":
+        return False
+    from core import perfiles
+    return conocimiento.NODO_FEATURE.get(nodo) in set(perfiles.features_efectivas(u["username"]))
+
+
+@app.post("/api/conocimiento/confirm")
+def conocimiento_confirm(req: KnowledgeProposal, u: dict = Depends(usuario_actual)):
+    """The user taps 'keep' on a chip Ángela proposed (angela.py's
+    proponer_conocimiento writes nothing). Lands active when they could have
+    reviewed it anyway, pending otherwise."""
+    from core import fechas
+    try:
+        proposal = conocimiento.validate_proposal(
+            texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
+            efecto=req.efecto, entidad=req.entidad)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    existing = conocimiento.find_duplicate(texto=proposal["texto"], nodo=proposal["nodo"],
+                                           entidad=proposal["entidad"])
+    if existing:
+        return {"ok": True, "piece": existing, "state": existing["estado"], "already_existed": True}
+
+    state = "activo" if _can_activate(u, proposal["nodo"], proposal["ambito"]) else "pendiente"
+    piece = conocimiento.crear(
+        **proposal, estado=state,
+        origen={"quien": u["username"], "cuando": fechas.hoy().isoformat()})
+    return {"ok": True, "piece": piece, "state": state, "already_existed": False}
 
 
 @app.post("/api/conocimiento")

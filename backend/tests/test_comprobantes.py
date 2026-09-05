@@ -265,29 +265,6 @@ def test_run_tool_consultar_compras_vacio_y_con_datos(h):
     angela._set_sesion()
 
 
-def test_fallback_compras_con_paridad(h):
-    import angela
-    client.post("/api/factura/confirmar", headers=h, json={"extraccion": _factura()})
-    angela._set_sesion(features=None)
-    r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" in r["tools_used"]
-    assert "FA-0001-00091352" in r["answer"]
-    # y en inglés, la misma tool
-    angela._set_sesion(features=None, idioma="en")
-    r2 = angela._fallback("what did i just load?")
-    assert "consultar_compras" in r2["tools_used"]
-    angela._set_sesion()
-
-
-def test_fallback_compras_bloqueado_sin_feature():
-    import angela
-    angela._set_sesion(usuario="deposito", rol="Depósito",
-                       features={"deposito", "perfil", "angela"})
-    r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" not in r["tools_used"]
-    angela._set_sesion()
-
-
 def test_muestras_no_existen_en_el_piloto(h):
     """Los comprobantes de muestra son SOLO del demo: en el piloto, 404."""
     assert client.get("/api/comprobantes/muestras", headers=h).status_code == 404
@@ -377,21 +354,6 @@ def test_consultar_compras_ve_remito_y_recibo(h):
     assert any("R-0001-00058214" in str(g.get("origen")) for g in r["recepciones_recientes"])
     assert r["recepciones_recientes"][0]["proveedor"] == PROVEEDOR["razon_social"]
     assert any(c["cliente"] == moroso["nombre"] for c in r["cobros_recientes"])
-
-
-def test_fallback_que_acabo_de_cargar_menciona_remito(h):
-    """Paridad simulado↔Claude: el fallback también responde con el remito."""
-    import angela
-    _sembrar_oc()
-    client.post("/api/factura/confirmar", headers=h, json={"extraccion": _remito()})
-    angela._set_sesion(features=None)
-    r = angela._fallback("¿qué acabo de cargar?")
-    assert "consultar_compras" in r["tools_used"]
-    assert "R-0001-00058214" in r["answer"]
-    angela._set_sesion(features=None, idioma="en")
-    r2 = angela._fallback("what did i just load?")
-    assert "R-0001-00058214" in r2["answer"]
-    angela._set_sesion()
 
 
 def test_proveedores_conocidos_incluye_proveedores_json(h):

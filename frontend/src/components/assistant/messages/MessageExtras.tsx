@@ -2,14 +2,23 @@ import { useAui, useAuiState } from "@assistant-ui/react";
 import { useMemo, useState } from "react";
 import PlanChecklist from "../PlanChecklist";
 import DocCard from "../DocCard";
-import MemoryChips from "../MemoryChips";
+import { MemoryChips, type MemoryChange } from "../memory-chips";
 import { api } from "../../../lib/api";
 import { toast } from "../../../lib/toastStore";
 import { useT } from "../../../lib/i18n";
 
 export type ExecutingHandler = (running: boolean) => void;
 
-type MemoryChip = { id: string; pid: string; text: string; change: string };
+type ChipDecision = MemoryChange | "dismissed";
+
+type KnowledgeProposal = {
+  texto: string;
+  nodo: string;
+  tipo: string;
+  ambito: string;
+  efecto: string;
+  entidad: string | null;
+};
 
 // useAuiState is a useSyncExternalStore selector: its return value MUST be
 // referentially stable across calls with unchanged state, or React re-renders
@@ -38,40 +47,50 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
   // which broke useSyncExternalStore's referential-stability requirement
   // and caused an infinite render loop; it's derived with useMemo instead.
   const content = useAuiState((s) => s.message.content) ?? EMPTY_ARRAY;
-  const propuestas = useMemo(
+  const proposals = useMemo(
     () =>
       (
         content as unknown as Array<{
           type: string;
           toolName?: string;
           toolCallId?: string;
-          result?: { ok?: boolean; pieza?: { id: string; texto: string } };
+          result?: { ok?: boolean; proposal?: KnowledgeProposal; already_saved?: string };
         }>
       )
-        .filter((p) => p.type === "tool-call" && p.toolName === "proponer_conocimiento" && p.result?.ok)
+        .filter(
+          (p) =>
+            p.type === "tool-call" &&
+            p.toolName === "proponer_conocimiento" &&
+            p.result?.ok &&
+            p.result.proposal,
+        )
         .map((p) => ({
           id: p.toolCallId!,
-          pid: p.result!.pieza!.id,
-          text: p.result!.pieza!.texto,
-          change: "added",
+          proposal: p.result!.proposal!,
+          alreadySaved: Boolean(p.result!.already_saved),
         })),
     [content],
   );
-  const [olvidadas, setOlvidadas] = useState(() => new Set<string>());
-  const chips = propuestas.filter((c) => !olvidadas.has(c.id));
-  const onForget = async (chip: { id: string; pid: string }) => {
-    setOlvidadas((prev) => new Set(prev).add(chip.id)); // optimista: no esperamos al server para ocultarla
+  const [decided, setDecided] = useState(() => new Map<string, ChipDecision>());
+  const chips = proposals
+    .filter((p) => decided.get(p.id) !== "dismissed")
+    .map((p) => ({
+      id: p.id,
+      text: p.proposal.texto,
+      change: (decided.get(p.id) ?? (p.alreadySaved ? "existing" : "proposed")) as MemoryChange,
+    }));
+
+  const onSave = async (id: string) => {
+    const found = proposals.find((p) => p.id === id);
+    if (!found) return;
     try {
-      await api.conocimientoRechazar(chip.pid);
-    } catch (e) {
-      setOlvidadas((prev) => {
-        const next = new Set(prev);
-        next.delete(chip.id);
-        return next;
-      });
-      toast(t("memoria_chips.error"), "error");
+      const r = await api.knowledgeConfirm(found.proposal);
+      setDecided((prev) => new Map(prev).set(id, r.state === "activo" ? "saved" : "pending"));
+    } catch {
+      toast(t("chat.memory.save_error"), "error");
     }
   };
+  const onDismiss = (id: string) => setDecided((prev) => new Map(prev).set(id, "dismissed"));
   const plan = actions.find((a) => a.type === "plan_progreso");
   const docAction = actions.find((a) => a.type === "documento");
   return (
@@ -83,7 +102,22 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
         />
       )}
       {docAction?.documento != null && <DocCard documento={docAction.documento} t={t} />}
-      {chips.length > 0 && <MemoryChips chips={chips as MemoryChip[]} onForget={onForget} />}
+      {chips.length > 0 && (
+        <MemoryChips
+          className="mt-2"
+          chips={chips}
+          onSave={onSave}
+          onDismiss={onDismiss}
+          labels={{
+            memory: t("chat.memory.header"),
+            remembered: (n) => t("chat.memory.kept_n", { n: String(n) }),
+            save: (text) => t("chat.memory.save", { text }),
+            dismiss: (text) => t("chat.memory.dismiss", { text }),
+            saved: t("chat.memory.saved"),
+            pending: t("chat.memory.pending"),
+          }}
+        />
+      )}
       {options.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {options.map((op, k) => (

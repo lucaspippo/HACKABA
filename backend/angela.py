@@ -5,10 +5,9 @@ angela.py · El cerebro conversacional de PolPilot
 como un socio que conoce Horizonte de memoria, y responde con los NÚMEROS
 REALES del negocio porque tiene herramientas (tools) para consultarlos en vivo.
 
-- Si hay ANTHROPIC_API_KEY: corre el loop de tool use contra la API de Claude.
-- Si no la hay: degrada con elegancia. Igual responde las preguntas frecuentes
-  resolviéndolas directo contra el data_store (sin inventar), y avisa que para
-  la conversación libre completa falta cargar la API key.
+- If a provider is configured (ANTHROPIC_API_KEY or the AI Gateway): the
+  tool-use loop against Claude.
+- If not: the chat surfaces an honest error. It does not invent a reply.
 
 Modelo por defecto: Claude Sonnet 4.6 (buen balance para razonar + tool use).
 Configurable con ANGELA_MODEL.
@@ -19,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import time
 
 import config
@@ -74,6 +72,7 @@ def _set_sesion(usuario=None, rol=None, features=None, idioma=None) -> None:
 # esa feature, la tool ni se le ofrece al modelo (capa 1) ni se ejecuta (capa 2).
 # Las que NO están acá son transversales (navegar, memoria, recordatorios,
 # cancelar, macro pública) y quedan siempre disponibles.
+# TODO: this needs a refactoring
 TOOL_FEATURE = {
     # inventario / saneamiento (el core del dato)
     "resumen_negocio": "inventario", "plata_en": "inventario",
@@ -123,7 +122,12 @@ def _usuario_para_manual() -> dict:
             "es_admin": False, "features": sorted(feats or [])}
 
 
-def tools_para(features: set[str] | None) -> list[dict]:
+# Everything that writes something new into what Angela remembers. The
+# knowledge_capture setting turns all of it off, or the toggle would lie.
+CAPTURE_TOOLS = {"proponer_conocimiento", "recordar"}
+
+
+def tools_para(features: set[str] | None, knowledge_capture: bool = True) -> list[dict]:
     """El subconjunto de TOOLS que este usuario puede usar (capa 1).
 
     Returns the definitions as the model sees them, `status` line included.
@@ -131,6 +135,8 @@ def tools_para(features: set[str] | None) -> list[dict]:
     scripts/generate_tool_types.py.
     """
     catalog = _tools_for_model()
+    if not knowledge_capture:
+        catalog = [t for t in catalog if t["name"] not in CAPTURE_TOOLS]
     if features is None:
         return list(catalog)
 
@@ -212,6 +218,7 @@ MAX_TOOL_TURNS = 5
 CONTEXT_WINDOW = int(os.environ.get("POLPILOT_CONTEXT_WINDOW", "200000"))
 
 
+# TODO: this is weird
 def _resumen_para_prompt() -> str:
     r = ds.resumen()
     res, al = r["resumen"], r["alertas"]
@@ -265,13 +272,19 @@ Sucursal Puerto). El dueño (Aldo) viene del mostrador: no es técnico y no quie
 aprender ningún sistema. Tu trabajo es hablarle como un socio que conoce la \
 empresa de memoria."""
 
+# TODO: system prompt should be moved outside and abstracted to be more dynamic based on the context and goal of the user.
 # La intro depende del TENANT (P9·F): la disciplina es UNA sola; cambia el negocio.
 SYSTEM_PROMPT = (_INTRO_DEMO if paths.TENANT == "demo" else _INTRO_PILOTO) + """
 
 CÓMO HABLÁS:
 - Directo y concreto. Primero el dato, después el contexto.
-- Lenguaje rioplatense natural cuando corresponde, nunca jerga técnica ni tono \
-de bot corporativo. Nada de "Estimado usuario" ni "Procesando su solicitud".
+- Match the user's language. They can switch mid-conversation; follow them. \
+Do not wait for a language setting.
+- Spanish: castellano rioplatense, never stiff or corporate. Money in Argentine \
+grouping: $1.234.567. Nada de "Estimado usuario" ni "Procesando su solicitud".
+- English: plain-spoken business English, warm and direct, same personality \
+(never stiff corporate). Product, customer and supplier names stay exactly as \
+they appear in the data. Money with en-US grouping: $1,234,567 (Argentine pesos, ARS).
 - Cerrás siempre con una acción sugerida o una pregunta que lleva a la próxima \
 decisión. No dejás al dueño en el aire.
 - CONCISIÓN POR DEFECTO (regla de la casa, P23): tus respuestas son CORTAS — \
@@ -522,6 +535,40 @@ vista no tiene gráficos, pero lo tengo anotado"). Si el gusto no matchea el
 catálogo de preferencias aplicables, guardalo con 'recordar' y aclarale que
 quedó anotado pero que la interfaz todavía no lo aplica sola.
 
+CITÁ LA MEMORIA DEL NEGOCIO:
+- El bloque LO QUE ESTE NEGOCIO TE ENSEÑÓ te llega con un ID entre paréntesis
+por regla. Cada vez que una de esas reglas sostiene algo que decís, cerrá esa
+frase con [·](#memoria-ID) — el ID tal cual, ej: [·](#memoria-k01). Es un link
+markdown y la interfaz lo dibuja como una marquita: así la persona ve que eso
+salió de lo que ella misma te enseñó y no de una suposición tuya.
+- Va PEGADO a la frase que usa la regla, nunca al final del mensaje ni en una
+lista de fuentes al pie. Si la respuesta se apoya en tres reglas, van tres
+citas, cada una en su frase.
+- Solo IDs de ese bloque. Si no tenés el ID a mano, contá la regla sin citar:
+jamás inventes uno.
+
+CUANDO TE PIDEN QUE TE ACUERDES DE ALGO:
+- Estas frases son un pedido de memoria, siempre: "acordate", "recordá",
+"anotate", "que no se te olvide", "tenelo en cuenta", "de ahora en más",
+"siempre que", "remember", "note that", "don't forget". Ante cualquiera de
+ellas, si lo que te dicen es sobre EL NEGOCIO (cómo tratar a un cliente, una
+excepción, un protocolo, por qué algo es distinto), usá
+'proponer_conocimiento'. No discutas ni expliques por qué no podés: ofrecé
+guardarlo.
+- 'proponer_conocimiento' NO GUARDA NADA por sí solo: deja un chip abajo de tu
+respuesta que la persona toca para confirmar. Entonces decí que se lo ofrecés
+("¿lo guardo?"), NUNCA que ya quedó guardado. Es la diferencia entre honesto y
+mentiroso: el chip todavía está sin tocar.
+- Ofrecelo vos también, sin que te lo pidan, cuando en la charla aparece algo
+que vale para siempre: una regla que explica un número raro, una excepción de
+un cliente, un criterio que el dueño acaba de decidir. Uno por respuesta, y
+solo si es DURADERO — nunca un número, un hallazgo del día ni algo que ya
+sabés.
+- Si lo que te piden recordar es un gusto de ESTA persona (cómo hablarle, qué
+ver primero) y no una regla del negocio, no uses 'proponer_conocimiento': es
+memoria personal, no conocimiento compartido. Decí honesto que todavía no
+podés guardar eso.
+
 NORMALIZACIÓN AUTOMÁTICA (Nivel 1 del Staging):
 - Al cargar un archivo, lo mecánico (formatos de número/fecha, espacios, mayúsculas,
 encoding) se prolija solo, con registro reversible — nada que cambie el significado
@@ -707,6 +754,7 @@ TOOLS = [
             "required": ["section"],
         },
     },
+    # TODO: check this tool to see if conditional logic works as expected.
     {
         "name": "crear_recordatorio",
         "description": "Anota un recordatorio/tarea. Puede ser simple ('llamar al contador') o "
@@ -851,14 +899,14 @@ TOOLS = [
     },
     {
         "name": "proponer_conocimiento",
-        "description": "Note down a rule, exception, or BUSINESS context (not this user's own "
-        "view preference — use 'recordar' for that) that came up in the conversation and is "
-        "worth the system remembering permanently: how to treat a customer, why something is "
-        "different from normal, a protocol for a given event. Any user can propose one — it "
-        "lands PENDING review (never active right away), and whoever has that node's module "
-        "approves or discards it before it affects anything. Use it when what you were told is "
-        "about the business in general, not just this chat — and offer it yourself when you "
-        "notice something that valuable, without waiting to be asked.",
+        "description": "Propose remembering a rule, exception, or BUSINESS context (not this "
+        "user's own view preference) that came up in the conversation and is worth keeping "
+        "permanently: how to treat a customer, why something is different from normal, a "
+        "protocol for a given event. This SAVES NOTHING on its own — it puts a chip under your "
+        "reply that the person taps to keep or discard. So say you're offering to remember it, "
+        "never that you already did. Use it whenever someone tells you to remember/note/not "
+        "forget something about the business, and offer it yourself when a turn surfaces "
+        "something that durable, without waiting to be asked.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -1378,23 +1426,6 @@ def _parse_umbral(texto: str):
     return int(m.group(1)) if m else None
 
 
-def _parse_widget(texto: str) -> dict:
-    """Del pedido en criollo saca tipo, fuente y sección de un gráfico."""
-    p = ds._strip(texto)
-    tipo = ("donut" if "donut" in p or "torta" in p else
-            "tabla" if "tabla" in p else
-            "linea" if "linea" in p or "línea" in p else "barras")
-    if any(k in p for k in ("corregir", "problema", "fantasma", "negativ", "estado de calidad", "a corregir")):
-        fuente = "datos_a_corregir_por_tipo"
-    elif any(k in p for k in ("activo", "anulado", "catalogo", "catálogo", "composicion", "composición")):
-        fuente = "estado_catalogo"
-    else:
-        fuente = "inmovilizado_por_producto"  # default: dónde está la plata / productos
-    seccion = ("inicio" if any(k in p for k in ("inicio", "principal", "home")) else
-               "inventario" if "inventario" in p else None)
-    return {"tipo": tipo, "datos_fuente": fuente, "seccion_destino": seccion}
-
-
 def _interpretar_vista(pedido: str) -> dict:
     """Heurística: del pedido en criollo saca los cambios de UI concretos."""
     import re
@@ -1695,14 +1726,14 @@ def _slim_evidence(e: dict) -> dict:
         "records_total": len(rows),
     }
 
-
+# TODO: this implementation needs some refactoring
 def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     """Devuelve (resultado_para_claude, accion_para_frontend|None)."""
     # Dropped before any argument is read, whichever entry point called.
     args, _status = _split_status(args)
-    # CAPA 2 — el candado real: aunque una tool se cuele (router simulado, o el
-    # modelo alucina un nombre que no le ofrecimos), no ejecuta si el usuario no
-    # tiene el módulo. No depende del criterio del modelo. Ver TOOL_FEATURE.
+    # Layer 2 — the real lock: even if a tool slips through (the model
+    # hallucinating a name we did not offer), it does not run without the module.
+    # Does not depend on the model's judgment. See TOOL_FEATURE.
     feature = TOOL_FEATURE.get(name)
     if not _tiene_feature(feature):
         return {"error": "sin_acceso", "motivo": f"tu rol no tiene el módulo «{feature}»; "
@@ -1785,6 +1816,8 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
             return {"error": str(e)}, None
 
     if name == "recordar":
+        if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):
+            return {"ok": False, "motivo": "capture_off"}, None
         memoria.set_pref(_usuario_actual(), args.get("clave", ""), args.get("valor", ""))
         return {"ok": True, "recordado": args.get("clave")}, None
     if name == "recuperar":
@@ -1803,18 +1836,22 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         m = memoria.get(_usuario_actual())
         return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}, None
     if name == "proponer_conocimiento":
-        from core import conocimiento, fechas
-        actor = _usuario_actual()
+        from core import conocimiento
+        if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):
+            return {"ok": False, "motivo": "capture_off"}, None
         try:
-            pieza = conocimiento.crear(
+            proposal = conocimiento.validate_proposal(
                 texto=args.get("texto", ""), tipo="contexto",
                 ambito=args.get("ambito") or ("global" if not args.get("entidad") else "categoria"),
                 nodo=args.get("nodo", ""), efecto="contexto_para_angela",
-                entidad=args.get("entidad"), estado="pendiente",
-                origen={"quien": actor, "cuando": fechas.hoy().isoformat()})
+                entidad=args.get("entidad"))
         except conocimiento.ConocimientoInvalido as e:
             return {"ok": False, "motivo": str(e)}, None
-        return {"ok": True, "pieza": pieza, "pendiente": True}, None
+        existing = conocimiento.find_duplicate(texto=proposal["texto"], nodo=proposal["nodo"],
+                                               entidad=proposal["entidad"])
+        if existing:
+            return {"ok": True, "proposal": proposal, "already_saved": existing["id"]}, None
+        return {"ok": True, "proposal": proposal}, None
     if name == "reordenar_inicio":
         # P19·B: el Home se reordena por chat y queda persistido por usuario.
         if args.get("reset"):
@@ -1853,6 +1890,7 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         # P19·A: si el usuario dijo que no quiere tortas, NINGÚN gráfico nuevo
         # sale de torta — se elige la alternativa correcta y se le avisa a
         # Ángela para que lo mencione con gracia.
+        # TODO: this is weird, we need to see if there's a better way to handle this.
         tipo_ajustado = False
         if tipo == "donut" and memoria.vista(_usuario_actual()).get("sin_torta"):
             tipo = "barras"
@@ -1944,9 +1982,6 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         return ({"ok": True, "que": que, "widget": w, "section": seccion},
                 {"type": "preferencia", "vista": vista_full})
 
-    if name == "cancelar_mensaje":
-        return {"ok": True}, {"type": "cancelar"}
-
     if name == "recuperar_contexto_negocio":
         r = ds.resumen()["resumen"]
         # P18: los KPIs del dueño viajan con el contexto — Ángela cita LOS
@@ -1967,7 +2002,7 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     if name == "consultar_contexto_macro":
         return macro.consultar(args.get("indicadores"), _idioma_actual()), None
 
-    # Cuentas corrientes (paridad con el router simulado).
+    # Cuentas corrientes.
     if name == "cuentas_corrientes":
         cli = (args.get("cliente") or "").strip()
         if cli:
@@ -1988,7 +2023,7 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
             return {"encontrado": False}, None
         return cuentas.mensaje_cobro(c["id"], _idioma_actual()), None
 
-    # Depósito y logística (capa sobre WMS/TMS; paridad con el router simulado).
+    # Warehouse and logistics (layer over WMS/TMS).
     if name == "consultar_deposito":
         if not deposito.hay_datos():
             return {"sin_datos": True,
@@ -2183,7 +2218,7 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         except ValueError as e:
             return {"error": str(e)}, None
 
-    # Caja (paridad con el router simulado).
+    # Cash register.
     if name == "estado_caja":
         return caja.estado(), {"type": "navigate", "section": "caja"}
     if name == "cerrar_caja":
@@ -2236,7 +2271,7 @@ _MODULO_ALIAS = {
     "cuentas corrientes": "cuentas", "cuenta corriente": "cuentas", "morosos": "cuentas",
     "reparto": "logistica", "envios": "logistica", "deposito": "deposito",
     "oficina": "administracion", "datos": "saneamiento", "datos a corregir": "saneamiento",
-    # aliases EN (el router simulado también entiende inglés básico)
+    # English aliases for the same module ids.
     "warehouse": "deposito", "delivery": "logistica", "logistics": "logistica",
     "accounts": "cuentas", "collections": "cobranzas", "documents": "documentos",
     "inventory": "inventario", "cash register": "caja",
@@ -2260,1014 +2295,20 @@ def _modulo_de(texto: str) -> str | None:
     return None
 
 
-def _cliente_en(m: str):
-    """Detecta si el mensaje menciona a un cliente de cuenta corriente.
-    P11·B11: el token se normaliza igual que el mensaje (sin acentos) —
-    «Almacén Don Pérez» jamás matcheaba contra el mensaje des-acentuado."""
-    for c in cuentas.listar():
-        for tok in c["nombre"].lower().split():
-            if len(tok) > 4 and ds._strip(tok) in m:
-                return c
-    return None
-
-
-def _cliente_envio_en(m: str):
-    """Detecta si el mensaje menciona a un cliente que tiene envíos en el reparto."""
-    for e in logistica.envios():
-        nombre = e.get("cliente") or ""
-        for tok in ds._strip(nombre).split():
-            if len(tok) > 3 and tok in m:
-                return nombre
-    return None
-
-
-def _nombre_tras(m: str, *disparadores: str) -> str:
-    """Extrae el nombre que viene después de 'entrega de', 'pedido de', 'remito de', etc."""
-    import re
-    for d in disparadores:
-        md = re.search(rf"{d}\s+(?:el |la |los |las |de )?([a-z0-9][a-z0-9 ]*?)(?:\s+no\b|\s+hoy\b|\s+manana\b|[,?.]|$)", m)
-        if md and md.group(1).strip():
-            return md.group(1).strip()
-    return ""
-
-
-def _categoria_en(m: str):
-    # keywords ES + EN básicos ("negativ" ya cubre "negative")
-    if "balanza" in m or "scale" in m:
-        return "balanza"
-    if "fantasma" in m or "anulado" in m or "ghost" in m:
-        return "fantasma"
-    if "negativ" in m:
-        return "negativo"
-    if "sin precio" in m or "sin pvp" in m or "pvp" in m or "no price" in m or "without price" in m:
-        return "sin_precio"
-    return None
-
-
-def _opciones_para(cat: str, lang: str | None = None) -> list[dict]:
-    # El LABEL se traduce (lo lee el humano); el ENVIAR queda en español porque
-    # es el texto que se re-inyecta al router y su matching es por keywords ES.
-    lang = lang or _idioma_actual()
-    if cat == "fantasma":
-        return [
-            {"label": i18n.t("fb.op_fant_reactivar", lang), "enviar": "reactivá todos los productos fantasma"},
-            {"label": i18n.t("fb.op_fant_baja", lang), "enviar": "dá de baja los fantasma con menos de 50 unidades y reactivá el resto"},
-            {"label": i18n.t("fb.op_fant_ver", lang), "enviar": "mostrame los productos fantasma"},
-        ]
-    if cat == "balanza":
-        return [
-            {"label": i18n.t("fb.op_bal_corregir", lang), "enviar": "corregí todas las balanzas"},
-            {"label": i18n.t("fb.op_bal_ver", lang), "enviar": "mostrame las balanzas"},
-        ]
-    return []
-
-
-# P11·B2 — Guardarrail del router simulado, recalibrado contra falsos positivos.
-# DURO: siempre ajeno al negocio (con \b: "cuento" no matchea "descuento").
-_RE_OFFTOPIC_DURO = re.compile(
-    r"\b(poema|poesia|chiste|cuento|adivinanza|horoscopo|receta"
-    r"|poem|joke|riddle|horoscope|recipe)\b"
-    r"|escrib\w* (un |una |me )?(codigo|script|funcion|programa)"
-    r"|write (me )?(some )?code|write a (function|script|program)"
-    r"|una funcion en \w+|in python|en python|in javascript|en javascript")
-# AMBIGUO: solo se desvía si no hay NINGUNA señal del negocio en el mensaje.
-_OFFTOPIC_AMBIGUO = ("capital de", "capital of", "presidente de", "president of",
-                     "quien gano", "who won", "cuanto es 2", "what is 2",
-                     "futbol", "soccer", "pelicula", "movie", "cancion", "song")
-# Señales de dominio: si el pedido habla del negocio o de una feature, PASA.
-_SENALES_DOMINIO = ("capital de trabajo", "working capital", "stock", "inventario",
-                    "inventory", "venta", "sales", "precio", "price", "margen",
-                    "margin", "cliente", "customer", "proveedor", "supplier",
-                    "caja", "cash", "deuda", "debt", "cobr", "collect", "moroso",
-                    "overdue", "grafico", "chart", "widget", "estacional",
-                    "seasonal", "analisis", "analysis", "documento", "document",
-                    "resumen", "summary", "orden", "order", "remito", "factura",
-                    "invoice", "recibo", "comprobante", "oportunidad",
-                    "opportunit", "objetivo", "goal", "equipo", "team", "modulo",
-                    "module", "negocio", "business", "plata", "money", "rotacion",
-                    "turnover", "categoria", "category")
-
-
-def _fallback(mensaje: str) -> dict:
-    # Idioma de la conversación (resuelto server-side en responder()): todos los
-    # textos enlatados salen del catálogo i18n; el ES es byte-igual al histórico.
-    lang = _idioma_actual()
-
-    def T(key, **params):
-        return i18n.t(key, lang, **params)
-
-    m = ds._strip(mensaje)
-    res = ds.resumen()["resumen"]
-    cat = _categoria_en(m)
-
-    def resp(texto, acciones=None, opciones=None, tools=None):
-        return {"answer": texto, "mode": "simulado", "tools_used": tools or [],
-                "actions": acciones or [], "options": opciones or []}
-
-    def bloqueado(feature):
-        """Corta un cluster de intents si el usuario no tiene ese módulo (capa 2 del
-        router simulado, que llama helpers directo sin pasar por _run_tool)."""
-        if not _tiene_feature(feature):
-            return resp(T("fb.bloqueado", feature=feature))
-        return None
-
-    # --- Guardarrailes demo pública (P9·F): jailbreak/injection → UNA línea,
-    #     sin tools, sin gastar. Cualquier "instrucción" embebida es DATO. ---
-    if any(k in m for k in ("ignora tus instrucciones", "ignora las instrucciones",
-                            "olvida tus instrucciones", "ignora todo lo anterior",
-                            "ignore your instructions", "ignore previous instructions",
-                            "ignore all previous", "forget your instructions",
-                            "actua como", "hacete pasar por", "act as", "pretend to be",
-                            "pretend you are", "roleplay", "modo desarrollador",
-                            "developer mode", "jailbreak", "system prompt",
-                            "tus instrucciones", "your instructions", "your prompt",
-                            "reveal your", "mostrame tu prompt", "dan mode")):
-        return resp(T("fb.jailbreak"))
-
-    # --- Cierre al dominio (P11·B2, recalibrado): el desvío es SOLO para lo
-    #     genuinamente ajeno. Dos niveles:
-    #     · DURO (con límite de palabra: "cuento" ya no traga "descuento"):
-    #       poemas, chistes, código — se desvía siempre.
-    #     · AMBIGUO ("capital de", "presidente de"): se desvía SOLO si el mensaje
-    #       no tiene NINGUNA señal del negocio — "capital de trabajo" o un gráfico
-    #       de ventas jamás se desvían: son features, no charla. ---
-    if _RE_OFFTOPIC_DURO.search(m):
-        return resp(T("fb.offtopic"))
-    if any(k in m for k in _OFFTOPIC_AMBIGUO) and not any(d in m for d in _SENALES_DOMINIO):
-        return resp(T("fb.offtopic"))
-
-    # --- Cancelar ---
-    if m in ("cancelar", "no", "mejor no", "dejalo", "olvidate", "cancela",
-             "cancel", "no thanks", "forget it", "never mind", "nevermind", "drop it"):
-        return resp(T("fb.cancelar"), [{"type": "cancelar"}], tools=["cancelar_mensaje"])
-
-    # --- Anomalías de negocio: Ángela explica y guía (no aplica a ciegas). Va arriba de
-    #     "modificar vista" para que "¿cómo corrijo … del costo?" no se confunda con ocultar columnas.
-    if any(k in m for k in ("debajo del costo", "a perdida", "a pérdida", "pierdo plata", "vendo a perdida",
-                            "below cost", "at a loss", "losing money")):
-        return resp(
-            T("fb.debajo_costo"),
-            [{"type": "navigate", "section": "inventario", "highlight": "plata"}])
-    if "duplicad" in m or "duplicate" in m:
-        return resp(T("fb.duplicados"))
-    if any(k in m for k in ("anormalmente alto", "stock anormal", "error de tipeo",
-                            "abnormally high", "typo")):
-        return resp(T("fb.stock_anormal"))
-
-    # --- Contexto macro bajo demanda (sólo cuando el pedido lo pide) ---
-    if any(k in m for k in ("conviene comprar", "conviene esperar", "compro ahora", "compro o espero",
-                            "dolar", "dólar", "cotizacion", "cotización", "inflacion", "inflación",
-                            "estan los precios", "están los precios",
-                            "dollar", "inflation", "exchange rate", "should i buy", "buy or wait",
-                            "buy now")):
-        d = macro.consultar(["dolar", "inflacion"], lang)
-        dol = d.get("dolar", {})
-        # El dato con fuente, sin pronóstico: la recomendación sale de los números
-        # de la empresa, no del dólar. Ángela muestra y el dueño decide.
-        if dol.get("disponible"):
-            base = T("fb.macro_dolar", valor=dol["valor"],
-                     fecha=dol.get("fecha") or T("fb.macro_hoy"))
-        else:
-            base = T("fb.macro_caido")
-        return resp(base + T("fb.macro_cierre"), tools=["consultar_contexto_macro"])
-
-    # --- Recordatorios condicionales: "avisame si/cuando…" (transversal, riel WMS/TMS) ---
-    if any(k in m for k in ("avisame si", "avisame cuando", "recordame si", "recordame cuando",
-                            "recordamelo", "avisenme si",
-                            "remind me if", "remind me when", "let me know if",
-                            "let me know when", "warn me if", "tell me when")):
-        import re
-        cond, detalle = None, ""
-        if "venc" in m or "expir" in m:
-            md = re.search(r"(\d+)\s*(?:dias?|days?)", m)
-            dias = int(md.group(1)) if md else (7 if ("semana" in m or "week" in m) else 15)
-            cond = {"tipo": "vencimiento_deposito", "dias": dias}
-            detalle = T("fb.rec_det_vencimiento", dias=dias)
-        elif any(k in m for k in ("entrega", "pedido", "no sale", "no salio", "reparto",
-                                  "delivery", "order", "shipment", "doesnt go out",
-                                  "doesn't go out")):
-            cli = _cliente_envio_en(m) or _nombre_tras(m, "entrega de", "pedido de", "la de",
-                                                       "delivery for", "delivery of",
-                                                       "order for", "order of")
-            if not cli:
-                return resp(T("fb.rec_pregunta_cliente"), tools=["crear_recordatorio"])
-            cond = {"tipo": "entrega_pendiente", "cliente": cli}
-            mh = re.search(r"a las (\d{1,2})", m)
-            if mh:
-                cond["hora"] = mh.group(1)
-            detalle = T("fb.rec_det_entrega", cliente=cli or T("fb.rec_ese_cliente"))
-        elif any(k in m for k in ("remito", "llegue", "llega", "archivo", "lista de",
-                                  "arrives", "file", "delivery note")):
-            origen = _nombre_tras(m, "remito de", "archivo de", "lista de", "llegue algo de",
-                                  "delivery note from", "file from")
-            cond = {"tipo": "llegada_batch", "origen": origen}
-            detalle = T("fb.rec_det_remito", origen=origen or T("fb.rec_ese_origen"))
-        if cond:
-            recordatorios.crear(texto=mensaje.strip(), para=_usuario_actual(),
-                                creado_por=_usuario_actual(), condicion=cond)
-            return resp(T("fb.rec_confirmado", detalle=detalle),
-                        tools=["crear_recordatorio"])
-        recordatorios.crear(texto=mensaje.strip(), para=_usuario_actual(), creado_por=_usuario_actual())
-        return resp(T("fb.rec_anotado"), tools=["crear_recordatorio"])
-
-    # --- Ver recordatorios propios ---
-    if any(k in m for k in ("mis recordatorios", "que recordatorios", "recordatorios pendientes",
-                            "tengo recordatorios", "mostrame los recordatorios",
-                            "my reminders", "pending reminders", "reminders do i have",
-                            "show me the reminders")):
-        rs = recordatorios.listar(_usuario_actual())
-        if not rs:
-            return resp(T("fb.rec_sin_pendientes"), tools=["mis_recordatorios"])
-        marca = {"disparado": T("fb.rec_marca_disparado"), "activo": T("fb.rec_marca_activo"),
-                 "latente": T("fb.rec_marca_latente")}
-        lineas = []
-        for r in rs[:6]:
-            det = f" — {r['detalle_disparo']}" if r.get("detalle_disparo") else ""
-            lineas.append(f"• [{marca.get(r['estado'], r['estado'])}] {r['texto']}{det}")
-        disparados = sum(1 for r in rs if r["estado"] == "disparado")
-        pre = (T("fb.rec_pre_disparados", n=disparados)
-               if disparados else T("fb.rec_pre_anotados", n=len(rs)))
-        return resp(pre + ":\n" + "\n".join(lineas), tools=["mis_recordatorios"])
-
-    # --- Logística / reparto (capa sobre el TMS) ---
-    _kw_logistica = ("entrega", "envio", "reparto", "camion", "salio el pedido",
-                     "salio mi pedido", "deliver", "shipment", "shipping", "truck")
-    if any(k in m for k in _kw_logistica) or "pedido de" in m or "order for" in m:
-        b = bloqueado("logistica")
-        if b:
-            return b
-    es_logistica = (any(k in m for k in _kw_logistica) or
-                    ("pedido de" in m) or ("order for" in m)) and \
-                   not any(k in m for k in ("orden de pedido", "orden de compra",
-                                            "nota de pedido", "purchase order",
-                                            "delivery note"))
-    if es_logistica:
-        if not logistica.hay_datos():
-            return resp(T("fb.log_sin_datos"), tools=["consultar_envios"])
-        cli = _cliente_envio_en(m)
-        if cli:
-            e = logistica.estado_pedido(cli)[0]
-            estado_txt = {"entregado": T("fb.log_estado_entregado"),
-                          "en_camino": T("fb.log_estado_en_camino"),
-                          "pendiente": T("fb.log_estado_pendiente")}[e["estado_norm"]]
-            extra = " " + T("fb.log_transporte", transporte=e["transporte"]) if e.get("transporte") else ""
-            atraso = (" " + T("fb.log_atrasada_ojo", fecha=e["fecha_prevista"])
-                      if e["atrasado"] else "")
-            return resp(T("fb.log_pedido", cliente=e["cliente"], pedido=e["pedido"],
-                          estado=estado_txt, fecha=e["fecha_prevista"],
-                          extra=extra, atraso=atraso), tools=["consultar_envios"])
-        if any(k in m for k in ("pedido de", "salio el pedido", "order for", "did the order")):
-            return resp(T("fb.log_no_encuentro"), tools=["consultar_envios"])
-        if "atrasad" in m or "late" in m or "delayed" in m:
-            at = logistica.atrasados()
-            if not at:
-                return resp(T("fb.log_al_dia"), tools=["consultar_envios"])
-            e = at[0]
-            return resp(T("fb.log_atrasadas", n=len(at), cliente=e["cliente"],
-                          pedido=e["pedido"], fecha=e["fecha_prevista"],
-                          estado=e["estado"]), tools=["consultar_envios"])
-        rr = logistica.resumen_reparto()
-        if not rr["entregas_hoy"]:
-            base = T("fb.log_sin_hoy")
-        else:
-            por_camion = "; ".join(f"{c['transporte']}: {c['total']}" for c in rr["camiones"])
-            base = T("fb.log_hoy", n=rr["entregas_hoy"], detalle=por_camion)
-        if rr["atrasados"]:
-            base += " " + T("fb.log_arrastre", n=rr["atrasados"])
-        return resp(base + " " + T("fb.log_fuente"), tools=["consultar_envios"])
-
-    # --- Depósito (capa sobre el WMS) ---
-    _kw_deposito = ("venc", "lote", "ubicacion", "stock fisico", "fisico", "discrepancia",
-                    "camara", "expir", "warehouse", "location", "physical", "discrepan")
-    if cat is None and (any(k in m for k in _kw_deposito)
-                        or "donde esta" in m or "where is" in m):
-        b = bloqueado("deposito")
-        if b:
-            return b
-    es_deposito = cat is None and (
-        any(k in m for k in _kw_deposito) or "donde esta" in m or "where is" in m)
-    if es_deposito:
-        import re
-        if not deposito.hay_datos():
-            return resp(T("fb.dep_sin_datos"), tools=["consultar_deposito"])
-        if "venc" in m or "expir" in m:
-            md = re.search(r"(\d+)\s*(?:dias?|days?)", m)
-            dias = int(md.group(1)) if md else (30 if ("mes" in m or "month" in m) else 7)
-            v = deposito.vencimientos(dias)
-            ya = deposito.vencidos()
-            if not v and not ya:
-                return resp(T("fb.dep_sin_vencimientos", dias=dias),
-                            tools=["consultar_deposito"])
-            def _cuando(x):
-                return (T("fb.dep_vence_hoy") if x["dias_restantes"] == 0
-                        else T("fb.dep_vence_en", dias=x["dias_restantes"]))
-            lineas = [T("fb.dep_linea_lote", producto=x["producto"], lote=x["lote"],
-                        ubicacion=x["ubicacion"], cuando=_cuando(x))
-                      for x in v[:5]]
-            base = (T("fb.dep_vencen", n=len(v), dias=dias) + "\n" + "\n".join(lineas)) if v else ""
-            if ya:
-                base = (base + "\n\n" if base else "") + T("fb.dep_ya_vencidos", n=len(ya))
-            return resp(base + "\n" + T("fb.dep_crear_recordatorio"),
-                        tools=["consultar_deposito"])
-        if "discrepancia" in m or "fisico" in m or "discrepan" in m or "physical" in m:
-            d = deposito.discrepancias()
-            if not d:
-                return resp(T("fb.dep_sin_discrepancias"), tools=["consultar_deposito"])
-            x = d[0]
-            return resp(T("fb.dep_discrepancias", n=len(d), descripcion=x["descripcion"],
-                          contable=f"{x['stock_contable']:g}",
-                          fisico=f"{x['stock_fisico']:g}"),
-                        tools=["consultar_deposito"])
-        if "donde esta" in m or "ubicacion" in m or "where is" in m or "location" in m:
-            prod = _nombre_tras(m, "donde esta", "ubicacion de", "where is", "location of")
-            rs = deposito.ubicacion_de(prod) if prod else []
-            if not rs:
-                return resp(T("fb.dep_no_encuentro"), tools=["consultar_deposito"])
-            x = rs[0]
-            extra = " " + T("fb.dep_mas_ubicaciones", n=len(rs) - 1) if len(rs) > 1 else ""
-            return resp(T("fb.dep_ubicacion", producto=x["producto"], ubicacion=x["ubicacion"],
-                          lote=x["lote"], cantidad=f"{x['cantidad']:g}", extra=extra,
-                          vencimiento=x["vencimiento"]), tools=["consultar_deposito"])
-        r = deposito.resumen()
-        return resp(T("fb.dep_resumen", lotes=r["lotes"], ubicaciones=r["ubicaciones"],
-                      por_vencer=r["por_vencer"], vencidos=r["vencidos"],
-                      discrepancias=r["discrepancias"]), tools=["consultar_deposito"])
-
-    # --- Normalizaciones del Staging (Nivel 1): consultar libre, revertir con ok ---
-    if ("normaliza" in m or "normalize" in m) and not cat:
-        if any(k in m for k in ("reverti", "revertir", "deshace", "deshacer", "volve atras",
-                                "undo", "revert")):
-            if "confirm" in m or m.startswith("dale") or m.startswith("go ahead"):
-                result, accion = _run_tool("normalizaciones_staging", {"accion": "revertir"})
-                if result.get("error") or result.get("sin_normalizaciones"):
-                    return resp(result.get("error") or result["mensaje"],
-                                tools=["normalizaciones_staging"])
-                return resp(T("fb.norm_revertida", revertido=result["revertido"]),
-                            [accion] if accion else [], tools=["normalizaciones_staging"])
-            result, _ = _run_tool("normalizaciones_staging", {"accion": "consultar"})
-            if result.get("sin_normalizaciones"):
-                return resp(result["mensaje"], tools=["normalizaciones_staging"])
-            return resp(T("fb.norm_confirmar", batch=result["batch"], resumen=result["resumen"]),
-                        opciones=[{"label": T("fb.op_si_revertila"), "enviar": "confirmá: revertí la normalización"},
-                                  {"label": T("fb.op_cancelar"), "enviar": "cancelar"}],
-                        tools=["normalizaciones_staging"])
-        result, _ = _run_tool("normalizaciones_staging", {"accion": "consultar"})
-        if result.get("sin_normalizaciones") or result.get("error"):
-            return resp(result.get("mensaje") or result.get("error"),
-                        tools=["normalizaciones_staging"])
-        return resp(T("fb.norm_detalle", batch=result["batch"], resumen=result["resumen"]),
-                    tools=["normalizaciones_staging"])
-
-    # --- Gestión de módulos del equipo (dueño confirma → aplica; empleado → solicitud) ---
-    if any(k in m for k in ("habilita", "habilitame", "activale", "activame el modulo",
-                            "sacale", "quitale", "deshabilita",
-                            "enable", "disable", "turn on", "turn off")) and _modulo_de(m):
-        modulo = _modulo_de(m)
-        habilitar = not any(k in m for k in ("sacale", "quitale", "deshabilita", "sacame",
-                                             "disable", "turn off"))
-        import auth as _auth
-        yo = _usuario_norm(_usuario_actual())
-        objetivo = _username_de(m) or yo
-        etiqueta = _auth.modulos_labels(lang).get(modulo, modulo)
-        nombre_obj = (_auth.USUARIOS.get(objetivo) or {}).get("nombre", objetivo)
-        if organizacion.puede_config_org(_rol_actual()):
-            if "confirm" in m or m.startswith("dale") or m.startswith("go ahead"):
-                result, accion = _run_tool("gestionar_modulo",
-                                           {"usuario": objetivo, "modulo": modulo, "habilitar": habilitar})
-                if result.get("error"):
-                    return resp(result["error"] + ".", tools=["gestionar_modulo"])
-                return resp(T("fb.mod_aplicado_on" if habilitar else "fb.mod_aplicado_off",
-                              etiqueta=etiqueta, nombre=nombre_obj),
-                            [accion] if accion else [], tools=["gestionar_modulo"])
-            return resp(
-                T("fb.mod_confirmar_on" if habilitar else "fb.mod_confirmar_off",
-                  etiqueta=etiqueta, nombre=nombre_obj),
-                opciones=[{"label": T("fb.op_si_confirma"), "enviar": f"confirmá: {'habilitale' if habilitar else 'sacale'} {modulo} a {objetivo}"},
-                          {"label": T("fb.op_cancelar"), "enviar": "cancelar"}],
-                tools=["gestionar_modulo"])
-        # Empleado: nunca se aplica solo — se genera la solicitud al dueño.
-        result, _ = _run_tool("gestionar_modulo",
-                              {"usuario": yo, "modulo": modulo, "habilitar": habilitar})
-        if result.get("solicitud_creada"):
-            return resp(T("fb.mod_solicitud", etiqueta=etiqueta, dueno=_auth.nombre_dueno()),
-                        tools=["gestionar_modulo"])
-        return resp(f"{T('fb.mod_dueno')} {result.get('error', '')}".strip(),
-                    tools=["gestionar_modulo"])
-
-    # --- Config de ORGANIZACIÓN (scope Tipo A: afecta a todos, sólo el dueño) ---
-    if ("margen" in m or "margin" in m) and any(k in m for k in ("minimo", "mínimo", "de la empresa",
-                                                                 "del negocio", "minimum",
-                                                                 "of the company", "of the business")):
-        import re
-        mm = re.search(r"(\d+)\s*%?", m)
-        if mm:
-            if not organizacion.puede_config_org(_rol_actual()):
-                return resp(T("fb.margen_dueno"))
-            organizacion.set_config("margen_minimo", int(mm.group(1)))
-            # Config de organización sin tool declarada: no se reporta ninguna
-            # (M11 — jamás inventar un nombre que no existe en TOOLS).
-            return resp(T("fb.margen_ok", pct=mm.group(1)))
-
-    # --- P19·A · Preferencias con memoria (paridad con recordar_preferencia).
-    #     VA ANTES del branch de widgets: "no me gustan las tortas" contiene
-    #     "torta" y sin este orden se crearía un gráfico en vez de recordarse. ---
-    if any(k in m for k in ("torta", "donut", "pie chart", "pie-chart", "pies ")) and \
-       any(k in m for k in ("no me gustan", "no me gusta", "no quiero", "odio", "nunca mas", "nunca más",
-                            "i dont like", "i don't like", "i hate", "no more", "never again", "stop using")):
-        _, accion = _run_tool("recordar_preferencia", {"clave": "sin_torta", "valor": True})
-        return resp(T("fb.pref_sin_torta"), [accion] if accion else [],
-                    tools=["recordar_preferencia"])
-    if ("margen" in m or "margin" in m) and \
-       any(k in m for k in ("arriba", "primero", "fijado", "fijalo", "destacado", "up top", "on top",
-                            "pinned", "first")):
-        umbral = _parse_umbral(m)
-        if umbral is not None and 0 < umbral < 100:
-            _, accion = _run_tool("recordar_preferencia",
-                                  {"clave": "margen_pin_umbral", "valor": umbral})
-            return resp(T("fb.pref_margen_pin", umbral=umbral),
-                        ([accion] if accion else []) + [{"type": "navigate", "section": "inventario"}],
-                        tools=["recordar_preferencia"])
-        return resp(T("fb.pref_margen_umbral"), tools=["recordar_preferencia"])
-    # P19·B — reordenar el Inicio por chat (el ejemplo del dueño, literal).
-    if any(k in m for k in ("volve a como estaba", "volvé a como estaba", "orden original",
-                            "put it back", "back how it was", "original order")) and \
-       any(k in m for k in ("inicio", "home", "orden", "order", "estaba", "was")):
-        _, accion = _run_tool("reordenar_inicio", {"reset": True})
-        return resp(T("fb.orden_reset"), [accion] if accion else [],
-                    tools=["reordenar_inicio"])
-    if any(k in m for k in ("arriba de", "encima de", "above", "on top of")) and \
-       any(k in m for k in ("oportunidad", "decision", "decisión", "opportunit", "decision")):
-        # "las oportunidades arriba de lo que necesita mi decisión" (y viceversa)
-        orden = list(memoria.BLOQUES_HOME)
-        a, b = ("oportunidades", "decisiones")
-        idx_op = m.find("oportunidad") if "oportunidad" in m else m.find("opportunit")
-        idx_dec = m.find("decisi")
-        if idx_op >= 0 and idx_dec >= 0 and idx_dec < idx_op:
-            a, b = b, a  # lo nombrado primero va arriba
-        orden.remove(a)
-        orden.insert(orden.index(b), a)
-        _, accion = _run_tool("reordenar_inicio", {"orden": orden})
-        if accion:
-            return resp(T("fb.orden_listo"), [accion, {"type": "navigate", "section": "inicio"}],
-                        tools=["reordenar_inicio"])
-    if any(k in m for k in ("que recordas", "qué recordás", "que sabes de mi", "qué sabés de mí",
-                            "mis preferencias", "what do you remember", "my preferences")):
-        prefs, _ = _run_tool("leer_preferencias", {})
-        v = prefs.get("vista", {})
-        partes = []
-        if v.get("sin_torta"):
-            partes.append(T("fb.pref_lista_sin_torta"))
-        if v.get("margen_pin_umbral") is not None:
-            partes.append(T("fb.pref_lista_margen", umbral=f"{v['margen_pin_umbral']:g}"))
-        if v.get("orden_home"):
-            partes.append(T("fb.pref_lista_orden"))
-        if not partes:
-            return resp(T("fb.pref_lista_vacia"), tools=["leer_preferencias"])
-        return resp(T("fb.pref_lista", lista="; ".join(partes)), tools=["leer_preferencias"])
-
-    # --- Crear pestaña en el inventario ---
-    if any(k in m for k in ("pestaña", "pestana", "solapa", "tab ")) and any(k in m for k in ("haceme", "arma", "crea", "quiero", "pone", "agrega", "abrime", "make", "add", "i want", "give me", "set up")):
-        pest = _parse_pestana(mensaje)
-        if pest:
-            return resp(T("fb.pestana_creada", nombre=pest["nombre"]),
-                        [{"type": "crear_pestana", "pestana": pest}, {"type": "navigate", "section": "inventario", "highlight": pest["filtro"] if pest["filtro"] != "balanza" else "balanzas"}],
-                        tools=["crear_pestana"])
-        return resp(T("fb.pestana_cual"))
-
-    # --- P22·A · Revert de la lista de precios (protege la grabación: la toma
-    #     se repite infinitas veces — el backup restaura byte-igual) ---
-    if any(k in m for k in ("reverti la lista", "revertí la lista", "reverti los precios",
-                            "revertí los precios", "volve los precios", "volvé los precios",
-                            "revert the price", "undo the price", "roll back the price")):
-        from core import store as _store
-        versiones = [v for v in _store.versiones.list()
-                     if "lista de precios" in (v.get("motivo") or "")]
-        if not versiones:
-            return resp(T("fb.lista_sin_backup"), tools=["revertir_version"])
-        vid = versiones[-1]["id"]
-        result, accion = _run_tool("revertir_version", {"version_id": vid})
-        if result.get("error"):
-            return resp(str(result["error"]), tools=["revertir_version"])
-        return resp(T("fb.lista_revertida", backup=vid),
-                    [accion] if accion else [{"type": "saneado", "categoria": "precios"}],
-                    tools=["revertir_version"])
-
-    # --- P21 · Estadísticas generativas (paridad simulada de 2 casos representativos) ---
-    # "ventas por día" → el dato no existe: honesto + lo más cercano, SIN menú.
-    if any(k in m for k in ("por dia", "por día", "by day", "per day", "daily sales",
-                            "dia de la semana", "día de la semana", "day of the week")) and \
-       any(k in m for k in ("venta", "sales", "grafico", "gráfico", "chart")):
-        from core import consultas as _cons
-        r = _cons.consultar({"fuente": "ventas", "agrupar": "dia"}, lang)
-        return resp(r["motivo"] + " " + T("fb.consulta_ofrezco_mes"),
-                    opciones=[{"label": T("fb.op_mes_a_mes"),
-                               "enviar": "dale, armámelo mes a mes"}],
-                    tools=["consultar_serie"])
-    # "gráfico de ventas mes a mes de <producto> [en trend]" → se CONSTRUYE y se fija.
-    if any(k in m for k in ("mes a mes", "month by month", "mensuales de", "monthly sales")) and \
-       any(k in m for k in ("grafico", "gráfico", "chart", "graph", "curva", "tendencia", "trend",
-                            "evolucion", "evolución", "armame", "armámelo", "haceme", "dale")):
-        import re as _re
-        crudo = _re.split(r"\bde\b|\bof\b", mensaje, maxsplit=0)[-1]
-        crudo = _re.sub(r"\b(en|in)\s+(trend|evoluci[oó]n|el inicio|inicio|home).*$", "", crudo,
-                        flags=_re.IGNORECASE).strip() or mensaje
-        result, accion = _run_tool("consultar_serie", {
-            "fuente": "ventas", "metrica": "unidades", "agrupar": "mes",
-            "producto": crudo, "desde": "2024-07",
-            "fijar_en": "evolucion", "tipo": "linea",
-        })
-        if result.get("ok"):
-            s = result["series"][0]
-            ultimo = s.get("ultimo") or {}
-            return resp(T("fb.consulta_fijada", nombre=s["nombre"],
-                          mes=ultimo.get("x", ""), valor=f"{ultimo.get('y', 0):g}"),
-                        [accion, {"type": "navigate", "section": "evolucion"}],
-                        tools=["consultar_serie"])
-        if result.get("sugerencias"):
-            return resp(result["motivo"] + " " +
-                        T("fb.consulta_sugerencias", lista=", ".join(result["sugerencias"][:3])),
-                        tools=["consultar_serie"])
-
-    # --- P19·C · Estadística a pedido que PERSISTE: la card de plata parada N+ días ---
-    if any(k in m for k in ("parad", "sin vender", "sin venta", "no se vende", "idle", "stuck", "not selling")) and \
-       any(k in m for k in ("dias", "días", "days")) and \
-       any(k in m for k in ("card", "tarjeta", "dejame", "dejáme", "fija", "widget", "leave me", "pin", "keep")):
-        import re as _re
-        md = _re.search(r"(\d+)\s*(?:dias|días|days|\+)", m)
-        dias = int(md.group(1)) if md else 120
-        posicion = "top" if any(k in m for k in ("arriba", "up top", "on top", "top of")) else None
-        result, accion = _run_tool("crear_widget", {
-            "tipo": "card", "datos_fuente": "plata_parada_dias", "dias": dias,
-            "seccion_destino": "inicio", "posicion": posicion,
-        })
-        if not result.get("ok"):
-            return resp(T("fb.widget_parada_sin_ventas"), tools=["crear_widget"])
-        return resp(T("fb.widget_parada_listo", dias=dias),
-                    [accion, {"type": "navigate", "section": "inicio"}], tools=["crear_widget"])
-    # "sacala" / "pasala a tabla": administrar el último tipo de widget nombrado
-    if any(k in m for k in ("pasala a tabla", "pasalo a tabla", "en tabla mejor", "make it a table",
-                            "as a table", "change it to a table")):
-        result, accion = _run_tool("gestionar_widget",
-                                   {"que": "cambiar_tipo", "titulo": "plata parada", "tipo": "tabla"})
-        if result.get("ok"):
-            return resp(T("fb.widget_cambiado"), [accion], tools=["gestionar_widget"])
-        return resp(T("fb.widget_no_encontrado"), tools=["gestionar_widget"])
-    if any(k in m for k in ("saca la card", "sacala", "sacá la card", "quita la card", "borra la card",
-                            "remove the card", "take it down", "delete the card")):
-        result, accion = _run_tool("gestionar_widget", {"que": "quitar", "titulo": "plata parada"})
-        if result.get("ok"):
-            return resp(T("fb.widget_quitado"), [accion], tools=["gestionar_widget"])
-        return resp(T("fb.widget_no_encontrado"), tools=["gestionar_widget"])
-
-    # --- Crear gráfico / widget ---
-    if any(k in m for k in ("grafico", "gráfico", "graficá", "graficame", "widget", "visualiz", "torta", "donut", "chart", "graph", "pie ")) or \
-       (("tabla" in m or "table" in m) and any(k in m for k in ("haceme", "arma", "quiero", "pone", "agrega", "make", "add", "i want"))):
-        w = _parse_widget(mensaje)
-        # Las frases van al ENVIAR (se re-inyectan al router): quedan en español.
-        frases = {
-            "inmovilizado_por_producto": "plata por producto",
-            "datos_a_corregir_por_tipo": "datos a corregir por tipo",
-            "estado_catalogo": "composición del catálogo (activos y anulados)",
-        }
-        if not w["seccion_destino"]:
-            frase = frases[w["datos_fuente"]]
-            return resp(
-                T("fb.widget_donde"),
-                opciones=[
-                    {"label": T("fb.op_en_inicio"), "enviar": f"poné un gráfico {w['tipo']} de {frase} en el inicio"},
-                    {"label": T("fb.op_en_inventario"), "enviar": f"poné un gráfico {w['tipo']} de {frase} en inventario"},
-                ],
-                tools=["crear_widget"],
-            )
-        result, accion = _run_tool("crear_widget", {
-            "tipo": w["tipo"], "datos_fuente": w["datos_fuente"], "seccion_destino": w["seccion_destino"],
-        })
-        sec = T("fb.widget_sec_inicio") if w["seccion_destino"] == "inicio" else T("fb.widget_sec_inventario")
-        return resp(T("fb.widget_listo", titulo=result["widget"]["titulo"], seccion=sec),
-                    [accion], tools=["crear_widget"])
-
-    # --- Modificar vista ---
-    cambios = _interpretar_vista(mensaje)
-    if cambios and any(k in m for k in ("quiero ver", "mostrame", "saca", "sacame", "ocult", "quita", "agrega", "pone", "cambia", "show me", "hide", "remove", "i want to see")):
-        partes = []
-        if "inicioTopN" in cambios: partes.append(T("fb.vista_topn", n=cambios["inicioTopN"]))
-        if cambios.get("mostrarEficiencia") is False: partes.append(T("fb.vista_sin_franja"))
-        if cambios.get("mostrarEficiencia") is True: partes.append(T("fb.vista_con_franja"))
-        if cambios.get("invMostrarMargen"): partes.append(T("fb.vista_margen"))
-        return resp(T("fb.vista_listo", partes=T("fb.vista_join").join(partes)),
-                    [{"type": "modify_view", "cambios": cambios}], tools=["modificar_vista"])
-
-    # --- P19·D · Orquestación: "corregí TODOS los errores" → plan → OK → checkmarks ---
-    if any(k in m for k in ("todos los errores", "todos los problemas", "todo lo que este mal",
-                            "todo lo que está mal", "todo lo que esta mal",
-                            "all the errors", "all my stock errors", "all the problems",
-                            "everything wrong", "fix everything")):
-        plan = _armar_plan(lang)
-        if not plan.get("ok"):
-            return resp(T("fb.plan_nada"), tools=["proponer_plan"])
-        lista = "; ".join(f"{i+1}) {p['titulo']}" for i, p in enumerate(plan["pasos"]))
-        fuera = plan.get("fuera_del_plan") or []
-        extra = ""
-        if fuera:
-            nombres = ", ".join(f"{f['cantidad']} {f['categoria'].replace('_', ' ')}" for f in fuera)
-            extra = T("fb.plan_fuera", fuera=nombres)
-        return resp(T("fb.plan_propuesta", n=len(plan["pasos"]), lista=lista) + extra,
-                    opciones=[{"label": T("fb.plan_op_dale"), "enviar": "dale, ejecutá el plan"},
-                              {"label": T("fb.plan_op_no"), "enviar": "cancelar"}],
-                    tools=["proponer_plan"])
-    if any(k in m for k in ("ejecuta el plan", "ejecutá el plan", "ejecute el plan",
-                            "run the plan", "execute the plan")):
-        result, accion = _run_tool("ejecutar_plan", {})
-        if not result.get("ok") and not result.get("pasos"):
-            return resp(T("fb.plan_nada"), tools=["ejecutar_plan"])
-        if result.get("ok"):
-            r = result["resumen"]
-            texto = T("fb.plan_ejecutado", n=len(result["pasos"]),
-                      antes=_pesos(r["inmovilizado_antes"], lang),
-                      despues=_pesos(r["inmovilizado_despues"], lang))
-        else:
-            texto = result.get("motivo") or T("fb.listo")
-        return resp(texto, [accion] if accion else [], tools=["ejecutar_plan"])
-
-    # --- Corrección custom (regla con umbral) ---
-    if cat == "fantasma" and _parse_umbral(m) is not None and any(k in m for k in ("baja", "elimina", "menos", "mas", "más", "less", "fewer", "more", "under", "over", "delete", "retire")):
-        result, accion = _run_tool("aplicar_correccion_custom", {"categoria": "fantasma", "regla": mensaje})
-        return resp(result.get("mensaje", T("fb.listo")), [accion] if accion else [], tools=["aplicar_correccion_custom"])
-
-    # --- Aplicar corrección en lote ---
-    if cat in ("fantasma", "balanza") and any(k in m for k in ("todos", "todas", "reactiva", "dale", "confirmo", "aplica", "hacelo", "corregilas", "corregilos", "fix all", "correct all", "all of them", "go ahead", "apply", "do it")):
-        result, accion = _run_tool("aplicar_correccion_en_lote", {"categoria": cat})
-        return resp(result.get("mensaje", T("fb.listo")), [accion] if accion else [], tools=["aplicar_correccion_en_lote"])
-
-    # --- Proponer corrección con opciones (Ajuste 1) ---
-    if any(k in m for k in ("corregi", "corrige", "arregla", "sanea", "normaliza", "limpia", "que hago con", "fix", "correct", "clean up", "what do i do with")) and cat:
-        p = saneamiento.proponer(cat, lang)
-        if not p.get("auto"):
-            n = ds.resumen()["alertas"][{"negativo": "negativos", "sin_precio": "sin_pvp"}[cat]]["cantidad"]
-            extra = T("fb.san_extra_conteo") if cat == "negativo" else T("fb.san_extra_precios")
-            return resp(T("fb.san_manual", n=n, extra=extra),
-                        [{"type": "navigate", "section": "inventario", "highlight": "negativos" if cat == "negativo" else "sin_pvp"}],
-                        tools=["proponer_correccion"])
-        if cat == "fantasma":
-            detalle = T("fb.san_det_fantasma", n=p["cantidad"])
-        else:
-            detalle = T("fb.san_det_balanza", n=p["cantidad"],
-                        impacto=_pesos(p["impacto_pesos"], lang))
-        return resp(
-            T("fb.san_encontre", detalle=detalle),
-            [{"type": "navigate", "section": "inventario", "highlight": "fantasmas" if cat == "fantasma" else "balanza"}],
-            opciones=_opciones_para(cat, lang), tools=["proponer_correccion"],
-        )
-
-    # --- Análisis que cruzan datos (P7): rotación, estacionalidad, push/pull, objetivos ---
-    if any(k in m for k in ("rotacion", "rota lento", "dormido", "plata parada", "stock parado",
-                            "plata dormida", "cuanto rota",
-                            "sleeping", "dormant", "dead stock", "rotation", "slow mov")):
-        b = bloqueado("inventario")
-        if b:
-            return b
-        r, accion = _run_tool("analisis_rotacion", {})
-        if not r.get("disponible"):
-            return resp(r["motivo"], [{"type": "navigate", "section": "cargar"}],
-                        tools=["analisis_rotacion"])
-        top = r["dormidos_top"][0] if r["dormidos_top"] else None
-        texto = T("fb.rot_resumen",
-                  inmovilizado=_pesos(r["inmovilizado_total"], lang),
-                  dias=f"{r['dias_promedio']:.0f}",
-                  dormido=_pesos(r["por_estado"]["dormido"], lang),
-                  pct=r["pct_dormido"])
-        if top:
-            dias = (T("fb.rot_rota_cada", dias=f"{top['dias_rotacion']:.0f}")
-                    if top["dias_rotacion"] else T("fb.rot_sin_venta"))
-            texto += " " + T("fb.rot_top", producto=top["producto"],
-                             inmovilizado=_pesos(top["inmovilizado"], lang), dias=dias)
-        return resp(texto + " " + T("fb.rot_lista"),
-                    [accion] if accion else [], tools=["analisis_rotacion"])
-
-    if any(k in m for k in ("estacional", "temporada", "stockear", "cuando se vende mas",
-                            "se dispara", "pico de venta",
-                            "season", "stock up", "peak", "when do i sell more")):
-        b = bloqueado("evolucion")
-        if b:
-            return b
-        e, _ = _run_tool("analisis_estacionalidad", {})
-        if not e.get("disponible"):
-            return resp(e["motivo"], [{"type": "navigate", "section": "cargar"}],
-                        tools=["analisis_estacionalidad"])
-        partes = [T("fb.est_analice", n=e["anios_analizados"])]
-        destacadas = sorted(e["categorias"].items(),
-                            key=lambda kv: -max(kv[1]["indice"].values()))[:3]
-        for cat, d in destacadas:
-            pico = max(d["indice"], key=d["indice"].get)
-            partes.append(T("fb.est_categoria", cat=cat, mes=_mes_nombre(pico, lang),
-                            indice=f"{d['indice'][pico]:.2f}"))
-        if e["proximos_picos"]:
-            partes.append(T("fb.est_accionable", aviso=e["proximos_picos"][0]["aviso"]))
-        else:
-            partes.append(T("fb.est_sin_picos"))
-        return resp(" ".join(partes), tools=["analisis_estacionalidad"])
-
-    if any(k in m for k in ("push", "pull", "empuj", "que conviene vender", "que potencio",
-                            "que ofertar", "what should i promote", "promote")):
-        b = bloqueado("oportunidades")
-        if b:
-            return b
-        pp, _ = _run_tool("analisis_push_pull", {})
-        if not pp.get("disponible"):
-            return resp(pp["motivo"], [{"type": "navigate", "section": "cargar"}],
-                        tools=["analisis_push_pull"])
-        push = pp["push"][:2]
-        pull = pp["pull"][:2]
-        partes = []
-        if push:
-            partes.append(T("fb.pp_push", lista=" · ".join(
-                f"{x['producto']} ({x['motivo']})" for x in push)))
-        if pull:
-            partes.append(T("fb.pp_pull", lista=" · ".join(
-                f"{x['producto']} ({T('fb.rot_rota_cada', dias=f'{x['dias_rotacion']:.0f}')})"
-                for x in pull)))
-        return resp(" ".join(partes) + " " + T("fb.pp_lista"),
-                    tools=["analisis_push_pull"])
-
-    if any(k in m for k in ("objetivo", "en que me enfoco", "metas del mes", "que metas",
-                            "objective", "goal", "what should i focus", "targets")):
-        b = bloqueado("oportunidades")
-        if b:
-            return b
-        o, _ = _run_tool("objetivos_negocio", {})
-        if not o.get("disponible"):
-            return resp(o["motivo"], [{"type": "navigate", "section": "cargar"}],
-                        tools=["objetivos_negocio"])
-        partes = [f"{i + 1}) {ob['titulo']}: {ob['detalle']}" for i, ob in enumerate(o["objetivos"])]
-        return resp(T("fb.obj_propongo", partes=" ".join(partes)), tools=["objetivos_negocio"])
-
-    # --- Evolución: comparaciones históricas ajustadas por inflación ---
-    if any(k in m for k in ("como vengo", "ano pasado", "evolucion", "crecimos",
-                            "facturacion", "vendimos mas", "vendimos menos", "vendi mas",
-                            "vendi menos", "crecio el negocio", "es inflacion",
-                            "how am i doing", "last year", "did we grow", "are we growing",
-                            "revenue")):
-        p, accion = _run_tool("consultar_evolucion", {})
-        if not p.get("hay_datos"):
-            return resp(
-                T("fb.evo_sin_datos"),
-                [{"type": "navigate", "section": "cargar"}], tools=["consultar_evolucion"])
-        partes = []
-        inter = p.get("interanual")
-        if inter and inter.get("variacion_real_pct") is not None:
-            partes.append(
-                T("fb.evo_interanual", mes=inter["mes"],
-                  nominal=_pesos(inter["nominal_actual"], lang),
-                  mes_anterior=inter["mes_anterior"],
-                  var_nominal=f"{inter['variacion_nominal_pct']:+}",
-                  var_real=f"{inter['variacion_real_pct']:+}"))
-        ytd = p.get("ytd")
-        if ytd and ytd.get("variacion_real_pct") is not None:
-            partes.append(
-                T("fb.evo_ytd", anio=ytd["anio"],
-                  var_real=f"{ytd['variacion_real_pct']:+}",
-                  var_nominal=f"{ytd['variacion_nominal_pct']:+}"))
-        if p.get("aviso_indice"):
-            partes.append(p["aviso_indice"])
-        demo = " " + T("fb.evo_demo") if p.get("demo") else ""
-        return resp(" ".join(partes) + demo + " " + T("fb.evo_serie"),
-                    [accion] if accion else [], tools=["consultar_evolucion"])
-
-    if any(k in m for k in ("pronostico", "pronóstico", "forecast", "demanda proxima",
-                            "voy a vender", "mes que viene voy a")):
-        b = bloqueado("evolucion")
-        if b:
-            return b
-        p, accion = _run_tool("consultar_pronostico", {})
-        if not p.get("available"):
-            return resp(p.get("reason") or T("fb.evo_sin_datos"),
-                        [{"type": "navigate", "section": "cargar"}],
-                        tools=["consultar_pronostico"])
-        n = len([i for i in p.get("items") or [] if i.get("available")])
-        return resp(
-            f"Pronóstico a 3 meses para {n} productos (números del motor, no inventados).",
-            [accion] if accion else [], tools=["consultar_pronostico"])
-
-    # --- Plata en un producto/categoría ---
-    if any(k in m for k in ("plata en", "cuanta plata", "cuánta plata", "manteca", "queso", "leche", "fiambre", "cheddar", "congelad")):
-        b = bloqueado("inventario")
-        if b:
-            return b
-        for prod in ("manteca", "queso", "leche", "fiambre", "cheddar", "congelad"):
-            if prod in m:
-                p = ds.plata_en(prod)
-                return resp(T("fb.plata_en", prod=prod,
-                              monto=_pesos(p["inmovilizado_total"], lang),
-                              unidades=int(p["unidades"]),
-                              coincidencias=p["coincidencias"]))
-        return resp(T("fb.plata_total", monto=_pesos(res["inmovilizado_total"], lang)))
-
-    # --- Navegación / info por categoría ---
-    nav = {"fantasma": ("inventario", "fantasmas"), "balanza": ("inventario", "balanza"),
-           "negativo": ("inventario", "negativos"), "sin_precio": ("inventario", "sin_pvp")}
-    if cat and any(k in m for k in ("mostr", "ver", "llevame", "abri", "donde", "lista",
-                                    "show", "take me", "list", "where", "open", "see")):
-        section, hl = nav[cat]
-        return resp(T("fb.nav_te_llevo"),
-                    [{"type": "navigate", "section": section, "highlight": hl}], tools=["navegar_a"])
-
-    # --- Cuentas corrientes (Plan 6) ---
-    if any(k in m for k in ("quien me debe", "quién me debe", "morosos", "deudores", "me deben",
-                            "quien debe", "le puedo vender", "venderle", "limite", "límite",
-                            "a credito", "a crédito", "fiar", "fiarle", "estado de cuenta",
-                            "recordatorio", "recordale", "mandale", "reclamarle", "cobrarle",
-                            "who owes", "owes me", "owe me", "debtor", "debts",
-                            "credit limit", "on credit", "can i sell", "collect",
-                            "account statement", "payment reminder")) \
-            or _cliente_en(m):
-        b = bloqueado("cuentas")
-        if b:
-            return b
-    cli = _cliente_en(m)
-    if any(k in m for k in ("quien me debe", "quién me debe", "morosos", "deudores", "me deben",
-                            "quien debe", "who owes", "owes me", "owe me", "debtor", "in debt")):
-        # P45·T3 — el seed de fábrica no se narra como si fuera del cliente: sin
-        # cuentas REALES, la respuesta honesta es "falta el dato" (jamás "Don
-        # Pérez debe $30M"). El modelo real ya lo hace solo; el router simulado
-        # necesita el mismo guard.
-        if not cuentas.hay_datos_reales():
-            return resp(T("fb.cta_sin_datos"), tools=["cuentas_corrientes"])
-        mor = cuentas.morosos()
-        if not mor:
-            return resp(T("fb.cta_al_dia"),
-                        [{"type": "navigate", "section": "cuentas"}], tools=["cuentas_corrientes"])
-        peor = mor[0]
-        # Si pide EL que más debe, se resalta ESE cliente (no toda la lista).
-        pide_top = any(k in m for k in ("debe mas", "debe más", "mas debe", "más debe",
-                                        "el que mas", "el que más", "the most", "biggest"))
-        hl = f"cliente-{peor['id']}" if pide_top else "morosos"
-        # B12: el total sale de cuentas.totales() — EL número, calculado una vez.
-        return resp(
-            T("fb.cta_morosos", n=len(mor),
-              total=_pesos(cuentas.totales()["total_morosos"], lang),
-              nombre=peor["nombre"], saldo=_pesos(peor["saldo"], lang),
-              dias=peor["dias_sin_pagar"], atraso=peor["atraso_vs_promedio"]),
-            [{"type": "navigate", "section": "cuentas", "highlight": hl}], tools=["cuentas_corrientes"])
-    if cli and any(k in m for k in ("le puedo vender", "venderle", "limite", "límite", "a credito",
-                                    "a crédito", "fiar", "fiarle",
-                                    "can i sell", "credit limit", "on credit", "sell to")):
-        return resp(cuentas.scoring_venta(cli["nombre"], lang=lang)["mensaje"],
-                    tools=["scoring_credito"])
-    if cli and any(k in m for k in ("recordatorio", "recordale", "mandale", "reclamarle", "cobrarle",
-                                    "cobrar a", "payment reminder", "collect", "remind")):
-        mc = cuentas.mensaje_cobro(cli["id"], lang)
-        # P18·C: WhatsApp no está conectado — la opción NO afirma un envío del
-        # sistema: el dueño manda el mensaje por su canal y acá lo deja anotado.
-        return resp(
-            T("fb.cta_cobro", cliente=mc["cliente"], mensaje=mc["mensaje"]),
-            opciones=[{"label": T("fb.op_whatsapp"), "enviar": f"listo, ya le mandé el recordatorio a {cli['id']} — anotalo"},
-                      {"label": T("fb.op_cancelar"), "enviar": "cancelar"}],
-            tools=["mensaje_cobro"])
-    if cli and ("estado de cuenta" in m or "account statement" in m):
-        doc = cuentas.estado_cuenta(cli["id"], lang)
-        return resp(T("fb.cta_estado", nombre=cli["nombre"]),
-                    [{"type": "documento", "documento": doc}], tools=["generar_documento"])
-
-    # --- Compras y comprobantes cargados por foto (P10) ---
-    if any(k in m for k in ("que acabo de cargar", "qué acabo de cargar", "acabo de cargar",
-                            "what did i just load", "just loaded", "que cargue recien",
-                            "compras recientes", "recent purchases", "ultimas compras",
-                            "cuanto le compre", "how much have i bought",
-                            "le debo al proveedor", "le debo a algun proveedor",
-                            "cuenta del proveedor", "supplier account",
-                            "do i owe suppliers", "owe any supplier")):
-        b = bloqueado("cargar")
-        if b:
-            return b
-        # ¿nombró a un proveedor conocido? → su cuenta
-        from core import comprobantes as _comp
-        prov = next((p for p in _comp.proveedores_conocidos() if ds._strip(p) in m), None)
-        if prov:
-            r = _comp.resumen_proveedor(prov)
-            venc = T("fb.compras_vence", fecha=r["vencimiento_proximo"]) if r.get("vencimiento_proximo") else ""
-            return resp(T("fb.compras_proveedor", proveedor=r["proveedor"],
-                          saldo=_pesos(r["saldo"], lang), venc=venc),
-                        tools=["consultar_compras"])
-        rec = _comp.comprobantes_recientes()
-        if not any(rec.values()):
-            return resp(T("core.comp.sin_compras"), tools=["consultar_compras"])
-        partes = []
-        if rec["compras_recientes"]:
-            lineas = "; ".join(
-                f"{c.get('numero') or 's/n'} · {c.get('proveedor')} · {_pesos(c.get('total') or 0, lang)}"
-                for c in rec["compras_recientes"][:3])
-            partes.append(T("fb.compras_recientes", lista=lineas))
-        if rec["recepciones_recientes"]:
-            lineas = "; ".join(
-                f"{r.get('origen')} · {r.get('proveedor')}"
-                for r in rec["recepciones_recientes"][:3])
-            partes.append(T("fb.recepciones_recientes", lista=lineas))
-        if rec["cobros_recientes"]:
-            lineas = "; ".join(
-                f"{c.get('cliente')} · {_pesos(c.get('monto') or 0, lang)}"
-                for c in rec["cobros_recientes"][:3])
-            partes.append(T("fb.cobros_recientes", lista=lineas))
-        return resp("\n".join(partes), tools=["consultar_compras"])
-
-    # --- Caja (Plan 7) ---
-    if any(k in m for k in ("caja", "arqueo", "cash", "register")):
-        b = bloqueado("caja")
-        if b:
-            return b
-    if any(k in m for k in ("cerra la caja", "cerrá la caja", "cerrar caja", "cierre de caja",
-                            "cerrame la caja", "close the register", "close the cash",
-                            "close out the register")):
-        r = caja.cerrar(lang=lang)
-        base = T("fb.caja_cierre", total=_pesos(r["total"], lang))
-        if r.get("nota_angela"):
-            base += " " + r["nota_angela"]
-        return resp(base, [{"type": "navigate", "section": "caja"}], tools=["cerrar_caja"])
-    if any(k in m for k in ("como esta la caja", "cómo está la caja", "plata en caja", "saldo de caja",
-                            "cuanta plata tengo en caja", "estado de caja",
-                            "cash status", "how much cash", "how is the cash", "how's the cash",
-                            "money in the register", "register status")):
-        e = caja.estado()
-        return resp(T("fb.caja_estado", total=_pesos(e["totales"]["total"], lang),
-                      inicial=_pesos(e["saldo_inicial"], lang)),
-                    [{"type": "navigate", "section": "caja"}], tools=["estado_caja"])
-
-    # --- Documentos (Ángela propone el borrador, el usuario edita, después el PDF) ---
-    # P39·2 — el reporte de cierres por local: LA tarea que una persona hacía
-    # imputando a mano en un Excel toda la semana. Es la acción estrella de la
-    # vista de Administración, así que también responde SIN API key.
-    # "reporte de cierres", "¿qué locales cerraron hoy?", "¿cuánto entró esta
-    # semana por local?": todas son LA misma pregunta — cómo viene cada boca.
-    _hay_boca = any(k in m for k in ("local", "locales", "sucursal", "sucursales",
-                                     "store", "stores", "boca", "bocas"))
-    _es_cierres = ((any(k in m for k in ("cierre", "closing", "closings", "cerraron",
-                                         "cerró", "cerro", "closed"))
-                    and (_hay_boca or "reporte" in m or "report" in m))
-                   or (_hay_boca and any(k in m for k in ("entró", "entro", "entraron",
-                                                          "recaud", "came in", "took in",
-                                                          "cuánto", "cuanto", "how much",
-                                                          "venta", "ventas", "vende",
-                                                          "sales", "selling"))))
-    if any(k in m for k in ("orden de pedido", "orden de compra", "nota de pedido", "armame un pedido",
-                            "resumen ejecutivo", "carta", "purchase order", "executive summary")) \
-            or ("resumen" in m and "inventario" in m) or ("summary" in m and "inventory" in m):
-        b = bloqueado("documentos")
-        if b:
-            return b
-    if _es_cierres:
-        from core import mostrador as _mostrador
-        comp = _mostrador.comparativo(7)
-        if comp.get("disponible"):
-            # Con Documentos, el entregable completo; sin él (una encargada de
-            # sucursal, por ejemplo) igual se responde el número — no se la
-            # manda a pedir un módulo para saber cómo viene su boca.
-            if not bloqueado("documentos"):
-                doc = documentos.reporte_cierres(7, lang)
-                if doc:
-                    return resp(T("fb.doc_cierres"),
-                                [{"type": "documento", "documento": doc}],
-                                tools=["generar_documento"])
-            if not bloqueado("caja"):
-                detalle = " · ".join(
-                    f"{f['local']}: {_pesos(f['total'], lang)}"
-                    + (f" ({f['variacion_pct']:+.0f}%)" if f["variacion_pct"] is not None else "")
-                    for f in comp["locales"])
-                return resp(T("fb.cierres_por_local", desde=comp["desde"],
-                              hasta=comp["hasta"], detalle=detalle,
-                              total=_pesos(comp["total"], lang)), tools=["estado_caja"])
-    if any(k in m for k in ("orden de pedido", "orden de compra", "nota de pedido",
-                            "armame un pedido", "purchase order")):
-        doc = documentos.orden_pedido(lang=lang)
-        return resp(
-            T("fb.doc_orden", n=len(doc["items"])),
-            [{"type": "documento", "documento": doc}], tools=["generar_documento"])
-    if "resumen ejecutivo" in m or "executive summary" in m \
-            or ("resumen" in m and "inventario" in m) or ("summary" in m and "inventory" in m):
-        doc = documentos.resumen_ejecutivo(lang)
-        return resp(
-            T("fb.doc_resumen"),
-            [{"type": "documento", "documento": doc}], tools=["generar_documento"])
-    if ("carta" in m or "letter" in m) and any(k in m for k in ("proveedor", "para", "redacta",
-                                                                "escribi", "nota", "supplier",
-                                                                "write", "for ")):
-        doc = documentos.carta_libre(mensaje, "", lang)
-        return resp(
-            T("fb.doc_carta"),
-            [{"type": "documento", "documento": doc}], tools=["generar_documento"])
-
-    # --- Default ---
-    # El default NO cita el inmovilizado si el usuario no tiene inventario (no filtra
-    # el inmovilizado a un rol de reparto). Cada uno ve el arranque de su mundo.
-    if _tiene_feature("inventario"):
-        return resp(
-            T("fb.default_inventario", monto=_pesos(res["inmovilizado_total"], lang),
-              n=res["total_articulos"])
-        )
-    return resp(T("fb.default_area"))
-
-
 # ---------------------------------------------------------------------------
 # Conversación con Claude (tool use loop)
 # ---------------------------------------------------------------------------
+
+def _unavailable_result() -> dict:
+    """Honest envelope when no LLM is configured. Never a canned Ángela answer."""
+    return {
+        "answer": "",
+        "mode": "error",
+        "tools_used": [],
+        "actions": [],
+        "error": "model_unavailable",
+    }
+
 
 def responder(
     mensaje: str,
@@ -3287,11 +2328,11 @@ def responder(
     _set_sesion(usuario=nombre, rol=rol, features=features, idioma=idioma)
 
     if not config.model_disponible():
-        return _fallback(mensaje)
+        return _unavailable_result()
 
     client = _build_client()
     if client is None:
-        return _fallback(mensaje)
+        return _unavailable_result()
 
     # Same system prompt / model / tools / message-history assembly as
     # stream_response() — one shared place so the two entry points never
@@ -3356,10 +2397,15 @@ def responder(
             "tools_used": tools_usadas,
             "actions": acciones,
         }
-    except Exception as e:  # noqa: BLE001 — degradar nunca tira la app abajo
-        fb = _fallback(mensaje)
-        fb["error_tecnico"] = str(e)
-        return fb
+    except Exception as e:  # noqa: BLE001 — never take the app down
+        print(f"[angela] model call failed after tools={tools_usadas}: {e}", flush=True)
+        return {
+            "answer": "",
+            "mode": "error",
+            "tools_used": tools_usadas,
+            "actions": acciones,
+            "error": "model_failed",
+        }
 
 
 def _session_tag(user: str | None) -> str:
@@ -3469,6 +2515,43 @@ def _with_tool_cache_control(tools: list[dict]) -> list[dict]:
     return marked
 
 
+KNOWLEDGE_CAP = 12
+
+
+def _knowledge_block(name: str | None) -> str:
+    """What this business taught Ángela, as context she can narrate with.
+
+    The engines in core/ already APPLY these pieces to the numbers; this only
+    lets her say why a number looks the way it does instead of rediscovering
+    it. Scope is `visibles_para`, so an employee never reads another node's
+    rules through the prompt."""
+    if not name:
+        return ""
+    try:
+        import auth as _auth
+        from core import conocimiento
+        user = _auth.USUARIOS.get(name) or {}
+        pieces = conocimiento.visibles_para(
+            {"username": name, "es_admin": bool(user.get("es_admin"))},
+            conocimiento.listar(incluir_pausadas=False))
+    except Exception:  # noqa: BLE001
+        return ""
+    if not pieces:
+        return ""
+    lines = "".join(
+        f"\n- ({p.get('id')}) [{p.get('nodo')}] {conocimiento.texto_en(p, _idioma_actual())}"
+        + (f" (sobre {p['entidad']})" if p.get("entidad") else "")
+        for p in pieces[:KNOWLEDGE_CAP])
+    return ("\n\nLO QUE ESTE NEGOCIO TE ENSEÑÓ (reglas ya activas; los análisis "
+            "YA las aplican — usalas para explicar por qué un número es así, "
+            "nunca para recalcular a mano)."
+            "\nOBLIGATORIO: toda frase tuya que se apoye en una de estas reglas "
+            "termina con [·](#memoria-ID) usando el ID que ves acá. Sin "
+            "excepción, y pegado a esa frase — no al final del mensaje."
+            "\nEjemplo: si usás la regla (k01), escribís: «A Doña Elsa le damos "
+            "45 días [·](#memoria-k01), porque es cliente desde 2011.»" + lines)
+
+
 def _user_turn(message: str, events: list[str]) -> dict:
     """The user's message, preceded by what they did in the interface since the
     last reply. Same rule as on-screen context: a record of their own actions,
@@ -3489,6 +2572,7 @@ def _prepare_turn(message, history, role, name, features, language):
         from core import perfiles
         language = perfiles.idioma_de(name) if name else paths.DEFAULT_LANG
     _set_sesion(usuario=name, rol=role, features=features, idioma=language)
+    _settings = memoria.vista(name) if name else {}
 
     who = ""
     if name or role:
@@ -3529,31 +2613,28 @@ def _prepare_turn(message, history, role, name, features, language):
                 who += f"\n- Nota: {k} = {v}"
     except Exception:  # noqa: BLE001
         pass
+    if _settings.get("knowledge_in_context", True):
+        who += _knowledge_block(name)
+    if not _settings.get("knowledge_capture", True):
+        who += (
+            "\n\nGUARDAR MEMORIAS ESTÁ APAGADO: esta persona lo desactivó. No "
+            "ofrezcas guardar nada ni digas que lo anotás — no podés. Si te "
+            "piden que te acuerdes de algo, decíselo derecho y contales que "
+            "pueden volver a prenderlo en la memoria del negocio."
+        )
     business_context = _resumen_para_prompt() if _tiene_feature("inventario") else (
         "El resumen general del inventario no corresponde al rol de esta persona. "
         "No cites cifras globales del negocio (plata inmovilizada, catálogo) ni datos "
         "de módulos que no maneja; contestá sólo lo de su área."
     )
-    if language == "en":
-        language_directive = (
-            "\n\nLANGUAGE: Reply ALWAYS in English — plain-spoken business English, "
-            "warm and direct, same personality as ever (never stiff corporate). "
-            "Product, customer and supplier names stay in Spanish exactly as they "
-            "appear in the data (quote them naturally). Format money with en-US "
-            "grouping: $1,234,567 (they are Argentine pesos, ARS)."
-        )
-    else:
-        language_directive = (
-            "\n\nIDIOMA: Respondé SIEMPRE en castellano rioplatense, como siempre. "
-            "La plata en formato argentino: $1.234.567."
-        )
     system = _system_blocks(
         BUSINESS_SNAPSHOT.format(contexto=business_context)
-        + _contexto_externo() + who + language_directive
+        + _contexto_externo() + who
     )
 
     model = config.modelo_para()
-    available_tools = _with_tool_cache_control(tools_para(_features_actuales()))
+    available_tools = _with_tool_cache_control(
+        tools_para(_features_actuales(), _settings.get("knowledge_capture", True)))
 
     messages: list[dict] = []
     for turn in (history or [])[-6:]:
@@ -3572,24 +2653,6 @@ def _build_client():
         return config.get_client()
     except ImportError:
         return None
-
-
-def _degraded_stream(message: str, kind: str):
-    """A reply produced WITHOUT the model, always labelled as such.
-
-    Phase 1.5 removes `_fallback` entirely (see the design doc, D9); until
-    then the deterministic router still answers, but it can no longer pass
-    itself off as Ángela: the `notice` says where the answer came from.
-    """
-    fb = _fallback(message)
-    yield {"type": "notice", "kind": kind}
-    if fb.get("answer"):
-        yield {"type": "text", "delta": fb["answer"]}
-    yield {"type": "done", "result": {
-        "mode": fb.get("mode", "simulado"),
-        "tools_used": fb.get("tools_used", []),
-        "actions": fb.get("actions", []),
-        "options": fb.get("options", [])}}
 
 
 def stream_response(
@@ -3617,7 +2680,9 @@ def stream_response(
             {"type": "done", "result": {"mode", "tools_used", "actions", "options"}}
     """
     if not config.model_disponible():
-        yield from _degraded_stream(message, "fake_model")
+        yield {"type": "error", "code": "model_unavailable", "retryable": False}
+        yield {"type": "done", "result": {"mode": "error", "tools_used": [],
+                                          "actions": [], "options": []}}
         return
 
     try:

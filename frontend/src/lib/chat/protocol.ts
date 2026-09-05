@@ -2,7 +2,7 @@
  * The `/api/angela/stream` wire protocol (v2), one JSON object per NDJSON line.
  * Mirrors backend/angela.py::stream_response — change both together.
  */
-export type NoticeKind = "cap" | "tool_loop_exhausted" | "fake_model";
+export type NoticeKind = "cap" | "tool_loop_exhausted";
 
 export type StreamEvent =
   | { type: "text"; delta: string }

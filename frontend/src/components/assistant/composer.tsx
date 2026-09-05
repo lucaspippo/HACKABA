@@ -27,8 +27,8 @@ import {
   mono,
   paper,
   ShimmerLabel,
-} from "@/lib/surfaces";
-import { clamp, pct } from "@/lib/range";
+} from "./surfaces";
+import { clamp, pct } from "./range";
 
 export interface ComposerAttachment {
   name: string;

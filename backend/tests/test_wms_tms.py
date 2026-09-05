@@ -3,10 +3,10 @@ Tests del Trabajo 3: dominios depósito (WMS) y logística (TMS) + recordatorios
 
 Cubren el flujo completo prometido en las métricas de éxito:
   - CSV de depósito → staging lo detecta como DEPOSITO → propone vincular al
-    inventario → se integra → Ángela responde "¿qué vence esta semana?".
-  - CSV de envíos → Ángela responde "¿qué entregas hay hoy?" → "avisame si la
-    de García no sale" → recordatorio condicional creado y disparado.
-  - Paridad simulado↔real (tools en TOOLS + _run_tool).
+    inventario → se integra → consultar_deposito returns what expires this week.
+  - CSV de envíos → consultar_envios returns today's deliveries → a conditional
+    reminder for García fires when the shipment has not left.
+  - Tools exist in TOOLS and run through _run_tool.
   - El rol Depósito ve depósito/logística y no ve caja/finanzas.
 """
 from __future__ import annotations
@@ -149,41 +149,42 @@ def test_flujo_logistica_completo():
     assert {c["transporte"] for c in rr["camiones"]} == {"Camion 1 - Raul", "Camion 2 - Marcos"}
 
 
-# --- Ángela (router simulado) responde con los datos de los dominios nuevos ---
+# --- Tools answer warehouse / logistics questions ---
 
 def test_angela_que_vence_esta_semana():
     _cargar_deposito()
-    r = angela._fallback("¿qué vence esta semana?")
-    assert "consultar_deposito" in r["tools_used"]
-    assert "vencen" in r["answer"] or "vencidos" in r["answer"]
+    r, _ = angela._run_tool("consultar_deposito", {"modo": "vencimientos", "dias": 7})
+    assert r["vencimientos"]
 
 
 def test_angela_que_entregas_hay_hoy():
     _cargar_logistica()
-    r = angela._fallback("¿qué entregas hay hoy?")
-    assert "consultar_envios" in r["tools_used"]
-    assert "3 entregas" in r["answer"]
+    r, _ = angela._run_tool("consultar_envios", {"modo": "hoy"})
+    assert r["entregas_hoy"]
 
 
 def test_angela_salio_el_pedido_de_garcia():
     _cargar_logistica()
-    r = angela._fallback("¿salió el pedido de García?")
-    assert "Garcia" in r["answer"] and "no salió" in r["answer"]
+    r, _ = angela._run_tool("consultar_envios", {"modo": "pedido", "cliente": "garcia"})
+    est = r["resultados"]
+    assert est and est[0]["estado_norm"] == "pendiente"
 
 
 def test_angela_sin_datos_es_honesta():
-    r = angela._fallback("¿qué vence esta semana?")
-    assert "Cargar datos" in r["answer"]  # no inventa: pide el export
-    r = angela._fallback("¿qué entregas hay hoy?")
-    assert "Cargar datos" in r["answer"]
+    r, _ = angela._run_tool("consultar_deposito", {"modo": "resumen"})
+    assert r.get("sin_datos")
+    r, _ = angela._run_tool("consultar_envios", {"modo": "hoy"})
+    assert r.get("sin_datos")
 
 
 # --- Recordatorios: simples, por condición y por evento ---
 
 def test_recordatorio_condicional_vencimiento_dispara():
     _cargar_deposito()
-    r = angela._fallback("avisame si algo del depósito vence en menos de 15 días")
-    assert "crear_recordatorio" in r["tools_used"]
+    angela._run_tool("crear_recordatorio", {
+        "texto": "avisame si algo del depósito vence en menos de 15 días",
+        "condicion": {"tipo": "vencimiento_deposito", "dias": 15},
+    })
     rs = recordatorios.listar("dueño")  # listar evalúa las condiciones
     assert rs and rs[0]["estado"] == "disparado"
     assert "vencen" in rs[0]["detalle_disparo"]
@@ -191,8 +192,10 @@ def test_recordatorio_condicional_vencimiento_dispara():
 
 def test_recordatorio_entrega_de_garcia_no_sale():
     _cargar_logistica()
-    r = angela._fallback("avisame si la entrega de García no sale hoy")
-    assert "crear_recordatorio" in r["tools_used"]
+    angela._run_tool("crear_recordatorio", {
+        "texto": "avisame si la entrega de García no sale hoy",
+        "condicion": {"tipo": "entrega_pendiente", "cliente": "garcia"},
+    })
     rs = recordatorios.listar("dueño")
     assert rs and rs[0]["estado"] == "disparado"  # sigue pendiente y era para hoy
     assert "Garcia" in rs[0]["detalle_disparo"]
@@ -216,7 +219,7 @@ def test_recordatorio_simple_y_completar():
     assert recordatorios.listar("emilio") == []  # hecho → ya no aparece
 
 
-# --- Paridad simulado↔real: las tools existen en el path Claude ---
+# --- Tools exist on the real path ---
 
 def test_tools_wms_tms_en_ambos_paths():
     nombres = {t["name"] for t in angela.TOOLS}

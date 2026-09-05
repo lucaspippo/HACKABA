@@ -3,7 +3,7 @@ P21 — Estadísticas generativas: Ángela construye lo que le pidan, no ofrece 
 
 Cubre el contrato de core/consultas.py (whitelists, rechazos limpios, verdad
 literal) y los 7 casos de aceptación del prompt vía la tool consultar_serie
-(el mismo camino que usa el modelo real) + la paridad del router simulado.
+(el mismo camino que usa el modelo real).
 
 La suite corre con el tenant PILOTO (sin ventas cargadas): los casos que
 necesitan ventas usan una fixture sintética con los productos reales del demo
@@ -202,22 +202,6 @@ def test_caso6_sin_torta_activo_no_hay_torta(ventas):
     assert result["ok"] and result["widget"]["tipo"] == "barras"
     assert "tipo_ajustado" in result  # Ángela puede mencionar que lo recordó
     assert accion["widget"]["tipo"] == "barras"
-
-
-def test_caso7a_fallback_vino_es(ventas):
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
-    r = angela._fallback("haceme un gráfico en trend de ventas mes a mes de vino tinto la ribera")
-    assert "consultar_serie" in r["tools_used"]
-    assert any(a["type"] == "create_widget" for a in r["actions"])
-    assert "VINO TINTO LA RIBERA" in r["answer"]
-    assert memoria.vista("emilio")["widgets"]["evolucion"]  # quedó fijo
-
-
-def test_caso7b_fallback_por_dia_en(ventas):
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
-    r = angela._fallback("make me a chart of sales by day")
-    assert "by month" in r["answer"]
-    assert r["options"]  # ofrece lo más cercano, no un menú de gráficos genéricos
 
 
 def test_caso1_contra_demo_real():
