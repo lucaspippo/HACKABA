@@ -180,6 +180,9 @@ export const api = {
   conocimientoPendientes: (nodo) => get("/api/conocimiento/pendientes" + (nodo ? `?nodo=${encodeURIComponent(nodo)}` : "")),
   conocimientoAprobar: (pid) => post(`/api/conocimiento/${encodeURIComponent(pid)}/aprobar`, {}),
   conocimientoRechazar: (pid) => post(`/api/conocimiento/${encodeURIComponent(pid)}/rechazar`, {}),
+  knowledgeDelete: (pid) => del(`/api/conocimiento/${encodeURIComponent(pid)}`),
+  knowledgeSetState: (pid, state) => post(`/api/conocimiento/${encodeURIComponent(pid)}/estado`, { estado: state }),
+  knowledgeConfirm: (proposal) => post("/api/conocimiento/confirm", proposal),
   analisis: () => get("/api/analisis"),
   // Bloque D — qué reponer primero, ordenado por la plata que cuesta no hacerlo
   reponer: () => get("/api/reponer"),
