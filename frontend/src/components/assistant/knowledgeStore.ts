@@ -60,7 +60,10 @@ export function useKnowledgePiece(id: string): KnowledgePiece | null {
   return all[id] ?? null;
 }
 
-export const CITATION_SCHEME = "memoria:";
+// A hash URL, not a "memoria:" scheme: react-markdown's default
+// urlTransform blanks any href whose protocol it does not know, so a custom
+// scheme reached the link slot as href="" and rendered as a stray dot.
+export const CITATION_SCHEME = "#memoria-";
 
 export function citedId(href: string | undefined): string | null {
   if (!href || !href.startsWith(CITATION_SCHEME)) return null;
