@@ -3982,7 +3982,10 @@ def pesos(n: float, lang: str | None = None) -> str:
     return "$" + (crudo if lang == "en" else crudo.replace(",", "."))
 
 
-def t(key: str, lang: str | None = None, **params) -> str:
+def t(key: str, lang: str | None = None, /, **params) -> str:
+    """Positional-only up front: an interpolation param legitimately named
+    `key` or `lang` (app_events records one) would otherwise collide with
+    these and raise instead of rendering."""
     lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
     entrada = CATALOGO.get(key)
     if not entrada:
