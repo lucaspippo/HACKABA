@@ -14,6 +14,7 @@ import AngelaMark from "../components/AngelaMark";
 import FacturaFlow from "../components/FacturaFlow";
 import VozAngela from "../components/VozAngela";
 import ChatThread from "../components/assistant/ChatThread";
+import IconButton from "../components/assistant/IconButton";
 import {
   NewChatButton,
   HistoryDropdown,
@@ -248,34 +249,19 @@ export default function ChatPanel({
         <NewChatButton />
         <HistoryDropdown />
         {variant === "dock" && onExpand && (
-          <button
-            onClick={onExpand}
-            title="Pantalla completa"
-            aria-label="Pantalla completa"
-            className="grid size-8 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-crema hover:text-tinta"
-          >
+          <IconButton label={t("chat.control.expand")} onClick={onExpand}>
             <Maximize2 size={16} />
-          </button>
+          </IconButton>
         )}
         {variant === "dock" && onCollapse && (
-          <button
-            onClick={onCollapse}
-            title="Cerrar"
-            aria-label="Cerrar"
-            className="grid size-8 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-crema hover:text-tinta"
-          >
+          <IconButton label={t("chat.control.close")} onClick={onCollapse}>
             <X size={16} />
-          </button>
+          </IconButton>
         )}
         {variant === "fullscreen" && onCollapse && (
-          <button
-            onClick={onCollapse}
-            title="Volver al panel"
-            aria-label="Volver al panel"
-            className="grid size-8 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:bg-crema hover:text-tinta"
-          >
+          <IconButton label={t("chat.control.collapse")} onClick={onCollapse}>
             <Minimize2 size={16} />
-          </button>
+          </IconButton>
         )}
       </header>
 
@@ -286,22 +272,23 @@ export default function ChatPanel({
           composerLeading={
             <>
               {authStore.tiene("cargar") && (
-                <button
+                <IconButton
+                  label={t("chat.control.photo")}
                   onClick={() => setPhotoOpen(true)}
-                  title={t("foto.titulo")}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:text-violeta"
+                  shape="composer"
+                  placement="top"
                 >
                   <Camera size={20} />
-                </button>
+                </IconButton>
               )}
-              <button
+              <IconButton
+                label={t("chat.control.voice")}
                 onClick={() => setVoiceOpen(true)}
-                title={t("voz.titulo")}
-                aria-label={t("voz.titulo")}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-tinta-suave transition-colors hover:text-violeta"
+                shape="composer"
+                placement="top"
               >
                 <Mic size={20} />
-              </button>
+              </IconButton>
             </>
           }
         />

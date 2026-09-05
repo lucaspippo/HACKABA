@@ -14,6 +14,7 @@
   "dependencies": {
     "@assistant-ui/core": "^0.3.15",
     "@assistant-ui/react": "^0.15.16",
+    "@assistant-ui/react-markdown": "^0.14.14",
     "@xyflow/react": "^12.11.2",
     "d3-force-3d": "^3.0.6",
     "framer-motion": "^11.15.0",
@@ -22,13 +23,18 @@
     "react-dom": "^18.3.1",
     "react-force-graph-2d": "^1.29.1",
     "react-router-dom": "^7.18.2",
-    "recharts": "^2.15.4"
+    "recharts": "^2.15.4",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^29.1.1",
     "playwright": "^1.61.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.3",

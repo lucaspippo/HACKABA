@@ -227,7 +227,14 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const vista = useVista();
   const sidebarColapsado = vista.sidebarColapsado;
   const rowRef = useRef(null);
+  const angelaTriggerRef = useRef(null);
   const panelWidth = useAngelaPanelWidth(rowRef, () => setFullscreen(true));
+
+  const closeDockOnEscape = (event) => {
+    if (event.key !== "Escape") return;
+    setAngelaOpen(false);
+    angelaTriggerRef.current?.focus();
+  };
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
@@ -659,7 +666,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             onVerSolicitud={() => navegar("equipo", "solicitudes")}
           />
           <button
+            ref={angelaTriggerRef}
             onClick={() => setAngelaOpen((v) => !v)}
+            aria-expanded={angelaOpen}
+            aria-controls="angela-dock"
             className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-[0.88rem] font-semibold text-crema transition-transform active:scale-95"
           >
             <AngelaMark
@@ -937,6 +947,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           <AnimatePresence>
             {angelaOpen && !fullscreen && (
               <motion.aside
+                id="angela-dock"
+                aria-label={t("chat.panel")}
+                onKeyDown={closeDockOnEscape}
                 initial={{ x: 24, opacity: 0.4 }}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: 24, opacity: 0.4 }}
