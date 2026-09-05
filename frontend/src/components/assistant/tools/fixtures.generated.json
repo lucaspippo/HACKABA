@@ -1,0 +1,1284 @@
+{
+  "business_summary": {
+    "toolName": "resumen_negocio",
+    "args": {},
+    "result": {
+      "meta": {
+        "empresa": "Distribuidora del Litoral",
+        "fuente": "ERP de la distribuidora · núcleo de verdad PolPilot (DEMO)",
+        "generado": "2026-09-04T19:24:03",
+        "total_articulos": 430
+      },
+      "resumen": {
+        "inmovilizado_total": 444681833.42,
+        "total_articulos": 430,
+        "activos": 427,
+        "anulados": 3,
+        "con_costo": 427,
+        "stock_positivo": 428,
+        "stock_cero": 0,
+        "stock_negativo": 2,
+        "unidades_stock_positivo": 114704.0,
+        "antiguedad_mediana_costo_dias": 24.0,
+        "a_corregir": 20,
+        "salud": {
+          "nivel": "en_orden",
+          "label": "En orden"
+        }
+      },
+      "alertas": {
+        "fantasmas": {
+          "cantidad": 3,
+          "impacto_pesos": 270397.56,
+          "unidades": 47.0
+        },
+        "negativos": {
+          "cantidad": 2,
+          "impacto_pesos": 0,
+          "unidades": -15.0
+        },
+        "sin_pvp": {
+          "cantidad": 8,
+          "impacto_pesos": 11800130.3,
+          "unidades": 2939.0
+        },
+        "balanza": {
+          "cantidad": 2,
+          "impacto_pesos": 1080420.87,
+          "unidades": 100.0
+        },
+        "costo_viejo": {
+          "cantidad": 5,
+          "impacto_pesos": 4827596.37,
+          "unidades": 908.0
+        }
+      }
+    }
+  },
+  "cash_drawer": {
+    "toolName": "estado_caja",
+    "args": {},
+    "result": {
+      "fecha": "2026-07-07",
+      "abierta": true,
+      "historial": [
+        {
+          "fecha": "2026-05-08",
+          "total": 2218603,
+          "diferencia": 0
+        },
+        {
+          "fecha": "2026-05-09",
+          "total": 3656959,
+          "diferencia": 1586
+        },
+        {
+          "fecha": "2026-05-11",
+          "total": 4464129,
+          "diferencia": 0
+        },
+        {
+          "fecha": "2026-05-12",
+          "total": 4760102,
+          "diferencia": 0
+        }
+      ],
+      "movimientos": [
+        {
+          "tipo": "ingreso",
+          "medio": "efectivo",
+          "monto": 1240000,
+          "detalle": "Ventas mostrador"
+        },
+        {
+          "tipo": "ingreso",
+          "medio": "tarjeta",
+          "monto": 860000,
+          "detalle": "Ventas con tarjeta"
+        },
+        {
+          "tipo": "ingreso",
+          "medio": "transferencia",
+          "monto": 1530000,
+          "detalle": "Cobro Almacén San Martín"
+        },
+        {
+          "tipo": "ingreso",
+          "medio": "mercadopago",
+          "monto": 420000,
+          "detalle": "QR Mercado Pago"
+        }
+      ],
+      "saldo_inicial": 250000,
+      "totales": {
+        "por_medio": {
+          "efectivo": 1060000.0,
+          "tarjeta": 860000.0,
+          "transferencia": 1530000.0,
+          "mercadopago": 420000.0
+        },
+        "ingresos": 4050000.0,
+        "egresos": 180000.0,
+        "total": 4120000.0
+      },
+      "medios": [
+        "efectivo",
+        "tarjeta",
+        "transferencia",
+        "mercadopago"
+      ]
+    }
+  },
+  "top_tied_up_capital": {
+    "toolName": "top_inmovilizado",
+    "args": {
+      "n": 8
+    },
+    "result": {
+      "items": [
+        {
+          "um": "UN",
+          "pvp": 6927.97,
+          "tipo": "bebidas",
+          "stock": 479.0,
+          "codigo": 1204,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 5645.7,
+          "proveedor": "Distrib. Mayorista Guaraní",
+          "costo_neto": 4665.87,
+          "valor_peso": null,
+          "descripcion": "VINO TINTO LA RIBERA 750CC (X6U)",
+          "inmovilizado": 2704290.3,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 11.395042347796732
+        },
+        {
+          "um": "UN",
+          "pvp": 9869.01,
+          "tipo": "lácteos",
+          "stock": 326.0,
+          "codigo": 1216,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 8253.2,
+          "proveedor": "Lácteos Campo Alegre",
+          "costo_neto": 6820.83,
+          "valor_peso": null,
+          "descripcion": "LECHE ENTERA EL PARANA 1L (X12U)",
+          "inmovilizado": 2690543.2,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 27.463377754262112
+        },
+        {
+          "um": "UN",
+          "pvp": 7190.42,
+          "tipo": "bebidas",
+          "stock": 447.0,
+          "codigo": 1166,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 5905.53,
+          "proveedor": "Distrib. Mayorista Guaraní",
+          "costo_neto": 4880.6,
+          "valor_peso": null,
+          "descripcion": "GASEOSA COLA EL PARANA 2.25L (X6U)",
+          "inmovilizado": 2639771.91,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 13.241355918270166
+        },
+        {
+          "um": "UN",
+          "pvp": 7375.97,
+          "tipo": "bebidas",
+          "stock": 390.0,
+          "codigo": 1184,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 6192.14,
+          "proveedor": "Distrib. Mayorista Guaraní",
+          "costo_neto": 5117.47,
+          "valor_peso": null,
+          "descripcion": "JUGO EN POLVO COSTA DULCE (X20S)",
+          "inmovilizado": 2414934.6,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 16.916330198755908
+        }
+      ],
+      "total_inmovilizado_listado": 19173058.27
+    }
+  },
+  "item_group": {
+    "toolName": "listar_grupo",
+    "args": {
+      "grupo": "sin_pvp",
+      "limit": 10
+    },
+    "result": {
+      "items": [
+        {
+          "um": "UN",
+          "pvp": null,
+          "tipo": "limpieza y perfumería",
+          "stock": 972.0,
+          "codigo": 1428,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 2472.47,
+          "proveedor": "Frigorífico La Ribera",
+          "costo_neto": 2043.36,
+          "valor_peso": null,
+          "descripcion": "ROLLO DE COCINA GUARANI X3 (X10P)",
+          "inmovilizado": 2403240.84,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 20.645585229621418
+        },
+        {
+          "um": "KG",
+          "pvp": null,
+          "tipo": "fiambres y quesos (balanza)",
+          "stock": 89.2,
+          "codigo": 1270,
+          "estado": "activo",
+          "cota_inf": 0.45,
+          "cota_sup": 24.09,
+          "costo_iva": 19303.5,
+          "proveedor": "Limpieza Total SA",
+          "costo_neto": 15953.31,
+          "valor_peso": 23.1,
+          "descripcion": "JAMON COCIDO MONTE CHICO (HORMA)",
+          "inmovilizado": 1721872.2,
+          "venta_x_peso": true,
+          "antiguedad_costo_dias": 36.28633124445531
+        },
+        {
+          "um": "UN",
+          "pvp": null,
+          "tipo": "limpieza y perfumería",
+          "stock": 348.0,
+          "codigo": 1415,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 4849.18,
+          "proveedor": "Alimentos del Paraná SA",
+          "costo_neto": 4007.59,
+          "valor_peso": null,
+          "descripcion": "PAPEL HIGIENICO DON TIMOTEO X4 (X10P)",
+          "inmovilizado": 1687514.64,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 9.754613966323447
+        },
+        {
+          "um": "UN",
+          "pvp": null,
+          "tipo": "lácteos",
+          "stock": 436.0,
+          "codigo": 1218,
+          "estado": "activo",
+          "cota_inf": null,
+          "cota_sup": null,
+          "costo_iva": 3410.24,
+          "proveedor": "Golosinas Costa Dulce SRL",
+          "costo_neto": 2818.38,
+          "valor_peso": null,
+          "descripcion": "LECHE ENTERA EL LITORAL 1L (X12U)",
+          "inmovilizado": 1486864.64,
+          "venta_x_peso": false,
+          "antiguedad_costo_dias": 6.137704506812639
+        }
+      ],
+      "total_inmovilizado_listado": 11800130.3
+    }
+  },
+  "priorities": {
+    "toolName": "listar_prioridades",
+    "args": {},
+    "result": {
+      "act": [
+        {
+          "id": "cobrar_morosos",
+          "chip": "Cobrar",
+          "titulo": "Cobrar a los 3 morosos",
+          "resumen": "El peor: Despensa Doña Elsa, 66 días sin pagar.",
+          "monto": 85700000.0,
+          "cifra_texto": null,
+          "tono": "rojo",
+          "band": "act",
+          "insight": {
+            "pattern": "3 clientes tienen saldo vencido sin pagar.",
+            "hypothesis": "La mora está concentrada: son pocos clientes, no una caída general de la cobranza.",
+            "evidence": [
+              {
+                "id": "overdue_total",
+                "label": "Saldo vencido total",
+                "value": 85700000.0,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de saldos vencidos de clientes con al menos un comprobante impago pasada su fecha.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "overdue_clients",
+                "label": "Cobrar a los 3 morosos",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de saldos vencidos de clientes con al menos un comprobante impago pasada su fecha.",
+                "records": [
+                  {
+                    "name": "Autoservicio 9 de Julio",
+                    "amount": 42000000.0,
+                    "detail": "58 días sin pagar"
+                  },
+                  {
+                    "name": "Almacén San Martín",
+                    "amount": 24500000.0,
+                    "detail": "49 días sin pagar"
+                  },
+                  {
+                    "name": "Despensa Doña Elsa",
+                    "amount": 19200000.0,
+                    "detail": "66 días sin pagar"
+                  }
+                ],
+                "records_total": 3
+              },
+              {
+                "id": "days_overdue",
+                "label": "Días sin pagar vs. su promedio histórico (Despensa Doña Elsa)",
+                "value": 66,
+                "unit": "days",
+                "baseline": {
+                  "value": 31,
+                  "label": "Promedio de días entre cobranzas de ese cliente en su historia."
+                },
+                "deviation": {
+                  "pct": 113,
+                  "direction": "up"
+                },
+                "method": "Días entre la última cobranza registrada del cliente y hoy.",
+                "records": [
+                  {
+                    "name": "Despensa Doña Elsa",
+                    "amount": 19200000.0,
+                    "detail": null
+                  }
+                ],
+                "records_total": 1
+              }
+            ],
+            "assumptions": [
+              "Asumo que no hubo pagos en efectivo sin registrar."
+            ],
+            "alternatives": [
+              "Puede haber un pago hecho y todavía no registrado."
+            ],
+            "falsifiers": [
+              "Un comprobante de pago posterior a la última cobranza registrada."
+            ],
+            "confidence": {
+              "data": "high",
+              "hypothesis": "medium"
+            },
+            "risk": {
+              "level": "high",
+              "exposure": 85700000.0
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        },
+        {
+          "id": "pago_vencido",
+          "chip": "Pagar",
+          "titulo": "Pagos a proveedores ya vencidos",
+          "resumen": "1 pagos, $35.812.000.",
+          "monto": 35812000.0,
+          "cifra_texto": null,
+          "tono": "rojo",
+          "band": "act",
+          "insight": {
+            "pattern": "Hay 1 pagos vencidos.",
+            "hypothesis": null,
+            "evidence": [
+              {
+                "id": "payables_overdue_total",
+                "label": "Total vencido a proveedores",
+                "value": 35812000.0,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de facturas de proveedores en estado pendiente cuya fecha de vencimiento ya pasó.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "payables_overdue_rows",
+                "label": "Pagos a proveedores ya vencidos",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de facturas de proveedores en estado pendiente cuya fecha de vencimiento ya pasó.",
+                "records": [
+                  {
+                    "name": "Alimentos del Paraná SA FC-A-07441",
+                    "amount": 35812000.0,
+                    "detail": "vencida hace 4 días"
+                  }
+                ],
+                "records_total": 1
+              }
+            ],
+            "assumptions": [],
+            "alternatives": [],
+            "falsifiers": [],
+            "confidence": {
+              "data": "low",
+              "hypothesis": "high"
+            },
+            "risk": {
+              "level": "high",
+              "exposure": 35812000.0
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        },
+        {
+          "id": "venc_riesgo",
+          "chip": "Depósito",
+          "titulo": "8 lotes que no llegás a vender",
+          "resumen": "YOGUR BEBIBLE TIERRA ROJA 900G (X6U) vence en 7 días. $4.973.803 en riesgo.",
+          "monto": 4973803.08,
+          "cifra_texto": null,
+          "tono": "rojo",
+          "band": "act",
+          "insight": {
+            "pattern": "8 lotes, $4.973.803, no se venden al ritmo actual antes de vencer.",
+            "hypothesis": null,
+            "evidence": [
+              {
+                "id": "at_risk_value",
+                "label": "Plata en riesgo por vencimiento",
+                "value": 4973803.08,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Lotes cuyo ritmo de venta actual no alcanza para agotarlos antes de vencer.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "at_risk_rows",
+                "label": "8 lotes que no llegás a vender",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Lotes cuyo ritmo de venta actual no alcanza para agotarlos antes de vencer.",
+                "records": [
+                  {
+                    "name": "YOGUR BEBIBLE TIERRA ROJA 900G (X6U)",
+                    "amount": 1054122.5,
+                    "detail": "vence en 7 días"
+                  },
+                  {
+                    "name": "AZUCAR MONTE CHICO X1KG (X10U)",
+                    "amount": 877785.3,
+                    "detail": "vence en 7 días"
+                  },
+                  {
+                    "name": "MAYONESA GUARANI 500G (X12U)",
+                    "amount": 873154.76,
+                    "detail": "vence en 10 días"
+                  }
+                ],
+                "records_total": 8
+              }
+            ],
+            "assumptions": [
+              "Ritmo de venta = unidades de los últimos 12 meses / 365."
+            ],
+            "alternatives": [],
+            "falsifiers": [],
+            "confidence": {
+              "data": "high",
+              "hypothesis": "medium"
+            },
+            "risk": {
+              "level": "high",
+              "exposure": 4973803.08
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        },
+        {
+          "id": "dep_vencidos",
+          "chip": "Depósito",
+          "titulo": "Lotes ya vencidos",
+          "resumen": "2 lotes pasaron la fecha.",
+          "monto": 2491236.6,
+          "cifra_texto": "2",
+          "tono": "rojo",
+          "band": "act",
+          "insight": {
+            "pattern": "2 lotes, $2.491.237, ya pasaron su fecha de vencimiento.",
+            "hypothesis": null,
+            "evidence": [
+              {
+                "id": "expired_lots_value",
+                "label": "Valor de los lotes vencidos",
+                "value": 2491236.6,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Lotes de depósito cuya fecha de vencimiento ya pasó, valuados al costo con IVA del catálogo.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "expired_lots",
+                "label": "Lotes ya vencidos",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Lotes de depósito cuya fecha de vencimiento ya pasó, valuados al costo con IVA del catálogo.",
+                "records": [
+                  {
+                    "name": "SODA TIERRA ROJA 2L (X6U)",
+                    "amount": 1748479.2,
+                    "detail": "vencido hace 7 días"
+                  },
+                  {
+                    "name": "ROLLO DE COCINA DON TIMOTEO X3 (X10P)",
+                    "amount": 742757.4,
+                    "detail": "vencido hace 3 días"
+                  }
+                ],
+                "records_total": 2
+              }
+            ],
+            "assumptions": [
+              "Valor calculado al costo con IVA cargado en el catálogo."
+            ],
+            "alternatives": [],
+            "falsifiers": [],
+            "confidence": {
+              "data": "medium",
+              "hypothesis": "medium"
+            },
+            "risk": {
+              "level": "high",
+              "exposure": 2491236.6
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        }
+      ],
+      "watch": [
+        {
+          "id": "concentracion",
+          "chip": "Riesgo",
+          "titulo": "3 clientes concentran demasiado",
+          "resumen": "El 41% de tu facturación en cuenta corriente de los últimos 12 meses — $470.800.000 — está en 3 clientes. Es exposición, no plata a cobrar: si uno se cae, duele.",
+          "monto": 470800000.0,
+          "cifra_texto": null,
+          "tono": "oro",
+          "band": "watch",
+          "insight": {
+            "pattern": "Tus 3 clientes más grandes suman $470.800.000: el 41% de todo lo facturado en cuenta corriente en 12 meses.",
+            "hypothesis": null,
+            "evidence": [
+              {
+                "id": "client_concentration_pct",
+                "label": "Concentración en los principales clientes",
+                "value": 41.5,
+                "unit": "pct",
+                "baseline": null,
+                "deviation": null,
+                "method": "Facturación en cuenta corriente de los últimos 12 meses de los 3 clientes más grandes, sobre el total.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "top_clients",
+                "label": "3 clientes concentran demasiado",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Facturación en cuenta corriente de los últimos 12 meses de los 3 clientes más grandes, sobre el total.",
+                "records": [
+                  {
+                    "name": "Supermercado El Puente",
+                    "amount": 229490000.0,
+                    "detail": "20% de tu facturación en cuenta corriente"
+                  },
+                  {
+                    "name": "Autoservicio 9 de Julio",
+                    "amount": 155340000.0,
+                    "detail": "14% de tu facturación en cuenta corriente"
+                  },
+                  {
+                    "name": "Súper Avenida Norte",
+                    "amount": 85970000.0,
+                    "detail": "8% de tu facturación en cuenta corriente"
+                  }
+                ],
+                "records_total": 3
+              }
+            ],
+            "assumptions": [
+              "Base declarada: ventas en cuenta corriente de los últimos 12 meses (los movimientos por cliente; el mostrador no identifica cliente).",
+              "Vos me enseñaste: «Los tres grandes concentran el 41% pero son los que pagan en fecha: el riesgo es de concentración, no de cobro.»."
+            ],
+            "alternatives": [],
+            "falsifiers": [],
+            "confidence": {
+              "data": "medium",
+              "hypothesis": "medium"
+            },
+            "risk": {
+              "level": "medium",
+              "exposure": 470800000.0
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        },
+        {
+          "id": "cheques",
+          "chip": "Mirar",
+          "titulo": "Cheques en cartera",
+          "resumen": "4 cheques, $25.880.000.",
+          "monto": 25880000.0,
+          "cifra_texto": null,
+          "tono": "azul",
+          "band": "watch",
+          "insight": {
+            "pattern": "Tenés 4 cheques en cartera por $25.880.000.",
+            "hypothesis": null,
+            "evidence": [
+              {
+                "id": "checks_total",
+                "label": "Total en cheques en cartera",
+                "value": 25880000.0,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de cheques recibidos que todavía no fueron cobrados.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "checks_rows",
+                "label": "Cheques en cartera",
+                "value": null,
+                "unit": null,
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de cheques recibidos que todavía no fueron cobrados.",
+                "records": [
+                  {
+                    "name": "Supermercado El Puente 48451142",
+                    "amount": 4560000.0,
+                    "detail": "banco Macro"
+                  },
+                  {
+                    "name": "Comedor Escolar N°12 41066140",
+                    "amount": 8670000.0,
+                    "detail": "banco Banco Provincia"
+                  },
+                  {
+                    "name": "Súper Dos Hermanos 31119321",
+                    "amount": 8370000.0,
+                    "detail": "banco Macro"
+                  }
+                ],
+                "records_total": 4
+              }
+            ],
+            "assumptions": [],
+            "alternatives": [],
+            "falsifiers": [],
+            "confidence": {
+              "data": "medium",
+              "hypothesis": "high"
+            },
+            "risk": {
+              "level": "medium",
+              "exposure": 25880000.0
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        },
+        {
+          "id": "faltante_caja_patron",
+          "chip": "Revisar",
+          "titulo": "Cada sábado la caja falta mucho más que el resto de la semana",
+          "resumen": "Faltó en el 44% de los cierres de sábado (vs 7% el resto), $19.940 acumulado en 9 cierres.",
+          "monto": 19940.0,
+          "cifra_texto": null,
+          "tono": "oro",
+          "band": "watch",
+          "insight": {
+            "pattern": "De los últimos 9 cierres de sábado, 4 tuvieron faltante — 44% de las veces, contra 7% el resto de los días de la semana.",
+            "hypothesis": "Parece algo propio del sábado — un problema de proceso ese día puntual, no ruido repartido entre toda la semana.",
+            "evidence": [
+              {
+                "id": "shortfall_rate",
+                "label": "Faltante los sábado vs. el resto de la semana",
+                "value": 44,
+                "unit": "pct",
+                "baseline": {
+                  "value": 7,
+                  "label": "% de faltante el resto de la semana"
+                },
+                "deviation": {
+                  "pct": 529,
+                  "direction": "up"
+                },
+                "method": "% de cierres de ese día de la semana con faltante, contra el % del resto de los días.",
+                "records": [],
+                "records_total": 0
+              },
+              {
+                "id": "shortfall_total",
+                "label": "Total de faltantes de caja ese día",
+                "value": 19940.0,
+                "unit": "ars",
+                "baseline": null,
+                "deviation": null,
+                "method": "Suma de los faltantes de ese día de la semana en el historial analizado.",
+                "records": [],
+                "records_total": 0
+              }
+            ],
+            "assumptions": [
+              "Supuesto: compara el faltante promedio de cada día de la semana contra el resto, sobre el historial de cierres disponible."
+            ],
+            "alternatives": [
+              "Puede ser un tema de quién atiende ese día, no del día en sí: si suele cerrar caja la misma persona los sábado, el patrón podría seguir a quien trabaja, no a la fecha."
+            ],
+            "falsifiers": [],
+            "confidence": {
+              "data": "high",
+              "hypothesis": "medium"
+            },
+            "risk": {
+              "level": null,
+              "exposure": null
+            },
+            "deadline": {
+              "date": null,
+              "urgency": null
+            },
+            "owner": null
+          }
+        }
+      ],
+      "badge": 17,
+      "orden": "canónico — no reordenar ni mezclar act con watch"
+    }
+  },
+  "accounts_receivable": {
+    "toolName": "cuentas_corrientes",
+    "args": {},
+    "result": {
+      "totales": {
+        "total_adeudado": 311400000.0,
+        "clientes_con_deuda": 23,
+        "total_morosos": 85700000.0,
+        "cantidad_morosos": 3
+      },
+      "clientes": [
+        {
+          "id": "super_el_puente",
+          "nombre": "Supermercado El Puente",
+          "saldo": 55000000.0,
+          "limite_credito": 80000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 17,
+          "promedio_pago_dias": 24,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-01-27",
+              "tipo": "venta",
+              "monto": 24110000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-16",
+              "tipo": "pago",
+              "monto": 24110000.0,
+              "detalle": "Pago a 20 días"
+            },
+            {
+              "fecha": "2025-03-11",
+              "tipo": "venta",
+              "monto": 24020000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-03",
+              "tipo": "pago",
+              "monto": 24020000.0,
+              "detalle": "Pago a 23 días"
+            }
+          ],
+          "en_mora": false,
+          "score": "confiable",
+          "disponible": 25000000.0,
+          "atraso_vs_promedio": 0
+        },
+        {
+          "id": "autoservicio_9dejulio",
+          "nombre": "Autoservicio 9 de Julio",
+          "saldo": 42000000.0,
+          "limite_credito": 60000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 58,
+          "promedio_pago_dias": 29,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-02-02",
+              "tipo": "venta",
+              "monto": 22240000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-26",
+              "tipo": "pago",
+              "monto": 22240000.0,
+              "detalle": "Pago a 24 días"
+            },
+            {
+              "fecha": "2025-03-22",
+              "tipo": "venta",
+              "monto": 22460000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-15",
+              "tipo": "pago",
+              "monto": 22460000.0,
+              "detalle": "Pago a 24 días"
+            }
+          ],
+          "en_mora": true,
+          "score": "riesgoso",
+          "disponible": 18000000.0,
+          "atraso_vs_promedio": 100
+        },
+        {
+          "id": "almacen_sanmartin",
+          "nombre": "Almacén San Martín",
+          "saldo": 24500000.0,
+          "limite_credito": 30000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 49,
+          "promedio_pago_dias": 27,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-01-19",
+              "tipo": "venta",
+              "monto": 15280000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-18",
+              "tipo": "pago",
+              "monto": 15280000.0,
+              "detalle": "Pago a 30 días"
+            },
+            {
+              "fecha": "2025-03-14",
+              "tipo": "venta",
+              "monto": 18820000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-08",
+              "tipo": "pago",
+              "monto": 18820000.0,
+              "detalle": "Pago a 25 días"
+            }
+          ],
+          "en_mora": true,
+          "score": "riesgoso",
+          "disponible": 5500000.0,
+          "atraso_vs_promedio": 81
+        },
+        {
+          "id": "super_dos_hermanos",
+          "nombre": "Súper Dos Hermanos",
+          "saldo": 21400000.0,
+          "limite_credito": 30000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 12,
+          "promedio_pago_dias": 22,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-01-31",
+              "tipo": "venta",
+              "monto": 10920000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-21",
+              "tipo": "pago",
+              "monto": 10920000.0,
+              "detalle": "Pago a 21 días"
+            },
+            {
+              "fecha": "2025-03-20",
+              "tipo": "venta",
+              "monto": 16940000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-08",
+              "tipo": "pago",
+              "monto": 16940000.0,
+              "detalle": "Pago a 19 días"
+            }
+          ],
+          "en_mora": false,
+          "score": "confiable",
+          "disponible": 8600000.0,
+          "atraso_vs_promedio": 0
+        }
+      ],
+      "morosos": [
+        {
+          "id": "autoservicio_9dejulio",
+          "nombre": "Autoservicio 9 de Julio",
+          "saldo": 42000000.0,
+          "limite_credito": 60000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 58,
+          "promedio_pago_dias": 29,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-02-02",
+              "tipo": "venta",
+              "monto": 22240000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-26",
+              "tipo": "pago",
+              "monto": 22240000.0,
+              "detalle": "Pago a 24 días"
+            },
+            {
+              "fecha": "2025-03-22",
+              "tipo": "venta",
+              "monto": 22460000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-15",
+              "tipo": "pago",
+              "monto": 22460000.0,
+              "detalle": "Pago a 24 días"
+            }
+          ],
+          "en_mora": true,
+          "score": "riesgoso",
+          "disponible": 18000000.0,
+          "atraso_vs_promedio": 100
+        },
+        {
+          "id": "almacen_sanmartin",
+          "nombre": "Almacén San Martín",
+          "saldo": 24500000.0,
+          "limite_credito": 30000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 49,
+          "promedio_pago_dias": 27,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-01-19",
+              "tipo": "venta",
+              "monto": 15280000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-02-18",
+              "tipo": "pago",
+              "monto": 15280000.0,
+              "detalle": "Pago a 30 días"
+            },
+            {
+              "fecha": "2025-03-14",
+              "tipo": "venta",
+              "monto": 18820000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-04-08",
+              "tipo": "pago",
+              "monto": 18820000.0,
+              "detalle": "Pago a 25 días"
+            }
+          ],
+          "en_mora": true,
+          "score": "riesgoso",
+          "disponible": 5500000.0,
+          "atraso_vs_promedio": 81
+        },
+        {
+          "id": "despensa_dona_elsa",
+          "nombre": "Despensa Doña Elsa",
+          "saldo": 19200000.0,
+          "limite_credito": 22000000.0,
+          "plazo_dias": 30,
+          "dias_sin_pagar": 66,
+          "promedio_pago_dias": 31,
+          "vat": null,
+          "city": null,
+          "phone": null,
+          "email": null,
+          "source": null,
+          "source_id": null,
+          "movimientos": [
+            {
+              "fecha": "2025-02-03",
+              "tipo": "venta",
+              "monto": 10550000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-03-14",
+              "tipo": "pago",
+              "monto": 10550000.0,
+              "detalle": "Pago a 39 días"
+            },
+            {
+              "fecha": "2025-03-29",
+              "tipo": "venta",
+              "monto": 18130000.0,
+              "detalle": "Pedido mayorista"
+            },
+            {
+              "fecha": "2025-05-02",
+              "tipo": "venta",
+              "monto": 9950000.0,
+              "detalle": "Pedido mayorista"
+            }
+          ],
+          "en_mora": true,
+          "score": "riesgoso",
+          "disponible": 2800000.0,
+          "atraso_vs_promedio": 113,
+          "tolerancia_dias": 45,
+          "exceso_tolerancia": 21,
+          "conocimiento": [
+            {
+              "id": "k01",
+              "tipo": "regla",
+              "texto": "A Despensa Doña Elsa tolerale hasta 45 días — es cliente desde 2011 y nunca me falló.",
+              "texto_en": "Give Despensa Doña Elsa up to 45 days — a customer since 2011 who never let me down.",
+              "nodo": "clientes",
+              "efecto": "ajusta_umbral",
+              "efecto_profundo": true,
+              "veces_aplicada": 7,
+              "cuando": "2026-06-05"
+            }
+          ]
+        }
+      ],
+      "alertas": {
+        "cantidad": 3,
+        "impacto_pesos": 85700000.0
+      }
+    }
+  },
+  "series_monthly_sales": {
+    "toolName": "consultar_serie",
+    "args": {
+      "fuente": "ventas",
+      "metrica": "pesos",
+      "agrupar": "mes"
+    },
+    "result": {
+      "ok": true,
+      "meta": {
+        "fuente": "ventas",
+        "metrica": "pesos",
+        "agrupar": "mes",
+        "unidad": "$",
+        "ventana": "2016-07 → 2026-06",
+        "composicion": false,
+        "deflactado": false,
+        "base_ipc": null,
+        "temporal": true
+      },
+      "series": [
+        {
+          "nombre": "Ventas totales",
+          "puntos": 120,
+          "primero": {
+            "x": "2016-07",
+            "y": 5020484.91
+          },
+          "ultimo": {
+            "x": "2026-06",
+            "y": 756082046.29
+          },
+          "max": 823089581.57,
+          "total": 18093019469.25
+        }
+      ]
+    }
+  },
+  "series_by_category": {
+    "toolName": "consultar_serie",
+    "args": {
+      "fuente": "inventario",
+      "metrica": "inmovilizado",
+      "agrupar": "categoria",
+      "top_n": 6
+    },
+    "result": {
+      "ok": true,
+      "meta": {
+        "fuente": "inventario",
+        "metrica": "inmovilizado",
+        "agrupar": "categoria",
+        "unidad": "$",
+        "ventana": "hoy",
+        "composicion": false,
+        "deflactado": false,
+        "temporal": false
+      },
+      "series": [
+        {
+          "nombre": "Capital inmovilizado",
+          "puntos": 6,
+          "top": [
+            {
+              "x": "fiambres y quesos (balanza)",
+              "y": 74794309.65
+            },
+            {
+              "x": "almacén seco",
+              "y": 69499182.89
+            },
+            {
+              "x": "lácteos",
+              "y": 59768626.34
+            },
+            {
+              "x": "bebidas",
+              "y": 58589822.62
+            },
+            {
+              "x": "limpieza y perfumería",
+              "y": 52697945.3
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "series_no_match": {
+    "toolName": "consultar_serie",
+    "args": {
+      "fuente": "ventas",
+      "metrica": "participacion",
+      "producto": "no-existe-este-producto",
+      "universo": "total_negocio"
+    },
+    "result": {
+      "ok": false,
+      "motivo": "No encontré ningún producto que matchee «no-existe-este-producto» en las ventas."
+    }
+  },
+  "series_not_available": {
+    "toolName": "consultar_serie",
+    "args": {
+      "fuente": "ventas",
+      "metrica": "no_existe_esta_metrica"
+    },
+    "result": {
+      "ok": false,
+      "motivo": "La métrica «no_existe_esta_metrica» no aplica a ventas.",
+      "sugerencias": [
+        "participacion",
+        "pesos",
+        "pesos_reales",
+        "unidades"
+      ]
+    }
+  }
+}
