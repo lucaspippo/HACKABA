@@ -113,7 +113,8 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
   }, [threadId, text]);
 
   const runCommand = (command: SlashCommand) => {
-    aui.composer.setText("");
+    aui.composer.setText(command.templateKey ? t(command.templateKey) : "");
+    if (command.templateKey) return;
     if (command.action === "new_thread") aui.threads.switchToNewThread();
     else if (command.prompt) aui.thread.append(command.prompt);
   };

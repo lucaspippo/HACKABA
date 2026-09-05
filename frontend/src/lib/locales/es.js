@@ -3025,6 +3025,7 @@ export const ES = {
   "chat.settings.error": "No pude guardar el ajuste.",
   "chat.command.remember.name": "recordar",
   "chat.command.remember.description": "Guardar algo del negocio",
+  "chat.command.remember.template": "Acordate de que ",
   "memoria_chips.error": "No pude anotarlo. Probá de nuevo.",
   "conocimiento_pendiente.titulo": "Propuestas de conocimiento",
   "conocimiento_pendiente.vacio": "No hay propuestas esperando revisión.",
