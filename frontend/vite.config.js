@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -8,6 +9,9 @@ const apiPort = process.env.POLPILOT_API_PORT || "8000";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   server: {
     port: 5173,
     // Proxy a la API de FastAPI durante desarrollo.
@@ -21,7 +25,11 @@ export default defineConfig({
     },
   },
   test: {
+    // DOM suites opt in per file with `// @vitest-environment jsdom`.
     environment: "node",
+    // Testing Library registers its auto-cleanup only when afterEach is global.
+    globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["./src/test-setup.ts"],
   },
 });

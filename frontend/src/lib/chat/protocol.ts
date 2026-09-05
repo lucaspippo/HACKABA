@@ -22,6 +22,14 @@ export type StreamEvent =
 
 export type Notice = { kind: NoticeKind };
 
+/** What one turn's context was spent on, as measured by the backend. */
+export type WireUsage = {
+  system?: number;
+  tools?: number;
+  messages?: number;
+  context_window?: number;
+};
+
 /** The final envelope. `answer` is legacy-defensive only: v2 sends text as deltas. */
 export type DoneResult = {
   mode?: string;
@@ -29,6 +37,8 @@ export type DoneResult = {
   actions?: Array<{ type: string } & Record<string, unknown>>;
   options?: Array<{ label: string; enviar: string }>;
   answer?: string;
+  /** Absent when the turn could not be measured; never zeroed. */
+  usage?: WireUsage;
 };
 
 /** Parse one NDJSON line. Returns null for blank or malformed lines. */

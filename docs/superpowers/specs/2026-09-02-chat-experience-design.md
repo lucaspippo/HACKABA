@@ -1,7 +1,8 @@
 # Ángela chat experience — design
 
 - **Date:** 2026-09-02
-- **Status:** approved (design); implementation planned per phase
+- **Status:** approved (design). Phase 1 and Phase 3's presenter registry
+  landed; D11 added 2026-09-05. Phase 1.5 and Phase 2 not started.
 - **Scope:** the Ángela chat surface (frontend `components/assistant/`, `lib/chat*`,
   `views/Chat*`) and the `/api/angela/stream` contract that feeds it.
 
@@ -300,6 +301,49 @@ order, `hielo` = frozen capital. **`violeta` (`#2a5cdf`, same value as
 `angela-blue`; the token name is historical) is exclusively Ángela/AI and must
 never be a data-series color.** Series come from `paleta.SERIES`. Chart axes
 and grids come from `components/charts/tema`.
+
+### D11 — The composer is a vendored shadcn element, mapped onto the palette
+
+`npx shadcn@latest add "@assistant-ui/elements-composer"` copies source into
+the repo rather than adding a dependency, so the generated files are ours to
+edit — which they need to be:
+
+- **Its base layer would repaint the app.** `init` imports Geist and applies
+  `font-sans` to `html`, `bg-background text-foreground` to `body` and
+  `border-border` to `*`. All three are dropped; shadcn's semantic tokens are
+  redefined to resolve to the existing `@theme` palette, so registry
+  components inherit PolPilot's look with no per-component restyling.
+  `--primary` is `violeta` because the only shadcn surface is Ángela's
+  composer; that does not license `violeta` anywhere else (D10 still holds).
+- **Its literals break two house rules.** Registry components ship English
+  strings and `blue-500`/`emerald-500`/`red-600`. Copy becomes props with
+  English defaults so call sites pass i18n keys; colours become palette
+  tokens.
+- **Its import paths are wrong as generated.** The registry wrote
+  `surfaces.tsx`/`range.ts` to `src/lib` while importing them from
+  `./surfaces` and `../utils/range`.
+
+Keep the vendored files close to upstream so a future `shadcn add` stays
+reviewable: deviate for the palette, i18n, correctness and accessibility, not
+for taste.
+
+**Attachments are text only.** `SimpleTextAttachmentAdapter` inlines a file as
+a text part, which the NDJSON adapter already forwards. An image becomes an
+image part and `splitMessages` drops it, so offering image attachments to a
+text-only backend would be a silent failure of exactly the kind D5 and D9
+exist to remove. Photos keep FacturaFlow.
+
+**The context meter reports measured tokens or nothing.** The split is
+measured with `count_tokens`, cached per (model, system, tool set); a turn
+that cannot be measured sends `usage: null` and the meter hides. A zeroed
+meter would claim an empty context rather than no measurement. The window
+itself is configuration (`POLPILOT_CONTEXT_WINDOW`) because the API does not
+report it.
+
+**Read-aloud does not use the runtime's speech adapter.** `SpeechState` is
+`{messageId, status}`, which cannot drive word highlighting; a hook over the
+Web Speech `boundary` event supplies the real spoken offset. The element's
+`duration` prop is removed — TTS has no known length until it ends.
 
 ## Target structure
 
