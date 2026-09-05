@@ -185,3 +185,18 @@ def test_knowledge_block_respects_node_scope():
     angela._set_sesion(usuario="deposito", rol="depósito",
                        features={"deposito", "logistica"}, idioma="es")
     assert angela._knowledge_block("deposito") == ""
+
+
+def test_capture_off_covers_every_writing_tool():
+    """The toggle says "save new memories": with only proponer_conocimiento
+    gated, the model reached for `recordar` instead and wrote anyway."""
+    names = [t["name"] for t in angela.tools_para(None, knowledge_capture=False)]
+    assert not (set(names) & angela.CAPTURE_TOOLS)
+
+
+def test_capture_off_refuses_recordar_too():
+    memoria.set_vista("emilio", "knowledge_capture", False)
+    angela._set_sesion(usuario="emilio", rol="dueño", features=None, idioma="es")
+    result, _ = angela._run_tool("recordar", {"clave": "tono", "valor": "informal"})
+    assert result["ok"] is False
+    assert memoria.get("emilio")["preferencias"] == {}
