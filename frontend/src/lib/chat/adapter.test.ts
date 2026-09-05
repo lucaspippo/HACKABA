@@ -49,6 +49,25 @@ describe("text deltas", () => {
     ]);
   });
 
+  it("carries the measured context usage into the message metadata", async () => {
+    const results = await runAll([
+      '{"type":"text","delta":"Listo."}\n',
+      '{"type":"done","result":{"mode":"claude","tools_used":[],"actions":[],' +
+        '"usage":{"system":500,"tools":3000,"messages":6500,"context_window":200000}}}\n',
+    ]);
+    expect(results.at(-1)!.metadata?.custom?.usage).toEqual({
+      system: 500, tools: 3000, messages: 6500, context_window: 200000,
+    });
+  });
+
+  it("leaves usage absent when the backend could not measure the turn", async () => {
+    const results = await runAll([
+      '{"type":"text","delta":"Listo."}\n',
+      '{"type":"done","result":{"mode":"claude","tools_used":[],"actions":[],"usage":null}}\n',
+    ]);
+    expect(results.at(-1)!.metadata?.custom?.usage).toBeNull();
+  });
+
   it("survives a chunk boundary splitting a line mid-JSON", async () => {
     const results = await runAll([
       '{"type":"text","delta":"Ten',
