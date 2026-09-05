@@ -22,7 +22,7 @@ const AGE_FILL = {
 
 export function VizLock({ motivo }) {
   return (
-    <p className="rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-5 text-[0.9rem] text-tinta-suave">
+    <p className="rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-5 text-sm text-tinta-suave">
       {motivo}
     </p>
   );
@@ -41,7 +41,7 @@ function Leyenda({ items }) {
   return (
     <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
       {items.map((it) => (
-        <li key={it.name} className="flex items-center gap-1.5 text-[0.78rem] text-tinta-suave">
+        <li key={it.name} className="flex items-center gap-1.5 text-xs text-tinta-suave">
           {it.dash ? (
             <span className="w-3.5 border-t-2 border-dashed" style={{ borderColor: it.color }} />
           ) : (
@@ -77,8 +77,8 @@ export function ExcessByCat({ data }) {
   return (
     <section data-nav-id="exceso" className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_exceso_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_exceso_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">
           {t("inventario.viz_exceso_sub", {
             extra: pesoCorto(data.total_excedente),
             falta: pesoCorto(data.total_necesario),
@@ -127,8 +127,8 @@ export function ExpiryHorizon({ data }) {
   return (
     <section data-nav-id="venc-horizon" className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_venc_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_venc_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">
           {t("inventario.viz_venc_sub", { monto: pesoCorto(data.total_en_riesgo), n: num(data.lotes_en_riesgo) })}
         </p>
       </div>
@@ -159,8 +159,8 @@ export function SeasonalityCover({ data }) {
   return (
     <section data-nav-id="temporada" className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_temp_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_temp_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">
           {pico
             ? pico.aviso
             : t("inventario.viz_temp_sub", { cat: tCat(data.featured) })}
@@ -211,8 +211,8 @@ export function CoverLeadScatter({ puntos, onSelect }) {
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_runway_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">{t("inventario.viz_runway_sub")}</p>
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_runway_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">{t("inventario.viz_runway_sub")}</p>
       </div>
       <ScatterSvg
         points={pts}
@@ -252,8 +252,8 @@ export function RotationScatter({ data, onSelect }) {
   return (
     <section data-nav-id="rotacion" className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_rot_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">{t("inventario.viz_rot_sub")}</p>
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_rot_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">{t("inventario.viz_rot_sub")}</p>
       </div>
       <ScatterSvg
         points={pts}
@@ -301,8 +301,8 @@ export function AgingBars({ data }) {
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_age_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_age_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">
           {t("inventario.viz_age_sub", { pct: num(data.cubierto_pct) })}
         </p>
       </div>
@@ -343,8 +343,8 @@ export function GmroiBars({ data }) {
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_gmroi_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">{t("inventario.viz_gmroi_sub")}</p>
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_gmroi_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">{t("inventario.viz_gmroi_sub")}</p>
       </div>
       <ChartFrame
         height="h-[20rem] sm:h-[24rem]"
@@ -399,8 +399,8 @@ export function LeadTruth({ data }) {
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.viz_lead_titulo")}</h2>
-        <p className="max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">{t("inventario.viz_lead_sub")}</p>
+        <h2 className="font-display text-lg font-bold">{t("inventario.viz_lead_titulo")}</h2>
+        <p className="max-w-2xl text-sm leading-snug text-tinta-suave">{t("inventario.viz_lead_sub")}</p>
       </div>
       <ChartFrame
         height="h-56 sm:h-72"
@@ -434,7 +434,7 @@ export function LeadTruth({ data }) {
 
 export function BurnChart({ data }) {
   const t = useT();
-  if (!data?.disponible) return data?.motivo ? <p className="mt-3 text-[0.82rem] text-tinta-suave">{data.motivo}</p> : null;
+  if (!data?.disponible) return data?.motivo ? <p className="mt-3 text-sm text-tinta-suave">{data.motivo}</p> : null;
   const filas = data.dias.map((d, i) => ({
     name: d === 0 ? t("inventario.viz_burn_hoy") : `d+${d}`,
     sin: data.sin_camion[i],
@@ -443,9 +443,9 @@ export function BurnChart({ data }) {
   const leadTick = `d+${data.lead_dias}`;
   return (
     <div className="mt-4 space-y-2">
-      <p className="text-[0.82rem] font-semibold text-tinta">{t("inventario.viz_burn_titulo")}</p>
+      <p className="text-sm font-semibold text-tinta">{t("inventario.viz_burn_titulo")}</p>
       {data.stockout_day != null && (
-        <p className="text-[0.78rem] text-rojo">
+        <p className="text-xs text-rojo">
           {t("inventario.viz_burn_quiebre", { n: num(data.stockout_day), lead: num(data.lead_dias) })}
         </p>
       )}
@@ -599,7 +599,7 @@ function ScatterSvg({
       </svg>
       {tip && (
         <div
-          className="pointer-events-none absolute z-10 max-w-[16rem] rounded-xl border border-linea bg-crema px-3 py-2 text-[0.75rem] leading-snug text-tinta sombra-papel"
+          className="pointer-events-none absolute z-10 max-w-[16rem] rounded-xl border border-linea bg-crema px-3 py-2 text-xs leading-snug text-tinta sombra-papel"
           style={{
             left: `${(tip.px / W) * 100}%`,
             top: `${(tip.py / H) * 100}%`,

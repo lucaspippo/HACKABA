@@ -46,7 +46,7 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl font-bold">{t("cobranzas.titulo")}</h1>
-        <p className="mt-1 text-[0.9rem] text-tinta-suave">
+        <p className="mt-1 text-sm text-tinta-suave">
           {t(esDueno ? "cobranzas.subtitulo_dueno" : "cobranzas.subtitulo")}
         </p>
       </header>
@@ -75,10 +75,10 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
 
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
             <div className="border-b border-linea px-4 py-3">
-              <p className="font-display text-[1.05rem] font-bold leading-tight">
+              <p className="font-display text-lg font-bold leading-tight">
                 {t(esDueno ? "cobranzas.orden_titulo_dueno" : "cobranzas.orden_titulo")}
               </p>
-              <p className="text-[0.82rem] text-tinta-suave">{t("cobranzas.orden_sub")}</p>
+              <p className="text-sm text-tinta-suave">{t("cobranzas.orden_sub")}</p>
             </div>
 
             {d.items.map((c, i) => (
@@ -89,7 +89,7 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
                 onPreguntar={onPreguntar} onNavegar={onNavegar} />
             ))}
 
-            <p className="border-t border-linea px-4 py-2.5 text-[0.76rem] leading-snug text-tinta-suave">
+            <p className="border-t border-linea px-4 py-2.5 text-xs leading-snug text-tinta-suave">
               {t("cobranzas.nota_orden")}
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
 
       {hayCuentas && d && !d.disponible && (
         <p className="rounded-[var(--radius-card)] border border-salvia/30 bg-salvia/[0.06] p-6
-                      text-center text-[0.92rem] text-tinta">
+                      text-center text-sm text-tinta">
           {t("cobranzas.sin_morosos")}
         </p>
       )}
@@ -111,8 +111,8 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
       )}
 
       <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
-        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("cobranzas.como_funciona")}</p>
-        <ul className="mt-2 space-y-1.5 text-[0.9rem] text-tinta">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("cobranzas.como_funciona")}</p>
+        <ul className="mt-2 space-y-1.5 text-sm text-tinta">
           <li>• {t("cobranzas.punto_1")}</li>
           <li>• {t("cobranzas.punto_2")}</li>
           <li>• {t("cobranzas.punto_3")}</li>
@@ -147,13 +147,13 @@ function Panorama({ p, t }) {
       {/* 1 · concentración: si tres nombres explican la mitad, la estrategia
              no es "cobrar mejor", es hablar con esos tres. */}
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
           {t("cobranzas.pan_concentracion")}
         </p>
         <p className="plata mt-1.5 text-2xl font-medium leading-none text-tinta">
           {num(p.concentracion_share)}%
         </p>
-        <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta">
+        <p className="mt-1.5 text-sm leading-snug text-tinta">
           {t(p.concentracion_n === 1
              ? "cobranzas.pan_concentracion_uno"
              : "cobranzas.pan_concentracion_det", {
@@ -166,19 +166,19 @@ function Panorama({ p, t }) {
 
       {/* 2 · lo que nadie tocó: la única cifra accionable hoy mismo */}
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
           {t("cobranzas.pan_sin_tocar")}
         </p>
         <p className={`plata mt-1.5 text-2xl font-medium leading-none ${p.sin_tocar ? "text-rojo" : "text-salvia"}`}>
           {pesoCorto(p.sin_tocar_saldo)}
         </p>
-        <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta">
+        <p className="mt-1.5 text-sm leading-snug text-tinta">
           {t("cobranzas.pan_sin_tocar_det", {
             n: num(p.sin_tocar), gest: num(p.en_gestion), monto: pesoCorto(p.en_gestion_saldo),
           })}
         </p>
         {p.exceso_dias_promedio > 0 && (
-          <p className="mt-1.5 inline-flex items-center gap-1 text-[0.78rem] text-oro-tinta">
+          <p className="mt-1.5 inline-flex items-center gap-1 text-xs text-oro-tinta">
             <AlertTriangle size={12} />
             {t("cobranzas.pan_exceso_promedio", { dias: num(p.exceso_dias_promedio) })}
           </p>
@@ -187,20 +187,20 @@ function Panorama({ p, t }) {
 
       {/* 3 · quién la está trabajando: sale del actor auditado en cada gestión */}
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
           {t("cobranzas.pan_quien")}
         </p>
         {trabajan.length === 0 ? (
-          <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">
+          <p className="mt-1.5 text-sm leading-snug text-tinta-suave">
             {t("cobranzas.pan_quien_nadie")}
           </p>
         ) : (
           <ul className="mt-2 space-y-1.5">
             {trabajan.map((f) => (
-              <li key={f.actor} className="flex items-center gap-2 text-[0.86rem]">
+              <li key={f.actor} className="flex items-center gap-2 text-sm">
                 <Users size={13} className="shrink-0 text-tinta-suave" />
                 <span className="min-w-0 flex-1 truncate text-tinta">{f.actor}</span>
-                <span className="shrink-0 text-[0.78rem] text-tinta-suave">
+                <span className="shrink-0 text-xs text-tinta-suave">
                   {t("cobranzas.pan_quien_cuentas", { n: num(f.cuentas) })}
                 </span>
                 <span className="plata shrink-0 font-medium text-tinta">{pesoCorto(f.saldo)}</span>
@@ -209,7 +209,7 @@ function Panorama({ p, t }) {
           </ul>
         )}
         {p.cobrado > 0 && (
-          <p className="mt-2 text-[0.78rem] text-salvia">
+          <p className="mt-2 text-xs text-salvia">
             {t("cobranzas.pan_cobrado", { n: num(p.cobrado), monto: pesoCorto(p.cobrado_saldo) })}
           </p>
         )}
@@ -250,21 +250,21 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
       <div role="button" tabIndex={0} onClick={onAbrir}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onAbrir(); } }}
         className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left hover:bg-papel-hondo/40">
-        <span className="plata w-5 shrink-0 text-[0.9rem] font-semibold text-tinta-suave">{pos}</span>
+        <span className="plata w-5 shrink-0 text-sm font-semibold text-tinta-suave">{pos}</span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className="block text-[0.95rem] font-semibold">{c.cliente}</span>
+            <span className="block text-base font-semibold">{c.cliente}</span>
             {onNavegar && (
               <button
                 onClick={(e) => { e.stopPropagation(); onNavegar("cuentas", `cliente-${c.id}`); }}
-                className="shrink-0 text-[0.74rem] font-semibold text-hielo hover:underline"
+                className="shrink-0 text-xs font-semibold text-hielo hover:underline"
               >
                 {t("cobranzas.ver_cuenta")}
               </button>
             )}
           </span>
           {/* el par que produce el orden, dicho como lo diría una persona */}
-          <span className="block text-[0.8rem] text-tinta-suave">
+          <span className="block text-sm text-tinta-suave">
             {t("cobranzas.fuera_de_lo_suyo", {
               dias: num(c.exceso_dias), prom: num(c.promedio_pago_dias),
             })}
@@ -277,21 +277,21 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
             )}
           </span>
         </span>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${ESTADO_CLS[est]}`}>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${ESTADO_CLS[est]}`}>
           {t(`cobranzas.estado_${est}`)}
         </span>
-        <span className="plata w-32 shrink-0 text-right text-[0.98rem] font-medium">{peso(c.saldo)}</span>
+        <span className="plata w-32 shrink-0 text-right text-base font-medium">{peso(c.saldo)}</span>
       </div>
 
       {abierto && (
         <div className="border-t border-linea/60 bg-papel-hondo/30 px-4 py-4">
           {prop === null && <Cargando />}
-          {prop === false && <p className="text-[0.86rem] text-rojo">{t("cobranzas.err")}</p>}
+          {prop === false && <p className="text-sm text-rojo">{t("cobranzas.err")}</p>}
           {prop && (
             <div className="space-y-3">
               <div className="flex items-start gap-2.5">
                 <AngelaMark size={26} />
-                <p className="text-[0.92rem] leading-snug text-tinta">
+                <p className="text-sm leading-snug text-tinta">
                   {t("cobranzas.propone", {
                     cliente: c.cliente, saldo: peso(c.saldo), dias: num(c.dias_sin_pagar),
                   })}
@@ -302,25 +302,25 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
               {editando ? (
                 <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={5}
                   className="w-full rounded-xl border border-linea bg-crema px-3.5 py-2.5
-                             text-[0.9rem] leading-snug text-tinta" />
+                             text-sm leading-snug text-tinta" />
               ) : (
                 <p className="whitespace-pre-line rounded-xl border border-linea bg-crema px-3.5 py-2.5
-                              text-[0.9rem] leading-snug text-tinta">{texto}</p>
+                              text-sm leading-snug text-tinta">{texto}</p>
               )}
 
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => registrar("recordado")} disabled={enviando}
                   className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2
-                             text-[0.86rem] font-semibold text-crema disabled:opacity-50">
+                             text-sm font-semibold text-crema disabled:opacity-50">
                   <Send size={14} /> {t("cobranzas.mandar")}
                 </button>
                 <button onClick={() => setEditando((v) => !v)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema
-                             px-4 py-2 text-[0.86rem] font-semibold text-tinta-suave">
+                             px-4 py-2 text-sm font-semibold text-tinta-suave">
                   <Pencil size={14} /> {t(editando ? "cobranzas.listo_editar" : "cobranzas.editar")}
                 </button>
                 <button onClick={() => onPreguntar?.(t("cobranzas.otro_tono_prompt", { cliente: c.cliente }))}
-                  className="rounded-full border border-linea bg-crema px-4 py-2 text-[0.86rem]
+                  className="rounded-full border border-linea bg-crema px-4 py-2 text-sm
                              font-semibold text-tinta-suave">
                   {t("cobranzas.otro_tono")}
                 </button>
@@ -328,7 +328,7 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
 
               {/* el seguimiento: qué pasó después */}
               <div className="flex flex-wrap items-center gap-2 border-t border-linea pt-3">
-                <span className="text-[0.78rem] uppercase tracking-wide text-tinta-suave">
+                <span className="text-xs uppercase tracking-wide text-tinta-suave">
                   {t("cobranzas.que_paso")}
                 </span>
                 <Chip icon={Clock} onClick={() => {
@@ -344,7 +344,7 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
               </div>
 
               {c.gestion.promesa_fecha && (
-                <p className="text-[0.82rem] text-oro-tinta">
+                <p className="text-sm text-oro-tinta">
                   {t("cobranzas.prometio", { fecha: fmtFecha(c.gestion.promesa_fecha) })}
                 </p>
               )}
@@ -360,7 +360,7 @@ function Chip({ icon: Icon, onClick, children }) {
   return (
     <button onClick={onClick}
       className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5
-                 text-[0.82rem] font-medium text-tinta-suave hover:text-tinta">
+                 text-sm font-medium text-tinta-suave hover:text-tinta">
       <Icon size={13} /> {children}
     </button>
   );
@@ -371,8 +371,8 @@ function Tile({ valor, lk, tono, nota }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-3.5 sombra-papel">
       <p className={`plata text-xl font-medium leading-none ${tono}`}>{valor}</p>
-      <p className="mt-1 text-[0.76rem] text-tinta-suave">{t(lk)}</p>
-      {nota && <p className="mt-0.5 text-[0.74rem] font-semibold text-rojo">{nota}</p>}
+      <p className="mt-1 text-xs text-tinta-suave">{t(lk)}</p>
+      {nota && <p className="mt-0.5 text-xs font-semibold text-rojo">{nota}</p>}
     </div>
   );
 }
@@ -385,8 +385,8 @@ function Bloque({ icon: Icon, titulo, falta }) {
         <Lock size={15} />
         <Icon size={16} />
       </div>
-      <p className="mt-2 font-display text-[1rem] font-bold leading-tight">{titulo}</p>
-      <p className="mt-1 text-[0.82rem] text-tinta-suave">{t("cobranzas.falta", { que: falta })}</p>
+      <p className="mt-2 font-display text-base font-bold leading-tight">{titulo}</p>
+      <p className="mt-1 text-sm text-tinta-suave">{t("cobranzas.falta", { que: falta })}</p>
     </div>
   );
 }

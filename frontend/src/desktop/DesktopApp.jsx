@@ -520,7 +520,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 draggable="false"
               />
               <div className="mt-3 flex items-center gap-2">
-                <span className="text-[0.88rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+                <span className="text-sm font-semibold uppercase tracking-[0.14em] text-tinta-suave">
                   {t("nav.cliente")}
                 </span>
                 {!marcaResuelta ? (
@@ -533,7 +533,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     draggable="false"
                   />
                 ) : (
-                  <span className="font-display text-[0.95rem] font-bold leading-tight text-hielo">
+                  <span className="font-display text-base font-bold leading-tight text-hielo">
                     {empresa}
                   </span>
                 )}
@@ -632,8 +632,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               />
               {!sidebarColapsado && (
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.88rem] font-semibold">Ángela</p>
-                  <p className="flex items-center gap-1.5 truncate text-[0.88rem] text-tinta-suave">
+                  <p className="text-sm font-semibold">Ángela</p>
+                  <p className="flex items-center gap-1.5 truncate text-sm text-tinta-suave">
                     <span className="inline-block h-1.5 w-1.5 rounded-full bg-oro" />
                     {t("decision.espera_ok")}
                   </p>
@@ -652,10 +652,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             className="flex flex-1 items-center gap-3 rounded-full border border-linea bg-crema px-4 py-2 text-left sombra-papel transition-colors hover:border-violeta/40"
           >
             <Search size={17} className="shrink-0 text-tinta-suave" />
-            <span className="flex-1 text-[0.9rem] text-tinta-suave/80">
+            <span className="flex-1 text-sm text-tinta-suave/80">
               {t("nav.buscador")}
             </span>
-            <kbd className="hidden shrink-0 rounded-md border border-linea px-1.5 py-0.5 text-[0.7rem] font-semibold text-tinta-suave sm:block">
+            <kbd className="hidden shrink-0 rounded-md border border-linea px-1.5 py-0.5 text-xs font-semibold text-tinta-suave sm:block">
               Ctrl K
             </kbd>
           </button>
@@ -670,7 +670,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             onClick={() => setAngelaOpen((v) => !v)}
             aria-expanded={angelaOpen}
             aria-controls="angela-dock"
-            className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-[0.88rem] font-semibold text-crema transition-transform active:scale-95"
+            className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
           >
             <AngelaMark
               size={22}
@@ -722,10 +722,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   <div className="mb-5 flex items-start gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.07] p-4">
                     <AngelaMark size={32} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-oro-tinta">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-oro-tinta">
                         {t("nav.fase")}: {fase.titulo}
                       </p>
-                      <p className="mt-0.5 text-[0.92rem] leading-snug text-tinta">
+                      <p className="mt-0.5 text-sm leading-snug text-tinta">
                         {fase.mensaje}
                       </p>
                       {fase.foco &&
@@ -733,7 +733,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                         CATALOGO[ALIAS_SECCION[fase.foco] || fase.foco] && (
                           <button
                             onClick={() => navegar(fase.foco, null)}
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema"
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema"
                           >
                             {t("nav.ir_a")}{" "}
                             {t(
@@ -1029,7 +1029,7 @@ function ItemNav({
           e.preventDefault();
           onClick();
         }}
-        className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-left text-[0.9rem] font-medium transition-colors ${
+        className={`flex w-full items-center gap-3 rounded-xl py-2.5 text-left text-sm font-medium transition-colors ${
           colapsado ? "justify-center px-2" : "px-3"
         } ${activo ? "bg-violeta-suave font-semibold text-violeta-hondo" : "text-tinta-suave hover:bg-papel-hondo/60 hover:text-tinta"}`}
       >
@@ -1043,7 +1043,7 @@ function ItemNav({
           <>
             <span className="flex-1">{label}</span>
             {badge > 0 && (
-              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.88rem] font-bold text-crema">
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-sm font-bold text-crema">
                 {badge}
               </span>
             )}
@@ -1065,7 +1065,7 @@ function ItemNav({
             top: rect.top + rect.height / 2,
             transform: "translateY(-50%)",
           }}
-          className="z-30 whitespace-nowrap rounded-lg bg-tinta px-2.5 py-1.5 text-[0.8rem] font-medium text-crema sombra-alta"
+          className="z-30 whitespace-nowrap rounded-lg bg-tinta px-2.5 py-1.5 text-sm font-medium text-crema sombra-alta"
         >
           {label}
         </span>

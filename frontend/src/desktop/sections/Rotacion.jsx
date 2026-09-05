@@ -16,7 +16,7 @@ export default function Rotacion({ onSelect, viz }) {
 
   return (
     <div className="space-y-8">
-      <p className="max-w-2xl text-[0.95rem] leading-snug text-tinta-suave">{t("inventario.tab_rotacion_sub")}</p>
+      <p className="max-w-2xl text-base leading-snug text-tinta-suave">{t("inventario.tab_rotacion_sub")}</p>
       <RotationScatter
         data={local.rotation}
         onSelect={(p) => onSelect?.({ codigo: p.codigo, descripcion: p.producto, inmovilizado: p.inmovilizado })}

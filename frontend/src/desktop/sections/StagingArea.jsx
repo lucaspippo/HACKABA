@@ -62,7 +62,7 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
         </header>
         <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-8 text-center">
           <PackageCheck size={28} className="mx-auto text-tinta-suave" />
-          <p className="mt-2 text-[0.95rem] text-tinta-suave">{t("staging.vacio")}</p>
+          <p className="mt-2 text-base text-tinta-suave">{t("staging.vacio")}</p>
         </div>
       </div>
     );
@@ -74,7 +74,7 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
         <Sparkles size={24} className="text-violeta" />
         <div>
           <h1 className="font-display text-3xl font-bold leading-none">{t("staging.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("staging.sub")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("staging.sub")}</p>
           <div className="mt-3">
             <IngestPipeline current="staging" onNavigate={onNavigate} />
           </div>
@@ -85,10 +85,10 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
         <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-salvia/40 bg-salvia/[0.07] p-5">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-salvia text-crema"><Check size={18} /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[1rem] text-tinta">{resultado.mensaje}</p>
+            <p className="text-base text-tinta">{resultado.mensaje}</p>
             {onNavigate && (
               <button type="button" onClick={() => onNavigate("imported")}
-                className="mt-2 text-[0.84rem] font-semibold text-hielo">
+                className="mt-2 text-sm font-semibold text-hielo">
                 {t("staging.go_imported")}
               </button>
             )}
@@ -106,12 +106,12 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
             <div className="flex items-start gap-3">
               <AngelaMark size={34} estado="esperando" />
               <div className="flex-1">
-                <p className="font-display text-[1.1rem] font-bold">
+                <p className="font-display text-lg font-bold">
                   {t("staging.revisando", { n: num(b.total_filas), que: t(b.tipo === "venta" ? "staging.ventas" : "staging.productos"), nombre: b.nombre })}
                 </p>
-                <p className="text-[0.84rem] text-tinta-suave">{t("staging.resolve_regla")}</p>
+                <p className="text-sm text-tinta-suave">{t("staging.resolve_regla")}</p>
               </div>
-              <button onClick={() => api.stagingDescartar(b.id).then(cargar)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-[0.78rem] font-semibold text-tinta-suave hover:text-rojo">
+              <button onClick={() => api.stagingDescartar(b.id).then(cargar)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-semibold text-tinta-suave hover:text-rojo">
                 <Trash2 size={13} /> {t("staging.descartar")}
               </button>
             </div>
@@ -122,19 +122,19 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
                 <div className="flex items-start gap-2.5">
                   <Wand2 size={16} className="mt-0.5 shrink-0 text-salvia" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[0.88rem] leading-snug text-tinta">{b.normalizaciones.resumen}</p>
+                    <p className="text-sm leading-snug text-tinta">{b.normalizaciones.resumen}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button onClick={() => setDetalleNorm((s) => ({ ...s, [b.id]: !s[b.id] }))}
-                        className="rounded-full border border-linea bg-crema px-3 py-1 text-[0.78rem] font-semibold text-tinta-suave hover:text-tinta">
+                        className="rounded-full border border-linea bg-crema px-3 py-1 text-xs font-semibold text-tinta-suave hover:text-tinta">
                         {t(detalleNorm[b.id] ? "staging.ocultar_detalle" : "staging.ver_detalle")}
                       </button>
                       <button onClick={() => revertirNorm(b.id)}
-                        className="inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-3 py-1 text-[0.78rem] font-semibold text-tinta-suave hover:text-rojo">
+                        className="inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-3 py-1 text-xs font-semibold text-tinta-suave hover:text-rojo">
                         <Undo2 size={12} /> {t("staging.revertir_norm")}
                       </button>
                     </div>
                     {detalleNorm[b.id] && (
-                      <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-linea/60 bg-crema p-2 text-[0.78rem]">
+                      <div className="mt-2 max-h-44 overflow-y-auto rounded-lg border border-linea/60 bg-crema p-2 text-xs">
                         {b.normalizaciones.cambios.slice(0, 60).map((c, k) => (
                           <p key={k} className="border-b border-linea/40 py-1 last:border-0">
                             {t("staging.fila", { n: c.fila + 1, col: c.columna })} <span className="text-tinta-suave line-through">{c.original}</span>
@@ -154,12 +154,12 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
             {/* Plan de integración: tipo detectado + relaciones + qué se activa */}
             {b.plan?.apartado_nuevo && (
               <div className="rounded-xl border border-hielo/25 bg-hielo-claro p-4">
-                <p className="text-[0.9rem] leading-snug text-tinta">
+                <p className="text-sm leading-snug text-tinta">
                   {t("staging.plan_detecte")} <b>{b.plan.nombre}</b>{t("staging.plan_crear")}
                   {b.plan.relaciona_con?.length ? <> {t("staging.plan_conectar")} <b>{b.plan.relaciona_con.join(t("staging.plan_y"))}</b></> : null}.
                 </p>
                 {b.plan.activa?.length > 0 && (
-                  <p className="mt-1.5 text-[0.84rem] text-tinta-suave">
+                  <p className="mt-1.5 text-sm text-tinta-suave">
                     {t("staging.plan_activa", { lista: b.plan.activa.join(" · ") })}
                   </p>
                 )}
@@ -168,7 +168,7 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
 
             {/* Progreso */}
             <div>
-              <div className="mb-1 flex justify-between text-[0.78rem] text-tinta-suave">
+              <div className="mb-1 flex justify-between text-xs text-tinta-suave">
                 <span>{t("staging.progreso", { done, total })}</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-papel-hondo">
@@ -186,17 +186,17 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
                         {o.resuelta && <Check size={14} className="mr-1 inline text-salvia" />}
                         {o.titulo} <span className="plata text-tinta-suave">{t("staging.items", { n: num(o.items) })}</span>
                       </p>
-                      <p className="mt-0.5 text-[0.86rem] text-tinta-suave">{o.descripcion}</p>
+                      <p className="mt-0.5 text-sm text-tinta-suave">{o.descripcion}</p>
                     </div>
                     {o.impacto_pesos > 0 && (
-                      <span className="plata shrink-0 rounded-full bg-papel-hondo px-2.5 py-0.5 text-[0.74rem] font-semibold text-hielo">{pesoCorto(o.impacto_pesos)}</span>
+                      <span className="plata shrink-0 rounded-full bg-papel-hondo px-2.5 py-0.5 text-xs font-semibold text-hielo">{pesoCorto(o.impacto_pesos)}</span>
                     )}
                   </div>
                   {!o.resuelta && (
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       {o.opciones.map((op, k) => (
                         <button key={k} onClick={() => resolver(b.id, o, op.accion, op.params)}
-                          className="rounded-full border border-violeta/30 bg-crema px-3 py-1.5 text-[0.8rem] font-semibold text-violeta hover:bg-violeta hover:text-crema">
+                          className="rounded-full border border-violeta/30 bg-crema px-3 py-1.5 text-sm font-semibold text-violeta hover:bg-violeta hover:text-crema">
                           {op.label}
                         </button>
                       ))}
@@ -205,7 +205,7 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
                         onChange={(e) => setCustom((s) => ({ ...s, [o.id]: e.target.value }))}
                         onKeyDown={(e) => e.key === "Enter" && resolverCustom(b.id, o)}
                         placeholder={t("staging.custom_ph")}
-                        className="min-w-64 flex-1 rounded-full border border-linea bg-papel px-3 py-1.5 text-[0.8rem] outline-none focus:border-violeta/40"
+                        className="min-w-64 flex-1 rounded-full border border-linea bg-papel px-3 py-1.5 text-sm outline-none focus:border-violeta/40"
                       />
                     </div>
                   )}
@@ -216,17 +216,17 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
             {/* Integrar */}
             {pendientes.length === 0 ? (
               <div className="rounded-xl border border-hielo/20 bg-hielo-claro p-4">
-                <p className="text-[0.9rem] text-tinta">
+                <p className="text-sm text-tinta">
                   {t("staging.todo_resuelto")} <b>{pv?.a_integrar ?? b.total_filas}</b> {t("staging.productos_entran")}
                   {pv?.descartados ? t("staging.descarto_dup", { n: pv.descartados }) : ""}.
                   {pv?.cambios?.length ? t("staging.cambios", { lista: pv.cambios.join("; ") }) : ""}
                 </p>
-                <button onClick={() => integrar(b.id)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
+                <button onClick={() => integrar(b.id)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                   {t("staging.integrar_btn")} <ArrowRight size={15} />
                 </button>
               </div>
             ) : (
-              <p className="text-[0.82rem] text-tinta-suave">{t("staging.faltan", { n: pendientes.length })}</p>
+              <p className="text-sm text-tinta-suave">{t("staging.faltan", { n: pendientes.length })}</p>
             )}
           </div>
         );

@@ -80,7 +80,7 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
         <Bell size={24} className="text-tinta-suave" />
         <div>
           <h1 className="font-display text-3xl font-bold leading-none">{t("alertasneg.titulo")}</h1>
-          <p className="mt-1 text-[0.95rem] text-tinta-suave">{t("alertasneg.subtitulo")}</p>
+          <p className="mt-1 text-base text-tinta-suave">{t("alertasneg.subtitulo")}</p>
         </div>
       </header>
 
@@ -99,7 +99,7 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
         if (items.length === 0) return null;
         return (
           <section key={g.id}>
-            <h2 className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">{t(g.lk)}</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">{t(g.lk)}</h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 3xl:grid-cols-3">
               {items.map((x) => (x.tipoEvo ? (
                 <CardNegocio key={`evo-${x.tipoEvo.tipo}`} tono="rojo" icon={AlertTriangle}
@@ -131,12 +131,12 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
             <>
               {abierta.chat && (
                 <button onClick={() => { onPreguntar?.(abierta.chat); setAbierta(null); }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+                  className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                   <AngelaMark size={15} /> {t("alertasneg.accionar_angela")}
                 </button>
               )}
               <button onClick={() => { abierta.ir?.(); setAbierta(null); }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                 {abierta.cta} <ArrowRight size={13} />
               </button>
             </>
@@ -148,12 +148,12 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
         <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-6">
           <AngelaMark size={40} />
           <div className="flex-1">
-            <p className="text-[1.02rem] leading-snug text-tinta">
+            <p className="text-lg leading-snug text-tinta">
               {t("alertasneg.cta_1")} <b>{t("alertasneg.cta_ventas")}</b>{t("alertasneg.cta_2")} <b>{t("alertasneg.cta_cuentas")}</b>{t("alertasneg.cta_3")}
             </p>
             <button
               onClick={() => (onNavegar ? onNavegar("cargar") : onPreguntar?.("¿Qué datos necesitás para activar mis alertas de negocio?"))}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
             >
               {t("alertasneg.cargar_ventas")} <ArrowRight size={15} />
             </button>
@@ -166,14 +166,14 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
       {!cargando && !hayAlertas && futuras.length === 0 && (
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-8 text-center sombra-papel">
           <Bell size={22} className="mx-auto text-tinta-suave" />
-          <p className="mt-2 text-[0.95rem] text-tinta">{t("alertasneg.vacio_titulo")}</p>
-          <p className="mt-1 text-[0.85rem] text-tinta-suave">{t("alertasneg.vacio_sub")}</p>
+          <p className="mt-2 text-base text-tinta">{t("alertasneg.vacio_titulo")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("alertasneg.vacio_sub")}</p>
         </div>
       )}
 
       {futuras.length > 0 && (
         <div>
-          <h2 className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
             {t("alertasneg.cuando_activen")}
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -182,8 +182,8 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
               return (
                 <div key={f.t} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
                   <Icon size={18} className="text-tinta-suave" />
-                  <p className="mt-2 font-display text-[1rem] font-bold leading-tight">{f.t}</p>
-                  <p className="mt-1 text-[0.84rem] leading-snug text-tinta-suave">{f.d}</p>
+                  <p className="mt-2 font-display text-base font-bold leading-tight">{f.t}</p>
+                  <p className="mt-1 text-sm leading-snug text-tinta-suave">{f.d}</p>
                 </div>
               );
             })}

@@ -102,14 +102,14 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
           <Boxes size={24} className="text-tinta-suave" />
           <div>
             <h1 className="font-display text-2xl font-bold leading-none">{t("productos.titulo")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("productos.subtitulo")}</p>
+            <p className="mt-1 text-sm text-tinta-suave">{t("productos.subtitulo")}</p>
           </div>
         </div>
         {onNavegar && (
           <button
             type="button"
             onClick={() => onNavegar("inventario")}
-            className="inline-flex shrink-0 items-center gap-1.5 text-[0.84rem] font-semibold text-hielo hover:underline"
+            className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-hielo hover:underline"
           >
             {t("productos.volver_parte")} <ArrowRight size={13} />
           </button>
@@ -118,12 +118,12 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
 
       {filtro === "a_corregir" && nACorregir > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.05] px-4 py-3">
-          <p className="flex-1 text-[0.88rem] text-tinta">{t("inventario.corregir_intro")}</p>
+          <p className="flex-1 text-sm text-tinta">{t("inventario.corregir_intro")}</p>
           {onPreguntar && (
             <button
               type="button"
               onClick={() => onPreguntar(t("productos.corregir_angela_q"))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.82rem] font-semibold text-crema"
+              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema"
             >
               <Sparkles size={13} /> {t("inventario.corregir_resolver")}
             </button>
@@ -132,7 +132,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
             <button
               type="button"
               onClick={() => onNavegar("saneamiento")}
-              className="inline-flex items-center gap-1 rounded-full border border-linea px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta"
+              className="inline-flex items-center gap-1 rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta"
             >
               {t("productos.ir_saneamiento")} <ArrowRight size={12} />
             </button>
@@ -148,7 +148,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
             render: (p) => (
               <span>
                 <span className="font-medium text-tinta">{p.descripcion}</span>
-                <span className="mt-0.5 block text-[0.78rem] text-tinta-suave">
+                <span className="mt-0.5 block text-xs text-tinta-suave">
                   {t("inventario.cod", { codigo: p.codigo })}
                   {p.proveedor ? (
                     <>
@@ -170,7 +170,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
               return (
                 <span>
                   {num(Math.round(p.stock || 0))}
-                  {pipe ? <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">{pipe}</span> : null}
+                  {pipe ? <span className="mt-0.5 block text-xs font-normal text-tinta-suave">{pipe}</span> : null}
                 </span>
               );
             } },
@@ -179,7 +179,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
               <span>
                 {p.costo_iva ? peso(p.costo_iva) : "—"}
                 {p.source === "odoo" && p.costo_iva > 0 && (
-                  <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">{t("inventario.col_costo_odoo")}</span>
+                  <span className="mt-0.5 block text-xs font-normal text-tinta-suave">{t("inventario.col_costo_odoo")}</span>
                 )}
               </span>
             ) },
@@ -192,7 +192,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
                 <span>
                   {p.pvp ? peso(p.pvp) : "—"}
                   {p.pricing_status === "wholesale_only" && (
-                    <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">
+                    <span className="mt-0.5 block text-xs font-normal text-tinta-suave">
                       {t("imported.pricing_wholesale")}
                     </span>
                   )}
@@ -204,7 +204,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
               <span>
                 {num(p.margen_venta_pct)}%
                 {p.margen_pesos != null && (
-                  <span className="mt-0.5 block text-[0.78rem] font-normal text-tinta-suave">{peso(p.margen_pesos)}</span>
+                  <span className="mt-0.5 block text-xs font-normal text-tinta-suave">{peso(p.margen_pesos)}</span>
                 )}
               </span>
             )) },
@@ -212,7 +212,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
             groupLabel: (k) => t((ESTADO_CAL[k] || ESTADO_CAL.ok).lk),
             render: (p) => {
               const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
-              return <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>;
+              return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${e.cls}`}>{t(e.lk)}</span>;
             } },
           { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
             groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
@@ -342,20 +342,20 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
         </div>
         {CAMPOS_ARTICULO.map(([campo, lk, tipo]) => (
           <div key={campo}>
-            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <label className="mt-3 block text-sm font-semibold text-tinta-suave">{t(lk)}</label>
             <input type={tipo} value={form[campo]} disabled={campo === "codigo" && !!inicial}
               onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
               autoFocus={campo === "codigo"}
-              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40 disabled:opacity-60" />
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm outline-none focus:border-tinta/40 disabled:opacity-60" />
           </div>
         ))}
-        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        {error && <p className="mt-2 text-sm text-rojo-hondo">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+          <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
           <button type="button" onClick={guardar} disabled={!form.codigo || !form.descripcion.trim() || guardando}
-            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>
         </div>

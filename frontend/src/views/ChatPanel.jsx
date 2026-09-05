@@ -146,17 +146,17 @@ export default function ChatPanel({
   const emptyState = (
     <>
       <AngelaMark size={variant === "fullscreen" ? 40 : 48} />
-      <h2 className="mt-3 font-display text-[1.05rem] font-bold tracking-tight text-tinta">
+      <h2 className="mt-3 font-display text-lg font-bold tracking-tight text-tinta">
         {t("angela.hola")}
       </h2>
-      <p className="mt-1.5 max-w-[280px] text-[0.85rem] leading-relaxed text-tinta-suave">
+      <p className="mt-1.5 max-w-[280px] text-sm leading-relaxed text-tinta-suave">
         {saludoInicial || t("angela.saludo_default")}
       </p>
       <div className="mt-5 w-full max-w-sm text-left">
         {/* What Angela already did — real audit log, not decoration */}
         {feed.length > 0 && (
           <div className="mb-3 space-y-1.5">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+            <p className="text-2xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
               {t("angela.ultimo")}
             </p>
             {feed.map((e, i) => (
@@ -167,10 +167,10 @@ export default function ChatPanel({
                 <span
                   className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${e.tipo === "staging" ? "bg-salvia" : "bg-oro"}`}
                 />
-                <span className="min-w-0 flex-1 text-[0.8rem] leading-snug text-tinta">
+                <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">
                   {textoFeed(e, t)}
                 </span>
-                <span className="shrink-0 text-[0.7rem] text-tinta-suave">
+                <span className="shrink-0 text-xs text-tinta-suave">
                   {fecha(e.cuando)}
                 </span>
               </div>
@@ -188,10 +188,10 @@ export default function ChatPanel({
                 <Paperclip size={16} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.85rem] font-semibold leading-tight">
+                <span className="block text-sm font-semibold leading-tight">
                   {t("angela.accion_foto")}
                 </span>
-                <span className="block text-[0.74rem] text-tinta-suave">
+                <span className="block text-xs text-tinta-suave">
                   {t("angela.accion_foto_sub")}
                 </span>
               </span>
@@ -207,10 +207,10 @@ export default function ChatPanel({
                 <FileText size={16} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[0.85rem] font-semibold leading-tight">
+                <span className="block text-sm font-semibold leading-tight">
                   {t("angela.accion_doc")}
                 </span>
-                <span className="block text-[0.74rem] text-tinta-suave">
+                <span className="block text-xs text-tinta-suave">
                   {t("angela.accion_doc_sub")}
                 </span>
               </span>
@@ -225,7 +225,7 @@ export default function ChatPanel({
               onClick={() =>
                 aui.thread.append(typeof c === "string" ? c : c.enviar)
               }
-              className="rounded-full border border-linea bg-crema px-3 py-1.5 text-left text-[0.82rem] font-medium text-tinta-suave transition-colors hover:border-violeta/40 hover:text-tinta"
+              className="rounded-full border border-linea bg-crema px-3 py-1.5 text-left text-sm font-medium text-tinta-suave transition-colors hover:border-violeta/40 hover:text-tinta"
             >
               {typeof c === "string" ? c : t(c.lk)}
             </button>

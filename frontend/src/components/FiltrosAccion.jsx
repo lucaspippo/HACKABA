@@ -40,7 +40,7 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
             type="button"
             aria-pressed={on}
             onClick={() => onFiltro(on ? null : k)}
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ${
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               on ? "border-violeta bg-violeta/[0.06] text-violeta"
                  : "border-linea text-tinta-suave hover:text-tinta"
             }`}
@@ -54,7 +54,7 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.78rem] font-semibold text-tinta-suave hover:text-tinta"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-xs font-semibold text-tinta-suave hover:text-tinta"
         >
           {t("prioridades.filter_more", { n: overflow.length })}
         </button>
@@ -63,7 +63,7 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
         <button
           type="button"
           onClick={() => onFiltro(null)}
-          className="inline-flex shrink-0 items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"
+          className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-tinta-suave hover:text-tinta"
         >
           <X size={12} /> {t("prioridades.limpiar")}
         </button>

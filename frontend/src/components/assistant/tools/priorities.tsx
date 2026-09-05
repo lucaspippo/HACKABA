@@ -38,17 +38,17 @@ function PriorityRow({ priority }: { priority: Priority }) {
     <div className="flex items-start gap-2 border-b border-linea/60 py-2 last:border-0">
       {priority.chip && (
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-semibold ${toneChipClass(priority.tono)}`}
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${toneChipClass(priority.tono)}`}
         >
           {priority.chip}
         </span>
       )}
       <div className="min-w-0 flex-1">
-        <p className="text-[0.86rem] leading-snug text-tinta">{priority.titulo}</p>
-        {priority.resumen && <p className="text-[0.78rem] leading-snug text-tinta-suave">{priority.resumen}</p>}
+        <p className="text-sm leading-snug text-tinta">{priority.titulo}</p>
+        {priority.resumen && <p className="text-xs leading-snug text-tinta-suave">{priority.resumen}</p>}
       </div>
       {(priority.cifra_texto || priority.monto != null) && (
-        <span className="shrink-0 whitespace-nowrap text-[0.82rem] font-medium text-tinta">
+        <span className="shrink-0 whitespace-nowrap text-sm font-medium text-tinta">
           {priority.cifra_texto || peso(priority.monto || 0)}
         </span>
       )}
@@ -71,7 +71,7 @@ export function Priorities({ result }: ToolRenderProps) {
     <div className="mt-1.5 space-y-2">
       {act.length > 0 && (
         <div>
-          <p className="mb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">
+          <p className="mb-0.5 text-2xs font-semibold uppercase tracking-[0.1em] text-tinta-suave">
             {t("toolui.prioridades.act")}
           </p>
           {act.map((priority, i) => (
@@ -81,7 +81,7 @@ export function Priorities({ result }: ToolRenderProps) {
       )}
       {watch.length > 0 && (
         <div>
-          <p className="mb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">
+          <p className="mb-0.5 text-2xs font-semibold uppercase tracking-[0.1em] text-tinta-suave">
             {t("toolui.prioridades.watch")}
           </p>
           {watch.map((priority, i) => (

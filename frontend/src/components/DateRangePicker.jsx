@@ -49,7 +49,7 @@ function MonthGrid({ month, from, to, hover, onPick, onHover, today }) {
   const hi = from && to && from > to ? from : (to || hover);
   return (
     <div className="w-[16.5rem]">
-      <div className="grid grid-cols-7 text-center text-[0.68rem] font-semibold uppercase tracking-wide text-tinta-suave">
+      <div className="grid grid-cols-7 text-center text-2xs font-semibold uppercase tracking-wide text-tinta-suave">
         {(WEEKDAYS[lang] || WEEKDAYS.es).map((d) => <span key={d} className="py-1">{d}</span>)}
       </div>
       <div className="grid grid-cols-7">
@@ -69,7 +69,7 @@ function MonthGrid({ month, from, to, hover, onPick, onHover, today }) {
               onMouseEnter={() => onHover(iso)}
               onFocus={() => onHover(iso)}
               onClick={() => onPick(iso)}
-              className={`relative h-8 text-[0.8rem] transition-colors ${
+              className={`relative h-8 text-sm transition-colors ${
                 outside ? "text-transparent" : "text-tinta"
               } ${mid ? "bg-violeta-suave" : ""} ${
                 selectedStart && hi && hi !== lo ? "rounded-l-full bg-violeta-suave" : ""
@@ -191,7 +191,7 @@ export default function DateRangePicker({ from, to, onChange }) {
           }
           setOpen((v) => !v);
         }}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors ${
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
           from
             ? "border-tinta bg-tinta text-crema"
             : "border-linea text-tinta-suave hover:text-tinta"
@@ -223,7 +223,7 @@ export default function DateRangePicker({ from, to, onChange }) {
                 key={p.id}
                 type="button"
                 onClick={() => { apply(p.from, p.to); setOpen(false); }}
-                className={`rounded-xl px-2.5 py-1.5 text-left text-[0.8rem] font-semibold ${
+                className={`rounded-xl px-2.5 py-1.5 text-left text-sm font-semibold ${
                   activePreset?.id === p.id ? "bg-tinta text-crema" : "text-tinta-suave hover:bg-crema hover:text-tinta"
                 }`}
               >
@@ -233,7 +233,7 @@ export default function DateRangePicker({ from, to, onChange }) {
             <button
               type="button"
               onClick={() => { apply("", ""); setOpen(false); }}
-              className="mt-auto rounded-xl px-2.5 py-1.5 text-left text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"
+              className="mt-auto rounded-xl px-2.5 py-1.5 text-left text-sm font-semibold text-tinta-suave hover:text-tinta"
             >
               {t("crud.rango_limpiar")}
             </button>
@@ -244,7 +244,7 @@ export default function DateRangePicker({ from, to, onChange }) {
                 className="rounded-lg p-1 text-tinta-suave hover:bg-papel hover:text-tinta" aria-label={t("crud.rango_mes_ant")}>
                 <ChevronLeft size={16} />
               </button>
-              <div className="flex flex-1 justify-around text-[0.82rem] font-semibold capitalize">
+              <div className="flex flex-1 justify-around text-sm font-semibold capitalize">
                 <span>{monthLabel(view, lang)}</span>
                 <span className="hidden sm:inline">{monthLabel(nextMonth, lang)}</span>
               </div>
@@ -260,21 +260,21 @@ export default function DateRangePicker({ from, to, onChange }) {
               </div>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-linea pt-3">
-              <label className="text-[0.72rem] font-semibold text-tinta-suave">{t("crud.desde")}</label>
+              <label className="text-xs font-semibold text-tinta-suave">{t("crud.desde")}</label>
               <input type="date" value={draftFrom} onChange={(e) => {
                 const v = e.target.value;
                 setDraftFrom(v);
                 if (v && draftTo) apply(v, draftTo);
                 else if (v && !draftTo) apply(v, v);
               }}
-                className="rounded-xl border border-linea bg-papel px-2 py-1 text-[0.8rem] outline-none focus:border-tinta/40" />
-              <label className="text-[0.72rem] font-semibold text-tinta-suave">{t("crud.hasta")}</label>
+                className="rounded-xl border border-linea bg-papel px-2 py-1 text-sm outline-none focus:border-tinta/40" />
+              <label className="text-xs font-semibold text-tinta-suave">{t("crud.hasta")}</label>
               <input type="date" value={draftTo} onChange={(e) => {
                 const v = e.target.value;
                 setDraftTo(v);
                 if (draftFrom && v) apply(draftFrom, v);
               }}
-                className="rounded-xl border border-linea bg-papel px-2 py-1 text-[0.8rem] outline-none focus:border-tinta/40" />
+                className="rounded-xl border border-linea bg-papel px-2 py-1 text-sm outline-none focus:border-tinta/40" />
             </div>
           </div>
         </div>,

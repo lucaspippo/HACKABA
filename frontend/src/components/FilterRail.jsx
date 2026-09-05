@@ -25,7 +25,7 @@ export function FilterChip({ icon: Icon, active, onClick, children, count, tone 
       type="button"
       aria-pressed={!!active}
       onClick={onClick}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors ${
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
         active ? pal.on : pal.off
       }`}
     >
@@ -50,7 +50,7 @@ export function FilterRail({ children, onClear, clearLabel }) {
         <button
           type="button"
           onClick={onClear}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"
+          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta"
         >
           <X size={12} /> {clearLabel}
         </button>
@@ -142,7 +142,7 @@ export function FacetSelect({ icon: Icon, label, value, options, onChange, place
         aria-expanded={open}
         aria-haspopup="listbox"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors ${
+        className={`inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
           value ? "border-tinta bg-tinta text-crema" : "border-linea text-tinta-suave hover:text-tinta"
         }`}
       >
@@ -164,14 +164,14 @@ export function FacetSelect({ icon: Icon, label, value, options, onChange, place
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("crud.facet_buscar")}
-              className="w-full bg-transparent py-2 pl-8 pr-3 text-[0.82rem] outline-none"
+              className="w-full bg-transparent py-2 pl-8 pr-3 text-sm outline-none"
             />
           </div>
           <div className="overflow-y-auto py-1" style={{ maxHeight: pos.maxHeight }}>
             <button
               type="button"
               onClick={() => { onChange(""); setOpen(false); setQ(""); }}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[0.82rem] hover:bg-papel ${
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-papel ${
                 !value ? "font-semibold text-tinta" : "text-tinta-suave"
               }`}
             >
@@ -183,7 +183,7 @@ export function FacetSelect({ icon: Icon, label, value, options, onChange, place
                 key={o}
                 type="button"
                 onClick={() => { onChange(o); setOpen(false); setQ(""); }}
-                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[0.82rem] hover:bg-papel ${
+                className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-papel ${
                   value === o ? "font-semibold text-tinta" : "text-tinta"
                 }`}
               >
@@ -192,7 +192,7 @@ export function FacetSelect({ icon: Icon, label, value, options, onChange, place
               </button>
             ))}
             {filtered.length === 0 && (
-              <p className="px-3 py-2 text-[0.8rem] text-tinta-suave">{t("crud.facet_vacio")}</p>
+              <p className="px-3 py-2 text-sm text-tinta-suave">{t("crud.facet_vacio")}</p>
             )}
           </div>
         </div>,
@@ -241,7 +241,7 @@ export function GroupBySelect({ options, value, onChange }) {
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[0.86rem] font-semibold ${
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-sm font-semibold ${
           value ? "border-tinta bg-tinta text-crema" : "border-linea text-tinta-suave hover:text-tinta"
         }`}
       >
@@ -259,7 +259,7 @@ export function GroupBySelect({ options, value, onChange }) {
           <button
             type="button"
             onClick={() => { onChange(null); setOpen(false); }}
-            className={`block w-full px-3 py-1.5 text-left text-[0.82rem] hover:bg-papel ${
+            className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-papel ${
               !value ? "font-semibold" : "text-tinta-suave"
             }`}
           >
@@ -270,7 +270,7 @@ export function GroupBySelect({ options, value, onChange }) {
               key={o.key}
               type="button"
               onClick={() => { onChange(o.key); setOpen(false); }}
-              className={`block w-full px-3 py-1.5 text-left text-[0.82rem] hover:bg-papel ${
+              className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-papel ${
                 value === o.key ? "font-semibold" : ""
               }`}
             >

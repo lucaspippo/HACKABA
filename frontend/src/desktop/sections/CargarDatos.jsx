@@ -35,7 +35,7 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-bold">{t("cargar.titulo")}</h1>
-          <p className="mt-1 text-[0.95rem] text-tinta-suave">
+          <p className="mt-1 text-base text-tinta-suave">
             {t("cargar.sub")}
           </p>
           <div className="mt-3">
@@ -45,7 +45,7 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
         {/* P18·C: la conexión ERP, visible y HONESTA — solo el demo, que la
             declara simulada; el piloto no lleva badge (su ERP es el delta real). */}
         {erpSimulado && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.76rem] font-medium text-tinta-suave sombra-papel">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5 text-xs font-medium text-tinta-suave sombra-papel">
             <span className="h-1.5 w-1.5 rounded-full bg-salvia" />
             {t("cargar.erp_badge")}
           </span>
@@ -55,7 +55,7 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
       <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-5">
         <AngelaMark size={38} />
         <div>
-          <p className="text-[1rem] leading-snug text-tinta">
+          <p className="text-base leading-snug text-tinta">
             {t("cargar.angela_intro")}
           </p>
           {/* P38·I — el mensaje transversal, en copy y sólo en copy: el
@@ -63,10 +63,10 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
               a Ángela y ella se encarga, y la corrección VUELVE al sistema por
               el delta que ya existe. Sin simular una conexión viva que acá no
               está: el badge de al lado dice que el ERP es simulado. */}
-          <p className="mt-2 text-[0.92rem] font-semibold leading-snug text-violeta">
+          <p className="mt-2 text-sm font-semibold leading-snug text-violeta">
             {t("cargar.erp_atras_1")}
           </p>
-          <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">
+          <p className="mt-1 text-sm leading-snug text-tinta-suave">
             {t("cargar.erp_atras_2")}
           </p>
         </div>
@@ -80,11 +80,11 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
             <Camera size={20} />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="font-display text-[1.1rem] font-bold leading-tight">{t("foto.carta_titulo")}</h3>
-            <p className="mt-1 text-[0.88rem] leading-snug text-tinta">{t("foto.carta_valor")}</p>
+            <h3 className="font-display text-lg font-bold leading-tight">{t("foto.carta_titulo")}</h3>
+            <p className="mt-1 text-sm leading-snug text-tinta">{t("foto.carta_valor")}</p>
           </div>
           <button onClick={() => setFotoAbierta(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.86rem] font-semibold text-crema">
+            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
             {t("foto.carta_cta")} <ArrowRight size={14} />
           </button>
         </div>
@@ -128,25 +128,25 @@ function CartaLibre({ usuario, onArchivoCargado }) {
 
   return (
     <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/30 p-5">
-      <h3 className="font-display text-[1.1rem] font-bold">{t("cargar.otro_titulo")}</h3>
-      <p className="mt-1 text-[0.88rem] text-tinta-suave">
+      <h3 className="font-display text-lg font-bold">{t("cargar.otro_titulo")}</h3>
+      <p className="mt-1 text-sm text-tinta-suave">
         {t("cargar.otro_sub")}
       </p>
       {confirm ? (
         <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-salvia/30 bg-salvia/[0.07] p-3">
-          <AngelaMark size={26} /><p className="text-[0.88rem] text-tinta">{confirm}</p>
+          <AngelaMark size={26} /><p className="text-sm text-tinta">{confirm}</p>
         </div>
       ) : (
         <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-          <button onClick={() => ref.current?.click()} className="inline-flex items-center gap-2 rounded-full border border-linea bg-crema px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta">
+          <button onClick={() => ref.current?.click()} className="inline-flex items-center gap-2 rounded-full border border-linea bg-crema px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
             <UploadCloud size={16} /> {file?.name || t("cargar.elegir_archivo")}
             <input ref={ref} type="file" className="hidden" onChange={(e) => setFile(e.target.files?.[0])} />
           </button>
           <input value={desc} onChange={(e) => setDesc(e.target.value)}
             placeholder={t("cargar.otro_ph")}
-            className="rounded-full border border-linea bg-crema px-4 py-2 text-[0.85rem] outline-none focus:border-violeta/40" />
+            className="rounded-full border border-linea bg-crema px-4 py-2 text-sm outline-none focus:border-violeta/40" />
           <button onClick={enviar} disabled={!file}
-            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-40">
+            className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-40">
             {t("cargar.darselo")}
           </button>
         </div>
@@ -204,20 +204,20 @@ function Carta({ carta, usuario, onArchivoCargado }) {
 
   return (
     <div className="flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <h3 className="font-display text-[1.1rem] font-bold leading-tight">{t(carta.lk_titulo)}</h3>
-      <p className="mt-2 flex-1 text-[0.88rem] leading-snug text-tinta">{t(carta.lk_valor)}</p>
+      <h3 className="font-display text-lg font-bold leading-tight">{t(carta.lk_titulo)}</h3>
+      <p className="mt-2 flex-1 text-sm leading-snug text-tinta">{t(carta.lk_valor)}</p>
 
       {preview ? (
         <div className="mt-4 rounded-xl border border-salvia/30 bg-salvia/[0.06] p-3">
-          <p className="flex items-center gap-1.5 text-[0.84rem] font-semibold text-salvia">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-salvia">
             <Sparkles size={14} /> {t("cargar.leyo", { nombre: carta.nombre || preview.nombre })}
           </p>
-          <p className="mt-1 text-[0.8rem] text-tinta-suave">
+          <p className="mt-1 text-sm text-tinta-suave">
             {t("cargar.filas_columnas", { filas: preview.total_filas, cols: preview.mapeados })}
           </p>
           <div className="mt-2 space-y-1">
             {Object.entries(preview.mapeo).filter(([, v]) => v).map(([campo, header]) => (
-              <div key={campo} className="flex items-center gap-1.5 text-[0.8rem]">
+              <div key={campo} className="flex items-center gap-1.5 text-sm">
                 <span className="text-tinta-suave">{header}</span>
                 <ArrowRight size={11} className="text-tinta-suave" />
                 <span className="font-semibold text-tinta">{campo}</span>
@@ -225,25 +225,25 @@ function Carta({ carta, usuario, onArchivoCargado }) {
             ))}
           </div>
           {preview.sin_mapear?.length > 0 && (
-            <p className="mt-2 text-[0.76rem] text-tinta-suave">{t("cargar.sin_reconocer", { lista: preview.sin_mapear.join(", ") })}</p>
+            <p className="mt-2 text-xs text-tinta-suave">{t("cargar.sin_reconocer", { lista: preview.sin_mapear.join(", ") })}</p>
           )}
-          <p className="mt-2 text-[0.78rem] text-tinta-suave">{t("cargar.confirma")}</p>
+          <p className="mt-2 text-xs text-tinta-suave">{t("cargar.confirma")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             <button onClick={confirmar} disabled={enviando}
-              className="rounded-full bg-violeta px-4 py-1.5 text-[0.82rem] font-semibold text-crema disabled:opacity-50">
+              className="rounded-full bg-violeta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
               {t("cargar.confirmar_cta")}
             </button>
             <button onClick={() => setPreview(null)} disabled={enviando}
-              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta-suave">
+              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-sm font-semibold text-tinta-suave">
               {t("cargar.cancelar_cta")}
             </button>
           </div>
         </div>
       ) : aviso ? (
-        <div className="mt-4 rounded-xl border border-oro/30 bg-oro/[0.08] p-3 text-[0.82rem] text-tinta">{aviso}</div>
+        <div className="mt-4 rounded-xl border border-oro/30 bg-oro/[0.08] p-3 text-sm text-tinta">{aviso}</div>
       ) : (
         <>
-          <p className="mt-3 text-[0.78rem] text-tinta-suave">{t(carta.lk_como)}</p>
+          <p className="mt-3 text-xs text-tinta-suave">{t(carta.lk_como)}</p>
           <div
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
             onDragLeave={() => setDrag(false)}
@@ -253,7 +253,7 @@ function Carta({ carta, usuario, onArchivoCargado }) {
           >
             <input ref={ref} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => tomar(e.target.files?.[0])} />
             <UploadCloud size={22} className="text-tinta-suave" />
-            <p className="mt-1.5 inline-flex items-center gap-1 text-[0.84rem] font-semibold text-violeta">
+            <p className="mt-1.5 inline-flex items-center gap-1 text-sm font-semibold text-violeta">
               {t("cargar.cargar_dato")} <ArrowRight size={14} />
             </p>
           </div>

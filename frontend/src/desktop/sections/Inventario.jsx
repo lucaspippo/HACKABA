@@ -71,7 +71,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl font-bold">{t("inventario.titulo")}</h1>
-        <p className="mt-1 max-w-2xl text-[0.95rem] leading-snug text-tinta-suave">
+        <p className="mt-1 max-w-2xl text-base leading-snug text-tinta-suave">
           {t("inventario.subtitulo")}
         </p>
       </header>
@@ -85,7 +85,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
           <button
             key={tb.id}
             onClick={() => setSub(tb.id)}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
+            className={`-mb-px flex items-center gap-1.5 border-b-2 px-1 py-2.5 text-sm font-semibold transition-colors ${
               sub === tb.id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
             }`}
           >
@@ -149,17 +149,17 @@ function PisoNav({ t, onNavegar, nCorregir }) {
   ].filter(Boolean);
   return (
     <nav aria-label={t("inventario.piso_aria")} className="flex flex-wrap items-center gap-2">
-      <span className="text-[0.82rem] text-tinta-suave">{t("inventario.piso_trabajar")}</span>
+      <span className="text-sm text-tinta-suave">{t("inventario.piso_trabajar")}</span>
       {chips.map((c) => (
         <button
           key={c.id}
           type="button"
           onClick={() => onNavegar(c.id)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.8rem] font-semibold text-tinta hover:border-tinta/30"
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema px-3 py-1.5 text-sm font-semibold text-tinta hover:border-tinta/30"
         >
           {c.label}
           {c.badge > 0 && (
-            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-[0.68rem] font-bold text-crema">
+            <span className="grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-2xs font-bold text-crema">
               {num(c.badge)}
             </span>
           )}
@@ -178,16 +178,16 @@ function BalanzaPropuesta({ onVer }) {
     <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.06] p-5">
       <AngelaMark size={34} />
       <div className="flex-1">
-        <p className="text-[0.98rem] leading-snug text-tinta">
+        <p className="text-base leading-snug text-tinta">
           {t("inventario.balanza_prop_1")} <b>{t("inventario.balanza_prop_n", { n: num(n) })}</b>{t("inventario.balanza_prop_2")}
         </p>
         <div className="mt-3 flex gap-2">
           <button onClick={() => { vistaStore.aplicar({ balanzaEsquemaOk: true }); onVer(); }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema">
+            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
             {t("inventario.balanza_prop_si")}
           </button>
           <button onClick={() => vistaStore.aplicar({ balanzaEsquemaOk: true })}
-            className="rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta-suave">
+            className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.balanza_prop_no")}
           </button>
         </div>
@@ -201,23 +201,23 @@ function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
   const [items, setItems] = useState(null);
   useEffect(() => { api.articulos().then((d) => setItems(d.items)).catch(() => {}); }, []);
   if (!foco?.codigos?.length) {
-    return <p className="text-[0.9rem] text-tinta-suave">{t("inventario.foco_vacio")} <button onClick={onSalir} className="font-semibold text-tinta">{t("inventario.foco_volver")}</button>.</p>;
+    return <p className="text-sm text-tinta-suave">{t("inventario.foco_vacio")} <button onClick={onSalir} className="font-semibold text-tinta">{t("inventario.foco_volver")}</button>.</p>;
   }
-  if (!items) return <p className="text-[0.9rem] text-tinta-suave">{t("inventario.cargando")}</p>;
+  if (!items) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
   const set = new Set(foco.codigos);
   const filt = items.filter((p) => set.has(p.codigo));
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-rojo/[0.04] p-4">
         <AngelaMark size={28} />
-        <p className="flex-1 text-[0.92rem] text-tinta"><b>{num(filt.length)}</b> {t("inventario.foco_senalados")} {foco.titulo}</p>
-        <button onClick={() => onPreguntar?.(`¿cómo corrijo ${foco.titulo.toLowerCase()}?`)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema">
+        <p className="flex-1 text-sm text-tinta"><b>{num(filt.length)}</b> {t("inventario.foco_senalados")} {foco.titulo}</p>
+        <button onClick={() => onPreguntar?.(`¿cómo corrijo ${foco.titulo.toLowerCase()}?`)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema">
           <Sparkles size={14} /> {t("inventario.arreglar_angela")}
         </button>
-        <button onClick={onSalir} className="rounded-full border border-linea px-3.5 py-1.5 text-[0.88rem] font-semibold text-tinta-suave hover:text-tinta">{t("inventario.salir")}</button>
+        <button onClick={onSalir} className="rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">{t("inventario.salir")}</button>
       </div>
       <div className="overflow-x-auto rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
-        <table className="w-full text-[0.88rem]">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-linea text-left text-tinta-suave">
               <th className="px-4 py-2.5 font-semibold">{t("inventario.col_producto")}</th>
@@ -248,17 +248,17 @@ function PestanaCustom({ pestana, onSelect }) {
   const t = useT();
   const [items, setItems] = useState(null);
   useEffect(() => { api.articulos().then((d) => setItems(d.items)).catch(() => {}); }, []);
-  if (!items) return <p className="text-[0.9rem] text-tinta-suave">{t("inventario.cargando")}</p>;
+  if (!items) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
   const filt = pestana.filtro === "balanza"
     ? items.filter((p) => p.estado_calidad === "balanza")
     : items.filter((p) => p.estado_calidad === pestana.filtro);
   return (
     <div className="space-y-3">
-      <p className="text-[0.9rem] text-tinta-suave">
+      <p className="text-sm text-tinta-suave">
         {t("inventario.pestana_custom_1")} <b>{num(filt.length)}</b> {t("inventario.pestana_custom_2")}
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
-        <table className="w-full text-[0.88rem]">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-linea text-left text-tinta-suave">
               <th className="px-4 py-2.5 font-semibold">{t("inventario.col_producto")}</th>
@@ -303,8 +303,8 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-display text-[1.2rem] font-bold leading-tight">{p.descripcion || p.name}</p>
-            <p className="text-[0.88rem] text-tinta-suave">{t("inventario.det_codigo", { codigo: p.codigo })}</p>
+            <p className="font-display text-lg font-bold leading-tight">{p.descripcion || p.name}</p>
+            <p className="text-sm text-tinta-suave">{t("inventario.det_codigo", { codigo: p.codigo })}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {onGuardado && (
@@ -314,7 +314,7 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
           </div>
         </div>
         {p.estado_calidad && (
-          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[0.88rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>
+          <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold ${e.cls}`}>{t(e.lk)}</span>
         )}
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Dato label={t("inventario.col_stock")} valor={`${num(p.stock)}${p.unidad_pricing === "kg" ? " kg" : ""}`} alerta={p.stock < 0} />
@@ -344,14 +344,14 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             onClick={() => { onClose(); onPreguntar?.(t("inventario.det_preguntar_q", { nombre: p.descripcion || p.name, codigo: p.codigo })); }}
-            className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema"
+            className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema"
           >
             <AngelaMark size={18} /> {t("inventario.det_preguntar")}
           </button>
           {onNavegar && (
             <button
               onClick={() => { onClose(); onNavegar("productos", `q:${p.codigo}`); }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta"
+              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta"
             >
               {t("inventario.acc_ver_catalogo")} <ArrowRight size={13} />
             </button>
@@ -359,7 +359,7 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
           {err && onNavegar && authStore.tiene("saneamiento") && (
             <button
               onClick={() => { onClose(); onNavegar("saneamiento", err); }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.88rem] font-semibold text-tinta-suave"
+              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave"
             >
               {t("inventario.acc_ver_saneamiento")}
             </button>
@@ -425,20 +425,20 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
         </div>
         {CAMPOS_ARTICULO.map(([campo, lk, tipo]) => (
           <div key={campo}>
-            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <label className="mt-3 block text-sm font-semibold text-tinta-suave">{t(lk)}</label>
             <input type={tipo} value={form[campo]} disabled={campo === "codigo" && !!inicial}
               onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
               autoFocus={campo === "codigo"}
-              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40 disabled:opacity-60" />
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm outline-none focus:border-tinta/40 disabled:opacity-60" />
           </div>
         ))}
-        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        {error && <p className="mt-2 text-sm text-rojo-hondo">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
           <button onClick={guardar} disabled={!form.codigo || !form.descripcion.trim() || guardando}
-            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>
         </div>
@@ -450,8 +450,8 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
 function Dato({ label, valor, alerta }) {
   return (
     <div className="rounded-xl border border-linea bg-papel p-3">
-      <p className="text-[0.88rem] font-semibold uppercase tracking-wide text-tinta-suave">{label}</p>
-      <p className={`plata mt-0.5 text-[1.05rem] font-medium ${alerta ? "text-rojo" : "text-tinta"}`}>{valor}</p>
+      <p className="text-sm font-semibold uppercase tracking-wide text-tinta-suave">{label}</p>
+      <p className={`plata mt-0.5 text-lg font-medium ${alerta ? "text-rojo" : "text-tinta"}`}>{valor}</p>
     </div>
   );
 }

@@ -26,17 +26,17 @@ export default function ConfidenceIndicator({
   return (
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${meta.cls}`}>
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.cls}`}>
           <Icon size={12} /> {t(meta.lk)}
         </span>
         {onViewEvidence && hasEvidence && (
           <button type="button" onClick={onViewEvidence}
-            className="text-[0.78rem] font-semibold text-hielo hover:underline">
+            className="text-xs font-semibold text-hielo hover:underline">
             {t("conf.ver_evidencia")}
           </button>
         )}
       </div>
-      <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">
+      <p className="mt-1 text-xs leading-snug text-tinta-suave">
         {hedge || t("conf.hedge")}
       </p>
     </div>
