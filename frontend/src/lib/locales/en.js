@@ -3019,6 +3019,8 @@ export const EN = {
   "hoy.aprendizaje_titulo": "What Ángela is learning",
   "hoy.ver_aprendizaje": "See more",
 
+  "chat.cite.source": "business memory",
+  "chat.cite.label": "From the business memory: {text}",
   "chat.memory.header": "memory",
   "chat.memory.kept_n": "kept {n}",
   "chat.memory.save": "Keep \"{text}\"",
@@ -3110,7 +3112,6 @@ export const EN = {
 
   // --- chat notices (the backend sends only the `kind`) ---
   "chat.notice.cap": "You reached this session's message limit.",
-  "chat.notice.fake_model": "This came from your data, without the model connected.",
   "chat.notice.tool_loop_exhausted": "I'm going in circles with that query. Can you rephrase it more simply?",
   "chat.notice.generico": "Ángela replied in degraded mode.",
 
