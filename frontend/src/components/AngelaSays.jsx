@@ -16,10 +16,10 @@ export default function AngelaSays({ children, tone = "neutral", className = "" 
     <div className={`flex gap-3 rounded-[var(--radius-card)] border ${accent} p-3.5 ${className}`}>
       <AngelaMark size={30} />
       <div className="min-w-0 pt-0.5">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
           Ángela
         </p>
-        <div className="mt-0.5 text-[0.95rem] leading-snug text-tinta">{children}</div>
+        <div className="mt-0.5 text-base leading-snug text-tinta">{children}</div>
       </div>
     </div>
   );

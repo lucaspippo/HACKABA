@@ -124,7 +124,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
       <div onClick={(e) => e.stopPropagation()}
         className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[var(--radius-card)] border border-linea bg-papel sombra-alta sm:rounded-[var(--radius-card)]">
         <div className="flex items-center justify-between border-b border-linea bg-crema px-5 py-3">
-          <h2 className="flex items-center gap-2 font-display text-[1.05rem] font-bold">
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <Camera size={18} className="text-violeta" /> {t("foto.titulo")}
           </h2>
           <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
@@ -140,21 +140,21 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                 className="grid place-items-center rounded-[var(--radius-card)] border-2 border-dashed border-linea p-6 text-center"
               >
                 <UploadCloud size={26} className="text-tinta-suave" />
-                <p className="mt-2 text-[0.9rem] text-tinta-suave">{t("foto.arrastra")}</p>
-                <p className="mt-1 text-[0.76rem] text-tinta-suave">{t("foto.limite")}</p>
+                <p className="mt-2 text-sm text-tinta-suave">{t("foto.arrastra")}</p>
+                <p className="mt-1 text-xs text-tinta-suave">{t("foto.limite")}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-3">
                 <button onClick={() => camRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-full bg-violeta px-4 py-2.5 text-[0.88rem] font-semibold text-crema">
+                  className="flex items-center justify-center gap-2 rounded-full bg-violeta px-4 py-2.5 text-sm font-semibold text-crema">
                   <Camera size={16} /> {t("foto.sacar")}
                 </button>
                 <button onClick={() => fileRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-full border border-linea bg-crema px-4 py-2.5 text-[0.88rem] font-semibold text-tinta">
+                  className="flex items-center justify-center gap-2 rounded-full border border-linea bg-crema px-4 py-2.5 text-sm font-semibold text-tinta">
                   <ImageIcon size={16} /> {t("foto.galeria")}
                 </button>
                 {muestras?.length > 0 && (
                   <button onClick={() => setVerMuestras((v) => !v)}
-                    className="flex items-center justify-center gap-2 rounded-full border border-hielo/40 bg-hielo/[0.07] px-4 py-2.5 text-[0.88rem] font-semibold text-hielo">
+                    className="flex items-center justify-center gap-2 rounded-full border border-hielo/40 bg-hielo/[0.07] px-4 py-2.5 text-sm font-semibold text-hielo">
                     <FileText size={16} /> {t("foto.muestra")}
                   </button>
                 )}
@@ -168,13 +168,13 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                   {muestras.map((m) => (
                     <button key={m.id} onClick={() => usarMuestra(m)}
                       className="block w-full border-b border-linea px-4 py-3 text-left last:border-0 hover:bg-papel-hondo/50">
-                      <p className="text-[0.9rem] font-semibold text-tinta">{t(`muestras.${m.id}_t`)}</p>
-                      <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{t(`muestras.${m.id}_d`)}</p>
+                      <p className="text-sm font-semibold text-tinta">{t(`muestras.${m.id}_t`)}</p>
+                      <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{t(`muestras.${m.id}_d`)}</p>
                     </button>
                   ))}
                 </div>
               )}
-              {error && <p className="rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-[0.86rem] text-tinta">{error}</p>}
+              {error && <p className="rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-sm text-tinta">{error}</p>}
             </div>
           )}
 
@@ -184,7 +184,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
               {previewUrl && <img src={previewUrl} alt="" className="max-h-56 rounded-xl border border-linea object-contain" />}
               <div className="flex items-center gap-3">
                 <AngelaMark size={30} estado="ejecutando" />
-                <p className="text-[0.92rem] text-tinta-suave">{t("foto.leyendo")}</p>
+                <p className="text-sm text-tinta-suave">{t("foto.leyendo")}</p>
               </div>
             </div>
           )}
@@ -194,9 +194,9 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
             <div className="space-y-4 py-4">
               <div className="flex items-start gap-3">
                 <AngelaMark size={32} />
-                <p className="text-[0.95rem] leading-snug text-tinta">{lectura?.mensaje}</p>
+                <p className="text-base leading-snug text-tinta">{lectura?.mensaje}</p>
               </div>
-              <button onClick={reiniciar} className="inline-flex items-center gap-2 rounded-full border border-linea bg-crema px-4 py-2 text-[0.86rem] font-semibold text-tinta">
+              <button onClick={reiniciar} className="inline-flex items-center gap-2 rounded-full border border-linea bg-crema px-4 py-2 text-sm font-semibold text-tinta">
                 <RotateCcw size={15} /> {t("foto.reintentar")}
               </button>
             </div>
@@ -207,7 +207,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <AngelaMark size={32} estado="esperando" />
-                <div className="text-[0.95rem] leading-snug text-tinta">
+                <div className="text-base leading-snug text-tinta">
                   <p>{t("foto.angela_leyo", {
                     proveedor: ext.proveedor?.razon_social || "—",
                     tipo: t(`foto.tipo_${ext.tipo_comprobante}`),
@@ -218,10 +218,10 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                   })}</p>
                   <CruceInfo cruce={lectura?.cruce} tipo={ext.tipo_comprobante} t={t} />
                   {(lectura?.chequeos?.alertas || []).map((a, i) => (
-                    <p key={i} className="mt-1.5 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-[0.86rem]">{a.detalle}</p>
+                    <p key={i} className="mt-1.5 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-sm">{a.detalle}</p>
                   ))}
                   {dudosos > 0 && (
-                    <p className="mt-1.5 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-[0.86rem]">
+                    <p className="mt-1.5 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-sm">
                       {t("foto.dudosos", { n: dudosos })}
                     </p>
                   )}
@@ -233,17 +233,17 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                 acciones={
                   <>
                     <button onClick={confirmar}
-                      className="inline-flex items-center gap-2 rounded-full bg-violeta px-5 py-2.5 text-[0.9rem] font-semibold text-crema">
+                      className="inline-flex items-center gap-2 rounded-full bg-violeta px-5 py-2.5 text-sm font-semibold text-crema">
                       <Check size={16} /> {t("foto.confirmar")}
                     </button>
                     <button onClick={reiniciar}
-                      className="rounded-full border border-linea bg-crema px-4 py-2.5 text-[0.9rem] font-semibold text-tinta-suave">
+                      className="rounded-full border border-linea bg-crema px-4 py-2.5 text-sm font-semibold text-tinta-suave">
                       {t("foto.cancelar")}
                     </button>
                   </>
                 }
               >
-                <p className="mb-2 text-[0.74rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("foto.editar_hint")}</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("foto.editar_hint")}</p>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   <CampoEdit label={t("foto.f_proveedor")} valor={ext.proveedor?.razon_social || ""}
                     onChange={(v) => setExt({ ...ext, proveedor: { ...ext.proveedor, razon_social: v } })} ancho="col-span-2" />
@@ -267,19 +267,19 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                         {ext.tipo_comprobante === "lista_precios" && (
                           <input value={it.codigo ?? ""} inputMode="numeric" aria-label={t("foto.f_codigo")}
                             onChange={(e) => cambiarItem(setExt, ext, i, "codigo", e.target.value)}
-                            className="w-16 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-[0.84rem]" />
+                            className="w-16 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-sm" />
                         )}
-                        <span className="min-w-0 flex-1 truncate text-[0.84rem]">
+                        <span className="min-w-0 flex-1 truncate text-sm">
                           {it.descripcion}
                           {piezas != null && (
-                            <span className="ml-1.5 text-[0.72rem] text-tinta-suave">
+                            <span className="ml-1.5 text-xs text-tinta-suave">
                               {t("foto.f_piezas", { n: piezas, kg: kgPieza })}
                             </span>
                           )}
                           {/* El remito trae lote y vencimiento: se muestran acá
                               porque es lo que va a encender la alerta después */}
                           {it.vencimiento && (
-                            <span className="ml-1.5 text-[0.72rem] text-tinta-suave">
+                            <span className="ml-1.5 text-xs text-tinta-suave">
                               {t("foto.f_lote", { lote: it.lote || "s/l",
                                                   vto: fmtFecha(it.vencimiento) })}
                             </span>
@@ -288,12 +288,12 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                         {ext.tipo_comprobante !== "lista_precios" && (
                           <input value={it.cantidad ?? ""} inputMode="decimal" aria-label={t("foto.f_cant")}
                             onChange={(e) => cambiarItem(setExt, ext, i, "cantidad", e.target.value)}
-                            className="w-16 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-[0.84rem]" />
+                            className="w-16 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-sm" />
                         )}
                         {(ext.tipo_comprobante === "factura" || ext.tipo_comprobante === "lista_precios") && (
                           <input value={it.precio_unitario ?? ""} inputMode="decimal" aria-label={t("foto.f_precio")}
                             onChange={(e) => cambiarItem(setExt, ext, i, "precio_unitario", e.target.value)}
-                            className="w-24 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-[0.84rem]" />
+                            className="w-24 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-sm" />
                         )}
                       </div>
                       );
@@ -302,13 +302,13 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                 )}
                 {ext.total != null && (
                   <div className="mt-3 flex items-center justify-end gap-2">
-                    <span className="text-[0.82rem] font-semibold text-tinta-suave">{t("foto.f_total")}</span>
+                    <span className="text-sm font-semibold text-tinta-suave">{t("foto.f_total")}</span>
                     <input value={ext.total} inputMode="decimal"
                       onChange={(e) => setExt({ ...ext, total: Number(e.target.value) || 0 })}
-                      className="plata w-36 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-[0.9rem] font-medium" />
+                      className="plata w-36 rounded-lg border border-linea bg-papel px-2 py-1 text-right text-sm font-medium" />
                   </div>
                 )}
-                {error && <p className="mt-3 rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-[0.86rem]">{error}</p>}
+                {error && <p className="mt-3 rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-sm">{error}</p>}
               </PanelDecision>
             </div>
           )}
@@ -316,7 +316,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
           {paso === "guardando" && (
             <div className="flex items-center justify-center gap-3 py-10">
               <AngelaMark size={30} estado="ejecutando" />
-              <p className="text-[0.92rem] text-tinta-suave">{t("foto.guardando")}</p>
+              <p className="text-sm text-tinta-suave">{t("foto.guardando")}</p>
             </div>
           )}
 
@@ -327,12 +327,12 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
                 {resultado.ok
                   ? <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-salvia text-crema"><Check size={18} /></span>
                   : <AngelaMark size={32} />}
-                <div className="text-[0.95rem] leading-snug text-tinta">
+                <div className="text-base leading-snug text-tinta">
                   <ResultadoTexto r={resultado} t={t} />
                 </div>
               </div>
               {resultado.ok && resultado.sync && (
-                <p className="rounded-xl border border-hielo/30 bg-hielo/[0.06] px-3.5 py-2 text-[0.84rem] text-hielo">
+                <p className="rounded-xl border border-hielo/30 bg-hielo/[0.06] px-3.5 py-2 text-sm text-hielo">
                   {t(`foto.${resultado.sync.k || "sync_simulado"}`)}
                 </p>
               )}
@@ -345,14 +345,14 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
               <div className="flex flex-wrap gap-2">
                 {resultado.ok && onPreguntar && (
                   <button onClick={() => { onPreguntar(t("foto.pregunta_sugerida")); onCerrar?.(); }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.86rem] font-semibold text-crema">
+                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                     {t("foto.preguntar")} <ArrowRight size={14} />
                   </button>
                 )}
-                <button onClick={reiniciar} className="rounded-full border border-linea bg-crema px-4 py-2 text-[0.86rem] font-semibold text-tinta-suave">
+                <button onClick={reiniciar} className="rounded-full border border-linea bg-crema px-4 py-2 text-sm font-semibold text-tinta-suave">
                   {t("foto.otro")}
                 </button>
-                <button onClick={onCerrar} className="rounded-full border border-linea bg-crema px-4 py-2 text-[0.86rem] font-semibold text-tinta-suave">
+                <button onClick={onCerrar} className="rounded-full border border-linea bg-crema px-4 py-2 text-sm font-semibold text-tinta-suave">
                   {t("foto.cerrar")}
                 </button>
               </div>
@@ -372,9 +372,9 @@ function cambiarItem(setExt, ext, i, campo, valor) {
 function CampoEdit({ label, valor, onChange, ancho = "" }) {
   return (
     <label className={`block ${ancho}`}>
-      <span className="mb-0.5 block text-[0.72rem] font-semibold text-tinta-suave">{label}</span>
+      <span className="mb-0.5 block text-xs font-semibold text-tinta-suave">{label}</span>
       <input value={valor} onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-linea bg-papel px-2 py-1.5 text-[0.86rem]" />
+        className="w-full rounded-lg border border-linea bg-papel px-2 py-1.5 text-sm" />
     </label>
   );
 }
@@ -402,19 +402,19 @@ function Reclamo({ r, t }) {
 
   if (estado === "hecho") {
     return (
-      <p className="rounded-xl border border-salvia/30 bg-salvia/[0.07] px-3.5 py-2 text-[0.86rem] text-tinta">
+      <p className="rounded-xl border border-salvia/30 bg-salvia/[0.07] px-3.5 py-2 text-sm text-tinta">
         {msg}
       </p>
     );
   }
   return (
     <div className="rounded-xl border border-oro/30 bg-oro/[0.07] px-3.5 py-3">
-      <p className="text-[0.9rem] font-semibold text-tinta">
+      <p className="text-sm font-semibold text-tinta">
         {t("foto.reclamo_titulo", { n: r.items.length, proveedor: r.proveedor })}
       </p>
       <ul className="mt-1.5 space-y-0.5">
         {r.items.map((it, i) => (
-          <li key={i} className="flex items-baseline gap-2 text-[0.84rem] text-tinta-suave">
+          <li key={i} className="flex items-baseline gap-2 text-sm text-tinta-suave">
             <span className="min-w-0 flex-1 truncate">{it.producto}</span>
             <span className="plata shrink-0">
               {t("foto.reclamo_falta", { falta: it.falta, pedido: it.pedido })}
@@ -425,14 +425,14 @@ function Reclamo({ r, t }) {
       </ul>
       <div className="mt-2.5 flex items-center gap-2">
         <button onClick={reclamar} disabled={estado === "enviando"}
-          className="rounded-full bg-tinta px-4 py-1.5 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
+          className="rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
           {estado === "enviando" ? t("foto.guardando") : t("foto.reclamar")}
         </button>
         <button onClick={() => { setMsg(t("foto.reclamo_no")); setEstado("hecho"); }}
-          className="rounded-full border border-linea bg-crema px-4 py-1.5 text-[0.84rem] font-semibold text-tinta-suave">
+          className="rounded-full border border-linea bg-crema px-4 py-1.5 text-sm font-semibold text-tinta-suave">
           {t("foto.reclamo_dejar")}
         </button>
-        {estado === "error" && <span className="text-[0.82rem] text-rojo">{msg}</span>}
+        {estado === "error" && <span className="text-sm text-rojo">{msg}</span>}
       </div>
     </div>
   );
@@ -442,12 +442,12 @@ function Reclamo({ r, t }) {
 function CruceInfo({ cruce, tipo, t }) {
   if (!cruce) return null;
   if (tipo === "remito") {
-    if (!cruce.oc_encontrada) return <p className="mt-1.5 text-[0.88rem] text-tinta-suave">{t("foto.remito_sin_oc")}</p>;
+    if (!cruce.oc_encontrada) return <p className="mt-1.5 text-sm text-tinta-suave">{t("foto.remito_sin_oc")}</p>;
     return (
-      <div className="mt-1.5 text-[0.9rem]">
+      <div className="mt-1.5 text-sm">
         <p>{t("foto.remito_oc", { oc: cruce.oc_encontrada.numero, n: cruce.coincidencias, m: cruce.total_items })}</p>
         {cruce.diferencias.map((d, i) => (
-          <p key={i} className="mt-0.5 text-[0.86rem] text-oro-tinta">
+          <p key={i} className="mt-0.5 text-sm text-oro-tinta">
             · {d.tipo === "cantidad"
               ? t("foto.dif_cantidad", { producto: d.producto, pedido: d.pedido, recibido: d.recibido })
               : d.tipo === "no_pedido"
@@ -461,7 +461,7 @@ function CruceInfo({ cruce, tipo, t }) {
   }
   if (tipo === "factura" && cruce.remito_encontrado) {
     return (
-      <p className="mt-1.5 text-[0.9rem]">
+      <p className="mt-1.5 text-sm">
         {cruce.diferencias.length === 0
           ? t("foto.factura_cierra")
           : t("foto.factura_difiere", { n: cruce.diferencias.length })}
@@ -471,10 +471,10 @@ function CruceInfo({ cruce, tipo, t }) {
   // P22·A — la lista de precios: el diff con criterio, ANTES del OK
   if (tipo === "lista_precios") {
     return (
-      <div className="mt-1.5 text-[0.9rem]">
+      <div className="mt-1.5 text-sm">
         <p>{t("foto.lista_resumen", { n: cruce.n, pct: cruce.promedio_pct ?? "—" })}</p>
         {(cruce.dudosos || []).map((d, i) => (
-          <p key={i} className="mt-1 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-[0.86rem]">
+          <p key={i} className="mt-1 rounded-lg border border-oro/40 bg-oro/[0.08] px-2.5 py-1.5 text-sm">
             {d.estado === "salto_sospechoso"
               ? t("foto.lista_salto", { producto: d.producto_catalogo, pct: d.pct, mediana: cruce.mediana_pct })
               : t("foto.lista_codigo", {

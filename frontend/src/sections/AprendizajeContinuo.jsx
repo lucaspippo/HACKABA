@@ -158,19 +158,19 @@ export default function AprendizajeContinuo({ onPreguntar }) {
         <AngelaMark size={40} />
         <div className="flex-1">
           <h1 className="font-display text-xl font-bold leading-tight">{t("aprendizaje.titulo")}</h1>
-          <p className="mt-1.5 text-[0.95rem] leading-snug text-tinta">{t("aprendizaje.intro")}</p>
+          <p className="mt-1.5 text-base leading-snug text-tinta">{t("aprendizaje.intro")}</p>
         </div>
       </div>
 
       <div>
-        <h2 className="mb-3 flex items-center gap-1.5 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+        <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
           <Lightbulb size={14} /> {t("aprendizaje.activo_titulo")}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {cards.map((c) => (
             <div key={c.id} className="flex flex-col gap-2">
               {handledIds.has(c.id) ? (
-                <div className="flex items-center gap-2.5 rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-5 text-[0.9rem] text-tinta-suave">
+                <div className="flex items-center gap-2.5 rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-5 text-sm text-tinta-suave">
                   <Check size={16} className="shrink-0 text-salvia" />
                   {t("aprendizaje.feedback_hecho")}
                 </div>
@@ -180,7 +180,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
                   fuentes={c.fuentes} accion={t("aprendizaje.ver_como")}
                   onClick={() => setSelected(c)} />
               )}
-              <span className="self-start rounded-full bg-papel-hondo px-2.5 py-1 text-[0.68rem] font-semibold text-tinta-suave">
+              <span className="self-start rounded-full bg-papel-hondo px-2.5 py-1 text-2xs font-semibold text-tinta-suave">
                 {c.isIllustrative ? t("aprendizaje.chip_ejemplo") : t("aprendizaje.chip_en_tu_negocio")}
               </span>
             </div>
@@ -190,14 +190,14 @@ export default function AprendizajeContinuo({ onPreguntar }) {
 
       {history?.length > 0 && (
         <div>
-          <h2 className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
             {t("aprendizaje.historial_titulo")}
           </h2>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
             {history.map((h) => (
-              <div key={h.id} className="flex items-baseline justify-between gap-3 border-b border-linea/60 px-4 py-3 text-[0.86rem] last:border-0">
+              <div key={h.id} className="flex items-baseline justify-between gap-3 border-b border-linea/60 px-4 py-3 text-sm last:border-0">
                 <span className="min-w-0 flex-1 truncate">{h.snapshot?.titulo}</span>
-                <span className="shrink-0 rounded-full bg-papel-hondo px-2.5 py-1 text-[0.7rem] font-semibold text-tinta-suave">
+                <span className="shrink-0 rounded-full bg-papel-hondo px-2.5 py-1 text-xs font-semibold text-tinta-suave">
                   {t(HISTORY_ACTION_LABEL[h.action] || h.action)}
                 </span>
               </div>
@@ -207,7 +207,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
       )}
 
       <div>
-        <h2 className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
           {t("aprendizaje.proximamente_titulo")}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -216,8 +216,8 @@ export default function AprendizajeContinuo({ onPreguntar }) {
             return (
               <div key={f.t} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
                 <Icon size={18} className="text-tinta-suave" />
-                <p className="mt-2 font-display text-[1rem] font-bold leading-tight">{t(f.t)}</p>
-                <p className="mt-1 text-[0.84rem] leading-snug text-tinta-suave">{t(f.d)}</p>
+                <p className="mt-2 font-display text-base font-bold leading-tight">{t(f.t)}</p>
+                <p className="mt-1 text-sm leading-snug text-tinta-suave">{t(f.d)}</p>
               </div>
             );
           })}
@@ -227,10 +227,10 @@ export default function AprendizajeContinuo({ onPreguntar }) {
       <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-papel">
         <AngelaMark size={36} />
         <div className="flex-1">
-          <p className="text-[0.92rem] leading-snug text-tinta">{t("aprendizaje.cta")}</p>
+          <p className="text-sm leading-snug text-tinta">{t("aprendizaje.cta")}</p>
           <button
             onClick={() => onPreguntar?.(t("aprendizaje.cta_pregunta"))}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
           >
             {t("aprendizaje.cta_boton")} <ArrowRight size={15} />
           </button>
@@ -247,7 +247,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
               onFeedback={selected.isIllustrative ? undefined : (action) => giveFeedback(selected.id, action)}
               feedbackBusy={feedbackBusy} />
             <button onClick={() => setSelected(null)}
-              className="mt-4 w-full rounded-full border border-linea py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta">
+              className="mt-4 w-full rounded-full border border-linea py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
               {t("aprendizaje.cerrar")}
             </button>
           </div>

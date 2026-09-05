@@ -112,7 +112,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     >
       <div className="flex items-center gap-2 border-b border-linea px-3 py-2.5">
         <Brain size={15} className="shrink-0 text-oro-tinta" aria-hidden />
-        <h2 className="min-w-0 flex-1 truncate text-[0.85rem] font-semibold text-tinta">
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-tinta">
           {t("chat.knowledge.title")}
         </h2>
         <button
@@ -139,7 +139,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("chat.knowledge.search")}
             aria-label={t("chat.knowledge.search")}
-            className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-[0.82rem] text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
+            className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
           />
         </div>
 
@@ -151,7 +151,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                 type="button"
                 aria-pressed={node === n}
                 onClick={() => setNode(n)}
-                className={`rounded-full px-2.5 py-1 text-[0.72rem] transition-colors ${
+                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
                   node === n
                     ? "bg-tinta text-crema"
                     : "bg-papel-hondo text-tinta-suave hover:text-tinta"
@@ -164,19 +164,19 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         )}
 
         {!loading && (
-          <p className="mb-2 text-[0.72rem] text-tinta-suave">
+          <p className="mb-2 text-xs text-tinta-suave">
             {t("chat.knowledge.count", { n: String(pieces.length) })}
             {pending > 0 && ` · ${t("chat.knowledge.pending_n", { n: String(pending) })}`}
           </p>
         )}
 
         {!loading && pieces.length === 0 && (
-          <p className="py-8 text-center text-[0.82rem] text-tinta-suave">
+          <p className="py-8 text-center text-sm text-tinta-suave">
             {t("chat.knowledge.empty")}
           </p>
         )}
         {!loading && pieces.length > 0 && shown.length === 0 && (
-          <p className="py-8 text-center text-[0.82rem] text-tinta-suave">
+          <p className="py-8 text-center text-sm text-tinta-suave">
             {t("chat.knowledge.no_results", { q: query })}
           </p>
         )}
@@ -187,18 +187,18 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
               key={piece.id}
               className="rounded-xl border border-linea bg-crema px-2.5 py-2"
             >
-              <p className="text-[0.82rem] leading-snug text-tinta">{piece.texto}</p>
+              <p className="text-sm leading-snug text-tinta">{piece.texto}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`rounded-full px-1.5 py-0.5 text-[0.68rem] ${
+                  className={`rounded-full px-1.5 py-0.5 text-2xs ${
                     STATE_TONE[piece.estado] ?? STATE_TONE.pausado
                   }`}
                 >
                   {t(`chat.knowledge.state.${piece.estado}`)}
                 </span>
-                <span className="text-[0.68rem] text-tinta-suave">{piece.nodo}</span>
+                <span className="text-2xs text-tinta-suave">{piece.nodo}</span>
                 {piece.entidad && (
-                  <span className="min-w-0 truncate text-[0.68rem] text-tinta-suave">
+                  <span className="min-w-0 truncate text-2xs text-tinta-suave">
                     · {piece.entidad}
                   </span>
                 )}
@@ -267,7 +267,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="border-t border-linea px-3 py-3">
-        <p className="mb-2 text-[0.72rem] font-semibold text-tinta-suave">
+        <p className="mb-2 text-xs font-semibold text-tinta-suave">
           {t("chat.knowledge.settings")}
         </p>
         <SettingsPanel

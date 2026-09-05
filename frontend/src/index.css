@@ -109,6 +109,32 @@
   --font-sans: "Hanken Grotesk", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, monospace;
 
+  /* Escala tipográfica (P36 — reemplaza ~1470 text-[0.NNrem] arbitrarios que
+     no seguían ningún sistema). Los valores en rem son A PROPÓSITO más
+     grandes que el default de Tailwind: en desktop (≥1024px) el html va al
+     80% (ver @layer base más abajo), así que estos rem ya vienen
+     compensados para rendir en un tamaño legible real — text-sm son
+     ~13.4px en desktop, no los ~10px que daría el 0.875rem de stock de
+     Tailwind al pasar por ese 80%. En mobile (100%, sin la compensación) el
+     mismo token queda naturalmente más grande, lo cual es deseado: mobile
+     nunca debe leerse más chico que desktop.
+     Los pasos (0.85/0.95/1.05/1.15/1.2rem) no están espaciados parejo:
+     siguen los quiebres naturales del uso real relevado en la auditoría
+     (la mayoría del texto de la app caía entre 0.8-0.92rem), así que cada
+     paso absorbe el clúster que le corresponde en vez de forzar una
+     distribución pareja. text-lg/xl/2xl/3xl quedan en el default de
+     Tailwind — ya cubrían bien los títulos y cifras grandes. */
+  --text-2xs: 0.85rem; /* micro: badges, anotaciones de gráficos, celdas muy densas */
+  --text-2xs--line-height: 1.15rem;
+  --text-xs: 0.95rem; /* label: chips, nav, headers de tabla, campos de formulario */
+  --text-xs--line-height: 1.3rem;
+  --text-sm: 1.05rem; /* body: texto de card, valores de tabla, copy por defecto */
+  --text-sm--line-height: 1.45rem;
+  --text-base: 1.15rem; /* body enfatizado: subtítulos de card, texto primario */
+  --text-base--line-height: 1.55rem;
+  --text-lg: 1.2rem; /* título de sección chico */
+  --text-lg--line-height: 1.6rem;
+
   /* Radios: tarjetas con esquina suave, no chips genéricos */
   --radius-card: 1.25rem;
 

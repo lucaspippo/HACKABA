@@ -98,17 +98,17 @@ function Fila({ e, hoyISO, t }) {
         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${bg}`}>
           <Icon size={15} className={tono} />
         </span>
-        <span className="min-w-0 flex-1 text-[0.9rem] leading-snug text-tinta">
+        <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">
           {textoFeed(e, t)}
-          {e.veces > 1 && <span className="ml-1.5 text-[0.74rem] font-semibold text-tinta-suave">×{e.veces}</span>}
+          {e.veces > 1 && <span className="ml-1.5 text-xs font-semibold text-tinta-suave">×{e.veces}</span>}
         </span>
-        <span className="shrink-0 text-[0.74rem] text-tinta-suave" title={(e.cuando || "").slice(0, 10)}>
+        <span className="shrink-0 text-xs text-tinta-suave" title={(e.cuando || "").slice(0, 10)}>
           {fechaRelativa(e.cuando, hoyISO, t)}
         </span>
         <ChevronDown size={15} className={`shrink-0 text-tinta-suave transition-transform ${abierto ? "rotate-180" : ""}`} />
       </button>
       {abierto && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-3 pl-10 text-[0.8rem] text-tinta-suave">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pb-3 pl-10 text-sm text-tinta-suave">
           {det && <span>{det}</span>}
           {rev && (
             <span className="inline-flex items-center gap-1 text-salvia">
@@ -160,7 +160,7 @@ export function FeedActividad({ act, estructura }) {
       {estructura?.disponible && estructura.locales?.length > 0 && (
         <div className="mb-2 flex items-start gap-2 rounded-xl border border-hielo/25 bg-hielo/[0.05] px-3 py-2">
           <Check size={14} className="mt-0.5 shrink-0 text-hielo" />
-          <p className="text-[0.8rem] leading-snug text-tinta">
+          <p className="text-sm leading-snug text-tinta">
             {t("feed.estructura_locales", {
               n: num(estructura.locales.length),
               monto: pesoCorto(estructura.total_12m || 0),
@@ -174,7 +174,7 @@ export function FeedActividad({ act, estructura }) {
           <button
             key={c.id}
             onClick={() => setFiltro(filtro === c.id ? null : c.id)}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[0.74rem] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
               filtro === c.id ? "border-violeta bg-violeta/[0.06] text-violeta" : "border-linea text-tinta-suave hover:text-tinta"
             }`}
           >
@@ -185,13 +185,13 @@ export function FeedActividad({ act, estructura }) {
       </div>
 
       {filtro === "aviso" ? (
-        <p className="px-1 py-4 text-center text-[0.85rem] text-tinta-suave">{t("feed.avisos_bandeja")}</p>
+        <p className="px-1 py-4 text-center text-sm text-tinta-suave">{t("feed.avisos_bandeja")}</p>
       ) : visibles.length === 0 ? (
-        <p className="px-1 py-4 text-center text-[0.85rem] text-tinta-suave">{t("feed.sin_resultados")}</p>
+        <p className="px-1 py-4 text-center text-sm text-tinta-suave">{t("feed.sin_resultados")}</p>
       ) : (
         grupos.map((g) => (
           <div key={g.dia}>
-            <p className="mt-2 pb-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave/70">
+            <p className="mt-2 pb-0.5 text-2xs font-semibold uppercase tracking-[0.12em] text-tinta-suave/70">
               {fechaRelativa(g.dia, hoyISO, t)}
             </p>
             {g.items.map((e, i) => <Fila key={`${e.accion}-${e.cuando}-${i}`} e={e} hoyISO={hoyISO} t={t} />)}
@@ -208,7 +208,7 @@ export function FeedItem({ color, texto, cuando }) {
     <li className="flex items-start gap-3">
       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color}`} />
       <span className="flex-1 text-tinta">{texto}</span>
-      <span className="shrink-0 text-[0.74rem] text-tinta-suave">{cuando}</span>
+      <span className="shrink-0 text-xs text-tinta-suave">{cuando}</span>
     </li>
   );
 }

@@ -30,7 +30,7 @@ export default function EquipoMobile() {
     <div className="space-y-6 pb-4">
       <header className="pt-1">
         <h1 className="font-display text-2xl font-bold">{t("equipo.mob_titulo")}</h1>
-        <p className="mt-1 text-[0.95rem] text-tinta-suave">
+        <p className="mt-1 text-base text-tinta-suave">
           {t("equipo.mob_sub")}
         </p>
       </header>
@@ -45,18 +45,18 @@ export default function EquipoMobile() {
 
       {/* Objetivos activos */}
       <section>
-        <h2 className="mb-3 font-display text-[1.1rem] font-bold">{t("equipo.objetivos_titulo")}</h2>
+        <h2 className="mb-3 font-display text-lg font-bold">{t("equipo.objetivos_titulo")}</h2>
         <div className="space-y-2.5">
           {equipo.objetivos.map((o) => (
             <div key={o.id} className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="font-display text-[1rem] font-bold leading-tight">{t(o.nombre)}</p>
+              <p className="font-display text-base font-bold leading-tight">{t(o.nombre)}</p>
               <div className="mt-2.5 flex items-center justify-between">
-                <span className="text-[0.8rem] text-tinta-suave">
+                <span className="text-sm text-tinta-suave">
                   {o.responsable} · {t(o.fecha)}
                 </span>
                 <button
                   onClick={() => equipoStore.cicloEstado(o.id)}
-                  className={`rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     o.estado === "listo"
                       ? "bg-salvia/15 text-salvia"
                       : o.estado === "en_proceso"
@@ -74,7 +74,7 @@ export default function EquipoMobile() {
 
       {/* Recordatorios */}
       <section>
-        <h2 className="mb-3 font-display text-[1.1rem] font-bold">{t("equipo.recordatorios_titulo")}</h2>
+        <h2 className="mb-3 font-display text-lg font-bold">{t("equipo.recordatorios_titulo")}</h2>
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
           {equipo.recordatorios.map((r) => (
             <button
@@ -90,30 +90,30 @@ export default function EquipoMobile() {
                 {r.hecho && <Check size={13} />}
               </span>
               <span
-                className={`flex-1 text-[0.9rem] ${
+                className={`flex-1 text-sm ${
                   r.hecho ? "text-tinta-suave line-through" : "text-tinta"
                 }`}
               >
                 {t(r.texto)}
               </span>
-              <span className="shrink-0 text-[0.74rem] font-semibold text-tinta-suave">{r.responsable}</span>
+              <span className="shrink-0 text-xs font-semibold text-tinta-suave">{r.responsable}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 flex items-center gap-1.5 px-1 text-[0.8rem] text-tinta-suave">
+        <p className="mt-2 flex items-center gap-1.5 px-1 text-sm text-tinta-suave">
           <Clock size={13} /> {t("equipo.mob_anota_tip")}
         </p>
       </section>
 
       {/* Novedades del equipo (placeholder WhatsApp) */}
       <section>
-        <h2 className="mb-3 font-display text-[1.1rem] font-bold">{t("equipo.mob_novedades_titulo")}</h2>
+        <h2 className="mb-3 font-display text-lg font-bold">{t("equipo.mob_novedades_titulo")}</h2>
         <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
           <div className="flex items-center gap-2 text-tinta-suave">
             <MessageSquare size={16} />
-            <p className="text-[0.9rem] font-semibold">{t("equipo.mob_conecta_wsp")}</p>
+            <p className="text-sm font-semibold">{t("equipo.mob_conecta_wsp")}</p>
           </div>
-          <p className="mt-1.5 text-[0.86rem] leading-snug text-tinta-suave">
+          <p className="mt-1.5 text-sm leading-snug text-tinta-suave">
             {t("equipo.mob_novedades_detalle")}
           </p>
         </div>

@@ -90,8 +90,8 @@ export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar
 
       <section data-nav-id="briefing" className="space-y-3">
         <div>
-          <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.brief_titulo")}</h2>
-          <p className="mt-1 max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+          <h2 className="font-display text-lg font-bold">{t("inventario.brief_titulo")}</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-snug text-tinta-suave">
             {t("inventario.brief_sub")}
           </p>
         </div>
@@ -108,7 +108,7 @@ export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar
                 type="button"
                 aria-pressed={on}
                 onClick={() => setFiltro(f.id)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                   on ? "border-violeta bg-violeta/[0.06] text-violeta"
                      : "border-linea text-tinta-suave hover:text-tinta"
                 }`}
@@ -120,7 +120,7 @@ export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar
           })}
         </div>
         {visibles.length === 0 ? (
-          <p className="rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-5 text-[0.9rem] text-tinta-suave">
+          <p className="rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-5 text-sm text-tinta-suave">
             {t("inventario.brief_vacio")}
           </p>
         ) : (
@@ -191,16 +191,16 @@ function Stake({ t, resumen, ventas, reponer, onTab, onNavegar, onPreguntar }) {
 
   return (
     <section data-nav-id="plata" className="space-y-3">
-      <p className="font-display text-[1.55rem] font-bold leading-snug text-tinta sm:text-[1.75rem]">
+      <p className="font-display text-2xl font-bold leading-snug text-tinta sm:text-3xl">
         {t("inventario.stake_hay_antes")}{" "}
         <span className="plata text-hielo">{peso(contado)}</span>
         {t("inventario.stake_hay_despues")}
       </p>
-      <p className="text-[0.92rem] text-tinta-suave">
+      <p className="text-sm text-tinta-suave">
         {t("inventario.stake_articulos", { n: num(resumen.activos) })}
       </p>
       {rot ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-[0.95rem] leading-snug">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-base leading-snug">
           {rot.plata_excedente > 0 && (
             <button
               type="button"
@@ -227,7 +227,7 @@ function Stake({ t, resumen, ventas, reponer, onTab, onNavegar, onPreguntar }) {
         <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-linea bg-crema p-4">
           <AngelaMark size={30} />
           <div className="min-w-0 flex-1">
-            <p className="text-[0.92rem] leading-snug text-tinta">
+            <p className="text-sm leading-snug text-tinta">
               {validando
                 ? (ventas.validacion?.estado === "sospechoso"
                     ? t("inventario.rot_sospechoso")
@@ -238,7 +238,7 @@ function Stake({ t, resumen, ventas, reponer, onTab, onNavegar, onPreguntar }) {
               <button
                 type="button"
                 onClick={() => onNavegar("cargar")}
-                className="mt-2 inline-flex items-center gap-1.5 text-[0.84rem] font-semibold text-violeta hover:underline"
+                className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-violeta hover:underline"
               >
                 {t("inventario.acc_ver_cargar")} <ArrowRight size={13} />
               </button>
@@ -263,11 +263,11 @@ function AccionFila({ a, t, onNavegar, onTab, onPreguntar }) {
     <li data-nav-id={a.navId || a.id} className={`px-4 py-3.5 sm:px-5 ${tono.ring}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold ${tono.chip}`}>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${tono.chip}`}>
             {t(a.chipLk)}
           </span>
-          <p className="mt-1.5 font-display text-[1.02rem] font-bold leading-tight">{a.titulo}</p>
-          <p className="mt-0.5 text-[0.84rem] leading-snug text-tinta-suave">{a.dato}</p>
+          <p className="mt-1.5 font-display text-lg font-bold leading-tight">{a.titulo}</p>
+          <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{a.dato}</p>
         </div>
         <div className="shrink-0 text-right">
           {a.monto != null && a.monto > 0 ? (
@@ -276,7 +276,7 @@ function AccionFila({ a, t, onNavegar, onTab, onPreguntar }) {
             <p className={`plata text-xl font-medium ${tono.cifra}`}>{num(a.cifra)}</p>
           ) : null}
           {a.cifraLabel && (
-            <p className="text-[0.7rem] text-tinta-suave">{a.cifraLabel}</p>
+            <p className="text-xs text-tinta-suave">{a.cifraLabel}</p>
           )}
         </div>
       </div>
@@ -285,7 +285,7 @@ function AccionFila({ a, t, onNavegar, onTab, onPreguntar }) {
           <button
             type="button"
             onClick={() => go(a.ir)}
-            className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta hover:bg-papel-hondo/50"
+            className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta hover:bg-papel-hondo/50"
           >
             {a.ir.label} <ArrowRight size={12} />
           </button>
@@ -294,7 +294,7 @@ function AccionFila({ a, t, onNavegar, onTab, onPreguntar }) {
           <button
             type="button"
             onClick={() => go(a.ir2)}
-            className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"
+            className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta"
           >
             {a.ir2.label} <ArrowRight size={12} />
           </button>
@@ -303,7 +303,7 @@ function AccionFila({ a, t, onNavegar, onTab, onPreguntar }) {
           <button
             type="button"
             onClick={() => onPreguntar?.(a.angela)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3 py-1.5 text-[0.8rem] font-semibold text-crema"
+            className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3 py-1.5 text-sm font-semibold text-crema"
           >
             <Sparkles size={12} /> {t("inventario.acc_preguntar")}
           </button>
@@ -468,8 +468,8 @@ function MapaPlata({ t, data, top, plataCat, catSel, onCat, onSelect, onNavegar 
   return (
     <section data-nav-id="mapa" className="space-y-3">
       <div>
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.mapa_titulo")}</h2>
-        <p className="mt-1 max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.mapa_titulo")}</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-snug text-tinta-suave">
           {concentrada
             ? t("inventario.mapa_conc_alta", { pct, monto: pesoCorto(suma10) })
             : t("inventario.mapa_conc_baja", { pct })}
@@ -478,13 +478,13 @@ function MapaPlata({ t, data, top, plataCat, catSel, onCat, onSelect, onNavegar 
       </div>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel lg:col-span-2">
-          <p className="text-[0.82rem] font-semibold text-tinta-suave">{t("inventario.plata_por_cat")}</p>
+          <p className="text-sm font-semibold text-tinta-suave">{t("inventario.plata_por_cat")}</p>
           <div className="mt-2 space-y-1">
             {plataCat.length === 0 && <div className="skeleton h-40 w-full" />}
             <button
               type="button"
               onClick={() => onCat(null)}
-              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-[0.82rem] ${
+              className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-sm ${
                 !catSel ? "bg-hielo/15 font-semibold text-hielo" : "text-tinta-suave hover:bg-papel-hondo/50"
               }`}
             >
@@ -505,7 +505,7 @@ function MapaPlata({ t, data, top, plataCat, catSel, onCat, onSelect, onNavegar 
                     className={`absolute inset-y-0 left-0 rounded-lg ${on ? "bg-hielo/25" : "bg-hielo/12"}`}
                     style={{ width: `${Math.max(6, (p.y / max) * 100)}%` }}
                   />
-                  <div className="relative flex items-center justify-between gap-2 text-[0.8rem]">
+                  <div className="relative flex items-center justify-between gap-2 text-sm">
                     <span className={`truncate ${on ? "font-semibold text-hielo" : "text-tinta"}`}>
                       {tCat(p.x)}
                     </span>
@@ -519,14 +519,14 @@ function MapaPlata({ t, data, top, plataCat, catSel, onCat, onSelect, onNavegar 
             <button
               type="button"
               onClick={() => onNavegar?.("productos", `q:${catSel}`)}
-              className="mt-3 inline-flex items-center gap-1 text-[0.8rem] font-semibold text-hielo hover:underline"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-hielo hover:underline"
             >
               {t("inventario.mapa_ver_cat", { cat: tCat(catSel) })} <ArrowRight size={12} />
             </button>
           )}
         </div>
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel lg:col-span-3">
-          <p className="text-[0.82rem] text-tinta-suave">
+          <p className="text-sm text-tinta-suave">
             {catSel
               ? t("inventario.mapa_n_cat", { n: num(filtrados.length), cat: tCat(catSel), monto: pesoCorto(sumaTop) })
               : t("inventario.donde_plata_top", {
@@ -547,7 +547,7 @@ function TreemapPlata({ nodos, onSelect }) {
   const t = useT();
   if (!nodos.length) {
     return (
-      <p className="mt-6 text-[0.88rem] text-tinta-suave">{t("inventario.mapa_vacio")}</p>
+      <p className="mt-6 text-sm text-tinta-suave">{t("inventario.mapa_vacio")}</p>
     );
   }
   const maxV = nodos[0]?.inmovilizado || 1;
@@ -585,7 +585,7 @@ function TreemapTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const n = payload[0].payload;
   return (
-    <div className="rounded-xl border border-linea bg-crema p-3 text-[0.88rem] sombra-alta">
+    <div className="rounded-xl border border-linea bg-crema p-3 text-sm sombra-alta">
       <p className="font-semibold text-tinta">{n.name}</p>
       <div className="mt-1 space-y-0.5 text-tinta-suave">
         <p>{t("inventario.tt_stock")} <span className="plata">{num(n.stock)}</span></p>
@@ -710,8 +710,8 @@ function PisoDestinos({ t, data, nCorregir, reponer, ventas, onNavegar, onTab })
   return (
     <section data-nav-id="piso" className="space-y-3">
       <div>
-        <h2 className="font-display text-[1.15rem] font-bold">{t("inventario.piso_titulo")}</h2>
-        <p className="mt-1 max-w-2xl text-[0.9rem] leading-snug text-tinta-suave">
+        <h2 className="font-display text-lg font-bold">{t("inventario.piso_titulo")}</h2>
+        <p className="mt-1 max-w-2xl text-sm leading-snug text-tinta-suave">
           {t("inventario.piso_sub")}
         </p>
       </div>
@@ -728,12 +728,12 @@ function PisoDestinos({ t, data, nCorregir, reponer, ventas, onNavegar, onTab })
                 <Icon size={18} className="mt-0.5 shrink-0 text-tinta-suave" />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-3">
-                    <span className="font-display text-[1.02rem] font-bold">{l.titulo}</span>
+                    <span className="font-display text-lg font-bold">{l.titulo}</span>
                     {l.cifra != null && (
-                      <span className="plata text-[0.95rem] font-medium text-oro-tinta">{num(l.cifra)}</span>
+                      <span className="plata text-base font-medium text-oro-tinta">{num(l.cifra)}</span>
                     )}
                   </span>
-                  <span className="mt-0.5 block text-[0.84rem] leading-snug text-tinta-suave">{l.dato}</span>
+                  <span className="mt-0.5 block text-sm leading-snug text-tinta-suave">{l.dato}</span>
                 </span>
                 <ArrowRight size={16} className="mt-1 shrink-0 text-tinta-suave" />
               </button>
@@ -744,7 +744,7 @@ function PisoDestinos({ t, data, nCorregir, reponer, ventas, onNavegar, onTab })
                       key={e.label}
                       type="button"
                       onClick={e.go}
-                      className="rounded-full border border-linea px-2.5 py-1 text-[0.76rem] font-semibold text-tinta-suave hover:text-tinta"
+                      className="rounded-full border border-linea px-2.5 py-1 text-xs font-semibold text-tinta-suave hover:text-tinta"
                     >
                       {e.label}
                     </button>

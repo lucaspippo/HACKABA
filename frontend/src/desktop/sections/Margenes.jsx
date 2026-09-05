@@ -35,19 +35,19 @@ function TablaCanal({ titulo, sub, icon: Icon, grupos, total, tono, onGrupo, abi
       <div className="flex items-center gap-2.5 border-b border-linea px-5 py-4">
         <Icon size={18} className="text-tinta-suave" />
         <div className="min-w-0">
-          <h3 className="font-display text-[1.05rem] font-bold leading-tight">{titulo}</h3>
-          <p className="text-[0.8rem] text-tinta-suave">{sub}</p>
+          <h3 className="font-display text-lg font-bold leading-tight">{titulo}</h3>
+          <p className="text-sm text-tinta-suave">{sub}</p>
         </div>
         {total && (
           <div className="ml-auto shrink-0 text-right">
             <p className={`plata text-xl font-medium ${tono.txt}`}>{total.margen_pct}%</p>
-            <p className="text-[0.72rem] text-tinta-suave">{t("margenes.total_margen")}</p>
+            <p className="text-xs text-tinta-suave">{t("margenes.total_margen")}</p>
           </div>
         )}
       </div>
-      <table className="w-full text-[0.86rem]">
+      <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-linea text-[0.7rem] uppercase tracking-wide text-tinta-suave">
+          <tr className="border-b border-linea text-xs uppercase tracking-wide text-tinta-suave">
             <th className="px-5 py-2.5 text-left font-semibold">{t("margenes.col_grupo")}</th>
             <th className="px-3 py-2.5 text-right font-semibold">{t("margenes.col_ventas")}</th>
             <th className="w-40 px-3 py-2.5 text-right font-semibold">{t("margenes.col_margen")}</th>
@@ -67,7 +67,7 @@ function TablaCanal({ titulo, sub, icon: Icon, grupos, total, tono, onGrupo, abi
                       {g.label}
                     </span>
                     {g.productos != null && (
-                      <span className="text-[0.72rem] text-tinta-suave">{t("margenes.n_productos", { n: num(g.productos) })}</span>
+                      <span className="text-xs text-tinta-suave">{t("margenes.n_productos", { n: num(g.productos) })}</span>
                     )}
                   </td>
                   <td className="plata px-3 py-2.5 text-right text-tinta-suave">{pesoCorto(g.ventas_12m)}</td>
@@ -97,17 +97,17 @@ function TablaCanal({ titulo, sub, icon: Icon, grupos, total, tono, onGrupo, abi
 
 function Detalle({ detalle, grupo }) {
   const t = useT();
-  if (!detalle) return <p className="text-[0.82rem] text-tinta-suave">{t("margenes.cargando")}</p>;
-  if (!detalle.items?.length) return <p className="text-[0.82rem] text-tinta-suave">{t("margenes.sin_detalle")}</p>;
+  if (!detalle) return <p className="text-sm text-tinta-suave">{t("margenes.cargando")}</p>;
+  if (!detalle.items?.length) return <p className="text-sm text-tinta-suave">{t("margenes.sin_detalle")}</p>;
   return (
     <div>
-      <p className="text-[0.82rem] text-tinta-suave">
+      <p className="text-sm text-tinta-suave">
         {t("margenes.detalle_nota", { grupo: grupo.label, prom: detalle.promedio_pct })}
       </p>
       <div className="mt-2 overflow-hidden rounded-xl border border-linea bg-crema">
-        <table className="w-full text-[0.82rem]">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-linea text-[0.68rem] uppercase tracking-wide text-tinta-suave">
+            <tr className="border-b border-linea text-2xs uppercase tracking-wide text-tinta-suave">
               <th className="px-3 py-2 text-left font-semibold">{t("inventario.col_producto")}</th>
               <th className="px-3 py-2 text-right font-semibold">{t("margenes.col_unidades")}</th>
               <th className="px-3 py-2 text-right font-semibold">{t("margenes.col_ventas")}</th>
@@ -121,7 +121,7 @@ function Detalle({ detalle, grupo }) {
                 <td className="px-3 py-1.5">
                   {p.producto}
                   {p.bajo_su_grupo && (
-                    <span className="ml-2 rounded-full bg-oro/20 px-1.5 py-0.5 text-[0.64rem] font-semibold text-oro-tinta align-middle">
+                    <span className="ml-2 rounded-full bg-oro/20 px-1.5 py-0.5 text-2xs font-semibold text-oro-tinta align-middle">
                       {t("margenes.bajo_grupo")}
                     </span>
                   )}
@@ -165,7 +165,7 @@ export default function Margenes({ onPreguntar, onNavegar, viz }) {
     return (
       <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-6">
         <AngelaMark size={32} />
-        <p className="text-[0.95rem] leading-snug text-tinta-suave">{data.motivo || t("margenes.sin_ventas")}</p>
+        <p className="text-base leading-snug text-tinta-suave">{data.motivo || t("margenes.sin_ventas")}</p>
       </div>
     );
   }
@@ -180,21 +180,21 @@ export default function Margenes({ onPreguntar, onNavegar, viz }) {
       <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-5">
         <AngelaMark size={38} />
         <div className="flex-1">
-          <p className="text-[1rem] leading-snug text-tinta">
+          <p className="text-base leading-snug text-tinta">
             {t("margenes.intro_1")} <b>{mejorMay.label}</b> {t("margenes.intro_2", { alto: mejorMay.margen_pct })}{" "}
             <b>{peorMay.label}</b> {t("margenes.intro_3", { bajo: peorMay.margen_pct })}
             {min && <> {t("margenes.intro_mostrador", { top: min.grupos[0].recargo_pct })}</>}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button onClick={() => onPreguntar?.(t("margenes.preguntar"))}
-              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
               <Sparkles size={14} /> {t("margenes.preguntar_cta")}
             </button>
             {onNavegar && (
               <button
                 type="button"
                 onClick={() => onNavegar("productos")}
-                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta"
+                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta"
               >
                 {t("margenes.ir_catalogo")}
               </button>
@@ -211,7 +211,7 @@ export default function Margenes({ onPreguntar, onNavegar, viz }) {
         tono={{ txt: "text-hielo", barra: "bg-hielo" }}
         onGrupo={abrirGrupo} abierto={abierto} detalle={detalle}
       />
-      <p className="-mt-3 px-1 text-[0.76rem] leading-snug text-tinta-suave">{t("margenes.supuesto_mayorista")}</p>
+      <p className="-mt-3 px-1 text-xs leading-snug text-tinta-suave">{t("margenes.supuesto_mayorista")}</p>
 
       {min && (
         <>
@@ -221,7 +221,7 @@ export default function Margenes({ onPreguntar, onNavegar, viz }) {
             icon={Store} grupos={min.grupos} total={min.total}
             tono={{ txt: "text-salvia", barra: "bg-salvia" }}
           />
-          <p className="-mt-3 px-1 text-[0.76rem] leading-snug text-tinta-suave">{t("margenes.supuesto_mostrador")}</p>
+          <p className="-mt-3 px-1 text-xs leading-snug text-tinta-suave">{t("margenes.supuesto_mostrador")}</p>
         </>
       )}
     </div>

@@ -26,7 +26,7 @@ export default function ThinkingIndicator({ startedAt }: { startedAt: number }) 
 
   return (
     <div
-      className="flex items-center gap-2.5 py-1 text-[0.85rem] text-tinta-suave"
+      className="flex items-center gap-2.5 py-1 text-sm text-tinta-suave"
       aria-live="polite"
     >
       <span
@@ -34,7 +34,7 @@ export default function ThinkingIndicator({ startedAt }: { startedAt: number }) 
         className="size-1.5 shrink-0 animate-pulse rounded-full bg-violeta motion-reduce:animate-none"
       />
       <span>{label}</span>
-      {elapsed && <span className="tabular-nums text-[0.78rem] opacity-70">{elapsed}</span>}
+      {elapsed && <span className="tabular-nums text-xs opacity-70">{elapsed}</span>}
     </div>
   );
 }

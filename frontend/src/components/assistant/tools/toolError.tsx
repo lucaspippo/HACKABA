@@ -10,5 +10,5 @@ export function toolErrorMessage(result: unknown): string | undefined {
 }
 
 export function ToolErrorText({ message }: { message: string }) {
-  return <p className="mt-1 text-[0.82rem] text-rojo-hondo">{message}</p>;
+  return <p className="mt-1 text-sm text-rojo-hondo">{message}</p>;
 }

@@ -66,13 +66,13 @@ export default function CommandPalette({ open, onClose, secciones, catalogo, vis
                 onChange={(e) => { setQ(e.target.value); setActivo(0); }}
                 onKeyDown={onKeyDown}
                 placeholder={t("nav.buscador")}
-                className="flex-1 bg-transparent text-[0.95rem] outline-none placeholder:text-tinta-suave/80"
+                className="flex-1 bg-transparent text-base outline-none placeholder:text-tinta-suave/80"
               />
-              <kbd className="rounded-md border border-linea px-1.5 py-0.5 text-[0.7rem] font-semibold text-tinta-suave">Esc</kbd>
+              <kbd className="rounded-md border border-linea px-1.5 py-0.5 text-xs font-semibold text-tinta-suave">Esc</kbd>
             </div>
             <div className="max-h-[22rem] overflow-y-auto p-2">
               {resultados.length > 0 && (
-                <p className="px-2.5 pb-1 pt-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+                <p className="px-2.5 pb-1 pt-1 text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
                   {t("palette.ir_a")}
                 </p>
               )}
@@ -84,7 +84,7 @@ export default function CommandPalette({ open, onClose, secciones, catalogo, vis
                     key={r.id}
                     onMouseEnter={() => setActivo(i)}
                     onClick={() => elegir(filas[i])}
-                    className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-[0.9rem] font-medium ${
+                    className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm font-medium ${
                       sel ? "bg-violeta-suave text-violeta-hondo" : "text-tinta hover:bg-papel-hondo/60"
                     }`}
                   >
@@ -101,7 +101,7 @@ export default function CommandPalette({ open, onClose, secciones, catalogo, vis
                   <button
                     onMouseEnter={() => setActivo(i)}
                     onClick={() => elegir(filas[i])}
-                    className={`mt-1 flex w-full items-center gap-3 rounded-xl border-t border-linea px-2.5 py-2 pt-3 text-left text-[0.9rem] font-medium ${
+                    className={`mt-1 flex w-full items-center gap-3 rounded-xl border-t border-linea px-2.5 py-2 pt-3 text-left text-sm font-medium ${
                       sel ? "bg-violeta-suave text-violeta-hondo" : "text-tinta hover:bg-papel-hondo/60"
                     }`}
                   >

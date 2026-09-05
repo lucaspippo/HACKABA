@@ -45,15 +45,15 @@ function ObjetivoCard({ o }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
       <div className="flex items-start justify-between gap-3">
-        <p className="font-display text-[1rem] font-bold leading-tight">{t(`obj.o_${o.id}`)}</p>
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${est.cls}`}>
+        <p className="font-display text-base font-bold leading-tight">{t(`obj.o_${o.id}`)}</p>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${est.cls}`}>
           <est.Icon size={12} /> {t(est.lk)}
         </span>
       </div>
 
       <div className="mt-2 flex items-baseline justify-between gap-2">
         <span className="plata text-lg font-medium text-tinta">{metricaTexto(o, t)}</span>
-        <span className="plata text-[0.9rem] font-semibold text-tinta-suave">{pct}%</span>
+        <span className="plata text-sm font-semibold text-tinta-suave">{pct}%</span>
       </div>
 
       {/* barra con referencia temporal: el tick marca dónde venía la semana pasada */}
@@ -66,7 +66,7 @@ function ObjetivoCard({ o }) {
         />
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[0.78rem] text-tinta-suave">
+      <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-tinta-suave">
         <span className="inline-flex items-center gap-1">
           <User size={12} /> {cap(o.responsable)}
         </span>
@@ -108,7 +108,7 @@ export default function ObjetivosPanel() {
     return (
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-6 text-center sombra-papel">
         <Target size={22} className="mx-auto text-tinta-suave" />
-        <p className="mt-2 text-[0.9rem] text-tinta-suave">{t("obj.vacio")}</p>
+        <p className="mt-2 text-sm text-tinta-suave">{t("obj.vacio")}</p>
       </div>
     );
   }
@@ -117,12 +117,12 @@ export default function ObjetivosPanel() {
   return (
     <section>
       <div className="mb-3">
-        <h2 className="flex items-center gap-2 font-display text-[1.1rem] font-bold">
+        <h2 className="flex items-center gap-2 font-display text-lg font-bold">
           <Target size={18} className="text-violeta" /> {t("obj.titulo")}
         </h2>
-        <p className="mt-1 text-[0.85rem] text-tinta-suave">{t("obj.sub")}</p>
+        <p className="mt-1 text-sm text-tinta-suave">{t("obj.sub")}</p>
         {/* Cabecera con datos reales: activos · avanzaron · más cerca */}
-        <div className="mt-2 flex flex-wrap gap-2 text-[0.78rem]">
+        <div className="mt-2 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-papel-hondo px-3 py-1 font-semibold text-tinta">
             {num(r.activos ?? objs.length)} {t("obj.res_activos")}
           </span>

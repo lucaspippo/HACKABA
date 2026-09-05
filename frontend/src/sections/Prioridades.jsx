@@ -22,10 +22,10 @@ function EmptyNoData({ onNavegar, onPreguntar }) {
     <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-salvia/25 bg-salvia/[0.05] p-6">
       <AngelaMark size={40} />
       <div className="flex-1">
-        <p className="text-[1.02rem] leading-snug text-tinta">{t("prioridades.sin_datos")}</p>
+        <p className="text-lg leading-snug text-tinta">{t("prioridades.sin_datos")}</p>
         <button
           onClick={() => (onNavegar ? onNavegar("cargar") : onPreguntar?.(t("oportunidades.enviar_datos")))}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-salvia px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-salvia px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
         >
           {t("oportunidades.cargar_ventas")} <ArrowRight size={15} />
         </button>
@@ -36,7 +36,7 @@ function EmptyNoData({ onNavegar, onPreguntar }) {
 
 function HotkeyBadge({ children }) {
   return (
-    <kbd className="ml-0.5 rounded border border-current/25 px-1 text-[0.64rem] font-semibold opacity-70">
+    <kbd className="ml-0.5 rounded border border-current/25 px-1 text-2xs font-semibold opacity-70">
       {children}
     </kbd>
   );
@@ -55,7 +55,7 @@ function DeadlineChip({ urgency }) {
   const cls = DEADLINE_CHIP_CLS[urgency];
   if (!cls) return null;
   return (
-    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${cls}`}>
+    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${cls}`}>
       <CalendarClock size={10} /> {t(urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")}
     </span>
   );
@@ -79,22 +79,22 @@ function WorkRow({ item, selected, onSelect }) {
       } ${item.action_taken ? "opacity-60" : ""}`}
     >
       <span className="min-w-0 flex-1">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${acc.cls}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${acc.cls}`}>
           <Icon size={11} /> {item.chip}
         </span>
         {item.action_taken && (
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-[0.68rem] font-semibold text-salvia">
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-2xs font-semibold text-salvia">
             <Check size={10} /> {t("prioridades.done")} · {item.action_taken.label}
           </span>
         )}
         <DeadlineChip urgency={item.insight?.deadline?.urgency} />
-        <span className="mt-1 block font-display text-[0.98rem] font-bold leading-tight">{item.titulo}</span>
+        <span className="mt-1 block font-display text-base font-bold leading-tight">{item.titulo}</span>
         {item.resumen && (
-          <span className="mt-0.5 block line-clamp-1 text-[0.82rem] leading-snug text-tinta-suave">{item.resumen}</span>
+          <span className="mt-0.5 block line-clamp-1 text-sm leading-snug text-tinta-suave">{item.resumen}</span>
         )}
       </span>
       {cifra && (
-        <span className={`plata mt-1 shrink-0 text-[0.95rem] font-medium ${a.cifra}`}>{cifra}</span>
+        <span className={`plata mt-1 shrink-0 text-base font-medium ${a.cifra}`}>{cifra}</span>
       )}
     </button>
   );
@@ -267,7 +267,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       {item.piso && (
         <span className="inline-flex items-center gap-1.5">
           <button data-quick-action="1" onClick={() => resolverPiso(item)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.84rem] font-semibold text-crema ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-crema ${
               confirmingFloorReport === item.id ? "bg-rojo" : "bg-hielo"
             }`}>
             <Check size={14} />
@@ -276,19 +276,19 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
           </button>
           {confirmingFloorReport === item.id && (
             <button onClick={() => setConfirmingFloorReport(null)}
-              className="text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+              className="text-sm font-semibold text-tinta-suave hover:text-tinta">
               {t("aprendizaje.feedback_cancel")}
             </button>
           )}
         </span>
       )}
       {!item.piso && (adoptados[item.id] ? (
-        <span className="text-[0.84rem] font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
+        <span className="text-sm font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
       ) : eligiendo === item.id && equipo.length > 0 ? (
         <select autoFocus defaultValue=""
           onChange={(e) => e.target.value && adoptar(item, e.target.value)}
           onBlur={() => setEligiendo(null)}
-          className="rounded-full border border-salvia bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta">
+          className="rounded-full border border-salvia bg-crema px-3.5 py-1.5 text-sm font-semibold text-tinta">
           <option value="" disabled>{t("oportunidades.asignar_a")}</option>
           {equipo.map((p) => (
             <option key={p.username} value={p.nombre}>{p.nombre} — {tRol(p.rol)}</option>
@@ -296,19 +296,19 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
         </select>
       ) : (
         <button data-quick-action="1" onClick={() => abrirSelector(item)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
           <Plus size={14} /> {t("oportunidades.adoptar")} <HotkeyBadge>1</HotkeyBadge>
         </button>
       ))}
       {item.accion_chat && (
         <button data-quick-action="2" onClick={() => { onPreguntar?.(item.accion_chat); closeAfter?.(); }}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
           <AngelaMark size={15} /> {t("oportunidades.accionar_angela")} <HotkeyBadge>2</HotkeyBadge>
         </button>
       )}
       {item.navegar && (
         <button data-quick-action="3" onClick={() => { onNavegar?.(item.navegar); closeAfter?.(); }}
-          className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+          className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
           {t("oportunidades.ver_datos")} <HotkeyBadge>3</HotkeyBadge>
         </button>
       )}
@@ -373,7 +373,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             <Radar size={22} className="text-hielo" />
             <div>
               <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-              <p className="mt-1 text-[0.9rem] text-tinta-suave">
+              <p className="mt-1 text-sm text-tinta-suave">
                 {/* `badge`, not act.length: `act` keeps executed cards visible
                     (greyed out, stamped "Hecho") while the badge counts only
                     open work — the header must agree with the sidebar count. */}
@@ -389,7 +389,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             </div>
           </div>
           {todos.length > 0 && (
-            <p className="hidden shrink-0 items-center gap-1 pt-1 text-[0.76rem] text-tinta-suave lg:flex">
+            <p className="hidden shrink-0 items-center gap-1 pt-1 text-xs text-tinta-suave lg:flex">
               <kbd className="rounded-md border border-linea px-1.5 py-0.5 font-semibold">↑↓</kbd> {t("prioridades.hint_mover")}
               <kbd className="ml-2 rounded-md border border-linea px-1.5 py-0.5 font-semibold">1-3</kbd> {t("prioridades.hint_accion")}
             </p>
@@ -417,9 +417,9 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
 
       {error && (
         <div className="m-7 rounded-[var(--radius-card)] border border-rojo/30 bg-crema p-6">
-          <p className="text-[0.95rem] text-tinta">{t("prioridades.error")}</p>
+          <p className="text-base text-tinta">{t("prioridades.error")}</p>
           <button onClick={cargar}
-            className="mt-3 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold">
+            className="mt-3 rounded-full border border-linea px-4 py-2 text-sm font-semibold">
             {t("prioridades.reintentar")}
           </button>
         </div>
@@ -431,7 +431,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       {vacio && data?.hay_ventas && (
         <div className="m-7 rounded-[var(--radius-card)] border border-linea bg-crema p-8 text-center sombra-papel">
           <Radar size={22} className="mx-auto text-tinta-suave" />
-          <p className="mt-2 text-[0.95rem] text-tinta">{t("prioridades.vacio")}</p>
+          <p className="mt-2 text-base text-tinta">{t("prioridades.vacio")}</p>
         </div>
       )}
 
@@ -444,7 +444,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             ))}
             {watchFil.length > 0 && (
               <>
-                <h2 className="sticky top-0 border-y border-linea bg-papel px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-wide text-oro-tinta">
+                <h2 className="sticky top-0 border-y border-linea bg-papel px-4 py-2 text-xs font-semibold uppercase tracking-wide text-oro-tinta">
                   {t("prioridades.watch")}
                 </h2>
                 {watchFil.map((item) => (
@@ -454,7 +454,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
               </>
             )}
             {filtro && actFil.length === 0 && watchFil.length === 0 && (
-              <p className="px-4 py-8 text-center text-[0.88rem] text-tinta-suave">
+              <p className="px-4 py-8 text-center text-sm text-tinta-suave">
                 {t("prioridades.filtro_vacio")}
               </p>
             )}

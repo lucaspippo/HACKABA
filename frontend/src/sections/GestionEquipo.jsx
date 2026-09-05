@@ -65,7 +65,7 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
   // El copy del canal va SIEMPRE (con o sin pendientes): explica qué es esta
   // pestaña y a dónde impacta aprobar.
   const Explica = () => (
-    <p className="mb-3 text-[0.86rem] leading-snug text-tinta-suave">
+    <p className="mb-3 text-sm leading-snug text-tinta-suave">
       {t("equipo.solicitudes_explica")}{" "}
       {onVerMatriz && (
         <button onClick={onVerMatriz} className="font-semibold text-tinta underline decoration-linea underline-offset-2 hover:decoration-tinta">
@@ -78,11 +78,11 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
   if (items.length === 0) {
     return vacioVisible ? (
       <section data-nav-id="solicitudes">
-        <h2 className="mb-1 flex items-center gap-2 font-display text-[1.15rem] font-bold">
+        <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-bold">
           <Inbox size={18} className="text-tinta-suave" /> {t("equipo.solicitudes_titulo")}
         </h2>
         <Explica />
-        <p className="rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-5 text-[0.9rem] text-tinta-suave">
+        <p className="rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-5 text-sm text-tinta-suave">
           {t("equipo.solicitudes_vacio")}
         </p>
       </section>
@@ -90,20 +90,20 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
   }
   return (
     <section data-nav-id="solicitudes">
-      <h2 className="mb-1 flex items-center gap-2 font-display text-[1.15rem] font-bold">
+      <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-bold">
         <Inbox size={18} className="text-tinta-suave" /> {t("equipo.solicitudes_titulo")}
-        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1.5 text-[0.7rem] font-bold text-crema">{items.length}</span>
+        <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1.5 text-xs font-bold text-crema">{items.length}</span>
       </h2>
       <Explica />
       <div className="space-y-3">
         {items.map((s) => (
           <div key={s.id} className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-            <p className="text-[0.9rem]">
+            <p className="text-sm">
               <span className="font-semibold">{s.nombre}</span> {t("equipo.pide")} <span className="font-semibold">{s.label}</span>.
             </p>
             {/* Lo que ESCRIBIÓ el empleado: el porqué en sus palabras (P39·1.2) */}
             {s.motivo_empleado && (
-              <p className="mt-1.5 rounded-xl bg-papel-hondo/60 p-2.5 text-[0.86rem] italic leading-snug text-tinta">
+              <p className="mt-1.5 rounded-xl bg-papel-hondo/60 p-2.5 text-sm italic leading-snug text-tinta">
                 "{s.motivo_empleado}"
               </p>
             )}
@@ -111,22 +111,22 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
                 EMPLEADO y el dueño decide. Si no escribió un porqué propio, se
                 muestra el contexto del matcheo, pero sin firmarlo Ángela. */}
             {!s.motivo_empleado && s.motivo_angela && (
-              <p className="mt-1.5 rounded-xl bg-papel-hondo/60 p-2.5 text-[0.86rem] italic leading-snug text-tinta">
+              <p className="mt-1.5 rounded-xl bg-papel-hondo/60 p-2.5 text-sm italic leading-snug text-tinta">
                 "{s.motivo_angela}"
               </p>
             )}
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-linea pt-3">
-              <button onClick={() => resolver(s, true)} className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-1.5 text-[0.84rem] font-semibold text-crema">
+              <button onClick={() => resolver(s, true)} className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema">
                 <Check size={14} /> {t("equipo.aprobar")}
               </button>
-              <button onClick={() => resolver(s, false)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-1.5 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+              <button onClick={() => resolver(s, false)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
                 <X size={14} /> {t("equipo.rechazar")}
               </button>
               <input
                 value={motivos[s.id] || ""}
                 onChange={(e) => setMotivos((m) => ({ ...m, [s.id]: e.target.value }))}
                 placeholder={t("equipo.motivo_ph")}
-                className="min-w-52 flex-1 rounded-full border border-linea bg-papel px-3.5 py-1.5 text-[0.82rem] outline-none focus:border-tinta/40"
+                className="min-w-52 flex-1 rounded-full border border-linea bg-papel px-3.5 py-1.5 text-sm outline-none focus:border-tinta/40"
               />
             </div>
           </div>
@@ -163,12 +163,12 @@ function MatrizModulos({ token }) {
 
   return (
     <section data-nav-id="matriz">
-      <h2 className="mb-1 font-display text-[1.15rem] font-bold">{t("equipo.matriz_titulo")}</h2>
-      <p className="mb-3 text-[0.84rem] text-tinta-suave">
+      <h2 className="mb-1 font-display text-lg font-bold">{t("equipo.matriz_titulo")}</h2>
+      <p className="mb-3 text-sm text-tinta-suave">
         {t("equipo.matriz_sub")}
       </p>
       <div className="overflow-x-auto rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
-        <table className="w-full text-[0.82rem]">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-linea text-left">
               <th className="sticky left-0 bg-crema px-3 py-2 font-semibold">{t("equipo.matriz_empleado")}</th>
@@ -176,7 +176,7 @@ function MatrizModulos({ token }) {
                   "…" para adivinar); el tooltip queda de refuerzo */}
               {columnas.map((m) => (
                 <th key={m} className="px-1.5 py-2 text-center align-bottom font-semibold text-tinta-suave" title={modulos[m]}>
-                  <span className="block w-16 whitespace-normal break-words text-[0.64rem] leading-tight">{modulos[m]}</span>
+                  <span className="block w-16 whitespace-normal break-words text-2xs leading-tight">{modulos[m]}</span>
                 </th>
               ))}
             </tr>
@@ -242,21 +242,21 @@ function TableroEquipo() {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
       <div>
-        <h2 className="mb-3 font-display text-[1.15rem] font-bold">{t("equipo.objetivos_titulo")}</h2>
+        <h2 className="mb-3 font-display text-lg font-bold">{t("equipo.objetivos_titulo")}</h2>
         <div className="space-y-2.5">
           {equipo.objetivos.length === 0 && (
-            <p className="rounded-[var(--radius-card)] border border-dashed border-linea p-4 text-[0.86rem] text-tinta-suave">
+            <p className="rounded-[var(--radius-card)] border border-dashed border-linea p-4 text-sm text-tinta-suave">
               {t("equipo.objetivos_vacio")}
             </p>
           )}
           {equipo.objetivos.map((o) => (
             <div key={o.id} className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="font-display text-[0.98rem] font-bold leading-tight">{t(o.nombre)}</p>
+              <p className="font-display text-base font-bold leading-tight">{t(o.nombre)}</p>
               <div className="mt-2 flex items-center justify-between">
-                <span className="text-[0.8rem] text-tinta-suave">{o.responsable} · {t(o.fecha)}</span>
+                <span className="text-sm text-tinta-suave">{o.responsable} · {t(o.fecha)}</span>
                 <button
                   onClick={() => equipoStore.cicloEstado(o.id)}
-                  className={`rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     o.estado === "listo" ? "bg-salvia/15 text-salvia" : o.estado === "en_proceso" ? "bg-oro/15 text-oro-tinta" : "bg-papel-hondo text-tinta-suave"
                   }`}
                 >
@@ -270,18 +270,18 @@ function TableroEquipo() {
 
       <div className="space-y-5">
         <div>
-          <h2 className="mb-3 font-display text-[1.15rem] font-bold">{t("equipo.recordatorios_titulo")}</h2>
+          <h2 className="mb-3 font-display text-lg font-bold">{t("equipo.recordatorios_titulo")}</h2>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
             {equipo.recordatorios.length === 0 && (
-              <p className="p-4 text-[0.86rem] text-tinta-suave">{t("equipo.recordatorios_vacio")}</p>
+              <p className="p-4 text-sm text-tinta-suave">{t("equipo.recordatorios_vacio")}</p>
             )}
             {equipo.recordatorios.map((r) => (
               <button key={r.id} onClick={() => equipoStore.toggleRecordatorio(r.id)} className="flex w-full items-center gap-3 border-b border-linea px-4 py-2.5 text-left last:border-0">
                 <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${r.hecho ? "border-salvia bg-salvia text-crema" : "border-tinta-suave/40"}`}>
                   {r.hecho && <Check size={13} />}
                 </span>
-                <span className={`flex-1 text-[0.88rem] ${r.hecho ? "text-tinta-suave line-through" : "text-tinta"}`}>{t(r.texto)}</span>
-                <span className="shrink-0 text-[0.74rem] font-semibold text-tinta-suave">{r.responsable}</span>
+                <span className={`flex-1 text-sm ${r.hecho ? "text-tinta-suave line-through" : "text-tinta"}`}>{t(r.texto)}</span>
+                <span className="shrink-0 text-xs font-semibold text-tinta-suave">{r.responsable}</span>
               </button>
             ))}
           </div>
@@ -290,9 +290,9 @@ function TableroEquipo() {
         <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
           <div className="flex items-center gap-2 text-tinta-suave">
             <MessageSquare size={16} />
-            <p className="text-[0.9rem] font-semibold">{t("equipo.novedades_titulo")}</p>
+            <p className="text-sm font-semibold">{t("equipo.novedades_titulo")}</p>
           </div>
-          <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">
+          <p className="mt-1.5 text-sm leading-snug text-tinta-suave">
             {t("equipo.novedades_detalle")}
           </p>
         </div>
@@ -311,22 +311,22 @@ function FichaPersona({ p, ficha }) {
   const { objetivos, pendientes, actividad, solicitudes } = ficha;
   const Bloque = ({ icon: Icon, titulo, children }) => (
     <div className="min-w-0">
-      <p className="mb-1.5 flex items-center gap-1.5 text-[0.72rem] font-semibold uppercase tracking-wide text-tinta-suave">
+      <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-tinta-suave">
         <Icon size={13} /> {titulo}
       </p>
       {children}
     </div>
   );
-  const Vacio = ({ texto }) => <p className="text-[0.82rem] text-tinta-suave">{texto}</p>;
+  const Vacio = ({ texto }) => <p className="text-sm text-tinta-suave">{texto}</p>;
   return (
     <div className="mt-3 grid grid-cols-1 gap-4 border-t border-linea pt-3 sm:grid-cols-3">
       <Bloque icon={Target} titulo={t("equipo.ficha_objetivos")}>
         {objetivos.length === 0 ? <Vacio texto={t("equipo.ficha_sin_objetivos")} /> : (
           <div className="space-y-1.5">
             {objetivos.map((o) => (
-              <div key={o.id} className="text-[0.84rem] leading-snug">
+              <div key={o.id} className="text-sm leading-snug">
                 <span className="text-tinta">{t(o.nombre)}</span>
-                <span className={`ml-1.5 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${
+                <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs font-semibold ${
                   o.estado === "listo" ? "bg-salvia/15 text-salvia" : o.estado === "en_proceso" ? "bg-oro/15 text-oro-tinta" : "bg-papel-hondo text-tinta-suave"
                 }`}>{t(ESTADO_LABEL[o.estado])}</span>
               </div>
@@ -338,14 +338,14 @@ function FichaPersona({ p, ficha }) {
         {!actividad || (actividad.consultas + actividad.cargas + actividad.correcciones) === 0
           ? <Vacio texto={t("equipo.ficha_sin_actividad")} />
           : (
-            <div className="space-y-1 text-[0.84rem] leading-snug text-tinta">
+            <div className="space-y-1 text-sm leading-snug text-tinta">
               <p>{[
                 actividad.consultas > 0 && t(actividad.consultas === 1 ? "equipo.act_consultas_1" : "equipo.act_consultas", { n: actividad.consultas }),
                 actividad.cargas > 0 && t(actividad.cargas === 1 ? "equipo.act_cargas_1" : "equipo.act_cargas", { n: actividad.cargas }),
                 actividad.correcciones > 0 && t(actividad.correcciones === 1 ? "equipo.act_correcciones_1" : "equipo.act_correcciones", { n: actividad.correcciones }),
               ].filter(Boolean).join(" · ")}</p>
               {actividad.temas_top?.length > 0 && (
-                <p className="text-[0.78rem] text-tinta-suave">
+                <p className="text-xs text-tinta-suave">
                   {t("equipo.act_temas", { temas: actividad.temas_top.map(([k]) => k.replaceAll("_", " ")).join(", ") })}
                 </p>
               )}
@@ -354,7 +354,7 @@ function FichaPersona({ p, ficha }) {
       </Bloque>
       <Bloque icon={Clock} titulo={t("equipo.ficha_pendiente")}>
         {pendientes.length === 0 && solicitudes.length === 0 ? <Vacio texto={t("equipo.ficha_al_dia")} /> : (
-          <div className="space-y-1 text-[0.84rem] leading-snug">
+          <div className="space-y-1 text-sm leading-snug">
             {solicitudes.map((s) => (
               <p key={`s${s.id}`} className="text-oro-tinta">{t("equipo.ficha_solicitud", { label: s.label })}</p>
             ))}
@@ -396,10 +396,10 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
         <div className="flex items-center gap-3">
           <Avatar persona={p} size={44} />
           <div>
-            <p className="font-display text-[1.05rem] font-bold leading-tight">
-              {p.nombre} {p.es_admin && <span className="ml-1 rounded-full bg-tinta/[0.08] px-2 py-0.5 text-[0.66rem] font-semibold uppercase text-tinta">{t("equipo.badge_admin")}</span>}
+            <p className="font-display text-lg font-bold leading-tight">
+              {p.nombre} {p.es_admin && <span className="ml-1 rounded-full bg-tinta/[0.08] px-2 py-0.5 text-2xs font-semibold uppercase text-tinta">{t("equipo.badge_admin")}</span>}
             </p>
-            <p className="text-[0.8rem] text-tinta-suave">{t("equipo.usuario_meta", { rol: tRol(p.rol), username: p.username })}</p>
+            <p className="text-sm text-tinta-suave">{t("equipo.usuario_meta", { rol: tRol(p.rol), username: p.username })}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 text-tinta-suave">
@@ -408,13 +408,13 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
           {!editando && (
             <button onClick={() => { setTexto(p.descripcion || ""); setEditando(true); }}
               title={t("equipo.title_editar_desc", { nombre: p.nombre })}
-              className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-[0.76rem] font-semibold hover:text-tinta">
+              className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-xs font-semibold hover:text-tinta">
               <Pencil size={12} /> {t("equipo.editar")}
             </button>
           )}
           {ficha && (
             <button onClick={() => setAbierta((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-[0.76rem] font-semibold hover:text-tinta">
+              className="inline-flex items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-xs font-semibold hover:text-tinta">
               {t("equipo.ficha_ver")} <ChevronDown size={12} className={`transition-transform ${abierta ? "rotate-180" : ""}`} />
             </button>
           )}
@@ -427,19 +427,19 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-linea bg-papel p-3 text-[0.88rem] leading-snug outline-none focus:border-tinta/40"
+            className="w-full rounded-xl border border-linea bg-papel p-3 text-sm leading-snug outline-none focus:border-tinta/40"
           />
           <div className="flex gap-2">
-            <button onClick={guardar} disabled={guardando} className="rounded-full bg-tinta px-4 py-1.5 text-[0.82rem] font-semibold text-crema disabled:opacity-50">
+            <button onClick={guardar} disabled={guardando} className="rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
               {guardando ? t("equipo.guardando") : t("equipo.guardar")}
             </button>
-            <button onClick={() => setEditando(false)} className="rounded-full border border-linea px-4 py-1.5 text-[0.82rem] font-semibold text-tinta-suave">
+            <button onClick={() => setEditando(false)} className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">
               {t("equipo.cancelar")}
             </button>
           </div>
         </div>
       ) : (
-        <p className="mt-3 rounded-xl bg-papel-hondo/50 p-3 text-[0.86rem] leading-snug text-tinta">
+        <p className="mt-3 rounded-xl bg-papel-hondo/50 p-3 text-sm leading-snug text-tinta">
           {/* se MUESTRA en el idioma del que mira; se EDITA el original */}
           <span className="font-semibold text-tinta-suave">{t("equipo.se_describio")}</span>
           {tDato(p.descripcion, p.descripcion_en)}
@@ -450,7 +450,7 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
         {Object.entries(p.modulos_labels || {})
           .filter(([id]) => id !== "angela")
           .map(([id, label]) => (
-            <span key={id} className="rounded-full bg-papel-hondo px-2.5 py-0.5 text-[0.74rem] font-semibold text-tinta-suave">
+            <span key={id} className="rounded-full bg-papel-hondo px-2.5 py-0.5 text-xs font-semibold text-tinta-suave">
               {label}
             </span>
           ))}
@@ -556,11 +556,11 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
   const modulos = Object.entries(perfil?.modulos_labels || {}).filter(([id]) => id !== "angela");
   const Bloque = ({ titulo, children }) => (
     <div className="min-w-0">
-      <p className="mb-1 text-[0.68rem] font-semibold uppercase tracking-wide text-tinta-suave">{titulo}</p>
+      <p className="mb-1 text-2xs font-semibold uppercase tracking-wide text-tinta-suave">{titulo}</p>
       {children}
     </div>
   );
-  const Vacio = ({ tx }) => <p className="text-[0.82rem] text-tinta-suave">{tx}</p>;
+  const Vacio = ({ tx }) => <p className="text-sm text-tinta-suave">{tx}</p>;
   const mandarAviso = () => {
     if (!aviso.trim()) return;
     api.notificacionAvisar(a.username, t("equipo.aviso_titulo"), aviso.trim())
@@ -589,7 +589,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
       {perfil?.descripcion && !editando && (
         <div className="mb-3 rounded-xl bg-papel-hondo/50 p-3">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[0.84rem] leading-snug text-tinta">
+            <p className="text-sm leading-snug text-tinta">
               {/* se MUESTRA en el idioma del que mira; se EDITA el original */}
               <span className="font-semibold text-tinta-suave">{t("equipo.se_describio")}</span>
               {tDato(perfil.descripcion, perfil.descripcion_en)}
@@ -597,7 +597,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
             {token && (
               <button onClick={() => { setTexto(perfil.descripcion || ""); setEditando(true); }}
                 title={t("equipo.title_editar_desc", { nombre: a.nombre })}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-[0.72rem] font-semibold text-tinta-suave hover:text-tinta">
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-2.5 py-1 text-xs font-semibold text-tinta-suave hover:text-tinta">
                 <Pencil size={11} /> {t("equipo.editar")}
               </button>
             )}
@@ -607,14 +607,14 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
       {editando && (
         <div className="mb-3 space-y-2">
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={3}
-            className="w-full rounded-xl border border-linea bg-crema p-3 text-[0.86rem] leading-snug outline-none focus:border-tinta/40" />
+            className="w-full rounded-xl border border-linea bg-crema p-3 text-sm leading-snug outline-none focus:border-tinta/40" />
           <div className="flex gap-2">
             <button onClick={guardarDesc} disabled={guardando}
-              className="rounded-full bg-tinta px-4 py-1.5 text-[0.82rem] font-semibold text-crema disabled:opacity-50">
+              className="rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
               {guardando ? t("equipo.guardando") : t("equipo.guardar")}
             </button>
             <button onClick={() => setEditando(false)}
-              className="rounded-full border border-linea px-4 py-1.5 text-[0.82rem] font-semibold text-tinta-suave">
+              className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">
               {t("equipo.cancelar")}
             </button>
           </div>
@@ -624,7 +624,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
       {/* P·onboarding — la ficha laboral de la persona: cuánto hace que está,
           dónde y con quién. Sólo se muestra lo que su perfil declara. */}
       {(perfil?.antiguedad || perfil?.puesto) && (
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-tinta-suave">
+        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-tinta-suave">
           <BadgeNuevo persona={perfil} />
           {perfil?.antiguedad && !perfil.antiguedad.nuevo && (
             <span>{t("equipo.det_antiguedad", { ant: antiguedadTexto(perfil.antiguedad) })}</span>
@@ -645,10 +645,10 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
         {/* 1 · Qué le consulta a Ángela (TEMAS, jamás texto de conversación) */}
         <Bloque titulo={t("equipo.det_consulta")}>
           {a.consultas > 0 ? (
-            <div className="space-y-0.5 text-[0.84rem] text-tinta">
+            <div className="space-y-0.5 text-sm text-tinta">
               <p>{t(a.consultas === 1 ? "equipo.act_consultas_1" : "equipo.act_consultas", { n: a.consultas })}</p>
               {a.temas_top?.length > 0 && (
-                <p className="text-[0.8rem] text-tinta-suave">{t("equipo.det_temas")} {a.temas_top.map(([k, n]) => `${temaLabel(k, t)} (${num(n)})`).join(" · ")}</p>
+                <p className="text-sm text-tinta-suave">{t("equipo.det_temas")} {a.temas_top.map(([k, n]) => `${temaLabel(k, t)} (${num(n)})`).join(" · ")}</p>
               )}
             </div>
           ) : <Vacio tx={t("equipo.det_sin_consultas")} />}
@@ -659,7 +659,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
             Sale de la auditoría de los últimos 7 días, agrupada por acción. */}
         <Bloque titulo={t("equipo.det_resolvio")}>
           {a.resueltos?.length > 0 ? (
-            <ul className="space-y-0.5 text-[0.84rem] leading-snug text-tinta">
+            <ul className="space-y-0.5 text-sm leading-snug text-tinta">
               {a.resueltos.map(([slug, n]) => (
                 <li key={slug} className="flex items-start gap-1.5">
                   <Check size={13} className="mt-1 shrink-0 text-salvia" />
@@ -673,10 +673,10 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
         {/* 2 · Qué hizo en el negocio (cargas, correcciones, con recencia) */}
         <Bloque titulo={t("equipo.det_hizo")}>
           {(a.cargas + a.correcciones) > 0 ? (
-            <div className="space-y-0.5 text-[0.84rem] text-tinta">
+            <div className="space-y-0.5 text-sm text-tinta">
               {a.cargas > 0 && <p>{t(a.cargas === 1 ? "equipo.act_cargas_1" : "equipo.act_cargas", { n: a.cargas })}</p>}
               {a.correcciones > 0 && <p>{t(a.correcciones === 1 ? "equipo.act_correcciones_1" : "equipo.act_correcciones", { n: a.correcciones })}</p>}
-              {a.dias_desde != null && <p className="text-[0.8rem] text-tinta-suave">{a.dias_desde === 0 ? t("equipo.det_ultima_hoy") : t("equipo.det_ultima_hace", { n: num(a.dias_desde) })}</p>}
+              {a.dias_desde != null && <p className="text-sm text-tinta-suave">{a.dias_desde === 0 ? t("equipo.det_ultima_hoy") : t("equipo.det_ultima_hace", { n: num(a.dias_desde) })}</p>}
             </div>
           ) : <Vacio tx={t("equipo.det_sin_acciones")} />}
         </Bloque>
@@ -686,9 +686,9 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
           {objetivos.length === 0 ? <Vacio tx={t("equipo.ficha_sin_objetivos")} /> : (
             <div className="space-y-1">
               {objetivos.map((o) => (
-                <div key={o.id} className="text-[0.84rem] leading-snug">
+                <div key={o.id} className="text-sm leading-snug">
                   <span className="text-tinta">{t(o.nombre)}</span>
-                  <span className={`ml-1.5 rounded-full px-2 py-0.5 text-[0.66rem] font-semibold ${o.estado === "listo" ? "bg-salvia/15 text-salvia" : o.estado === "en_proceso" ? "bg-oro/15 text-oro-tinta" : "bg-papel-hondo text-tinta-suave"}`}>{t(ESTADO_LABEL[o.estado])}</span>
+                  <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs font-semibold ${o.estado === "listo" ? "bg-salvia/15 text-salvia" : o.estado === "en_proceso" ? "bg-oro/15 text-oro-tinta" : "bg-papel-hondo text-tinta-suave"}`}>{t(ESTADO_LABEL[o.estado])}</span>
                 </div>
               ))}
             </div>
@@ -700,7 +700,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
         <Bloque titulo={t("equipo.det_modulos")}>
           <div className="flex flex-wrap gap-1">
             {modulos.map(([id, label]) => (
-              <span key={id} className="rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem] font-semibold text-tinta-suave">{label}</span>
+              <span key={id} className="rounded-full bg-papel-hondo px-2 py-0.5 text-xs font-semibold text-tinta-suave">{label}</span>
             ))}
           </div>
         </Bloque>
@@ -708,8 +708,8 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
         {/* 5 · Lo que Ángela detectó (solicitud de módulo con su porqué) */}
         {solicitud && (
           <Bloque titulo={t("equipo.det_angela")}>
-            <p className="text-[0.84rem] leading-snug text-tinta">{t("equipo.det_solicitud", { modulo: solicitud.label })}</p>
-            {solicitud.motivo_angela && <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{solicitud.motivo_angela}</p>}
+            <p className="text-sm leading-snug text-tinta">{t("equipo.det_solicitud", { modulo: solicitud.label })}</p>
+            {solicitud.motivo_angela && <p className="mt-0.5 text-sm text-tinta-suave">{solicitud.motivo_angela}</p>}
           </Bloque>
         )}
       </div>
@@ -718,7 +718,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
           cuando se conecte el grupo, lo de ESTA persona aterriza acá. */}
       <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-dashed border-linea bg-papel-hondo/40 px-3 py-2.5">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-crema"><LogoWhatsApp size={14} /></span>
-        <p className="text-[0.8rem] leading-snug text-tinta-suave">
+        <p className="text-sm leading-snug text-tinta-suave">
           {t("equipo.det_whatsapp", { nombre: a.nombre })}
         </p>
       </div>
@@ -729,19 +729,19 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
           <input value={objetivo} onChange={(e) => setObjetivo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && asignar()}
             placeholder={t("equipo.det_ph_objetivo")}
-            className="w-44 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.8rem] outline-none focus:border-tinta/40" />
-          <button onClick={asignar} className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"><Target size={13} /> {t("equipo.det_asignar")}</button>
+            className="w-44 rounded-full border border-linea bg-crema px-3 py-1.5 text-sm outline-none focus:border-tinta/40" />
+          <button onClick={asignar} className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta"><Target size={13} /> {t("equipo.det_asignar")}</button>
         </div>
         <div className="flex items-center gap-1.5">
           <input value={aviso} onChange={(e) => setAviso(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && mandarAviso()}
             placeholder={t("equipo.det_ph_aviso")}
-            className="w-44 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.8rem] outline-none focus:border-tinta/40" />
-          <button onClick={mandarAviso} className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"><Send size={13} /> {t("equipo.det_avisar")}</button>
+            className="w-44 rounded-full border border-linea bg-crema px-3 py-1.5 text-sm outline-none focus:border-tinta/40" />
+          <button onClick={mandarAviso} className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta"><Send size={13} /> {t("equipo.det_avisar")}</button>
         </div>
-        <button onClick={() => onVerComo(a.username)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema"><Eye size={13} /> {t("equipo.det_vercomo")}</button>
+        <button onClick={() => onVerComo(a.username)} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema"><Eye size={13} /> {t("equipo.det_vercomo")}</button>
         {onVerPerfil && (
-          <button onClick={() => onVerPerfil(a.username)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">{t("equipo.det_perfil")}</button>
+          <button onClick={() => onVerPerfil(a.username)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">{t("equipo.det_perfil")}</button>
         )}
       </div>
     </div>
@@ -787,16 +787,16 @@ export function ActividadEquipo({ token, perfiles, equipo, solicitudes, onVerPer
           ].map((x) => (
             <div key={x.l} className="rounded-[var(--radius-card)] border border-linea bg-crema px-3.5 py-2.5 sombra-papel">
               <p className="plata text-lg font-medium leading-none">{x.v}</p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">{x.l}</p>
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">{x.l}</p>
             </div>
           ))}
         </div>
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[0.86rem] text-tinta-suave">{t("equipo.actividad_sub")}</p>
+        <p className="text-sm text-tinta-suave">{t("equipo.actividad_sub")}</p>
         <button onClick={() => setOrden(orden === "actividad" ? "nombre" : "actividad")}
-          className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1 text-[0.76rem] font-semibold text-tinta-suave hover:text-tinta">
+          className="inline-flex items-center gap-1 rounded-full border border-linea px-3 py-1 text-xs font-semibold text-tinta-suave hover:text-tinta">
           <ArrowUpDown size={12} /> {orden === "actividad" ? t("equipo.orden_actividad") : t("equipo.orden_nombre")}
         </button>
       </div>
@@ -815,11 +815,11 @@ export function ActividadEquipo({ token, perfiles, equipo, solicitudes, onVerPer
                 <div className="min-w-0 flex-1">
                   {/* P·onboarding — el que recién entró, marcado en la lista:
                       no se lee igual alguien con 9 años que alguien con 1 semana. */}
-                  <p className="flex items-center gap-1.5 truncate text-[0.9rem] font-semibold text-tinta">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-tinta">
                     <span className="truncate">{a.nombre} <span className="font-normal text-tinta-suave">· {tRol(a.rol)}</span></span>
                     <BadgeNuevo persona={perfil} compacto />
                   </p>
-                  <p className="truncate text-[0.78rem] text-tinta-suave">
+                  <p className="truncate text-xs text-tinta-suave">
                     {(() => {
                       const objs = a.objetivos_en_curso + a.objetivos_listos;
                       const partes = [
@@ -831,7 +831,7 @@ export function ActividadEquipo({ token, perfiles, equipo, solicitudes, onVerPer
                     })()}
                   </p>
                 </div>
-                <span className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold sm:inline ${est.cls}`}>
+                <span className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold sm:inline ${est.cls}`}>
                   {est.n != null ? t(est.lk, { n: num(est.n) }) : t(est.lk)}
                 </span>
                 <ChevronDown size={16} className={`shrink-0 text-tinta-suave transition-transform ${abierta ? "rotate-180" : ""}`} />
@@ -850,8 +850,8 @@ export function ActividadEquipo({ token, perfiles, equipo, solicitudes, onVerPer
       <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-crema"><LogoWhatsApp /></span>
         <div>
-          <p className="text-[0.86rem] font-semibold text-tinta">{t("equipo.act_whatsapp_futuro")}</p>
-          <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("equipo.act_whatsapp_detalle")}</p>
+          <p className="text-sm font-semibold text-tinta">{t("equipo.act_whatsapp_futuro")}</p>
+          <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{t("equipo.act_whatsapp_detalle")}</p>
         </div>
       </div>
     </section>
@@ -920,7 +920,7 @@ export default function GestionEquipo({ data, user, highlight }) {
         <Users size={24} className="text-tinta-suave" />
         <div>
           <h1 className="font-display text-2xl font-bold leading-none">{t("equipo.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">
+          <p className="mt-1 text-sm text-tinta-suave">
             {esAdmin ? t("equipo.sub_admin") : t("equipo.sub_empleado")}
           </p>
         </div>
@@ -943,16 +943,16 @@ export default function GestionEquipo({ data, user, highlight }) {
               <button
                 key={tb.id}
                 onClick={() => setTab(tb.id)}
-                className={`relative -mb-px rounded-t-xl border px-4 py-2 text-[0.86rem] font-semibold transition-colors ${
+                className={`relative -mb-px rounded-t-xl border px-4 py-2 text-sm font-semibold transition-colors ${
                   tab === tb.id ? "border-linea border-b-crema bg-crema text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
                 }`}
               >
                 {t(tb.lk)}
                 {tb.id === "permisos" && pendientes > 0 && (
-                  <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-[0.66rem] font-bold text-crema">{pendientes}</span>
+                  <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-2xs font-bold text-crema">{pendientes}</span>
                 )}
                 {tb.id === "objetivos" && propuestas.filter((p) => !cancelados[p.id]).length > 0 && (
-                  <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-[0.66rem] font-bold text-crema">
+                  <span className="ml-1.5 inline-grid h-4.5 min-w-4.5 place-items-center rounded-full bg-oro px-1 text-2xs font-bold text-crema">
                     {propuestas.filter((p) => !cancelados[p.id]).length}
                   </span>
                 )}
@@ -960,7 +960,7 @@ export default function GestionEquipo({ data, user, highlight }) {
             ))}
           </div>
 
-          {error && <p className="text-[0.9rem] text-rojo">{error}</p>}
+          {error && <p className="text-sm text-rojo">{error}</p>}
 
           {/* P41·3.2 — PERMISOS: la matriz arriba (funciona bien, no se toca) y
               abajo los pedidos que la alimentan. El pedido nace del EMPLEADO. */}
@@ -974,8 +974,8 @@ export default function GestionEquipo({ data, user, highlight }) {
               <div className="mt-4 flex items-start gap-3 rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-crema"><LogoWhatsApp /></span>
                 <div>
-                  <p className="text-[0.92rem] font-semibold text-tinta">{t("equipo.mob_conecta_wsp")}</p>
-                  <p className="mt-1 text-[0.86rem] leading-snug text-tinta-suave">{t("equipo.mob_novedades_detalle")}</p>
+                  <p className="text-sm font-semibold text-tinta">{t("equipo.mob_conecta_wsp")}</p>
+                  <p className="mt-1 text-sm leading-snug text-tinta-suave">{t("equipo.mob_novedades_detalle")}</p>
                 </div>
               </div>
             </>
@@ -1005,28 +1005,28 @@ export default function GestionEquipo({ data, user, highlight }) {
                 <section className="rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
                   <div className="flex items-center gap-2 border-b border-linea px-4 py-2.5">
                     <AngelaMark size={22} />
-                    <h2 className="font-display text-[0.98rem] font-bold">{t("equipo.propone_titulo")}</h2>
-                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-papel-hondo px-1.5 text-[0.7rem] font-bold text-tinta-suave">
+                    <h2 className="font-display text-base font-bold">{t("equipo.propone_titulo")}</h2>
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-papel-hondo px-1.5 text-xs font-bold text-tinta-suave">
                       {num(propuestas.filter((p) => !cancelados[p.id]).length)}
                     </span>
-                    <span className="ml-auto text-[0.76rem] text-tinta-suave">{t("equipo.vos_decidis")}</span>
+                    <span className="ml-auto text-xs text-tinta-suave">{t("equipo.vos_decidis")}</span>
                   </div>
                   <div>
                     {propuestas.filter((p) => !cancelados[p.id]).map((p) => {
                       const enviado = enviados[p.id];
                       return (
                         <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-linea/70 px-4 py-2.5 last:border-0">
-                          <span className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">
+                          <span className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">
                             {t("equipo.para", { nombre: p.responsable })}
                           </span>
-                          <p className="min-w-0 flex-1 basis-64 text-[0.86rem] italic leading-snug text-tinta">"{p.mensaje}"</p>
+                          <p className="min-w-0 flex-1 basis-64 text-sm italic leading-snug text-tinta">"{p.mensaje}"</p>
                           {enviado ? (
-                            <span className="inline-flex shrink-0 items-center gap-1.5 text-[0.82rem] font-semibold text-salvia">
+                            <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-salvia">
                               <Check size={14} /> {t("equipo.enviado_tarea", { nombre: p.responsable })}
                             </span>
                           ) : (
                             <span className="flex shrink-0 items-center gap-1.5">
-                              <button onClick={() => aprobar(p)} className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema">
+                              <button onClick={() => aprobar(p)} className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-3.5 py-1.5 text-sm font-semibold text-crema">
                                 <Send size={13} /> {t("equipo.enviar_a", { nombre: p.responsable })}
                               </button>
                               <button onClick={() => setCancelados((s) => ({ ...s, [p.id]: true }))} title={t("equipo.cancelar")}

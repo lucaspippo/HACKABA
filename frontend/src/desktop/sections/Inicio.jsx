@@ -46,21 +46,21 @@ function CartaResumen({ c, t }) {
   return (
     <div data-nav-id={c.navId} className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
       <div className="flex items-center justify-between gap-2">
-        <span className={`rounded-full px-2.5 py-1 text-[0.88rem] font-semibold ${tono.chip}`}>{c.chip}</span>
+        <span className={`rounded-full px-2.5 py-1 text-sm font-semibold ${tono.chip}`}>{c.chip}</span>
         {c.n != null && (
-          <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1 text-[0.88rem] font-bold ${tono.chip}`}>{num(c.n)}</span>
+          <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1 text-sm font-bold ${tono.chip}`}>{num(c.n)}</span>
         )}
       </div>
       {/* P15·E3: el título envuelve completo (nada cortado en cámara); el
           clamp-3 del detalle es red de seguridad — el copy se acorta para
           no llegar nunca a él. */}
-      <p className="mt-2.5 font-display text-[1.02rem] font-bold leading-tight">{c.titulo}</p>
-      {c.detalle && <p className="mt-1 line-clamp-3 text-[0.86rem] leading-snug text-tinta-suave">{c.detalle}</p>}
+      <p className="mt-2.5 font-display text-lg font-bold leading-tight">{c.titulo}</p>
+      {c.detalle && <p className="mt-1 line-clamp-3 text-sm leading-snug text-tinta-suave">{c.detalle}</p>}
       <div className="mt-auto flex items-end justify-between gap-2 pt-3">
         <div className="min-w-0">
           {c.monto != null && c.monto > 0 && (
             <>
-              <p className="text-[0.88rem] text-tinta-suave">{t("inicio.card_impacto")}</p>
+              <p className="text-sm text-tinta-suave">{t("inicio.card_impacto")}</p>
               <p className={`plata text-xl font-medium leading-tight ${tono.monto}`}>{pesoCorto(c.monto)}</p>
             </>
           )}
@@ -70,7 +70,7 @@ function CartaResumen({ c, t }) {
         </span>
       </div>
       {c.ir && (
-        <button onClick={c.ir} className={`mt-3 inline-flex items-center gap-1.5 self-start rounded-full border px-3.5 py-1.5 text-[0.88rem] font-semibold transition-colors ${tono.cta}`}>
+        <button onClick={c.ir} className={`mt-3 inline-flex items-center gap-1.5 self-start rounded-full border px-3.5 py-1.5 text-sm font-semibold transition-colors ${tono.cta}`}>
           {c.cta} <ArrowRight size={13} />
         </button>
       )}
@@ -262,24 +262,24 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
           {/* P42 — jerarquía: la fila de tarjetas es el único bloque "grande"
               del Home; todo lo demás usa el mismo eyebrow chico, para que no
               compitan en volumen visual con lo único importante de hoy. */}
-          <h2 className="mb-3 text-[0.88rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.dec_titulo")}</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.dec_titulo")}</h2>
           <div className="space-y-3">
             {decisionesRestantes.slice(0, MAX_DECISIONES - 1).map((d) => (
               <div key={d.id} className="flex flex-wrap items-center gap-4 rounded-[var(--radius-card)] border border-oro/30 bg-crema p-5 sombra-papel">
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[1.02rem] font-bold leading-tight">{d.titulo}</p>
-                  <p className="mt-0.5 text-[0.9rem] text-tinta-suave">{d.detalle}</p>
+                  <p className="font-display text-lg font-bold leading-tight">{d.titulo}</p>
+                  <p className="mt-0.5 text-sm text-tinta-suave">{d.detalle}</p>
                 </div>
                 {d.monto != null && (
                   <span className="plata shrink-0 text-xl font-medium text-tinta">{pesoCorto(d.monto)}</span>
                 )}
-                <button onClick={d.ir} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.88rem] font-semibold text-crema">
+                <button onClick={d.ir} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                   {d.cta} <ArrowRight size={14} />
                 </button>
               </div>
             ))}
             {decisionesRestantes.length > MAX_DECISIONES - 1 && (
-              <button onClick={() => onNavegar("saneamiento")} className="text-[0.88rem] font-semibold text-tinta">
+              <button onClick={() => onNavegar("saneamiento")} className="text-sm font-semibold text-tinta">
                 {t("inicio.dec_ver_todas")} →
               </button>
             )}
@@ -290,8 +290,8 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
   const bloqueOportunidades = opsRestantes.length > 0 && (
         <section>
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-[0.88rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.op_titulo")}</h2>
-            <button onClick={() => onNavegar("prioridades")} className="text-[0.88rem] font-semibold text-tinta">{t("inicio.ver_todo")}</button>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.op_titulo")}</h2>
+            <button onClick={() => onNavegar("prioridades")} className="text-sm font-semibold text-tinta">{t("inicio.ver_todo")}</button>
           </div>
           <div className="space-y-2">
             {opsRestantes.map((o) => (
@@ -303,7 +303,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
                 {o.monto != null && (
                   <span className="plata shrink-0 text-xl font-medium text-salvia">{pesoCorto(o.monto)}</span>
                 )}
-                <span className="min-w-0 flex-1 text-[0.92rem] font-semibold leading-snug text-tinta">{o.titulo}</span>
+                <span className="min-w-0 flex-1 text-sm font-semibold leading-snug text-tinta">{o.titulo}</span>
                 <ArrowRight size={15} className="shrink-0 text-tinta-suave" />
               </button>
             ))}
@@ -317,10 +317,10 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
           <div className="mb-3 flex items-center gap-3">
             <AngelaMark size={34} estado={decisiones.length > 0 ? "esperando" : "idle"} />
-            <h2 className="flex-1 text-[0.88rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.hizo_titulo")}</h2>
+            <h2 className="flex-1 text-sm font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.hizo_titulo")}</h2>
           </div>
           {iniError ? (
-            <p className="text-[0.95rem] font-medium text-rojo-hondo">{t("inicio.error_datos")}</p>
+            <p className="text-base font-medium text-rojo-hondo">{t("inicio.error_datos")}</p>
           ) : iniCargando ? (
             /* Skeleton con la forma del feed: cero salto de layout */
             <ul className="space-y-3">
@@ -337,7 +337,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
                agrupado por día, detalle al tocar, contadores clickeables. */
             <FeedActividad act={act} estructura={estructura} />
           ) : (
-            <p className="text-[0.95rem] text-tinta-suave">{t("inicio.ahorro_vacio")}</p>
+            <p className="text-base text-tinta-suave">{t("inicio.ahorro_vacio")}</p>
           )}
         </div>
       </section>
@@ -356,22 +356,22 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
             >
               <Icon size={16} className={m.color} />
               <p className={`plata mt-1.5 text-2xl font-medium leading-none ${m.color}`}>{m.valor}</p>
-              <p className="mt-1 flex-1 text-[0.88rem] text-tinta-suave">{m.label}</p>
-              <span className="mt-2 inline-flex items-center gap-1 self-start rounded-full border border-linea px-2.5 py-1 text-[0.88rem] font-semibold text-tinta-suave">
+              <p className="mt-1 flex-1 text-sm text-tinta-suave">{m.label}</p>
+              <span className="mt-2 inline-flex items-center gap-1 self-start rounded-full border border-linea px-2.5 py-1 text-sm font-semibold text-tinta-suave">
                 {t("inicio.metrica_ver")} <ArrowRight size={11} />
               </span>
             </button>
           );
         })}
         <div className="col-span-2 rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel lg:col-span-1">
-          <p className="text-[0.86rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("inicio.accesos_titulo")}</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-tinta-suave">{t("inicio.accesos_titulo")}</p>
           <div className="mt-2 space-y-1">
             {accesos.map((a) => {
               const Icon = a.icon;
               return (
                 <button key={a.lk} onClick={a.ir} className="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-papel-hondo/60">
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-violeta-suave text-violeta"><Icon size={14} /></span>
-                  <span className="min-w-0 flex-1 truncate text-[0.88rem] font-medium">{t(a.lk)}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{t(a.lk)}</span>
                 </button>
               );
             })}
@@ -384,8 +384,8 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       /* Dónde está la plata: compacto */
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-[0.88rem] font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.donde_plata")}</h2>
-          <button onClick={() => onNavegar("inventario", "plata")} className="text-[0.88rem] font-semibold text-tinta">{t("inicio.ver_todo")}</button>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.1em] text-tinta-suave">{t("inicio.donde_plata")}</h2>
+          <button onClick={() => onNavegar("inventario", "plata")} className="text-sm font-semibold text-tinta">{t("inicio.ver_todo")}</button>
         </div>
         <div className="space-y-1.5">
           {top_inmovilizado.slice(0, vista.inicioTopN).map((p) => {
@@ -395,8 +395,8 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
               <div key={p.codigo} className="relative rounded-lg px-3 py-1.5">
                 <div className="absolute inset-y-0 left-0 rounded-lg bg-oro/15" style={{ width: `${pct}%` }} />
                 <div className="relative flex items-center justify-between gap-3">
-                  <span className="truncate text-[0.88rem]">{p.descripcion}</span>
-                  <span className="plata shrink-0 text-[0.88rem] font-medium text-hielo">{pesoCorto(p.inmovilizado)}</span>
+                  <span className="truncate text-sm">{p.descripcion}</span>
+                  <span className="plata shrink-0 text-sm font-medium text-hielo">{pesoCorto(p.inmovilizado)}</span>
                 </div>
               </div>
             );
@@ -419,13 +419,13 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       {/* 1 · Saludo, como la referencia: el día resumido en una frase */}
       <header className="flex items-end justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[0.95rem] text-tinta-suave">{t("inicio.saludo", { nombre })}</p>
-          <h1 className="mt-1 font-display text-[2.1rem] font-bold leading-tight">{t("inicio.hero_titulo")}</h1>
-          <p className="mt-1 text-[0.95rem] text-tinta-suave">
+          <p className="text-base text-tinta-suave">{t("inicio.saludo", { nombre })}</p>
+          <h1 className="mt-1 font-display text-4xl font-bold leading-tight">{t("inicio.hero_titulo")}</h1>
+          <p className="mt-1 text-base text-tinta-suave">
             {fila.length > 1 ? t("inicio.hero_sub", { n: fila.length }) : t("inicio.hero_sub_uno")}
           </p>
           {iniError && (
-            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-rojo/30 bg-rojo/[0.05] px-3 py-1 text-[0.88rem] font-semibold text-rojo-hondo">
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full border border-rojo/30 bg-rojo/[0.05] px-3 py-1 text-sm font-semibold text-rojo-hondo">
               {t("inicio.error_datos")}
             </p>
           )}
@@ -433,7 +433,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
         <div className="flex shrink-0 flex-col items-end gap-2 pb-1">
           {/* P29·A — la píldora de salud solo con el dato (rol sin inventario: nada) */}
           {resumen.salud && <StatusPill nivel={resumen.salud.nivel} label={resumen.salud.label} />}
-          <button onClick={() => onPreguntar(t("inicio.enviar_empezar"))} className="text-[0.88rem] font-semibold text-violeta">
+          <button onClick={() => onPreguntar(t("inicio.enviar_empezar"))} className="text-sm font-semibold text-violeta">
             {t("inicio.preguntar_angela")}
           </button>
         </div>

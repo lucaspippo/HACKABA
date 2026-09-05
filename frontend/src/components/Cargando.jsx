@@ -4,7 +4,7 @@
 export default function Cargando({ error = null }) {
   if (error) {
     return (
-      <div className="rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-6 text-[0.92rem] text-tinta-suave">
+      <div className="rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-6 text-sm text-tinta-suave">
         {error.criollo || "No pude traer los datos. Probá de nuevo en un toque."}
       </div>
     );

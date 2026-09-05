@@ -65,13 +65,13 @@ function SeriesTrend({ series, unit }: { series: SeriesSummary; unit?: string })
   const tone = delta > 0 ? "text-salvia" : delta < 0 ? "text-rojo" : "text-tinta-suave";
   return (
     <div className="rounded-xl border border-linea bg-papel/50 px-3 py-2">
-      <p className="text-[0.78rem] font-semibold text-tinta">{series.nombre}</p>
-      <p className="mt-1 flex items-baseline gap-1.5 text-[0.95rem]">
+      <p className="text-xs font-semibold text-tinta">{series.nombre}</p>
+      <p className="mt-1 flex items-baseline gap-1.5 text-base">
         <span className="tabular-nums text-tinta-suave">{formatValue(series.primero.y, unit)}</span>
         <span className="text-tinta-suave">→</span>
         <span className={`plata tabular-nums font-medium ${tone}`}>{formatValue(series.ultimo.y, unit)}</span>
       </p>
-      <p className="mt-0.5 text-[0.72rem] text-tinta-suave">
+      <p className="mt-0.5 text-xs text-tinta-suave">
         {t("toolui.serie.max")} {formatValue(series.max || 0, unit)} · {t("toolui.serie.total")}{" "}
         {formatValue(series.total || 0, unit)}
       </p>
@@ -83,7 +83,7 @@ function SeriesBars({ series, unit }: { series: SeriesSummary; unit?: string }) 
   if (!Array.isArray(series.top) || series.top.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-[0.78rem] font-semibold text-tinta">{series.nombre}</p>
+      <p className="mb-1 text-xs font-semibold text-tinta">{series.nombre}</p>
       <MiniChart points={series.top} format={chartFormat(unit)} />
     </div>
   );
@@ -95,7 +95,7 @@ export function SeriesView({ result }: ToolRenderProps) {
 
   if (data.ok === false) {
     return (
-      <div className="mt-1 text-[0.82rem] text-rojo-hondo">
+      <div className="mt-1 text-sm text-rojo-hondo">
         <p>{data.motivo}</p>
         {data.alternativa && <p className="mt-0.5 text-tinta-suave">{data.alternativa}</p>}
       </div>
@@ -114,7 +114,7 @@ export function SeriesView({ result }: ToolRenderProps) {
   return (
     <div className="mt-1.5 space-y-2">
       {(meta.ventana || (meta.unidad && !unitIsSymbol) || (meta.deflactado && meta.base_ipc)) && (
-        <p className="text-[0.72rem] text-tinta-suave">
+        <p className="text-xs text-tinta-suave">
           {[
             meta.ventana,
             !unitIsSymbol ? meta.unidad : null,
@@ -138,7 +138,7 @@ export function SeriesView({ result }: ToolRenderProps) {
         </div>
       )}
       {data.fijado && (
-        <p className="flex items-center gap-1 text-[0.76rem] text-salvia">
+        <p className="flex items-center gap-1 text-xs text-salvia">
           <Pin size={11} /> {t("toolui.serie.fijado")}
         </p>
       )}

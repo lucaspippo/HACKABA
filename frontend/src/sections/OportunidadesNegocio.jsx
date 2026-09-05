@@ -28,19 +28,19 @@ function Dormida({ onNavegar, onPreguntar, motivo }) {
       <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-salvia/25 bg-salvia/[0.05] p-6">
         <AngelaMark size={40} />
         <div className="flex-1">
-          <p className="text-[1.02rem] leading-snug text-tinta">
+          <p className="text-lg leading-snug text-tinta">
             {motivo || (<>{t("oportunidades.dormida_1")} <b>{t("oportunidades.dormida_ventas")}</b>{t("oportunidades.dormida_2")}</>)}
           </p>
           <button
             onClick={() => (onNavegar ? onNavegar("cargar") : onPreguntar?.(t("oportunidades.enviar_datos")))}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-salvia px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-salvia px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
           >
             {t("oportunidades.cargar_ventas")} <ArrowRight size={15} />
           </button>
         </div>
       </div>
       <div>
-        <h2 className="mb-3 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
           {t("oportunidades.cuando_activen")}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -49,8 +49,8 @@ function Dormida({ onNavegar, onPreguntar, motivo }) {
             return (
               <div key={f.t} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
                 <Icon size={18} className="text-tinta-suave" />
-                <p className="mt-2 font-display text-[1rem] font-bold leading-tight">{f.t}</p>
-                <p className="mt-1 text-[0.84rem] leading-snug text-tinta-suave">{f.d}</p>
+                <p className="mt-2 font-display text-base font-bold leading-tight">{f.t}</p>
+                <p className="mt-1 text-sm leading-snug text-tinta-suave">{f.d}</p>
               </div>
             );
           })}
@@ -150,7 +150,7 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
         <Sparkles size={24} className="text-salvia" />
         <div>
           <h1 className="font-display text-3xl font-bold leading-none">{t("oportunidades.titulo")}</h1>
-          <p className="mt-1 text-[0.95rem] text-tinta-suave">{t("oportunidades.sub_cards")}</p>
+          <p className="mt-1 text-base text-tinta-suave">{t("oportunidades.sub_cards")}</p>
         </div>
       </header>
 
@@ -161,10 +161,10 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
           Va PRIMERO y en su propio grupo: el origen es parte del dato. */}
       {dePiso.length > 0 && (
         <div>
-          <h2 className="mb-3 flex items-center gap-2 text-[0.8rem] font-semibold uppercase tracking-wide text-hielo">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-hielo">
             <Users size={15} /> {t("oportunidades.piso_titulo")}
           </h2>
-          <p className="mb-3 -mt-2 text-[0.84rem] text-tinta-suave">{t("oportunidades.piso_sub")}</p>
+          <p className="mb-3 -mt-2 text-sm text-tinta-suave">{t("oportunidades.piso_sub")}</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 3xl:grid-cols-3">
             {dePiso.map((c) => (
               <CardNegocio key={c.id} tono="azul" icon={Users} chip={t("oportunidades.piso_chip")}
@@ -204,7 +204,7 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
             </div>
             {capturables.length > 6 && !verTodas && (
               <button onClick={() => setVerTodas(true)}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta">
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                 {t("oportunidades.ver_todas", { n: capturables.length })} <ArrowRight size={14} />
               </button>
             )}
@@ -212,7 +212,7 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
             {/* RIESGOS a vigilar — exposición, no plata capturable (P30·C3) */}
             {riesgos.length > 0 && (
               <div className="mt-2">
-                <h2 className="mb-3 mt-2 flex items-center gap-2 text-[0.8rem] font-semibold uppercase tracking-wide text-oro-tinta">
+                <h2 className="mb-3 mt-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-oro-tinta">
                   <Shield size={15} /> {t("oportunidades.riesgos_titulo")}
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 3xl:grid-cols-3">
@@ -246,17 +246,17 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
                   el reporte de la persona queda resuelto, no colgado (P39·3). */}
               {abierta._piso && (
                 <button onClick={() => resolverPiso(abierta)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-hielo px-4 py-2 text-[0.84rem] font-semibold text-crema">
+                  className="inline-flex items-center gap-1.5 rounded-full bg-hielo px-4 py-2 text-sm font-semibold text-crema">
                   <Check size={14} /> {t("oportunidades.piso_marcar")}
                 </button>
               )}
               {adoptados[abierta.id] ? (
-                <span className="text-[0.84rem] font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
+                <span className="text-sm font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
               ) : eligiendo === abierta.id && equipo.length > 0 ? (
                 <select autoFocus defaultValue=""
                   onChange={(e) => e.target.value && adoptar(abierta, e.target.value)}
                   onBlur={() => setEligiendo(null)}
-                  className="rounded-full border border-salvia bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta">
+                  className="rounded-full border border-salvia bg-crema px-3.5 py-1.5 text-sm font-semibold text-tinta">
                   <option value="" disabled>{t("oportunidades.asignar_a")}</option>
                   {equipo.map((p) => (
                     <option key={p.username} value={p.nombre}>{p.nombre} — {tRol(p.rol)}</option>
@@ -264,18 +264,18 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
                 </select>
               ) : (
                 <button onClick={() => abrirSelector(abierta)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
                   <Plus size={14} /> {t("oportunidades.adoptar")}
                 </button>
               )}
               {/* Iterar AHÍ: preguntarle a Ángela con el contexto de ESTA oportunidad */}
               <button onClick={() => { onPreguntar?.(abierta.accion_chat); setAbierta(null); }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+                className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                 <AngelaMark size={15} /> {t("oportunidades.accionar_angela")}
               </button>
               {abierta.navegar && (
                 <button onClick={() => { onNavegar?.(abierta.navegar); setAbierta(null); }}
-                  className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+                  className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                   {t("oportunidades.ver_datos")}
                 </button>
               )}

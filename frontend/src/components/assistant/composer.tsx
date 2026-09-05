@@ -177,7 +177,7 @@ export function ComposerMenuItem({
       data-slot="composer-menu-item"
       data-active={active || undefined}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] transition-colors",
+        "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-lg transition-colors",
         active ? field : "hover:bg-foreground/[0.04]",
         className,
       )}
@@ -202,7 +202,7 @@ export function ComposerCommandItem({
         {command.description}
       </span>
       {active && (
-        <kbd className="bg-foreground/[0.06] text-foreground/45 rounded px-1 font-mono text-[10px]">
+        <kbd className="bg-foreground/[0.06] text-foreground/45 rounded px-1 font-mono text-xs">
           ↵
         </kbd>
       )}
@@ -220,7 +220,7 @@ export function ComposerPersonItem({
 }) {
   return (
     <ComposerMenuItem active={active} {...props}>
-      <span className="bg-foreground/[0.06] text-foreground/45 flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium">
+      <span className="bg-foreground/[0.06] text-foreground/45 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium">
         {person.name[0]}
       </span>
       <span className="min-w-0 flex-1 truncate text-start">{person.name}</span>
@@ -276,7 +276,7 @@ export function ComposerAttachmentChip({
         </span>
         <span
           className={cn(
-            "text-[11px]",
+            "text-sm",
             attachment.state === "error"
               ? "text-rojo"
               : "text-foreground/40",
@@ -328,7 +328,7 @@ export function ComposerInput({
         onSubmit?.();
       }}
       className={cn(
-        "placeholder:text-foreground/35 min-h-11 w-full bg-transparent px-3 text-[15px] caret-violeta outline-none",
+        "placeholder:text-foreground/35 min-h-11 w-full bg-transparent px-3 text-lg caret-violeta outline-none",
         className,
       )}
       {...props}
@@ -377,7 +377,7 @@ export function ComposerVoice({
           0:{String(seconds).padStart(2, "0")}
         </span>
       ) : (
-        <ShimmerLabel className="text-foreground/55 relative text-[13px]">
+        <ShimmerLabel className="text-foreground/55 relative text-lg">
           {transcribingLabel}
         </ShimmerLabel>
       )}
@@ -449,7 +449,7 @@ export function ComposerModelTrigger({
       aria-expanded={open}
       data-slot="composer-model-trigger"
       className={cn(
-        "text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 dark:hover:bg-foreground/[0.09] flex h-8 items-center gap-1.5 rounded-full px-3 text-[12.5px] transition-colors",
+        "text-foreground/55 hover:bg-foreground/[0.06] hover:text-foreground/90 dark:hover:bg-foreground/[0.09] flex h-8 items-center gap-1.5 rounded-full px-3 text-base transition-colors",
         className,
       )}
       {...props}
@@ -537,7 +537,7 @@ export function ComposerContext({
         )}
       >
         <div className="flex items-baseline justify-between">
-          <p className="text-[13.5px] font-medium">{labels.title}</p>
+          <p className="text-lg font-medium">{labels.title}</p>
           <p
             className={cn(
               mono,
@@ -564,7 +564,7 @@ export function ComposerContext({
           {segments.map((segment) => (
             <div
               key={segment.label}
-              className="text-foreground/55 flex items-center gap-2.5 text-[13px]"
+              className="text-foreground/55 flex items-center gap-2.5 text-lg"
             >
               <span
                 aria-hidden
@@ -578,7 +578,7 @@ export function ComposerContext({
           ))}
         </div>
         <div className="bg-foreground/[0.06] h-px" />
-        <div className="text-foreground/55 flex items-center justify-between text-[13px]">
+        <div className="text-foreground/55 flex items-center justify-between text-lg">
           <span>{labels.total}</span>
           <span className={cn(mono, "text-foreground/40 tabular-nums")}>
             {used}k / {usage.total}k

@@ -10,7 +10,7 @@ export default function PanelDecision({ impacto, extra, acciones, children, clas
   return (
     <div className={`rounded-[var(--radius-card)] border border-oro/30 bg-crema p-4 sombra-papel ${className}`}>
       <div className="mb-2.5 flex items-center justify-between gap-3">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-oro-tinta">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-oro-tinta">
           {t("decision.espera_ok")}
         </p>
         <div className="flex items-center gap-2.5">

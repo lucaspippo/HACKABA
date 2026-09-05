@@ -129,13 +129,13 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
           <div className="flex items-center gap-2.5">
             <AngelaMark size={32} estado={tareas.length ? "esperando" : "idle"} />
             <div className="min-w-0">
-              <p className="font-display text-[1.05rem] font-bold leading-tight">{t("piso.saludo", { nombre })}</p>
-              <p className="text-[0.85rem] text-tinta-suave">{tRol(rol)}</p>
+              <p className="font-display text-lg font-bold leading-tight">{t("piso.saludo", { nombre })}</p>
+              <p className="text-sm text-tinta-suave">{tRol(rol)}</p>
             </div>
           </div>
           <button
             onClick={() => onAbrirAngela?.(null)}
-            className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+            className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
           >
             {t("piso.hablar_angela")} <MessageCircle size={15} />
           </button>
@@ -153,7 +153,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
               onChange={(e) => setConsulta(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && consulta.trim()) { onAbrirAngela?.(consulta.trim()); setConsulta(""); } }}
               placeholder={t("rol.consulta_ph")}
-              className="min-h-9 min-w-0 flex-1 bg-transparent text-[0.92rem] outline-none"
+              className="min-h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
             />
             <button
               onClick={() => { if (consulta.trim()) { onAbrirAngela?.(consulta.trim()); setConsulta(""); } }}
@@ -184,7 +184,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
           alguien te dejó. Van ARRIBA de las derivadas: son las que te pidieron. */}
       {asignadas.length > 0 && (
         <section>
-          <h2 className="mb-2 font-display text-[1.05rem] font-bold">{t("rol.asignadas_titulo")}</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("rol.asignadas_titulo")}</h2>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-violeta/25 bg-crema px-3 sombra-papel">
             {asignadas.map((r) => (
               <div key={r.id} className="flex items-center gap-3 border-b border-linea py-3 last:border-0">
@@ -193,7 +193,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
                   className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-violeta/50 text-violeta transition-colors active:bg-violeta/10 disabled:opacity-50">
                   {cerrandoTarea === r.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={14} />}
                 </button>
-                <span className="min-w-0 flex-1 text-[0.9rem] leading-snug text-tinta">{r.texto}</span>
+                <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">{r.texto}</span>
               </div>
             ))}
           </div>
@@ -202,10 +202,10 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
 
       {/* MIS TAREAS DE HOY — derivadas de datos reales. Si no hay, se dice honesto. */}
       <section>
-        <h2 className="mb-2 font-display text-[1.05rem] font-bold">{t("piso.tareas_titulo")}</h2>
+        <h2 className="mb-2 font-display text-lg font-bold">{t("piso.tareas_titulo")}</h2>
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
           {tareas.length === 0 ? (
-            <div className="flex items-center gap-2 py-3.5 text-[0.88rem] text-tinta-suave">
+            <div className="flex items-center gap-2 py-3.5 text-sm text-tinta-suave">
               <CheckCircle2 size={16} className="text-salvia" /> {t("piso.tareas_al_dia")}
             </div>
           ) : (
@@ -225,8 +225,8 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
                     <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[def.tono]}`} />
                     <Icon size={17} className="shrink-0 text-tinta-suave" />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[0.9rem] font-medium leading-snug text-tinta line-clamp-2">{tituloTarea(x)}</span>
-                      {sub && <span className="block text-[0.76rem] text-tinta-suave">{sub}</span>}
+                      <span className="block text-sm font-medium leading-snug text-tinta line-clamp-2">{tituloTarea(x)}</span>
+                      {sub && <span className="block text-xs text-tinta-suave">{sub}</span>}
                     </span>
                     {aplicando
                       ? <Loader2 size={16} className="shrink-0 animate-spin text-violeta" />
@@ -237,13 +237,13 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
                     <div className="flex items-center gap-2 pb-3 pl-6">
                       <button
                         onClick={() => cerrar(x)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-salvia px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema active:scale-95"
+                        className="inline-flex items-center gap-1.5 rounded-full bg-salvia px-3.5 py-1.5 text-sm font-semibold text-crema active:scale-95"
                       >
                         <Check size={14} /> {t("piso.tarea_confirmar")}
                       </button>
                       <button
                         onClick={() => setConfirmando(null)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta-suave"
                       >
                         <X size={14} /> {t("piso.tarea_cancelar")}
                       </button>
@@ -269,10 +269,10 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
                        active:scale-[0.99] sombra-papel">
             <Mic size={18} className="shrink-0 text-violeta" />
             <span className="min-w-0 flex-1">
-              <span className="block text-[0.92rem] font-semibold leading-snug text-tinta">
+              <span className="block text-sm font-semibold leading-snug text-tinta">
                 {t("voz.titulo")}
               </span>
-              <span className="block text-[0.78rem] leading-snug text-tinta-suave">
+              <span className="block text-xs leading-snug text-tinta-suave">
                 {t("rol.acc_hablar_sub")}
               </span>
             </span>
@@ -286,7 +286,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
           matriz no permite. */}
       {acciones.length > 0 && (
         <section>
-          <h2 className="mb-2 font-display text-[1.05rem] font-bold">{t("rol.acciones_titulo")}</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("rol.acciones_titulo")}</h2>
           <div className="grid grid-cols-1 gap-2">
             {acciones.map((a) => {
               const Icon = ICONO[a.icon] || ClipboardList;
@@ -296,8 +296,8 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
                     a.destaca ? "border-violeta/30 bg-violeta/[0.05]" : "border-linea bg-crema"}`}>
                   <Icon size={18} className={`shrink-0 ${a.destaca ? "text-violeta" : "text-tinta-suave"}`} />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[0.92rem] font-semibold leading-snug text-tinta">{t(`rol.acc_${a.id}`)}</span>
-                    <span className="block text-[0.78rem] leading-snug text-tinta-suave">{t(`rol.acc_${a.id}_sub`)}</span>
+                    <span className="block text-sm font-semibold leading-snug text-tinta">{t(`rol.acc_${a.id}`)}</span>
+                    <span className="block text-xs leading-snug text-tinta-suave">{t(`rol.acc_${a.id}_sub`)}</span>
                   </span>
                   <ArrowRight size={15} className="shrink-0 text-tinta-suave" />
                 </button>
@@ -310,13 +310,13 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
       {/* PREGUNTARLE A ÁNGELA — chips de preguntas reales (responde con el dato) */}
       {chips.length > 0 && (
         <section>
-          <h2 className="mb-2 font-display text-[1.05rem] font-bold">{t("piso.preguntar_titulo")}</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("piso.preguntar_titulo")}</h2>
           <div className="flex flex-col gap-2">
             {chips.map((c) => (
               <button key={c.k} onClick={() => onAbrirAngela?.(t(c.k))}
                 className="flex items-center gap-2.5 rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-3 text-left transition-colors active:bg-papel-hondo/40 sombra-papel">
                 <MessageCircle size={16} className="shrink-0 text-violeta" />
-                <span className="min-w-0 flex-1 text-[0.9rem] leading-snug text-tinta">{t(c.k)}</span>
+                <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">{t(c.k)}</span>
                 <ArrowRight size={15} className="shrink-0 text-tinta-suave" />
               </button>
             ))}

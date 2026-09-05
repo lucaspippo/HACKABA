@@ -70,12 +70,12 @@ export default function Auditoria() {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl font-bold">{t("audit.titulo")}</h1>
-        <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("audit.subtitulo")}</p>
+        <p className="mt-1 text-sm text-tinta-suave">{t("audit.subtitulo")}</p>
       </header>
 
       <AngelaSays>{t("audit.angela")}</AngelaSays>
 
-      {d === false && <p className="text-[0.9rem] text-rojo">{t("audit.error")}</p>}
+      {d === false && <p className="text-sm text-rojo">{t("audit.error")}</p>}
 
       {/* Resumen de confianza, perilla y filtros en un solo panel: se leen
           como "los controles de esta pantalla", no como bloques sueltos
@@ -112,7 +112,7 @@ export default function Auditoria() {
               const on = clase === c;
               return (
                 <button key={c} onClick={() => setClase(on ? null : c)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors ${
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
                     on ? "border-violeta bg-violeta/[0.06] text-violeta"
                        : "border-linea text-tinta-suave hover:text-tinta"}`}>
                   <Icon size={12} /> {t(`audit.clase_${c}`)}
@@ -126,19 +126,19 @@ export default function Auditoria() {
               <Search size={13} className="text-tinta-suave" />
               <input value={q} onChange={(e) => setQ(e.target.value)}
                 placeholder={t("audit.buscar")} aria-label={t("audit.buscar")}
-                className="w-52 bg-transparent text-[0.82rem] text-tinta outline-none" />
+                className="w-52 bg-transparent text-sm text-tinta outline-none" />
             </label>
             {(r?.actores || []).length > 1 && (
               <select value={actor} onChange={(e) => setActor(e.target.value)}
                 aria-label={t("audit.quien")}
-                className="rounded-full border border-linea bg-papel px-3 py-1.5 text-[0.82rem] text-tinta">
+                className="rounded-full border border-linea bg-papel px-3 py-1.5 text-sm text-tinta">
                 <option value="">{t("audit.todos")}</option>
                 {r.actores.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             )}
             {filtrando && (
               <button onClick={() => { setClase(null); setActor(""); setQ(""); }}
-                className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+                className="inline-flex items-center gap-1 text-sm font-semibold text-tinta-suave hover:text-tinta">
                 <X size={12} /> {t("audit.limpiar")}
               </button>
             )}
@@ -151,10 +151,10 @@ export default function Auditoria() {
       {d && (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
           <div className="flex items-baseline justify-between gap-3 border-b border-linea px-4 py-3">
-            <p className="font-display text-[1.05rem] font-bold leading-tight">
+            <p className="font-display text-lg font-bold leading-tight">
               {t("audit.lista_titulo")}
             </p>
-            <p className="text-[0.78rem] text-tinta-suave">
+            <p className="text-xs text-tinta-suave">
               {t("audit.mostrando", { n: num(d.mostrados), total: num(d.total_filtrado) })}
               {/* lo que se deja fuera, DICHO: un registro que esconde filas en
                   silencio deja de servir para lo único que sirve. */}
@@ -164,7 +164,7 @@ export default function Auditoria() {
             </p>
           </div>
           {d.eventos.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[0.88rem] text-tinta-suave">
+            <p className="px-4 py-8 text-center text-sm text-tinta-suave">
               {t("audit.sin_resultados")}
             </p>
           ) : (
@@ -176,7 +176,7 @@ export default function Auditoria() {
       {hilo && <Hilo hilo={hilo} hoyISO={r?.hoy} t={t} onCerrar={() => setSujeto(null)} />}
 
       <p className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4
-                    text-[0.82rem] leading-snug text-tinta-suave">
+                    text-sm leading-snug text-tinta-suave">
         {t("audit.nota_pie")}
       </p>
     </div>
@@ -208,7 +208,7 @@ function Dias({ eventos, hoyISO, t, onHilo }) {
 
   return grupos.map((g) => (
     <div key={g.dia}>
-      <p className="border-b border-linea/60 bg-papel-hondo/40 px-4 py-1.5 text-[0.7rem]
+      <p className="border-b border-linea/60 bg-papel-hondo/40 px-4 py-1.5 text-xs
                     font-semibold uppercase tracking-[0.12em] text-tinta-suave">
         {etiquetaDia(g.dia, hoyISO, t)}
       </p>
@@ -228,13 +228,13 @@ function FilaAudit({ e, t, onHilo }) {
           <Icon size={14} className={tono} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.9rem] leading-snug text-tinta">
+          <span className="block text-sm leading-snug text-tinta">
             {e.texto}
             {e.sujeto && <span className="text-tinta-suave"> · {e.sujeto}</span>}
           </span>
           {/* QUIÉN PUSO EL SÍ. Es la línea entera del bloque F: sin esto, el
               registro dice qué pasó pero no que alguien lo decidió. */}
-          <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[0.76rem]">
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
             <Gate e={e} t={t} />
             {e.impacto != null && (
               <span className="plata font-medium text-tinta">{peso(e.impacto)}</span>
@@ -246,7 +246,7 @@ function FilaAudit({ e, t, onHilo }) {
             )}
           </span>
         </span>
-        <span className="shrink-0 pt-0.5 text-[0.74rem] text-tinta-suave">
+        <span className="shrink-0 pt-0.5 text-xs text-tinta-suave">
           {(e.cuando || "").slice(11, 16)}
         </span>
         <ChevronDown size={15}
@@ -255,7 +255,7 @@ function FilaAudit({ e, t, onHilo }) {
 
       {abierto && (
         <div className="space-y-2 border-t border-linea/60 bg-papel-hondo/30 px-4 py-3 pl-14">
-          <p className="text-[0.74rem] uppercase tracking-wide text-tinta-suave">
+          <p className="text-xs uppercase tracking-wide text-tinta-suave">
             {t("audit.det_cuando")} <span className="normal-case text-tinta">{e.cuando}</span>
           </p>
           <Lado titulo={t("audit.det_antes")} v={e.antes} vacio={t("audit.det_nada")} />
@@ -263,7 +263,7 @@ function FilaAudit({ e, t, onHilo }) {
           {e.en_hilo > 1 && (
             <button onClick={() => onHilo(e.sujeto)}
               className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema
-                         px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+                         px-3 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
               <Link2 size={12} /> {t("audit.ver_hilo", { n: num(e.en_hilo), sujeto: e.sujeto })}
             </button>
           )}
@@ -311,7 +311,7 @@ function Gate({ e, t }) {
 function Lado({ titulo, v, vacio }) {
   const pares = v && typeof v === "object" ? Object.entries(v) : [];
   return (
-    <div className="text-[0.8rem]">
+    <div className="text-sm">
       <span className="text-tinta-suave">{titulo}: </span>
       {pares.length === 0 ? (
         <span className="text-tinta-suave/70">{vacio}</span>
@@ -336,7 +336,7 @@ function Hilo({ hilo, hoyISO, t, onCerrar }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-violeta/30 bg-crema p-4 sombra-papel">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-display text-[1.02rem] font-bold leading-tight">
+        <p className="font-display text-lg font-bold leading-tight">
           {t("audit.hilo_titulo", { sujeto: hilo.sujeto })}
         </p>
         <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
@@ -345,8 +345,8 @@ function Hilo({ hilo, hoyISO, t, onCerrar }) {
         {hilo.eventos.map((e) => (
           <li key={e.id} className="relative">
             <span className="absolute -left-[1.42rem] top-1.5 h-2 w-2 rounded-full bg-violeta" />
-            <p className="text-[0.88rem] leading-snug text-tinta">{e.texto}</p>
-            <p className="text-[0.76rem] text-tinta-suave">
+            <p className="text-sm leading-snug text-tinta">{e.texto}</p>
+            <p className="text-xs text-tinta-suave">
               {etiquetaDia(e.dia, hoyISO, t)} · {e.actor}
               {e.impacto != null && <span className="plata"> · {peso(e.impacto)}</span>}
             </p>
@@ -381,10 +381,10 @@ function PanelAutonomia({ aut, onCambio }) {
         className="flex w-full items-center gap-3 text-left">
         <ShieldCheck size={17} className="shrink-0 text-violeta" />
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-[1.02rem] font-bold leading-tight">
+          <span className="block font-display text-lg font-bold leading-tight">
             {t("audit.aut_titulo")}
           </span>
-          <span className="block text-[0.82rem] text-tinta-suave">{t("audit.aut_sub")}</span>
+          <span className="block text-sm text-tinta-suave">{t("audit.aut_sub")}</span>
         </span>
         <ChevronDown size={16} className={`shrink-0 text-tinta-suave transition-transform ${abierto ? "rotate-180" : ""}`} />
       </button>
@@ -394,11 +394,11 @@ function PanelAutonomia({ aut, onCambio }) {
           {aut.clases.map((c) => (
             <div key={c.clase} className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 text-[0.9rem] font-semibold text-tinta">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-tinta">
                   {!c.graduable && <Lock size={12} className="shrink-0 text-tinta-suave" />}
                   {c.label}
                 </p>
-                {c.motivo && <p className="text-[0.8rem] leading-snug text-tinta-suave">{c.motivo}</p>}
+                {c.motivo && <p className="text-sm leading-snug text-tinta-suave">{c.motivo}</p>}
               </div>
               {c.graduable ? (
                 <div className="flex shrink-0 gap-1.5">
@@ -406,7 +406,7 @@ function PanelAutonomia({ aut, onCambio }) {
                     <button key={n.id} disabled={guardando === c.clase}
                       onClick={() => c.nivel !== n.id && cambiar(c.clase, n.id)}
                       title={n.detalle}
-                      className={`rounded-full border px-3 py-1.5 text-[0.78rem] font-semibold transition-colors disabled:opacity-50 ${
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
                         c.nivel === n.id ? "border-violeta bg-violeta text-crema"
                                          : "border-linea bg-crema text-tinta-suave hover:text-tinta"}`}>
                       {n.label}
@@ -414,7 +414,7 @@ function PanelAutonomia({ aut, onCambio }) {
                   ))}
                 </div>
               ) : (
-                <span className="shrink-0 rounded-full bg-papel-hondo px-3 py-1.5 text-[0.78rem]
+                <span className="shrink-0 rounded-full bg-papel-hondo px-3 py-1.5 text-xs
                                  font-semibold text-tinta-suave">{c.nivel_label}</span>
               )}
             </div>
@@ -424,9 +424,9 @@ function PanelAutonomia({ aut, onCambio }) {
               el tipo de cosa que este registro existe para no hacer. */}
           <div className="flex items-start gap-2 rounded-xl border border-hielo/25 bg-hielo/[0.05] px-3 py-2.5">
             <Bot size={14} className="mt-0.5 shrink-0 text-hielo" />
-            <p className="text-[0.82rem] leading-snug text-tinta">{aut.ya_hace_sola.texto}</p>
+            <p className="text-sm leading-snug text-tinta">{aut.ya_hace_sola.texto}</p>
           </div>
-          <p className="text-[0.8rem] leading-snug text-tinta-suave">{aut.proximo_paso}</p>
+          <p className="text-sm leading-snug text-tinta-suave">{aut.proximo_paso}</p>
         </div>
       )}
     </div>
@@ -439,7 +439,7 @@ function Tile({ valor, label, tono, icono: Icon }) {
       <p className={`plata flex items-center gap-1.5 text-xl font-medium leading-none ${tono}`}>
         {Icon && <Icon size={17} />}{valor}
       </p>
-      <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{label}</p>
+      <p className="mt-1 text-xs leading-snug text-tinta-suave">{label}</p>
     </div>
   );
 }
