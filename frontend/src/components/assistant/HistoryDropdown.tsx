@@ -54,14 +54,14 @@ export default function HistoryDropdown() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-10 z-50 w-80 rounded-2xl border border-linea bg-crema p-2 shadow-lg">
-            <div className="mb-2 flex items-center gap-2 rounded-xl border border-linea bg-papel px-3 py-2">
+            <div className="mb-2 flex items-center gap-2 rounded-xl border border-linea bg-papel px-3 py-2 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-violeta/40">
               <Search size={14} className="shrink-0 text-tinta-suave" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("chat.history.search")}
-                className="w-full bg-transparent text-[0.82rem] text-tinta outline-none placeholder:text-tinta-suave"
+                className="w-full bg-transparent text-[0.82rem] text-tinta outline-none focus-visible:shadow-none placeholder:text-tinta-suave"
               />
             </div>
             <div className="max-h-80 overflow-y-auto">
