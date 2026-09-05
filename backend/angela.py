@@ -123,7 +123,7 @@ def _usuario_para_manual() -> dict:
             "es_admin": False, "features": sorted(feats or [])}
 
 
-def tools_para(features: set[str] | None) -> list[dict]:
+def tools_para(features: set[str] | None, knowledge_capture: bool = True) -> list[dict]:
     """El subconjunto de TOOLS que este usuario puede usar (capa 1).
 
     Returns the definitions as the model sees them, `status` line included.
@@ -131,6 +131,8 @@ def tools_para(features: set[str] | None) -> list[dict]:
     scripts/generate_tool_types.py.
     """
     catalog = _tools_for_model()
+    if not knowledge_capture:
+        catalog = [t for t in catalog if t["name"] != "proponer_conocimiento"]
     if features is None:
         return list(catalog)
 
@@ -3473,6 +3475,38 @@ def _with_tool_cache_control(tools: list[dict]) -> list[dict]:
     return marked
 
 
+KNOWLEDGE_CAP = 12
+
+
+def _knowledge_block(name: str | None) -> str:
+    """What this business taught Ángela, as context she can narrate with.
+
+    The engines in core/ already APPLY these pieces to the numbers; this only
+    lets her say why a number looks the way it does instead of rediscovering
+    it. Scope is `visibles_para`, so an employee never reads another node's
+    rules through the prompt."""
+    if not name:
+        return ""
+    try:
+        import auth as _auth
+        from core import conocimiento
+        user = _auth.USUARIOS.get(name) or {}
+        pieces = conocimiento.visibles_para(
+            {"username": name, "es_admin": bool(user.get("es_admin"))},
+            conocimiento.listar(incluir_pausadas=False))
+    except Exception:  # noqa: BLE001
+        return ""
+    if not pieces:
+        return ""
+    lines = "".join(
+        f"\n- [{p.get('nodo')}] {conocimiento.texto_en(p, _idioma_actual())}"
+        + (f" (sobre {p['entidad']})" if p.get("entidad") else "")
+        for p in pieces[:KNOWLEDGE_CAP])
+    return ("\n\nLO QUE ESTE NEGOCIO TE ENSEÑÓ (reglas ya activas; los análisis "
+            "YA las aplican — usalas para explicar por qué un número es así, "
+            "nunca para recalcular a mano):" + lines)
+
+
 def _user_turn(message: str, events: list[str]) -> dict:
     """The user's message, preceded by what they did in the interface since the
     last reply. Same rule as on-screen context: a record of their own actions,
@@ -3493,6 +3527,7 @@ def _prepare_turn(message, history, role, name, features, language):
         from core import perfiles
         language = perfiles.idioma_de(name) if name else paths.DEFAULT_LANG
     _set_sesion(usuario=name, rol=role, features=features, idioma=language)
+    _settings = memoria.vista(name) if name else {}
 
     who = ""
     if name or role:
@@ -3533,6 +3568,8 @@ def _prepare_turn(message, history, role, name, features, language):
                 who += f"\n- Nota: {k} = {v}"
     except Exception:  # noqa: BLE001
         pass
+    if _settings.get("knowledge_in_context", True):
+        who += _knowledge_block(name)
     business_context = _resumen_para_prompt() if _tiene_feature("inventario") else (
         "El resumen general del inventario no corresponde al rol de esta persona. "
         "No cites cifras globales del negocio (plata inmovilizada, catálogo) ni datos "
@@ -3557,7 +3594,8 @@ def _prepare_turn(message, history, role, name, features, language):
     )
 
     model = config.modelo_para()
-    available_tools = _with_tool_cache_control(tools_para(_features_actuales()))
+    available_tools = _with_tool_cache_control(
+        tools_para(_features_actuales(), _settings.get("knowledge_capture", True)))
 
     messages: list[dict] = []
     for turn in (history or [])[-6:]:
