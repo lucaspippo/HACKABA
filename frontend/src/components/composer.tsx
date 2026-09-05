@@ -151,7 +151,7 @@ export function ComposerMenu({
       data-open={open || undefined}
       className={cn(
         floating,
-        "absolute bottom-full z-10 mb-2 flex w-72 flex-col gap-0.5 rounded-2xl p-1.5",
+        "absolute bottom-full z-10 mb-2 flex w-72 max-w-[calc(100%-0.5rem)] max-h-64 flex-col gap-0.5 overflow-y-auto rounded-2xl p-1.5",
         align === "start"
           ? "start-0 origin-bottom-left"
           : "end-0 origin-bottom-right",
@@ -223,8 +223,10 @@ export function ComposerPersonItem({
       <span className="bg-foreground/[0.06] text-foreground/45 flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-medium">
         {person.name[0]}
       </span>
-      <span className="flex-1 truncate text-start">{person.name}</span>
-      <span className={cn(mono, "text-foreground/35")}>{person.role}</span>
+      <span className="min-w-0 flex-1 truncate text-start">{person.name}</span>
+      <span className={cn(mono, "max-w-[45%] shrink truncate text-foreground/35")}>
+        {person.role}
+      </span>
     </ComposerMenuItem>
   );
 }
@@ -487,6 +489,7 @@ export interface ComposerContextLabels {
   tools: string;
   messages: string;
   total: string;
+  trigger: string;
 }
 
 const DEFAULT_CONTEXT_LABELS: ComposerContextLabels = {
@@ -495,6 +498,7 @@ const DEFAULT_CONTEXT_LABELS: ComposerContextLabels = {
   tools: "Tools",
   messages: "Messages",
   total: "Total",
+  trigger: "Context usage",
 };
 
 export function ComposerContext({
@@ -583,7 +587,7 @@ export function ComposerContext({
       </div>
       <button
         type="button"
-        aria-label="Context usage"
+        aria-label={labels.trigger}
         className={cn(
           ghostButton,
           "size-8",
@@ -618,13 +622,19 @@ export function ComposerContext({
 
 export function ComposerVoiceButton({
   active,
+  startLabel = "Start voice input",
+  stopLabel = "Stop recording",
   className,
   ...props
-}: Omit<ComponentProps<"button">, "children"> & { active: boolean }) {
+}: Omit<ComponentProps<"button">, "children"> & {
+  active: boolean;
+  startLabel?: string;
+  stopLabel?: string;
+}) {
   return (
     <button
       type="button"
-      aria-label={active ? "Stop recording" : "Start voice input"}
+      aria-label={active ? stopLabel : startLabel}
       data-slot="composer-voice-button"
       className={cn(
         active
@@ -649,16 +659,20 @@ export function ComposerVoiceButton({
 export function ComposerSend({
   streaming,
   idle,
+  sendLabel = "Send message",
+  stopLabel = "Stop generating",
   className,
   ...props
 }: Omit<ComponentProps<"button">, "children"> & {
   streaming: boolean;
   idle: boolean;
+  sendLabel?: string;
+  stopLabel?: string;
 }) {
   return (
     <button
       type="button"
-      aria-label={streaming ? "Stop generating" : "Send message"}
+      aria-label={streaming ? stopLabel : sendLabel}
       data-slot="composer-send"
       className={cn(
         "grid size-8 place-items-center rounded-full",
