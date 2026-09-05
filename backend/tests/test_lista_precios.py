@@ -119,26 +119,6 @@ def test_confirmar_enruta_y_narra():
     assert intacto["costo_iva"] == salto["costo_iva"]
 
 
-def test_fallback_revert_por_chat():
-    a = _articulo(0)
-    lista_precios.aplicar([{"codigo": a["codigo"],
-                            "precio_nuevo": round(a["costo_iva"] * 1.05, 2)}], actor="test")
-    hash_mutado = _hash()
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
-    r = angela._fallback("revert the price update")
-    assert "revertir_version" in r["tools_used"]
-    assert _hash() != hash_mutado  # volvió
-    assert "back" in r["answer"].lower()
-
-
-def test_fallback_revert_sin_backup_honesto(monkeypatch):
-    # sin backups DE LISTA a la vista (el índice real acumula los de otros tests)
-    monkeypatch.setattr(store.versiones, "list", lambda: [])
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
-    r = angela._fallback("revertí la lista de precios")
-    assert "ninguna lista" in r["answer"].lower()
-
-
 def test_muestra_lista_existe_en_demo():
     """El archivo de muestra (PNG + CSV) vive en data-demo, con las 2 anomalías."""
     backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

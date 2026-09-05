@@ -1,8 +1,9 @@
 # Ángela chat experience — design
 
 - **Date:** 2026-09-02
-- **Status:** approved (design). Phase 1 and Phase 3's presenter registry
-  landed; D11 added 2026-09-05. Phase 1.5 and Phase 2 not started.
+- **Status:** approved (design). Phase 1, Phase 1.5 (D9: `_fallback` removed)
+  and Phase 3's presenter registry landed; D11 added 2026-09-05. Phase 2 not
+  started.
 - **Scope:** the Ángela chat surface (frontend `components/assistant/`, `lib/chat*`,
   `views/Chat*`) and the `/api/angela/stream` contract that feeds it.
 

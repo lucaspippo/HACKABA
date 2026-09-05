@@ -88,7 +88,7 @@ def _sin_proveedor(monkeypatch):
 
 def test_modo_se_evalua_en_runtime(monkeypatch):
     _sin_proveedor(monkeypatch)
-    assert config.modo() == "simulado"
+    assert config.modo() == "offline"
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     assert config.modo() == "claude"
 

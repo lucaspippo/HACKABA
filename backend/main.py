@@ -587,7 +587,7 @@ def health():
         "ok": True,
         "servicio": "polpilot-app",  # the service, not the tenant — `tenant` below says which
         "angela_online": config.model_disponible(),
-        "modo_angela": config.modo(),          # "simulado" o "claude", evaluado en runtime
+        "modo_angela": config.modo(),          # "claude" or "offline", evaluated at runtime
         "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
         "routing_modelos": config.ROUTING_ACTIVO,  # apagado durante validación
         "idioma_default": paths.DEFAULT_LANG,  # default del tenant (Login lo usa pre-sesión)

@@ -3,8 +3,8 @@ chosen by configuration (LLM_PROVIDER + credentials), never by code edits.
 
 Regression cover for the concrete bug this feature fixes: a correctly
 configured AI Gateway (ANTHROPIC_API_KEY deliberately EMPTY, credential lives
-in AI_GATEWAY_API_KEY) must NOT fall through to the deterministic
-'simulado' fallback — modo() must report 'claude'.
+in AI_GATEWAY_API_KEY) must NOT fall through to offline — modo() must
+report 'claude'.
 
 No test in this file makes a network call: the SDK constructor is
 monkeypatched to capture kwargs instead of connecting anywhere.
@@ -49,7 +49,7 @@ def test_explicit_provider_without_its_own_credential_is_not_configured(monkeypa
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     assert config_module.provider() is None
     assert config_module.model_disponible() is False
-    assert config_module.modo() == "simulado"
+    assert config_module.modo() == "offline"
 
 
 def test_autodetect_direct_key_only_selects_anthropic(monkeypatch):
@@ -75,13 +75,13 @@ def test_autodetect_neither_configured_falls_back(monkeypatch):
     _clear_llm_env(monkeypatch)
     assert config_module.provider() is None
     assert config_module.model_disponible() is False
-    assert config_module.modo() == "simulado"
+    assert config_module.modo() == "offline"
 
 
 def test_gateway_with_empty_anthropic_api_key_reports_claude_mode(monkeypatch):
     """The exact bug being fixed: ANTHROPIC_API_KEY is deliberately EMPTY (a
     correctly configured gateway deployment), the credential lives in
-    AI_GATEWAY_API_KEY — modo() must say 'claude', not 'simulado'."""
+    AI_GATEWAY_API_KEY — modo() must say 'claude', not 'offline'."""
     _clear_llm_env(monkeypatch)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
     monkeypatch.setenv("AI_GATEWAY_API_KEY", "gw-test-key")
