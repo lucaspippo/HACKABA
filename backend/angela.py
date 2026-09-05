@@ -851,14 +851,14 @@ TOOLS = [
     },
     {
         "name": "proponer_conocimiento",
-        "description": "Note down a rule, exception, or BUSINESS context (not this user's own "
-        "view preference — use 'recordar' for that) that came up in the conversation and is "
-        "worth the system remembering permanently: how to treat a customer, why something is "
-        "different from normal, a protocol for a given event. Any user can propose one — it "
-        "lands PENDING review (never active right away), and whoever has that node's module "
-        "approves or discards it before it affects anything. Use it when what you were told is "
-        "about the business in general, not just this chat — and offer it yourself when you "
-        "notice something that valuable, without waiting to be asked.",
+        "description": "Propose remembering a rule, exception, or BUSINESS context (not this "
+        "user's own view preference) that came up in the conversation and is worth keeping "
+        "permanently: how to treat a customer, why something is different from normal, a "
+        "protocol for a given event. This SAVES NOTHING on its own — it puts a chip under your "
+        "reply that the person taps to keep or discard. So say you're offering to remember it, "
+        "never that you already did. Use it whenever someone tells you to remember/note/not "
+        "forget something about the business, and offer it yourself when a turn surfaces "
+        "something that durable, without waiting to be asked.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -1803,18 +1803,22 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         m = memoria.get(_usuario_actual())
         return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}, None
     if name == "proponer_conocimiento":
-        from core import conocimiento, fechas
-        actor = _usuario_actual()
+        from core import conocimiento
+        if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):
+            return {"ok": False, "motivo": "capture_off"}, None
         try:
-            pieza = conocimiento.crear(
+            propuesta = conocimiento.validar_propuesta(
                 texto=args.get("texto", ""), tipo="contexto",
                 ambito=args.get("ambito") or ("global" if not args.get("entidad") else "categoria"),
                 nodo=args.get("nodo", ""), efecto="contexto_para_angela",
-                entidad=args.get("entidad"), estado="pendiente",
-                origen={"quien": actor, "cuando": fechas.hoy().isoformat()})
+                entidad=args.get("entidad"))
         except conocimiento.ConocimientoInvalido as e:
             return {"ok": False, "motivo": str(e)}, None
-        return {"ok": True, "pieza": pieza, "pendiente": True}, None
+        ya = conocimiento.equivalente(texto=propuesta["texto"], nodo=propuesta["nodo"],
+                                      entidad=propuesta["entidad"])
+        if ya:
+            return {"ok": True, "propuesta": propuesta, "ya_guardada": ya["id"]}, None
+        return {"ok": True, "propuesta": propuesta}, None
     if name == "reordenar_inicio":
         # P19·B: el Home se reordena por chat y queda persistido por usuario.
         if args.get("reset"):
