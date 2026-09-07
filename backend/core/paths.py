@@ -34,16 +34,25 @@ _IDENTIDAD = {
     "piloto": {"empresa": "Supermercados Horizonte",
                     "nombre_corto": "Horizonte",
                     "fuente": "Faro ERP · núcleo de verdad PolPilot",
+                    "sistema_gestion": "Faro",
                     "logo": "/api/marca/logo"},   # servido del data dir del piloto
     "demo": {"empresa": "Distribuidora del Litoral",
              "nombre_corto": "Distribuidora del Litoral",
              "fuente": "ERP de la distribuidora · núcleo de verdad PolPilot (DEMO)",
+             "sistema_gestion": "Odoo",
              "logo": "/logos/litoral.png"},        # empresa ficticia: bundle seguro
 }
 EMPRESA = _IDENTIDAD.get(TENANT, _IDENTIDAD["demo"])["empresa"]
 NOMBRE_CORTO = _IDENTIDAD.get(TENANT, _IDENTIDAD["demo"])["nombre_corto"]
 FUENTE = _IDENTIDAD.get(TENANT, _IDENTIDAD["demo"])["fuente"]
 LOGO = _IDENTIDAD.get(TENANT, _IDENTIDAD["demo"])["logo"]
+# Which management system this tenant's data flows back INTO. Tenant identity,
+# not a UI constant: the product mounts on whatever ERP the business already
+# uses, and the operation map's "returns to <system>" band names it. Read from
+# the same table as the rest of the identity so a new tenant sets it in ONE
+# place (see deploy/DEPLOY.md §4 on what a new slug does not get for free).
+SISTEMA_GESTION = _IDENTIDAD.get(TENANT, _IDENTIDAD["demo"]).get(
+    "sistema_gestion", "ERP")
 
 # Idioma default del tenant (config por env, NO hardcodeado por nombre de tenant).
 # El demo arranca con POLPILOT_DEFAULT_LANG=en para los reviewers de YC; el piloto

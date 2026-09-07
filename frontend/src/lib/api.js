@@ -239,6 +239,12 @@ export const api = {
   // EL CEREBRO — entidades del negocio y sus cruces reales (vista nueva del
   // mapa). Aditivo: el mapa de árbol no lo consume.
   grafo: () => get("/api/grafo"),
+  // THE OPERATION MAP — the physical chain (origin → warehouse → destination)
+  // plus the context layer no ERP captures. Additive: neither the sources
+  // tree nor the brain consume these.
+  mapaOperacion: () => get("/api/mapa-operacion"),
+  mapaOperacionNodo: (nid) =>
+    get(`/api/mapa-operacion/nodo/${encodeURIComponent(nid)}`),
   fase: () => get("/api/fase"),
   articulos: () => get("/api/articulos"),
   imported: () => get("/api/imported"),

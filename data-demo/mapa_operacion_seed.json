@@ -1,0 +1,1139 @@
+{
+ "_nota": "Lo que le falta al seed de apartados.json para que el mapa de la operación cierre el recorrido. Vive aparte porque la suite reescribe apartados.json. Lo mergea core/mapa_operacion.py.",
+ "items_por_pedido": {
+  "P-4401": [
+   {
+    "codigo": 1100,
+    "producto": "LENTEJAS EL PARANA 400G (X12U)",
+    "bultos": 13,
+    "zona": "Pasillo 1 - Rack C"
+   },
+   {
+    "codigo": 1106,
+    "producto": "AZUCAR DON TIMOTEO X1KG (X10U)",
+    "bultos": 23,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1128,
+    "producto": "GALLETITAS SURTIDAS GUARANI 400G (X20U)",
+    "bultos": 29,
+    "zona": "Pasillo 3 - Rack C"
+   },
+   {
+    "codigo": 1175,
+    "producto": "AGUA SIN GAS SANTA CLARA 2L (X6U)",
+    "bultos": 30,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1206,
+    "producto": "VINO TINTO EL PARANA 750CC (X6U)",
+    "bultos": 9,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1332,
+    "producto": "QUESO SARDO SANTA CLARA (HORMA)",
+    "bultos": 17,
+    "zona": "Cámara congelados"
+   },
+   {
+    "codigo": 1382,
+    "producto": "LAVANDINA EL LITORAL 2L (X8U)",
+    "bultos": 19,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1406,
+    "producto": "JABON EN POLVO MONTE CHICO 3KG (X4U)",
+    "bultos": 8,
+    "zona": "Pasillo 6 - Rack A"
+   }
+  ],
+  "P-4402": [
+   {
+    "codigo": 1070,
+    "producto": "ARROZ LARGO FINO EL LITORAL X1KG (X10U)",
+    "bultos": 22,
+    "zona": "Pasillo 5 - Rack A"
+   },
+   {
+    "codigo": 1089,
+    "producto": "PURE DE TOMATE MONTE CHICO 520G (X12U)",
+    "bultos": 19,
+    "zona": "Pasillo 1 - Rack C"
+   },
+   {
+    "codigo": 1137,
+    "producto": "ALFAJOR TRIPLE CAMPO ALEGRE (X24U)",
+    "bultos": 9,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1274,
+    "producto": "PALETA EL PARANA (HORMA)",
+    "bultos": 14,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1338,
+    "producto": "QUESO SARDO MONTE CHICO (HORMA)",
+    "bultos": 23,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1402,
+    "producto": "JABON EN POLVO EL LITORAL 3KG (X4U)",
+    "bultos": 16,
+    "zona": "Pasillo 3 - Rack C"
+   }
+  ],
+  "P-4403": [
+   {
+    "codigo": 1004,
+    "producto": "ACEITE GIRASOL COSTA DULCE 900CC (X12U)",
+    "bultos": 18,
+    "zona": "Pasillo 4 - Rack B"
+   },
+   {
+    "codigo": 1020,
+    "producto": "ACEITE MEZCLA LA RIBERA 1.5L (X8U)",
+    "bultos": 6,
+    "zona": "Pasillo 2 - Rack A"
+   },
+   {
+    "codigo": 1238,
+    "producto": "MANTECA DON TIMOTEO 200G (X30U)",
+    "bultos": 9,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1268,
+    "producto": "JAMON COCIDO DON TIMOTEO (HORMA)",
+    "bultos": 14,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1283,
+    "producto": "SALAME MILAN EL LITORAL (PLANCHA)",
+    "bultos": 16,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1307,
+    "producto": "QUESO BARRA MONTE CHICO (HORMA)",
+    "bultos": 13,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4404": [
+   {
+    "codigo": 1051,
+    "producto": "HARINA 000 SANTA CLARA X1KG (X10U)",
+    "bultos": 28,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1070,
+    "producto": "ARROZ LARGO FINO EL LITORAL X1KG (X10U)",
+    "bultos": 22,
+    "zona": "Pasillo 5 - Rack A"
+   },
+   {
+    "codigo": 1108,
+    "producto": "AZUCAR CAMPO ALEGRE X1KG (X10U)",
+    "bultos": 7,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1126,
+    "producto": "GALLETITAS SURTIDAS MONTE CHICO 400G (X20U)",
+    "bultos": 21,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1131,
+    "producto": "ALFAJOR TRIPLE SANTA CLARA (X24U)",
+    "bultos": 19,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1191,
+    "producto": "SODA TIERRA ROJA 2L (X6U)",
+    "bultos": 17,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1206,
+    "producto": "VINO TINTO EL PARANA 750CC (X6U)",
+    "bultos": 13,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1391,
+    "producto": "DETERGENTE COSTA DULCE 750CC (X12U)",
+    "bultos": 6,
+    "zona": "Pasillo 1 - Rack B"
+   }
+  ],
+  "P-4405": [
+   {
+    "codigo": 1097,
+    "producto": "LENTEJAS TIERRA ROJA 400G (X12U)",
+    "bultos": 19,
+    "zona": "Pasillo 2 - Rack A"
+   },
+   {
+    "codigo": 1115,
+    "producto": "YERBA DON TIMOTEO X1KG (X10U)",
+    "bultos": 17,
+    "zona": "Pasillo 3 - Rack B"
+   },
+   {
+    "codigo": 1238,
+    "producto": "MANTECA DON TIMOTEO 200G (X30U)",
+    "bultos": 12,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1246,
+    "producto": "CREMA DE LECHE EL LITORAL 360G (X12U)",
+    "bultos": 4,
+    "zona": "Pasillo 4 - Rack C"
+   }
+  ],
+  "P-4406": [
+   {
+    "codigo": 1086,
+    "producto": "PURE DE TOMATE DON TIMOTEO 520G (X12U)",
+    "bultos": 2,
+    "zona": "Pasillo 5 - Rack A"
+   },
+   {
+    "codigo": 1113,
+    "producto": "YERBA SANTA CLARA X1KG (X10U)",
+    "bultos": 7,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1147,
+    "producto": "TURRON CAMPO ALEGRE (X50U)",
+    "bultos": 9,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1248,
+    "producto": "CREMA DE LECHE DON TIMOTEO 360G (X12U)",
+    "bultos": 14,
+    "zona": "Pasillo 5 - Rack B"
+   }
+  ],
+  "P-4407": [
+   {
+    "codigo": 1090,
+    "producto": "PURE DE TOMATE GUARANI 520G (X12U)",
+    "bultos": 20,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1214,
+    "producto": "LECHE ENTERA GUARANI 1L (X12U)",
+    "bultos": 26,
+    "zona": "Pasillo 2 - Rack B"
+   },
+   {
+    "codigo": 1301,
+    "producto": "QUESO BARRA CAMPO ALEGRE (HORMA)",
+    "bultos": 11,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1303,
+    "producto": "QUESO BARRA DON TIMOTEO (HORMA)",
+    "bultos": 31,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1399,
+    "producto": "DETERGENTE GUARANI 750CC (X12U)",
+    "bultos": 9,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1406,
+    "producto": "JABON EN POLVO MONTE CHICO 3KG (X4U)",
+    "bultos": 28,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1418,
+    "producto": "PAPEL HIGIENICO EL LITORAL X4 (X10P)",
+    "bultos": 26,
+    "zona": "Pasillo 6 - Rack A"
+   }
+  ],
+  "P-4408": [
+   {
+    "codigo": 1005,
+    "producto": "ACEITE GIRASOL EL LITORAL 900CC (X12U)",
+    "bultos": 15,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1067,
+    "producto": "ARROZ LARGO FINO MONTE CHICO X1KG (X10U)",
+    "bultos": 9,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1077,
+    "producto": "FIDEOS GUISEROS GUARANI 500G (X15U)",
+    "bultos": 6,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1112,
+    "producto": "YERBA GUARANI X1KG (X10U)",
+    "bultos": 13,
+    "zona": "Pasillo 6 - Rack A"
+   }
+  ],
+  "P-4409": [
+   {
+    "codigo": 1106,
+    "producto": "AZUCAR DON TIMOTEO X1KG (X10U)",
+    "bultos": 19,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1109,
+    "producto": "AZUCAR SANTA CLARA X1KG (X10U)",
+    "bultos": 30,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1235,
+    "producto": "MANTECA TIERRA ROJA 200G (X30U)",
+    "bultos": 15,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1303,
+    "producto": "QUESO BARRA DON TIMOTEO (HORMA)",
+    "bultos": 23,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1402,
+    "producto": "JABON EN POLVO EL LITORAL 3KG (X4U)",
+    "bultos": 18,
+    "zona": "Pasillo 3 - Rack C"
+   },
+   {
+    "codigo": 1411,
+    "producto": "PAPEL HIGIENICO CAMPO ALEGRE X4 (X10P)",
+    "bultos": 10,
+    "zona": "Pasillo 4 - Rack B"
+   }
+  ],
+  "P-4410": [
+   {
+    "codigo": 1069,
+    "producto": "ARROZ LARGO FINO LA RIBERA X1KG (X10U)",
+    "bultos": 16,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1096,
+    "producto": "LENTEJAS CAMPO ALEGRE 400G (X12U)",
+    "bultos": 10,
+    "zona": "Pasillo 4 - Rack A"
+   },
+   {
+    "codigo": 1114,
+    "producto": "YERBA COSTA DULCE X1KG (X10U)",
+    "bultos": 10,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1230,
+    "producto": "YOGUR BEBIBLE DON TIMOTEO 900G (X6U)",
+    "bultos": 16,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1345,
+    "producto": "HAMBURGUESAS MONTE CHICO X4 (X12C)",
+    "bultos": 15,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4411": [
+   {
+    "codigo": 1114,
+    "producto": "YERBA COSTA DULCE X1KG (X10U)",
+    "bultos": 10,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1131,
+    "producto": "ALFAJOR TRIPLE SANTA CLARA (X24U)",
+    "bultos": 2,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1210,
+    "producto": "VINO TINTO GUARANI 750CC (X6U)",
+    "bultos": 14,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1220,
+    "producto": "LECHE ENTERA SANTA CLARA 1L (X12U)",
+    "bultos": 13,
+    "zona": "Pasillo 2 - Rack B"
+   }
+  ],
+  "P-4412": [
+   {
+    "codigo": 1018,
+    "producto": "ACEITE MEZCLA EL LITORAL 1.5L (X8U)",
+    "bultos": 8,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1091,
+    "producto": "LENTEJAS MONTE CHICO 400G (X12U)",
+    "bultos": 5,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1115,
+    "producto": "YERBA DON TIMOTEO X1KG (X10U)",
+    "bultos": 17,
+    "zona": "Pasillo 3 - Rack B"
+   },
+   {
+    "codigo": 1228,
+    "producto": "YOGUR BEBIBLE TIERRA ROJA 900G (X6U)",
+    "bultos": 17,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1246,
+    "producto": "CREMA DE LECHE EL LITORAL 360G (X12U)",
+    "bultos": 12,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1316,
+    "producto": "MORTADELA SANTA CLARA (PLANCHA)",
+    "bultos": 10,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4413": [
+   {
+    "codigo": 1085,
+    "producto": "PURE DE TOMATE LA RIBERA 520G (X12U)",
+    "bultos": 23,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1144,
+    "producto": "TURRON MONTE CHICO (X50U)",
+    "bultos": 27,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1181,
+    "producto": "JUGO EN POLVO SANTA CLARA (X20S)",
+    "bultos": 23,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1253,
+    "producto": "DULCE DE LECHE MONTE CHICO 400G (X12U)",
+    "bultos": 13,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1400,
+    "producto": "DETERGENTE TIERRA ROJA 750CC (X12U)",
+    "bultos": 9,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1423,
+    "producto": "ROLLO DE COCINA SANTA CLARA X3 (X10P)",
+    "bultos": 11,
+    "zona": "Pasillo 4 - Rack A"
+   }
+  ],
+  "P-4414": [
+   {
+    "codigo": 1256,
+    "producto": "DULCE DE LECHE EL LITORAL 400G (X12U)",
+    "bultos": 17,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1265,
+    "producto": "JAMON COCIDO EL LITORAL (HORMA)",
+    "bultos": 13,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1268,
+    "producto": "JAMON COCIDO DON TIMOTEO (HORMA)",
+    "bultos": 19,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1293,
+    "producto": "QUESO CREMOSO MONTE CHICO (HORMA)",
+    "bultos": 16,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1317,
+    "producto": "MORTADELA TIERRA ROJA (PLANCHA)",
+    "bultos": 5,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1375,
+    "producto": "PATITAS DE POLLO TIERRA ROJA 700G (X12U)",
+    "bultos": 6,
+    "zona": "Cámara congelados"
+   }
+  ],
+  "P-4415": [
+   {
+    "codigo": 1216,
+    "producto": "LECHE ENTERA EL PARANA 1L (X12U)",
+    "bultos": 12,
+    "zona": "Pasillo 4 - Rack B"
+   },
+   {
+    "codigo": 1230,
+    "producto": "YOGUR BEBIBLE DON TIMOTEO 900G (X6U)",
+    "bultos": 5,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1299,
+    "producto": "QUESO CREMOSO COSTA DULCE (HORMA)",
+    "bultos": 13,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1311,
+    "producto": "MORTADELA GUARANI (PLANCHA)",
+    "bultos": 5,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1316,
+    "producto": "MORTADELA SANTA CLARA (PLANCHA)",
+    "bultos": 8,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4416": [
+   {
+    "codigo": 1057,
+    "producto": "HARINA 000 TIERRA ROJA X1KG (X10U)",
+    "bultos": 12,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1063,
+    "producto": "ARROZ LARGO FINO CAMPO ALEGRE X1KG (X10U)",
+    "bultos": 17,
+    "zona": "Pasillo 3 - Rack C"
+   },
+   {
+    "codigo": 1101,
+    "producto": "AZUCAR MONTE CHICO X1KG (X10U)",
+    "bultos": 8,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1218,
+    "producto": "LECHE ENTERA EL LITORAL 1L (X12U)",
+    "bultos": 19,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1283,
+    "producto": "SALAME MILAN EL LITORAL (PLANCHA)",
+    "bultos": 9,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1380,
+    "producto": "PATITAS DE POLLO GUARANI 700G (X12U)",
+    "bultos": 11,
+    "zona": "Cámara de frío 1"
+   }
+  ],
+  "P-4417": [
+   {
+    "codigo": 1013,
+    "producto": "ACEITE MEZCLA GUARANI 1.5L (X8U)",
+    "bultos": 13,
+    "zona": "Pasillo 3 - Rack B"
+   },
+   {
+    "codigo": 1050,
+    "producto": "VINAGRE COSTA DULCE 1L (X12U)",
+    "bultos": 7,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1069,
+    "producto": "ARROZ LARGO FINO LA RIBERA X1KG (X10U)",
+    "bultos": 19,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1089,
+    "producto": "PURE DE TOMATE MONTE CHICO 520G (X12U)",
+    "bultos": 13,
+    "zona": "Pasillo 1 - Rack C"
+   },
+   {
+    "codigo": 1221,
+    "producto": "YOGUR BEBIBLE CAMPO ALEGRE 900G (X6U)",
+    "bultos": 16,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1324,
+    "producto": "BONDIOLA LA RIBERA (PIEZA)",
+    "bultos": 9,
+    "zona": "Cámara de frío 1"
+   }
+  ],
+  "P-4418": [
+   {
+    "codigo": 1234,
+    "producto": "MANTECA EL LITORAL 200G (X30U)",
+    "bultos": 3,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1292,
+    "producto": "QUESO CREMOSO SANTA CLARA (HORMA)",
+    "bultos": 15,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1303,
+    "producto": "QUESO BARRA DON TIMOTEO (HORMA)",
+    "bultos": 9,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1337,
+    "producto": "QUESO SARDO EL PARANA (HORMA)",
+    "bultos": 9,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1362,
+    "producto": "FILET MERLUZA CAMPO ALEGRE X1KG (X8U)",
+    "bultos": 16,
+    "zona": "Cámara de frío 1"
+   }
+  ],
+  "P-4419": [
+   {
+    "codigo": 1071,
+    "producto": "FIDEOS GUISEROS TIERRA ROJA 500G (X15U)",
+    "bultos": 17,
+    "zona": "Pasillo 2 - Rack C"
+   },
+   {
+    "codigo": 1103,
+    "producto": "AZUCAR COSTA DULCE X1KG (X10U)",
+    "bultos": 10,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1294,
+    "producto": "QUESO CREMOSO CAMPO ALEGRE (HORMA)",
+    "bultos": 15,
+    "zona": "Cámara congelados"
+   },
+   {
+    "codigo": 1374,
+    "producto": "PATITAS DE POLLO COSTA DULCE 700G (X12U)",
+    "bultos": 16,
+    "zona": "Cámara congelados"
+   },
+   {
+    "codigo": 1376,
+    "producto": "PATITAS DE POLLO LA RIBERA 700G (X12U)",
+    "bultos": 4,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4420": [
+   {
+    "codigo": 1079,
+    "producto": "FIDEOS GUISEROS COSTA DULCE 500G (X15U)",
+    "bultos": 11,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1271,
+    "producto": "PALETA LA RIBERA (HORMA)",
+    "bultos": 15,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1278,
+    "producto": "PALETA EL LITORAL (HORMA)",
+    "bultos": 14,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1279,
+    "producto": "PALETA TIERRA ROJA (HORMA)",
+    "bultos": 19,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1322,
+    "producto": "BONDIOLA SANTA CLARA (PIEZA)",
+    "bultos": 28,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1408,
+    "producto": "JABON EN POLVO DON TIMOTEO 3KG (X4U)",
+    "bultos": 15,
+    "zona": "Pasillo 4 - Rack C"
+   }
+  ],
+  "P-4421": [
+   {
+    "codigo": 1098,
+    "producto": "LENTEJAS SANTA CLARA 400G (X12U)",
+    "bultos": 7,
+    "zona": "Pasillo 3 - Rack B"
+   },
+   {
+    "codigo": 1169,
+    "producto": "GASEOSA COLA GUARANI 2.25L (X6U)",
+    "bultos": 14,
+    "zona": "Pasillo 4 - Rack A"
+   },
+   {
+    "codigo": 1176,
+    "producto": "AGUA SIN GAS TIERRA ROJA 2L (X6U)",
+    "bultos": 10,
+    "zona": "Pasillo 6 - Rack B"
+   }
+  ],
+  "P-4422": [
+   {
+    "codigo": 1085,
+    "producto": "PURE DE TOMATE LA RIBERA 520G (X12U)",
+    "bultos": 7,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1265,
+    "producto": "JAMON COCIDO EL LITORAL (HORMA)",
+    "bultos": 14,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1285,
+    "producto": "SALAME MILAN TIERRA ROJA (PLANCHA)",
+    "bultos": 13,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1294,
+    "producto": "QUESO CREMOSO CAMPO ALEGRE (HORMA)",
+    "bultos": 7,
+    "zona": "Cámara congelados"
+   }
+  ],
+  "P-4423": [
+   {
+    "codigo": 1067,
+    "producto": "ARROZ LARGO FINO MONTE CHICO X1KG (X10U)",
+    "bultos": 15,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1073,
+    "producto": "FIDEOS GUISEROS CAMPO ALEGRE 500G (X15U)",
+    "bultos": 17,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1092,
+    "producto": "LENTEJAS LA RIBERA 400G (X12U)",
+    "bultos": 7,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1099,
+    "producto": "LENTEJAS DON TIMOTEO 400G (X12U)",
+    "bultos": 10,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1118,
+    "producto": "YERBA EL PARANA X1KG (X10U)",
+    "bultos": 16,
+    "zona": "Pasillo 4 - Rack A"
+   },
+   {
+    "codigo": 1176,
+    "producto": "AGUA SIN GAS TIERRA ROJA 2L (X6U)",
+    "bultos": 12,
+    "zona": "Pasillo 6 - Rack B"
+   },
+   {
+    "codigo": 1311,
+    "producto": "MORTADELA GUARANI (PLANCHA)",
+    "bultos": 11,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1393,
+    "producto": "DETERGENTE EL PARANA 750CC (X12U)",
+    "bultos": 17,
+    "zona": "Pasillo 6 - Rack B"
+   }
+  ],
+  "P-4424": [
+   {
+    "codigo": 1081,
+    "producto": "PURE DE TOMATE EL LITORAL 520G (X12U)",
+    "bultos": 16,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1116,
+    "producto": "YERBA LA RIBERA X1KG (X10U)",
+    "bultos": 18,
+    "zona": "Pasillo 3 - Rack B"
+   },
+   {
+    "codigo": 1120,
+    "producto": "YERBA MONTE CHICO X1KG (X10U)",
+    "bultos": 13,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1266,
+    "producto": "JAMON COCIDO EL PARANA (HORMA)",
+    "bultos": 3,
+    "zona": "Cámara congelados"
+   },
+   {
+    "codigo": 1273,
+    "producto": "PALETA MONTE CHICO (HORMA)",
+    "bultos": 7,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1368,
+    "producto": "FILET MERLUZA TIERRA ROJA X1KG (X8U)",
+    "bultos": 3,
+    "zona": "Cámara de frío 1"
+   }
+  ],
+  "P-4425": [
+   {
+    "codigo": 1069,
+    "producto": "ARROZ LARGO FINO LA RIBERA X1KG (X10U)",
+    "bultos": 4,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1162,
+    "producto": "GASEOSA COLA COSTA DULCE 2.25L (X6U)",
+    "bultos": 4,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1181,
+    "producto": "JUGO EN POLVO SANTA CLARA (X20S)",
+    "bultos": 9,
+    "zona": "Pasillo 3 - Rack A"
+   }
+  ],
+  "P-4426": [
+   {
+    "codigo": 1057,
+    "producto": "HARINA 000 TIERRA ROJA X1KG (X10U)",
+    "bultos": 13,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1125,
+    "producto": "GALLETITAS SURTIDAS DON TIMOTEO 400G (X20U)",
+    "bultos": 12,
+    "zona": "Pasillo 2 - Rack C"
+   },
+   {
+    "codigo": 1134,
+    "producto": "ALFAJOR TRIPLE DON TIMOTEO (X24U)",
+    "bultos": 3,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1148,
+    "producto": "TURRON COSTA DULCE (X50U)",
+    "bultos": 7,
+    "zona": "Pasillo 6 - Rack A"
+   }
+  ],
+  "P-4427": [
+   {
+    "codigo": 1182,
+    "producto": "JUGO EN POLVO CAMPO ALEGRE (X20S)",
+    "bultos": 10,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1187,
+    "producto": "JUGO EN POLVO EL LITORAL (X20S)",
+    "bultos": 5,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1212,
+    "producto": "LECHE ENTERA COSTA DULCE 1L (X12U)",
+    "bultos": 11,
+    "zona": "Pasillo 2 - Rack A"
+   }
+  ],
+  "P-4428": [
+   {
+    "codigo": 1036,
+    "producto": "KETCHUP GUARANI 400G (X12U)",
+    "bultos": 18,
+    "zona": "Pasillo 4 - Rack A"
+   },
+   {
+    "codigo": 1095,
+    "producto": "LENTEJAS COSTA DULCE 400G (X12U)",
+    "bultos": 19,
+    "zona": "Pasillo 3 - Rack C"
+   },
+   {
+    "codigo": 1283,
+    "producto": "SALAME MILAN EL LITORAL (PLANCHA)",
+    "bultos": 7,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1348,
+    "producto": "HAMBURGUESAS LA RIBERA X4 (X12C)",
+    "bultos": 12,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4429": [
+   {
+    "codigo": 1090,
+    "producto": "PURE DE TOMATE GUARANI 520G (X12U)",
+    "bultos": 5,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1126,
+    "producto": "GALLETITAS SURTIDAS MONTE CHICO 400G (X20U)",
+    "bultos": 12,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1156,
+    "producto": "CARAMELOS MASTICABLES GUARANI X800G",
+    "bultos": 11,
+    "zona": "Pasillo 4 - Rack A"
+   },
+   {
+    "codigo": 1214,
+    "producto": "LECHE ENTERA GUARANI 1L (X12U)",
+    "bultos": 8,
+    "zona": "Pasillo 2 - Rack B"
+   }
+  ],
+  "P-4430": [
+   {
+    "codigo": 1024,
+    "producto": "MAYONESA MONTE CHICO 500G (X12U)",
+    "bultos": 10,
+    "zona": "Pasillo 2 - Rack B"
+   },
+   {
+    "codigo": 1108,
+    "producto": "AZUCAR CAMPO ALEGRE X1KG (X10U)",
+    "bultos": 5,
+    "zona": "Pasillo 3 - Rack A"
+   },
+   {
+    "codigo": 1271,
+    "producto": "PALETA LA RIBERA (HORMA)",
+    "bultos": 11,
+    "zona": "Cámara de frío 1"
+   },
+   {
+    "codigo": 1283,
+    "producto": "SALAME MILAN EL LITORAL (PLANCHA)",
+    "bultos": 4,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1298,
+    "producto": "QUESO CREMOSO EL LITORAL (HORMA)",
+    "bultos": 7,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1322,
+    "producto": "BONDIOLA SANTA CLARA (PIEZA)",
+    "bultos": 10,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4431": [
+   {
+    "codigo": 1109,
+    "producto": "AZUCAR SANTA CLARA X1KG (X10U)",
+    "bultos": 12,
+    "zona": "Pasillo 6 - Rack A"
+   },
+   {
+    "codigo": 1243,
+    "producto": "CREMA DE LECHE LA RIBERA 360G (X12U)",
+    "bultos": 3,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1249,
+    "producto": "CREMA DE LECHE EL PARANA 360G (X12U)",
+    "bultos": 11,
+    "zona": "Pasillo 1 - Rack A"
+   },
+   {
+    "codigo": 1251,
+    "producto": "DULCE DE LECHE SANTA CLARA 400G (X12U)",
+    "bultos": 7,
+    "zona": "Pasillo 1 - Rack B"
+   },
+   {
+    "codigo": 1311,
+    "producto": "MORTADELA GUARANI (PLANCHA)",
+    "bultos": 10,
+    "zona": "Cámara de frío 2"
+   }
+  ],
+  "P-4432": [
+   {
+    "codigo": 1070,
+    "producto": "ARROZ LARGO FINO EL LITORAL X1KG (X10U)",
+    "bultos": 8,
+    "zona": "Pasillo 5 - Rack A"
+   },
+   {
+    "codigo": 1166,
+    "producto": "GASEOSA COLA EL PARANA 2.25L (X6U)",
+    "bultos": 13,
+    "zona": "Pasillo 6 - Rack C"
+   },
+   {
+    "codigo": 1173,
+    "producto": "AGUA SIN GAS CAMPO ALEGRE 2L (X6U)",
+    "bultos": 2,
+    "zona": "Pasillo 2 - Rack A"
+   }
+  ],
+  "P-4433": [
+   {
+    "codigo": 1002,
+    "producto": "ACEITE GIRASOL MONTE CHICO 900CC (X12U)",
+    "bultos": 11,
+    "zona": "Pasillo 4 - Rack C"
+   },
+   {
+    "codigo": 1235,
+    "producto": "MANTECA TIERRA ROJA 200G (X30U)",
+    "bultos": 18,
+    "zona": "Pasillo 5 - Rack C"
+   },
+   {
+    "codigo": 1239,
+    "producto": "MANTECA CAMPO ALEGRE 200G (X30U)",
+    "bultos": 11,
+    "zona": "Pasillo 5 - Rack B"
+   },
+   {
+    "codigo": 1274,
+    "producto": "PALETA EL PARANA (HORMA)",
+    "bultos": 18,
+    "zona": "Cámara de frío 2"
+   },
+   {
+    "codigo": 1276,
+    "producto": "PALETA GUARANI (HORMA)",
+    "bultos": 14,
+    "zona": "Cámara congelados"
+   },
+   {
+    "codigo": 1341,
+    "producto": "HAMBURGUESAS EL LITORAL X4 (X12C)",
+    "bultos": 9,
+    "zona": "Cámara de frío 1"
+   }
+  ]
+ },
+ "ordenes_extra": [
+  {
+   "numero": "OC-2026-0863",
+   "fecha": "2026-07-04",
+   "proveedor": "Frigorífico La Ribera",
+   "estado": "abierta",
+   "entrega_prevista": "2026-07-09",
+   "items": [
+    {
+     "codigo": 1316,
+     "producto": "MORTADELA SANTA CLARA (PLANCHA)",
+     "cantidad": 38
+    },
+    {
+     "codigo": 1319,
+     "producto": "MORTADELA EL PARANA (PLANCHA)",
+     "cantidad": 24
+    },
+    {
+     "codigo": 1343,
+     "producto": "HAMBURGUESAS EL PARANA X4 (X12C)",
+     "cantidad": 46
+    },
+    {
+     "codigo": 1345,
+     "producto": "HAMBURGUESAS MONTE CHICO X4 (X12C)",
+     "cantidad": 17
+    },
+    {
+     "codigo": 1370,
+     "producto": "FILET MERLUZA LA RIBERA X1KG (X8U)",
+     "cantidad": 29
+    }
+   ]
+  }
+ ]
+}
