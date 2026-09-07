@@ -193,7 +193,12 @@ def test_las_notas_declaran_su_entidad_y_son_bilingues():
         " 'autores': len(notas.autores())}, ensure_ascii=False))")
     assert out["sin_en"] == [], out              # todo lo que lee un humano, bilingüe
     assert out["sin_entidad"] == [], out         # nada se adivina: la nota lo declara
-    assert set(out["canales"]) <= {"voz", "reporte", "chat"}
+    # Seis canales: tres superficies del producto y tres que entran DE AFUERA
+    # (whatsapp/email/foto). Esa división es la que el mapa de la operación
+    # muestra en su banda "Lo que entra desde afuera" — sin ellos la banda
+    # queda en cero y esconde justo lo que el ERP no captura.
+    assert set(out["canales"]) <= {"voz", "reporte", "chat",
+                                   "whatsapp", "email", "foto"}
     assert out["autores"] >= 6                   # es el EQUIPO, no una persona
     assert out["resumen"]["hasta"] <= "2026-07-07"   # dentro de la fecha congelada
 
