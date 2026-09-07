@@ -28,7 +28,7 @@ _audit = AuditLog()
 
 def ingest_productos(actor: str = "dueño") -> dict:
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_productos()
 
     vinculados = {d["source_id"] for d in store.raw_actual() if d.get("source") == "odoo"}
@@ -57,7 +57,7 @@ def ingest_proveedores(actor: str = "dueño") -> dict:
     from . import proveedores as proveedores_mod
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_proveedores()
 
     vinculados = {p["source_id"] for p in proveedores_mod.listar() if p.get("source") == "odoo"}
@@ -88,7 +88,7 @@ def ingest_clientes(actor: str = "dueño") -> dict:
     from core import cuentas
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_data()
 
     vinculados = {c["source_id"] for c in cuentas.listar() if c.get("source") == "odoo"}
@@ -124,7 +124,7 @@ def ingest_ordenes_compra(actor: str = "dueño") -> dict:
     from core.db import purchase_orders_repo
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_ordenes_compra()
 
     vinculadas = {o["source_id"] for o in purchase_orders_repo.list_orders(tenant_id)
@@ -201,7 +201,7 @@ def ingest_ventas(actor: str = "dueño") -> dict:
     from core import esquema
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_ordenes_venta()
     filas = _flatten_confirmed_sale_lines(pull["ordenes"])
 
@@ -276,7 +276,7 @@ def _ingest_blob(tipo: str, pulled: list[dict], actor: str, nombre: str) -> dict
 
 def ingest_deposito(actor: str = "dueño") -> dict:
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_deposito()
     filas = []
     for q in pull["quants"]:
@@ -292,7 +292,7 @@ def ingest_recepciones(actor: str = "dueño") -> dict:
     from core.db import purchase_orders_repo
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_recepciones()
     filas = []
     for p in pull["recepciones"]:
@@ -325,7 +325,7 @@ def ingest_recepciones(actor: str = "dueño") -> dict:
 
 def ingest_entregas(actor: str = "dueño") -> dict:
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_entregas()
     filas = []
     for p in pull["entregas"]:
@@ -379,7 +379,7 @@ def ingest_facturas(actor: str = "dueño") -> dict:
     from core import pagos as pagos_mod
 
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_facturas()
     out_inv = [f for f in pull["facturas"] if f.get("move_type") == "out_invoice"]
     in_inv = [f for f in pull["facturas"] if f.get("move_type") == "in_invoice"]
@@ -414,6 +414,6 @@ def ingest_facturas(actor: str = "dueño") -> dict:
 
 def ingest_pagos(actor: str = "dueño") -> dict:
     tenant_id = _tenant.current_tenant_id()
-    conector = conectores.ConectorOdoo(tenant_id)
+    conector = conectores.conector_odoo(tenant_id)
     pull = conector.pull_pagos()
     return _ingest_blob("pagos", pull["pagos"], actor, "Odoo · pagos")

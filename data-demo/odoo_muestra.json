@@ -1,0 +1,1028 @@
+{
+ "_nota": "Muestra determinista del conector de Odoo (transport de la demo). Derivada del dataset por generar_odoo_muestra.py — no editar a mano. La lee core/odoo_demo.py; las formas son el contrato de conectores.ConectorOdoo.pull_* y los coercers de core/staging.py.",
+ "vinculos": {
+  "productos": [
+   {
+    "codigo": 1204,
+    "source_id": 8204,
+    "sku": "LIT-1204"
+   },
+   {
+    "codigo": 1216,
+    "source_id": 8216,
+    "sku": "LIT-1216"
+   },
+   {
+    "codigo": 1166,
+    "source_id": 8166,
+    "sku": "LIT-1166"
+   },
+   {
+    "codigo": 1184,
+    "source_id": 8184,
+    "sku": "LIT-1184"
+   },
+   {
+    "codigo": 1226,
+    "source_id": 8226,
+    "sku": "LIT-1226"
+   },
+   {
+    "codigo": 1422,
+    "source_id": 8422,
+    "sku": "LIT-1422"
+   },
+   {
+    "codigo": 1038,
+    "source_id": 8038,
+    "sku": "LIT-1038"
+   },
+   {
+    "codigo": 1258,
+    "source_id": 8258,
+    "sku": "LIT-1258"
+   },
+   {
+    "codigo": 1228,
+    "source_id": 8228,
+    "sku": "LIT-1228"
+   },
+   {
+    "codigo": 1240,
+    "source_id": 8240,
+    "sku": "LIT-1240"
+   },
+   {
+    "codigo": 1214,
+    "source_id": 8214,
+    "sku": "LIT-1214"
+   },
+   {
+    "codigo": 1410,
+    "source_id": 8410,
+    "sku": "LIT-1410"
+   },
+   {
+    "codigo": 1233,
+    "source_id": 8233,
+    "sku": "LIT-1233"
+   },
+   {
+    "codigo": 1059,
+    "source_id": 8059,
+    "sku": "LIT-1059"
+   },
+   {
+    "codigo": 1302,
+    "source_id": 8302,
+    "sku": "LIT-1302"
+   },
+   {
+    "codigo": 1259,
+    "source_id": 8259,
+    "sku": "LIT-1259"
+   },
+   {
+    "codigo": 1007,
+    "source_id": 8007,
+    "sku": "LIT-1007"
+   },
+   {
+    "codigo": 1118,
+    "source_id": 8118,
+    "sku": "LIT-1118"
+   },
+   {
+    "codigo": 1220,
+    "source_id": 8220,
+    "sku": "LIT-1220"
+   },
+   {
+    "codigo": 1026,
+    "source_id": 8026,
+    "sku": "LIT-1026"
+   },
+   {
+    "codigo": 1188,
+    "source_id": 8188,
+    "sku": "LIT-1188"
+   },
+   {
+    "codigo": 1427,
+    "source_id": 8427,
+    "sku": "LIT-1427"
+   },
+   {
+    "codigo": 1197,
+    "source_id": 8197,
+    "sku": "LIT-1197"
+   },
+   {
+    "codigo": 1251,
+    "source_id": 8251,
+    "sku": "LIT-1251"
+   }
+  ],
+  "proveedores": []
+ },
+ "productos": [
+  {
+   "id": 8204,
+   "codigo": "LIT-1204",
+   "nombre": "VINO TINTO LA RIBERA 750CC (X6U)",
+   "categoria": "",
+   "precio": 6927.97,
+   "precio_lista": 6927.97,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 479.0,
+   "costo": 5645.7,
+   "free_qty": 479.0,
+   "incoming_qty": 24,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8216,
+   "codigo": "LIT-1216",
+   "nombre": "LECHE ENTERA EL PARANA 1L (X12U)",
+   "categoria": "",
+   "precio": 9869.01,
+   "precio_lista": 9869.01,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 326.0,
+   "costo": 8253.2,
+   "free_qty": 326.0,
+   "incoming_qty": 50,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8166,
+   "codigo": "LIT-1166",
+   "nombre": "GASEOSA COLA EL PARANA 2.25L (X6U)",
+   "categoria": "",
+   "precio": 7190.42,
+   "precio_lista": 7190.42,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 447.0,
+   "costo": 5905.53,
+   "free_qty": 447.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8184,
+   "codigo": "LIT-1184",
+   "nombre": "JUGO EN POLVO COSTA DULCE (X20S)",
+   "categoria": "",
+   "precio": 7375.97,
+   "precio_lista": 7375.97,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 390.0,
+   "costo": 6192.14,
+   "free_qty": 390.0,
+   "incoming_qty": 30,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8226,
+   "codigo": "LIT-1226",
+   "nombre": "YOGUR BEBIBLE EL PARANA 900G (X6U)",
+   "categoria": "",
+   "precio": 8862.95,
+   "precio_lista": 8862.95,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 288.0,
+   "costo": 7437.32,
+   "free_qty": 288.0,
+   "incoming_qty": 80,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8422,
+   "codigo": "LIT-1422",
+   "nombre": "ROLLO DE COCINA LA RIBERA X3 (X10P)",
+   "categoria": "",
+   "precio": 2667.09,
+   "precio_lista": 2667.09,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 974.0,
+   "costo": 2159.39,
+   "free_qty": 974.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8038,
+   "codigo": "LIT-1038",
+   "nombre": "KETCHUP COSTA DULCE 400G (X12U)",
+   "categoria": "",
+   "precio": 6631.65,
+   "precio_lista": 6631.65,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 377.0,
+   "costo": 5504.2,
+   "free_qty": 377.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8258,
+   "codigo": "LIT-1258",
+   "nombre": "DULCE DE LECHE LA RIBERA 400G (X12U)",
+   "categoria": "",
+   "precio": 9077.85,
+   "precio_lista": 9077.85,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 270.0,
+   "costo": 7478.76,
+   "free_qty": 270.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8228,
+   "codigo": "LIT-1228",
+   "nombre": "YOGUR BEBIBLE TIERRA ROJA 900G (X6U)",
+   "categoria": "",
+   "precio": 8070.64,
+   "precio_lista": 8070.64,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 304.0,
+   "costo": 6614.77,
+   "free_qty": 304.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8240,
+   "codigo": "LIT-1240",
+   "nombre": "MANTECA GUARANI 200G (X30U)",
+   "categoria": "",
+   "precio": 10108.41,
+   "precio_lista": 10108.41,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 234.0,
+   "costo": 8442.34,
+   "free_qty": 234.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8214,
+   "codigo": "LIT-1214",
+   "nombre": "LECHE ENTERA GUARANI 1L (X12U)",
+   "categoria": "",
+   "precio": 9435.04,
+   "precio_lista": 9435.04,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 248.0,
+   "costo": 7918.99,
+   "free_qty": 248.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8410,
+   "codigo": "LIT-1410",
+   "nombre": "JABON EN POLVO EL PARANA 3KG (X4U)",
+   "categoria": "",
+   "precio": 2193.39,
+   "precio_lista": 2193.39,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 1085.0,
+   "costo": 1784.86,
+   "free_qty": 1085.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8233,
+   "codigo": "LIT-1233",
+   "nombre": "MANTECA EL PARANA 200G (X30U)",
+   "categoria": "",
+   "precio": 3208.55,
+   "precio_lista": 3208.55,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 695.0,
+   "costo": 2739.91,
+   "free_qty": 695.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8059,
+   "codigo": "LIT-1059",
+   "nombre": "HARINA 000 EL PARANA X1KG (X10U)",
+   "categoria": "",
+   "precio": 3567.18,
+   "precio_lista": 3567.18,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 622.0,
+   "costo": 3059.41,
+   "free_qty": 622.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8302,
+   "codigo": "LIT-1302",
+   "nombre": "QUESO BARRA TIERRA ROJA (HORMA)",
+   "categoria": "",
+   "precio": 25960.79,
+   "precio_lista": 25960.79,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 92.8,
+   "costo": 20419.96,
+   "free_qty": 92.8,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8259,
+   "codigo": "LIT-1259",
+   "nombre": "DULCE DE LECHE TIERRA ROJA 400G (X12U)",
+   "categoria": "",
+   "precio": 9904.66,
+   "precio_lista": 9904.66,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 224.0,
+   "costo": 8338.04,
+   "free_qty": 224.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8007,
+   "codigo": "LIT-1007",
+   "nombre": "ACEITE GIRASOL SANTA CLARA 900CC (X12U)",
+   "categoria": "",
+   "precio": 4295.12,
+   "precio_lista": 4295.12,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 530.0,
+   "costo": 3505.88,
+   "free_qty": 530.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8118,
+   "codigo": "LIT-1118",
+   "nombre": "YERBA EL PARANA X1KG (X10U)",
+   "categoria": "",
+   "precio": 4326.39,
+   "precio_lista": 4326.39,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 509.0,
+   "costo": 3650.4,
+   "free_qty": 509.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8220,
+   "codigo": "LIT-1220",
+   "nombre": "LECHE ENTERA SANTA CLARA 1L (X12U)",
+   "categoria": "",
+   "precio": 4376.91,
+   "precio_lista": 4376.91,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 422.0,
+   "costo": 4306.99,
+   "free_qty": 422.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8026,
+   "codigo": "LIT-1026",
+   "nombre": "MAYONESA SANTA CLARA 500G (X12U)",
+   "categoria": "",
+   "precio": 3144.61,
+   "precio_lista": 3144.61,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 676.0,
+   "costo": 2649.15,
+   "free_qty": 676.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8188,
+   "codigo": "LIT-1188",
+   "nombre": "JUGO EN POLVO TIERRA ROJA (X20S)",
+   "categoria": "",
+   "precio": 2688.82,
+   "precio_lista": 2688.82,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 791.0,
+   "costo": 2247.82,
+   "free_qty": 791.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8427,
+   "codigo": "LIT-1427",
+   "nombre": "ROLLO DE COCINA CAMPO ALEGRE X3 (X10P)",
+   "categoria": "",
+   "precio": 2262.76,
+   "precio_lista": 2262.76,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 984.0,
+   "costo": 1803.35,
+   "free_qty": 984.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8197,
+   "codigo": "LIT-1197",
+   "nombre": "SODA EL LITORAL 2L (X6U)",
+   "categoria": "",
+   "precio": 6683.9,
+   "precio_lista": 6683.9,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 313.0,
+   "costo": 5653.78,
+   "free_qty": 313.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 8251,
+   "codigo": "LIT-1251",
+   "nombre": "DULCE DE LECHE SANTA CLARA 400G (X12U)",
+   "categoria": "",
+   "precio": 7045.43,
+   "precio_lista": 7045.43,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 304.0,
+   "costo": 5812.6,
+   "free_qty": 304.0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 7901,
+   "codigo": "LIT-N1",
+   "nombre": "ACEITE DE OLIVA COSTA DULCE 500ML (X12U)",
+   "categoria": "aceites y aderezos",
+   "precio": 8900.0,
+   "precio_lista": 8900.0,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 0,
+   "costo": 6300.0,
+   "free_qty": 0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  },
+  {
+   "id": 7902,
+   "codigo": "LIT-N2",
+   "nombre": "GALLETITAS DE ARROZ LA RIBERA 150G (X30U)",
+   "categoria": "galletitas y golosinas",
+   "precio": 1450.0,
+   "precio_lista": 1450.0,
+   "pricing_status": "ok",
+   "precios_pricelist": [],
+   "moneda": "ARS",
+   "stock": 0,
+   "costo": 980.0,
+   "free_qty": 0,
+   "incoming_qty": 0.0,
+   "outgoing_qty": 0.0,
+   "activo": true
+  }
+ ],
+ "proveedores": [
+  {
+   "id": 9101,
+   "nombre": "Distrib. Mayorista Guaraní",
+   "cuit": "30-90144556-3",
+   "localidad": "Rosario",
+   "telefono": "341-4901-2200",
+   "email": "compras@distribmayoristagu.com.ar"
+  },
+  {
+   "id": 9102,
+   "nombre": "Golosinas Costa Dulce SRL",
+   "cuit": "30-90244556-6",
+   "localidad": "Rosario",
+   "telefono": "341-4902-2200",
+   "email": "compras@golosinascostadulc.com.ar"
+  },
+  {
+   "id": 9103,
+   "nombre": "Lácteos Campo Alegre",
+   "cuit": "30-90344556-9",
+   "localidad": "Rosario",
+   "telefono": "341-4903-2200",
+   "email": "compras@lácteoscampoalegre.com.ar"
+  },
+  {
+   "id": 9104,
+   "nombre": "Frigorífico La Ribera",
+   "cuit": "30-90444556-2",
+   "localidad": "Rosario",
+   "telefono": "341-4904-2200",
+   "email": "compras@frigoríficolariber.com.ar"
+  },
+  {
+   "id": 9105,
+   "nombre": "Limpieza Total SA",
+   "cuit": "30-90544556-5",
+   "localidad": "Rosario",
+   "telefono": "341-4905-2200",
+   "email": "compras@limpiezatotalsa.com.ar"
+  },
+  {
+   "id": 9106,
+   "nombre": "Alimentos del Paraná SA",
+   "cuit": "30-90644556-8",
+   "localidad": "Rosario",
+   "telefono": "341-4906-2200",
+   "email": "compras@alimentosdelparaná.com.ar"
+  }
+ ],
+ "clientes": [],
+ "ordenes_compra": [
+  {
+   "id": 9701,
+   "numero": "P00091",
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "estado": "confirmada",
+   "fecha": "2026-06-28",
+   "total": 1169948.8,
+   "currency": "ARS",
+   "total_company": 1169948.8,
+   "open_backorder": true,
+   "items": [
+    {
+     "producto": "VINO TINTO LA RIBERA 750CC (X6U)",
+     "product_tmpl_id": 8204,
+     "cantidad": 60,
+     "precio_unitario": 5645.7,
+     "qty_received": 36
+    },
+    {
+     "producto": "GASEOSA COLA EL PARANA 2.25L (X6U)",
+     "product_tmpl_id": 8166,
+     "cantidad": 40,
+     "precio_unitario": 5905.53,
+     "qty_received": 40
+    },
+    {
+     "producto": "YOGUR BEBIBLE EL PARANA 900G (X6U)",
+     "product_tmpl_id": 8226,
+     "cantidad": 80,
+     "precio_unitario": 7437.32,
+     "qty_received": 0
+    }
+   ]
+  },
+  {
+   "id": 9702,
+   "numero": "P00092",
+   "proveedor": "Golosinas Costa Dulce SRL",
+   "estado": "confirmada",
+   "fecha": "2026-07-03",
+   "total": 598424.2,
+   "currency": "ARS",
+   "total_company": 598424.2,
+   "open_backorder": false,
+   "items": [
+    {
+     "producto": "LECHE ENTERA EL PARANA 1L (X12U)",
+     "product_tmpl_id": 8216,
+     "cantidad": 50,
+     "precio_unitario": 8253.2,
+     "qty_received": 0
+    },
+    {
+     "producto": "JUGO EN POLVO COSTA DULCE (X20S)",
+     "product_tmpl_id": 8184,
+     "cantidad": 30,
+     "precio_unitario": 6192.14,
+     "qty_received": 0
+    }
+   ]
+  }
+ ],
+ "ordenes_venta": [
+  {
+   "id": 9200,
+   "numero": "S00240",
+   "cliente": "Autoservicio 9 de Julio",
+   "estado": "confirmada",
+   "fecha": "2026-07-01",
+   "total": 177735.57,
+   "currency": "ARS",
+   "total_company": 177735.57,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9300,
+     "producto": "VINO TINTO LA RIBERA 750CC (X6U)",
+     "product_tmpl_id": 8204,
+     "cantidad": 6,
+     "qty_delivered": 6,
+     "precio_unitario": 6927.97,
+     "precio_company": 6927.97
+    },
+    {
+     "id": 9301,
+     "producto": "DULCE DE LECHE LA RIBERA 400G (X12U)",
+     "product_tmpl_id": 8258,
+     "cantidad": 15,
+     "qty_delivered": 15,
+     "precio_unitario": 9077.85,
+     "precio_company": 9077.85
+    }
+   ]
+  },
+  {
+   "id": 9201,
+   "numero": "S00241",
+   "cliente": "Supermercado El Puente",
+   "estado": "confirmada",
+   "fecha": "2026-07-02",
+   "total": 175682.43,
+   "currency": "ARS",
+   "total_company": 175682.43,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9302,
+     "producto": "ROLLO DE COCINA LA RIBERA X3 (X10P)",
+     "product_tmpl_id": 8422,
+     "cantidad": 10,
+     "qty_delivered": 10,
+     "precio_unitario": 2667.09,
+     "precio_company": 2667.09
+    },
+    {
+     "id": 9303,
+     "producto": "MANTECA EL PARANA 200G (X30U)",
+     "product_tmpl_id": 8233,
+     "cantidad": 19,
+     "qty_delivered": 19,
+     "precio_unitario": 3208.55,
+     "precio_company": 3208.55
+    },
+    {
+     "id": 9304,
+     "producto": "MAYONESA SANTA CLARA 500G (X12U)",
+     "product_tmpl_id": 8026,
+     "cantidad": 28,
+     "qty_delivered": 28,
+     "precio_unitario": 3144.61,
+     "precio_company": 3144.61
+    }
+   ]
+  },
+  {
+   "id": 9202,
+   "numero": "S00242",
+   "cliente": "Almacén San Martín",
+   "estado": "confirmada",
+   "fecha": "2026-07-03",
+   "total": 553148.92,
+   "currency": "ARS",
+   "total_company": 553148.92,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9305,
+     "producto": "LECHE ENTERA GUARANI 1L (X12U)",
+     "product_tmpl_id": 8214,
+     "cantidad": 14,
+     "qty_delivered": 14,
+     "precio_unitario": 9435.04,
+     "precio_company": 9435.04
+    },
+    {
+     "id": 9306,
+     "producto": "YERBA EL PARANA X1KG (X10U)",
+     "product_tmpl_id": 8118,
+     "cantidad": 23,
+     "qty_delivered": 23,
+     "precio_unitario": 4326.39,
+     "precio_company": 4326.39
+    },
+    {
+     "id": 9307,
+     "producto": "VINO TINTO LA RIBERA 750CC (X6U)",
+     "product_tmpl_id": 8204,
+     "cantidad": 32,
+     "qty_delivered": 32,
+     "precio_unitario": 6927.97,
+     "precio_company": 6927.97
+    },
+    {
+     "id": 9308,
+     "producto": "DULCE DE LECHE LA RIBERA 400G (X12U)",
+     "product_tmpl_id": 8258,
+     "cantidad": 11,
+     "qty_delivered": 11,
+     "precio_unitario": 9077.85,
+     "precio_company": 9077.85
+    }
+   ]
+  },
+  {
+   "id": 9203,
+   "numero": "S00243",
+   "cliente": "Minimercado Costanera",
+   "estado": "confirmada",
+   "fecha": "2026-07-04",
+   "total": 358749.18,
+   "currency": "ARS",
+   "total_company": 358749.18,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9309,
+     "producto": "DULCE DE LECHE TIERRA ROJA 400G (X12U)",
+     "product_tmpl_id": 8259,
+     "cantidad": 18,
+     "qty_delivered": 18,
+     "precio_unitario": 9904.66,
+     "precio_company": 9904.66
+    },
+    {
+     "id": 9310,
+     "producto": "SODA EL LITORAL 2L (X6U)",
+     "product_tmpl_id": 8197,
+     "cantidad": 27,
+     "qty_delivered": 27,
+     "precio_unitario": 6683.9,
+     "precio_company": 6683.9
+    }
+   ]
+  },
+  {
+   "id": 9204,
+   "numero": "S00244",
+   "cliente": "Despensa Doña Elsa",
+   "estado": "confirmada",
+   "fecha": "2026-07-05",
+   "total": 382159.51,
+   "currency": "ARS",
+   "total_company": 382159.51,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9311,
+     "producto": "JUGO EN POLVO TIERRA ROJA (X20S)",
+     "product_tmpl_id": 8188,
+     "cantidad": 22,
+     "qty_delivered": 22,
+     "precio_unitario": 2688.82,
+     "precio_company": 2688.82
+    },
+    {
+     "id": 9312,
+     "producto": "JUGO EN POLVO COSTA DULCE (X20S)",
+     "product_tmpl_id": 8184,
+     "cantidad": 31,
+     "qty_delivered": 31,
+     "precio_unitario": 7375.97,
+     "precio_company": 7375.97
+    },
+    {
+     "id": 9313,
+     "producto": "LECHE ENTERA GUARANI 1L (X12U)",
+     "product_tmpl_id": 8214,
+     "cantidad": 10,
+     "qty_delivered": 10,
+     "precio_unitario": 9435.04,
+     "precio_company": 9435.04
+    }
+   ]
+  },
+  {
+   "id": 9205,
+   "numero": "S00245",
+   "cliente": "Hotelería del Sol",
+   "estado": "confirmada",
+   "fecha": "2026-07-06",
+   "total": 831461.6,
+   "currency": "ARS",
+   "total_company": 831461.6,
+   "pricelist": "Mayorista ARS",
+   "open_backorder": false,
+   "fulfillment": "complete",
+   "items": [
+    {
+     "id": 9314,
+     "producto": "LECHE ENTERA EL PARANA 1L (X12U)",
+     "product_tmpl_id": 8216,
+     "cantidad": 26,
+     "qty_delivered": 26,
+     "precio_unitario": 9869.01,
+     "precio_company": 9869.01
+    },
+    {
+     "id": 9315,
+     "producto": "YOGUR BEBIBLE TIERRA ROJA 900G (X6U)",
+     "product_tmpl_id": 8228,
+     "cantidad": 35,
+     "qty_delivered": 35,
+     "precio_unitario": 8070.64,
+     "precio_company": 8070.64
+    },
+    {
+     "id": 9316,
+     "producto": "DULCE DE LECHE TIERRA ROJA 400G (X12U)",
+     "product_tmpl_id": 8259,
+     "cantidad": 14,
+     "qty_delivered": 14,
+     "precio_unitario": 9904.66,
+     "precio_company": 9904.66
+    },
+    {
+     "id": 9317,
+     "producto": "SODA EL LITORAL 2L (X6U)",
+     "product_tmpl_id": 8197,
+     "cantidad": 23,
+     "qty_delivered": 23,
+     "precio_unitario": 6683.9,
+     "precio_company": 6683.9
+    }
+   ]
+  }
+ ],
+ "recepciones": [
+  {
+   "id": 9500,
+   "picking_id": 501,
+   "fecha": "2026-07-02",
+   "producto": "VINO TINTO LA RIBERA 750CC (X6U)",
+   "product_tmpl_id": 8204,
+   "partner": "Distrib. Mayorista Guaraní",
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "cantidad": 36,
+   "qty_ordered": 60,
+   "deposito": "Depósito Central",
+   "origen": "WH/IN/00091",
+   "po_number": "P00091",
+   "so_number": "",
+   "estado": "done",
+   "backorder_id": null,
+   "es_backorder": false,
+   "pendiente": false,
+   "open_backorder": false
+  },
+  {
+   "id": 9501,
+   "picking_id": 501,
+   "fecha": "2026-07-02",
+   "producto": "GASEOSA COLA EL PARANA 2.25L (X6U)",
+   "product_tmpl_id": 8166,
+   "partner": "Distrib. Mayorista Guaraní",
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "cantidad": 40,
+   "qty_ordered": 40,
+   "deposito": "Depósito Central",
+   "origen": "WH/IN/00091",
+   "po_number": "P00091",
+   "so_number": "",
+   "estado": "done",
+   "backorder_id": null,
+   "es_backorder": false,
+   "pendiente": false,
+   "open_backorder": false
+  },
+  {
+   "id": 9502,
+   "picking_id": 502,
+   "fecha": "2026-07-09",
+   "producto": "VINO TINTO LA RIBERA 750CC (X6U)",
+   "product_tmpl_id": 8204,
+   "partner": "Distrib. Mayorista Guaraní",
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "cantidad": 0,
+   "qty_ordered": 24,
+   "deposito": "Depósito Central",
+   "origen": "WH/IN/00091",
+   "po_number": "P00091",
+   "so_number": "",
+   "estado": "assigned",
+   "backorder_id": 501,
+   "es_backorder": true,
+   "pendiente": true,
+   "open_backorder": true
+  },
+  {
+   "id": 9503,
+   "picking_id": 502,
+   "fecha": "2026-07-09",
+   "producto": "YOGUR BEBIBLE EL PARANA 900G (X6U)",
+   "product_tmpl_id": 8226,
+   "partner": "Distrib. Mayorista Guaraní",
+   "proveedor": "Distrib. Mayorista Guaraní",
+   "cantidad": 0,
+   "qty_ordered": 80,
+   "deposito": "Depósito Central",
+   "origen": "WH/IN/00091",
+   "po_number": "P00091",
+   "so_number": "",
+   "estado": "assigned",
+   "backorder_id": 501,
+   "es_backorder": true,
+   "pendiente": true,
+   "open_backorder": true
+  }
+ ],
+ "entregas": [],
+ "deposito": [],
+ "facturas": [],
+ "pagos": [],
+ "listas_precios": [],
+ "monedas": []
+}
