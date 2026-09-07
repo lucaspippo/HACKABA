@@ -3213,6 +3213,7 @@ export const ES = {
   "mapaop.marca_pie": "partidas en depósito",
   "mapaop.error_carga": "No pude cargar el mapa de la operación.",
   "mapaop.sin_datos": "Todavía no hay datos de depósito cargados.",
+  "mapaop.sin_frenos": "Hoy no hay nada frenado acá.",
   "mapaop.ley_traslados": "traslados entre zonas",
   "mapaop.ley_transito": "salió y nadie confirmó",
   "mapaop.ley_info": "información que no está en ningún sistema",

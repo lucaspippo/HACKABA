@@ -3240,6 +3240,7 @@ export const EN = {
   "mapaop.marca_pie": "lots in the warehouse",
   "mapaop.error_carga": "Could not load the operation map.",
   "mapaop.sin_datos": "No warehouse data loaded yet.",
+  "mapaop.sin_frenos": "Nothing is stuck here today.",
   "mapaop.ley_traslados": "transfers between zones",
   "mapaop.ley_transito": "left, nobody confirmed",
   "mapaop.ley_info": "information that lives in no system",

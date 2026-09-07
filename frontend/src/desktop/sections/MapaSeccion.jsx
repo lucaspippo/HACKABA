@@ -67,7 +67,8 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
         </div>
         <ErrorBoundary key="vista:operacion" seccion="mapa"
                        onInicio={() => onNavegar?.("panel", null)}>
-          <MapaOperacion onPreguntar={onPreguntar} focoInicial={highlight} />
+          <MapaOperacion onPreguntar={onPreguntar} onNavegar={onNavegar}
+                         focoInicial={highlight} />
         </ErrorBoundary>
       </div>
     );
