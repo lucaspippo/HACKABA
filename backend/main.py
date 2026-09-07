@@ -1552,10 +1552,14 @@ def odoo_config_ver(_u: dict = Depends(require_admin)):
         return {"conectado": True, "demo": True, "url": "muestra://odoo",
                 "database": "litoral_demo", "username": "demo",
                 "actualizado": e.get("activado")}
-    # Whether the demo tenant can offer the one-click sample connection
-    # (belt-and-braces with the endpoint's own tenant gate).
-    return {"conectado": False,
-            "demo_disponible": _es_demo() and odoo_demo.disponible()}
+    # Only the demo tenant, and only when it actually ships the sample, gets
+    # the extra key — a tenant that cannot be offered the one-click connection
+    # sees the plain {"conectado": False} it always saw. Advertising a
+    # capability that does not exist there would be a lie the UI then has to
+    # handle.
+    if _es_demo() and odoo_demo.disponible():
+        return {"conectado": False, "demo_disponible": True}
+    return {"conectado": False}
 
 
 @app.put("/api/conectores/odoo")

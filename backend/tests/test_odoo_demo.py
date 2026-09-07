@@ -17,13 +17,22 @@ What is protected, in order of how expensive it would be to get wrong:
 from __future__ import annotations
 
 import os
+import shutil
 import xmlrpc.client
 
 import pytest
 
-from core import conectores, odoo_demo, odoo_ingest, staging, store
+from core import conectores, odoo_demo, odoo_ingest, paths, staging, store
 from core.db import odoo_connections_repo, tenant as _tenant
 from tests.conftest import limpiar_tabla_tenant
+
+# The suite runs on a scratch data dir that only carries inventory.json (see
+# conftest), so the sample the connector reads is not there — and
+# `disponible()` correctly says so. These tests are about what happens once a
+# tenant DOES ship it, so the fixture puts the real one in place.
+_MUESTRA_REAL = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "data-demo", "odoo_muestra.json")
 
 
 @pytest.fixture
@@ -39,6 +48,9 @@ def _limpiar_proveedores() -> None:
 @pytest.fixture(autouse=True)
 def _aislar(tenant_id):
     """Fresh catalog, no marker, no staging leftovers — before and after."""
+    if not os.path.exists(odoo_demo.MUESTRA_JSON):
+        shutil.copy2(_MUESTRA_REAL, odoo_demo.MUESTRA_JSON)
+
     def limpiar():
         try:
             os.remove(odoo_demo.MARKER_JSON)
