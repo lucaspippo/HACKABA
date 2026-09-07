@@ -1541,12 +1541,21 @@ class OdooConexionRequest(BaseModel):
 def odoo_config_ver(_u: dict = Depends(require_admin)):
     """Config de Odoo guardada para este tenant. La api_key nunca vuelve al
     frontend (write-only una vez guardada)."""
+    from core import odoo_demo
     from core.db import odoo_connections_repo, tenant as _tenant
     c = odoo_connections_repo.get(_tenant.current_tenant_id())
-    if not c:
-        return {"conectado": False}
-    return {"conectado": True, "url": c["url"], "database": c["database"],
-            "username": c["username"], "actualizado": c["updated_at"]}
+    if c:
+        return {"conectado": True, "url": c["url"], "database": c["database"],
+                "username": c["username"], "actualizado": c["updated_at"]}
+    if odoo_demo.activo():
+        e = odoo_demo.estado()
+        return {"conectado": True, "demo": True, "url": "muestra://odoo",
+                "database": "litoral_demo", "username": "demo",
+                "actualizado": e.get("activado")}
+    # Whether the demo tenant can offer the one-click sample connection
+    # (belt-and-braces with the endpoint's own tenant gate).
+    return {"conectado": False,
+            "demo_disponible": _es_demo() and odoo_demo.disponible()}
 
 
 @app.put("/api/conectores/odoo")
@@ -1564,10 +1573,37 @@ def odoo_config_guardar(req: OdooConexionRequest, _u: dict = Depends(require_adm
 
 
 @app.delete("/api/conectores/odoo")
-def odoo_config_borrar(_u: dict = Depends(require_admin)):
+def odoo_config_borrar(u: dict = Depends(require_admin)):
+    from core import odoo_demo
     from core.db import odoo_connections_repo, tenant as _tenant
     odoo_connections_repo.delete(_tenant.current_tenant_id())
+    # Disconnecting also turns the demo sample off (and unlinks exactly what
+    # it linked): "desconectar" leaves the tenant with NO Odoo, of any kind.
+    if odoo_demo.activo():
+        odoo_demo.desactivar(u["username"])
     return {"ok": True}
+
+
+@app.post("/api/conectores/odoo/conectar-demo")
+def odoo_conectar_demo(u: dict = Depends(require_admin)):
+    """DEMO ONLY: connect the Odoo connector to the bundled sample and run
+    the first sync end to end (link + direct updates + staging batches for
+    what's new). 404s on any other tenant, same belt-and-braces as
+    /api/admin/reset-demo — and it is NOT a fallback: a real connection,
+    once configured, always wins (core/conectores.conector_odoo)."""
+    from core import odoo_demo, odoo_ingest
+    if not _es_demo() or not odoo_demo.disponible():
+        raise HTTPException(status_code=404, detail="Not Found")
+    actor = u["username"]
+    vinculado = odoo_demo.activar(actor)
+    resultados = {
+        "productos": odoo_ingest.ingest_productos(actor),
+        "proveedores": odoo_ingest.ingest_proveedores(actor),
+        "ordenes_compra": odoo_ingest.ingest_ordenes_compra(actor),
+        "ventas": odoo_ingest.ingest_ventas(actor),
+        "recepciones": odoo_ingest.ingest_recepciones(actor),
+    }
+    return {"ok": True, "vinculado": vinculado, "resultados": resultados}
 
 
 @app.post("/api/conectores/odoo/sync")
@@ -1576,7 +1612,7 @@ def odoo_sync(_u: dict = Depends(require_admin)):
     lectura — ver core/conectores.ConectorOdoo para por qué todavía no se
     integra directo a la Staging Area."""
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_data()
     except ValueError as e:
@@ -1588,7 +1624,7 @@ def odoo_sync_productos(_u: dict = Depends(require_admin)):
     """Trae el catálogo de productos de Odoo (product.template) con su stock
     disponible, como preview de sólo lectura — mismo criterio que odoo_sync()."""
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_productos()
     except ValueError as e:
@@ -1611,7 +1647,7 @@ def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
     """Trae los contactos-proveedor de Odoo (res.partner, supplier_rank > 0)
     como preview de sólo lectura — mismo criterio que odoo_sync()."""
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_proveedores()
     except ValueError as e:
@@ -1645,7 +1681,7 @@ def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
     """Trae las órdenes de compra de Odoo (purchase.order) con sus líneas,
     como preview de sólo lectura — mismo criterio que odoo_sync()."""
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_ordenes_compra()
     except ValueError as e:
@@ -1667,7 +1703,7 @@ def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
 def odoo_sync_ventas(_u: dict = Depends(require_admin)):
     """Preview of Odoo sale.order rows (all states) with lines."""
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_ordenes_venta()
     except ValueError as e:
@@ -1687,7 +1723,7 @@ def odoo_ingest_ventas(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-deposito")
 def odoo_sync_deposito(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_deposito()
     except ValueError as e:
@@ -1706,7 +1742,7 @@ def odoo_ingest_deposito(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-recepciones")
 def odoo_sync_recepciones(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_recepciones()
     except ValueError as e:
@@ -1725,7 +1761,7 @@ def odoo_ingest_recepciones(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-entregas")
 def odoo_sync_entregas(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_entregas()
     except ValueError as e:
@@ -1744,7 +1780,7 @@ def odoo_ingest_entregas(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-facturas")
 def odoo_sync_facturas(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_facturas()
     except ValueError as e:
@@ -1763,7 +1799,7 @@ def odoo_ingest_facturas(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-pagos")
 def odoo_sync_pagos(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_pagos()
     except ValueError as e:
@@ -1782,7 +1818,7 @@ def odoo_ingest_pagos(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-listas-precios")
 def odoo_sync_listas_precios(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_listas_precios()
     except ValueError as e:
@@ -1792,7 +1828,7 @@ def odoo_sync_listas_precios(_u: dict = Depends(require_admin)):
 @app.post("/api/conectores/odoo/sync-monedas")
 def odoo_sync_monedas(_u: dict = Depends(require_admin)):
     from core.db import tenant as _tenant
-    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    conector = conectores.conector_odoo(_tenant.current_tenant_id())
     try:
         return conector.pull_monedas()
     except ValueError as e:

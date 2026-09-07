@@ -484,6 +484,22 @@ function PanelOdoo({ estado, onNavigate }) {
     await cargar();
   };
 
+  // DEMO ONLY (the backend 404s elsewhere): connect the bundled sample and
+  // run the first sync in one click. Explicit and labeled — never a fallback
+  // for a failing real connection, which keeps failing loudly on purpose.
+  const conectarMuestra = async () => {
+    setGuardando(true);
+    setError(null);
+    try {
+      await api.odooConectarDemo();
+      await cargar();
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const TABS = [
     { id: "contactos", icon: Users },
     { id: "productos", icon: Package },
@@ -514,7 +530,9 @@ function PanelOdoo({ estado, onNavigate }) {
       {cfg && (cfg.conectado ? (
         <>
           <p className="text-sm text-tinta-suave">
-            {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
+            {cfg.demo
+              ? t("odoo.conectado_muestra")
+              : t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
             {" · "}
             <button type="button" onClick={() => onNavigate?.("imported")}
               className="font-semibold text-tinta underline decoration-linea underline-offset-2 hover:decoration-tinta">
@@ -565,6 +583,16 @@ function PanelOdoo({ estado, onNavigate }) {
               {guardando ? t("odoo.conectando") : t("odoo.conectar")}
             </ConnectorButton>
           </form>
+          {cfg.demo_disponible && (
+            <div className="mt-3 border-t border-linea pt-3">
+              <p className="text-sm text-tinta-suave">{t("odoo.muestra_hint")}</p>
+              <div className="mt-2">
+                <ConnectorButton onClick={conectarMuestra} loading={guardando}>
+                  {guardando ? t("odoo.conectando") : t("odoo.conectar_muestra")}
+                </ConnectorButton>
+              </div>
+            </div>
+          )}
         </>
       ))}
       {cfg && <p className="text-xs leading-snug text-tinta-suave">{t("odoo.nota")}</p>}
