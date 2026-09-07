@@ -1109,6 +1109,11 @@ def _nodos_de_contexto(ctx: dict, lang: str) -> tuple[list[dict], list[dict]]:
                     b=_num(can["total"], lang)),
         peso=3, banda="arriba",
         metricas=[_metrica(T("m_avisos", lang), _num(can["total"], lang))],
+        # Two labelled groups instead of a per-chip tag: which side of the
+        # system a channel sits on is the point of the band, so it is said
+        # once per group and not repeated on every chip.
+        rotulo_afuera=T("chips_afuera", lang),
+        rotulo_adentro=T("chips_adentro", lang),
         chips=can["chips"], fuente=can["fuente"]))
     for destino in can["afecta"]:
         aristas.append(_arista("canales", destino, "informacion",
@@ -1762,6 +1767,57 @@ def _verbo(tipo: str, lang: str) -> str:
     return tipo.replace("_", " ") if v == "mapaop." + key else v
 
 
+# ---------------------------------------------------------------------------
+# WHERE A NODE LIVES IN THE APP — so the panel always has an exit.
+# ---------------------------------------------------------------------------
+# The panel must never end in a negation. "Nothing is stuck here" is a report,
+# and design rule #1 says a process that ends in a report is unfinished. So
+# every node declares the section that OWNS it: with a finding, the panel
+# offers the action; without one, it offers to go see the thing, with the item
+# already focused. The question to Ángela stays as the third exit, always.
+#
+# Section ids are the app's own (DesktopApp's CATALOGO / ALIAS_SECCION), and
+# `foco` is the value that section highlights on arrival. Nothing here is a
+# new endpoint or a new table: it is a lookup over the node the map already
+# built.
+_SECCION_FIJA = {
+    "deposito": ("deposito", None),
+    "canales": ("equipo", None),        # the heads-ups are the team's
+    "equipo": ("equipo", None),
+    "reglas": ("aprendizaje", None),    # what the system learned
+    "devuelve": ("auditoria", None),    # every write-back is a logged approval
+    "cobranza": ("cobranzas", None),
+    "por_salir": ("deposito", None),    # logistica → deposito (ALIAS_SECCION)
+    "mostrador": ("caja", None),        # the counter IS the till
+    "sucursales": ("movimientos", None),  # internal transfers
+}
+_SECCION_DE_TIPO = {
+    "zona": "deposito",
+    "proveedor": "proveedores",
+    "orden_compra": "ordenes_compra",
+    "pedido": "deposito",
+    "camion": "deposito",
+    "boca": "movimientos",
+    "cliente": "cuentas",
+    "cobranza": "cobranzas",
+}
+
+
+def _ver(n: dict | None, base: str, lang: str) -> dict | None:
+    """Where to send whoever wants to see this node's data in full."""
+    if base in _SECCION_FIJA:
+        seccion, foco = _SECCION_FIJA[base]
+    elif n and n.get("tipo") in _SECCION_DE_TIPO:
+        seccion = _SECCION_DE_TIPO[n["tipo"]]
+        # The focus is the node's own label: the section resolves it the same
+        # way a Home card's highlight does.
+        foco = n.get("etiqueta")
+    else:
+        return None
+    return {"seccion": seccion, "foco": foco,
+            "label": T("ver_en", lang, seccion=T("sec_" + seccion, lang))}
+
+
 def _que_hacer(h: dict | None, pregunta: str, lang: str) -> dict:
     if not h:
         return {"propuesta": None, "accion": None,
@@ -1940,6 +1996,9 @@ def detalle(nid: str, lang: str = "es") -> dict | None:
         "que_pasa": que_pasa,
         "de_donde": de_donde,
         "que_hacer": _que_hacer(h, pregunta, lang),
+        # The guaranteed exit: with or without a finding, the panel can always
+        # take you to the section that owns this node (see _ver).
+        "ver": _ver(n, base, lang),
         "listado": ({"titulo": lst.get("titulo_filas") or T("lst_detalle",
                                                             lang),
                      "filas": lst.get("filas") or []} if lst else None),
