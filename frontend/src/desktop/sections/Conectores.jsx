@@ -539,7 +539,13 @@ function PanelOdoo({ estado, onNavigate }) {
               {t("odoo.view_imported")}
             </button>
           </p>
-          <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b border-linea px-1 pb-px">
+          {/* Ten tabs do not fit on one line, and `overflow-x-auto` with the
+              scrollbar hidden made the sixth onward simply not exist for the
+              reader — with the sample connected, "entregas", "facturas" and
+              "precios" were the ones lost. They WRAP now: two rows, every tab
+              visible, nothing behind a scroll or a menu. A dropdown for the
+              last four would have hidden the same tabs behind a click. */}
+          <div className="-mx-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 border-b border-linea px-1 pb-px">
             {TABS.map(({ id, icon: TabIcon }) => (
               <button key={id} onClick={() => setTab(id)}
                 className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 -mb-px px-2.5 py-2 text-sm font-semibold transition-colors ${

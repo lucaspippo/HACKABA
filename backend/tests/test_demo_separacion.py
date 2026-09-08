@@ -143,6 +143,13 @@ def test_dataset_demo_es_coherente():
     assert len(rec) > 300 and all(r["codigo"] in codigos for r in rec[:50])
 
 
+def _hashes_json(carpeta: str) -> dict[str, str]:
+    """El SHA-256 de cada JSON que dejó el generador, por nombre."""
+    import hashlib
+    return {f: hashlib.sha256(open(os.path.join(carpeta, f), "rb").read()).hexdigest()
+            for f in sorted(os.listdir(carpeta)) if f.endswith(".json")}
+
+
 def test_generador_es_determinista():
     """Correr generar.py DOS VECES tiene que dar el mismo inventory.json —
     pero NUNCA contra data-demo/ real ni el tenant "demo" real: sus
@@ -182,12 +189,18 @@ def test_generador_es_determinista():
         r1 = subprocess.run([sys.executable, "generar.py"], cwd=data_dir,
                             capture_output=True, text=True, timeout=180, env=env)
         assert r1.returncode == 0, r1.stderr[-500:]
-        hash1 = hash(open(os.path.join(data_dir, "inventory.json"), encoding="utf-8").read())
+        hashes1 = _hashes_json(data_dir)
         r2 = subprocess.run([sys.executable, "generar.py"], cwd=data_dir,
                             capture_output=True, text=True, timeout=180, env=env)
         assert r2.returncode == 0, r2.stderr[-500:]
-        hash2 = hash(open(os.path.join(data_dir, "inventory.json"), encoding="utf-8").read())
-        assert hash1 == hash2  # reproducible: correrlo dos veces da lo mismo
+        hashes2 = _hashes_json(data_dir)
+        # TODOS los JSON, no sólo inventory.json: desde la resiembra por hash
+        # (core/db/seed_state.py) el determinismo de CADA archivo es lo que
+        # evita que la demo se resiembre en cada boot y pierda lo que hicieron
+        # los visitantes. Un archivo que derive sería un fallo silencioso.
+        distintos = [f for f in hashes1 if hashes1[f] != hashes2.get(f)]
+        assert not distintos, f"generar.py no es determinista en {distintos}"
+        assert set(hashes1) == set(hashes2), "cambió el SET de archivos generados"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         with get_admin_engine().begin() as conn:

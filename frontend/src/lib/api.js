@@ -182,6 +182,7 @@ export const api = {
   traslados: () => get("/api/traslados-internos"),
   // P38·H — vencimientos que Ángela gestiona
   vencimientos: (dias = 30) => get(`/api/vencimientos?dias=${dias}`),
+  vencimientoGestionar: (body) => post("/api/vencimientos/gestionar", body),
   conocimiento: (params = {}) => {
     const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
     return get("/api/conocimiento" + (q ? `?${q}` : ""));
