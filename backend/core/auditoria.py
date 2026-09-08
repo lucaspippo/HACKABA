@@ -73,6 +73,9 @@ ACCIONES: dict[str, dict] = {
     "rechazar_conocimiento": {"clase": "datos", "gate": "aprobacion"},
     # --- stock y piso --------------------------------------------------------
     "preparar_orden_compra": {"clase": "stock", "gate": "aprobacion"},
+    # The yes on the expiry card: a lot marked for promotion or for the
+    # stores. Money at stake, nothing runs on its own.
+    "gestionar_vencimiento": {"clase": "stock", "gate": "aprobacion"},
     # El dueño/staff da de alta o edita a mano, sin pasar por Ángela — gate
     # "propia" como reportar_faltante/marcar_conteo.
     "crear_ubicacion":    {"clase": "datos", "gate": "propia"},
