@@ -148,7 +148,7 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
           monto=None, monto_label=None, cifra_texto=None, fuentes=None,
           navegar=None, accion_chat=None, propuesta=None, piso=False,
           macro=None, naturaleza=None, tipo=None, insight=None,
-          reportes=None):
+          reportes=None, mapa=None):
     resolved_insight = insight or _blank_insight()
     return {
         "id": id,
@@ -171,6 +171,14 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
         "modulos": tuple(modulos),
         "insight": resolved_insight,
         "reportes": reportes,
+        # The operation map's finding this priority IS (core/mapa_operacion
+        # hallazgo id), when the two are the same fact seen from two screens.
+        # Home uses it to open the map already focused, path lit, panel open —
+        # instead of sending the owner to a neutral map to hunt for it.
+        # Deliberately only where the finding is the same thing: overdue
+        # customers are NOT the map's `cobranza_criterio` (that one is a
+        # house-rule exception), so they carry no map.
+        "mapa": mapa,
         "band": None,
         "action_taken": None,
     }
@@ -805,7 +813,7 @@ def _alerts_deposito(lang) -> list[dict]:
         lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
         metodo = {"key": "core.method.expired_lots", "label": _t("core.method.expired_lots", lang)}
         out.append(_item(
-            id="dep_vencidos", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
+            id="dep_vencidos", mapa="vencidos", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_vencidos_t", lang),
             resumen=_t("core.prio.dep_vencidos_r", lang, n=_num(dep["vencidos"], lang)),
             origen=["alerta:dep_vencidos"], modulos=ALERT_MODULOS["dep_vencidos"],
@@ -848,7 +856,7 @@ def _alerts_deposito(lang) -> list[dict]:
         lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
         metodo = {"key": "core.method.expiring_lots", "label": _t("core.method.expiring_lots", lang)}
         out.append(_item(
-            id="dep_porvencer", tono="oro", chip=_t("core.prio.chip_deposito", lang),
+            id="dep_porvencer", mapa="por_vencer", tono="oro", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_porvencer_t", lang),
             resumen=_t("core.prio.dep_porvencer_r", lang, n=_num(dep["por_vencer"], lang)),
             origen=["alerta:dep_porvencer"], modulos=ALERT_MODULOS["dep_porvencer"],
@@ -927,7 +935,7 @@ def _alerts_deposito(lang) -> list[dict]:
         top = items[0]
         metodo = {"key": "core.method.at_risk", "label": _t("core.method.at_risk", lang)}
         out.append(_item(
-            id="venc_riesgo", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
+            id="venc_riesgo", mapa="por_vencer", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.venc_riesgo_t", lang, n=_num(venc["lotes_en_riesgo"], lang)),
             resumen=_t("core.prio.venc_riesgo_r", lang,
                        producto=top.get("producto") or "",
