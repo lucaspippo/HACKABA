@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PolPilot · Mockups mobile por rol</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<aside id="panel">
+  <header class="p-head">
+    <img src="polpilot.png" alt="PolPilot" class="p-logo">
+    <div>
+      <h1>Mockups mobile por rol</h1>
+      <p class="p-sub">Prototipo navegable · rama <code>design/mobile-roles</code></p>
+    </div>
+  </header>
+
+  <p class="p-aviso">
+    Todo lo que se ve sale del dataset del demo (tenant <code>demo</code>,
+    "hoy" = <strong>2026-07-07</strong>). Ninguna entidad inventada, ninguna marca real.
+  </p>
+
+  <nav id="p-roles"></nav>
+
+  <footer class="p-foot">
+    <p><strong>Leyenda de color</strong> (DESIGN.md, «un color, un significado»)</p>
+    <ul class="p-leg">
+      <li><i style="background:var(--rojo)"></i> problema real y activo</li>
+      <li><i style="background:var(--oro)"></i> decisión esperando a alguien</li>
+      <li><i style="background:var(--salvia)"></i> en orden / hecho</li>
+      <li><i style="background:var(--angela)"></i> Ángela, y sólo Ángela</li>
+    </ul>
+  </footer>
+</aside>
+
+<main id="escenario">
+  <div id="marco">
+    <div id="pantalla">
+      <div id="statusbar"><span>9:41</span><span class="sb-r"><i class="sb-sig"></i><i class="sb-wifi"></i><i class="sb-bat"></i></span></div>
+      <div id="chrome-top"></div>
+      <div id="vista"></div>
+      <div id="chrome-bot"></div>
+      <div id="hoja"></div>
+    </div>
+  </div>
+  <div id="nota-pantalla"></div>
+</main>
+
+<script src="js/chrome.js"></script>
+<script src="js/deposito.js"></script>
+<script src="js/calle.js"></script>
+<script src="js/oficina.js"></script>
+<script src="js/arranque.js"></script>
+</body>
+</html>

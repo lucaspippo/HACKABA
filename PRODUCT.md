@@ -153,6 +153,21 @@ puts us on Odoo's home ground".
   integrity — the ground where a 20-year-old ERP wins. We read those; we
   write back *decisions* through the connector, with the audit trail intact.
 
+  Stated as the line that settles every future argument about where a write
+  belongs: **the ERP stores what happened. PolPilot stores what somebody
+  decided, who decided it, and why.** A fact reported from the floor ("eight
+  boxes came in broken", "I counted 34 fewer") is not a stock movement — it is
+  the evidence that the ERP's stock is wrong. The adjustment is the ERP's, and
+  it happens when a person approves it. This is what `core/piso.py` already
+  enforces in its own words ("reporting does NOT modify stock or the ERP"), and
+  what keeps the whole mobile surface honest: **no floor screen writes to the
+  ERP.** Every one of them writes a fact or a decision.
+
+  The tempting exception is order picking, where reserving stock would feel
+  natural. Reserving is the ERP's job; what we record is that the picker
+  assembled 2 of the 4 requested and flagged the shortfall to whoever can act
+  on it.
+
 ### How to apply it when a screen is proposed
 
 Before a new section enters `CATALOGO` (`frontend/src/desktop/DesktopApp.jsx`)
@@ -191,6 +206,9 @@ or `MODULOS` (`backend/auth.py`), answer in writing:
 - **Home-Ground Rule:** an ERP menu name is a reason to hide, not to add.
 - **Owner Rule:** `es_admin` is a role with a work queue, not an exemption
   from one.
+- **Record Rule:** the ERP stores what happened; we store what somebody
+  decided, who decided it, and why. A floor report is evidence that a record
+  is wrong, never the correction itself — so no floor screen writes to the ERP.
 
 ## Product Principles
 
