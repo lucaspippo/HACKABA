@@ -24,6 +24,27 @@ export default defineConfig({
       "/api": `http://127.0.0.1:${apiPort}`,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // One 2.9 MB file carried React Flow, force-graph, recharts and
+        // assistant-ui into every first load, even a Home that uses none of
+        // them. Three named chunks: the graph engines (~600 KB, only the map
+        // and the brain), the chat runtime, and the charts. Splitting alone
+        // does not defer them — the sections that import them are lazy now
+        // (DesktopApp.jsx), so a chunk is fetched the first time its screen
+        // opens. The chat chunk is the exception: ChatRuntimeProvider wraps
+        // the whole app, so it still loads eagerly, just as its own file.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/]node_modules[\\/](@xyflow|react-force-graph-2d|force-graph|d3-force-3d|kapsule)[\\/]/.test(id)) return "grafo";
+          if (/[\\/]node_modules[\\/]@assistant-ui[\\/]/.test(id)) return "chat";
+          if (/[\\/]node_modules[\\/](recharts|victory-vendor)[\\/]/.test(id)) return "graficos";
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     // DOM suites opt in per file with `// @vitest-environment jsdom`.
     environment: "node",
