@@ -119,6 +119,7 @@ export const api = {
   grupo: (nombre, limit) =>
     get(`/api/grupo/${nombre}${limit ? `?limit=${limit}` : ""}`),
   buscar: (q) => get(`/api/buscar?q=${encodeURIComponent(q)}`),
+  buscarGlobal: (q) => get(`/api/buscar-global?q=${encodeURIComponent(q)}`),
   oportunidades: () => get("/api/oportunidades"),
   prioridades: () => get("/api/prioridades"),
   // Closing the loop on a continuous-learning finding (core/patrones.py):

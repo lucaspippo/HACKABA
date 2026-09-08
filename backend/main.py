@@ -2007,6 +2007,19 @@ def buscar(q: str, _u: dict = Depends(require_feature("inventario"))):
     return {"query": q, "items": ds.buscar_productos(q)}
 
 
+@app.get("/api/buscar-global")
+def buscar_global(q: str, u: dict = Depends(usuario_actual)):
+    """Every entity this person may see, with where each one lives.
+
+    Open to anyone logged in on purpose: the gate is per RESULT TYPE, not on
+    the endpoint (see core/buscador.py). Someone with `cuentas` and no
+    `inventario` searches customers and gets no products."""
+    from core import buscador
+    features = perfiles.features_efectivas(u["username"])
+    return {"query": q, "items": buscador.buscar(q, features),
+            "parece_pregunta": buscador.parece_pregunta(q)}
+
+
 # Freno de gasto del TENANT DEMO (P9·F): límite blando de mensajes de Ángela
 # por sesión (token). Solo si POLPILOT_DEMO_MSG_CAP está seteada — el piloto,
 # sin la var, no cambia en nada. Contador en memoria: muere con el proceso,
