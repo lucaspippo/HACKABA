@@ -234,19 +234,29 @@ la ruta.
 
 ---
 
-### C5 · La ruta de mañana: $168.700.000 en la calle, en un camión que no es nuestro
+### C5 · La ruta de mañana: $111.800.000 en la calle, en un camión que no es nuestro
 
 **Cruza:** logística futura × cuentas. Dos tablas, nada más.
 
+> **CORRECCIÓN (al construirlo).** La primera versión de este documento decía
+> **$168.700.000**, y estaba mal: sumaba **por parada** en vez de **por
+> cliente**. Supermercado El Puente y Kiosco Plaza tienen dos paradas cada uno
+> el 08/07, y su saldo es uno solo. El número real es **$111.800.000** — un
+> tercio menos. Lo detectó el código al escribirlo, no la lectura del
+> documento, que es exactamente el motivo por el que un número se construye
+> antes de repetirlo. Los dos primeros tests de `test_deuda_en_ruta.py` no
+> prueban otra cosa.
+
 **Qué hay, verificado, para el 08/07:**
 
-| Camión | Paradas | Deuda de esas paradas |
-|---|---|---|
-| Camión 1 · Walter | 1 | $12.600.000 |
-| **Camión 3 · Tercerizado** | **7** | **$168.700.000** |
+| Camión | Paradas | Clientes | Deuda de esas paradas |
+|---|---|---|---|
+| Camión 1 · Walter | 1 | 1 | $12.600.000 |
+| **Camión 3 · Tercerizado** | **7** | **5** | **$111.800.000** |
 
-$168,7M es el **54% de los $311.400.000 que la empresa tiene por cobrar**. Y una
-de esas siete paradas es Doña Elsa, con 66 días.
+$111,8M es el **36% de los $311.400.000 que la empresa tiene por cobrar**. Y una
+de esas siete paradas es Doña Elsa, con 66 días — que además compra dos de los
+lotes que se están venciendo (C2).
 
 **Qué aparece:** el ERP sabe cuánto debe cada cliente y sabe qué pedido sale
 mañana. Lo que no hace nadie es **la suma por camión**. Puesto así, es una
@@ -256,8 +266,13 @@ paradas se reasignan.
 **A quién le sirve:** a Aldo y a Ramón (reasignar), a Marta (avisarle al
 tercerizado qué cobrar).
 **Dónde vive:** en «Decidir» de Aldo, una vez por día, a la tarde.
-**Motor:** no. Dos `for` sobre tablas que ya están cargadas.
-**Costo:** muy chico. Es el mejor ratio plata/esfuerzo de toda la lista.
+**Motor: SÍ, ya construido** — `cobranza.exposicion_en_ruta()` y la tarjeta
+`deuda_en_ruta` en Prioridades (rama `feat/deuda-por-camion`). Llega a mobile
+sin tocar el front, porque Insights lee Prioridades. Gateado por **dos**
+módulos, `logistica` **y** `cuentas`: el encargado tiene rutas y no saldos, el
+preventista al revés, y ninguno de los dos ve la flota entera.
+**Costo:** fue chico, como estaba estimado. Lo único que no estaba previsto es
+que el número había que deduplicarlo.
 
 ---
 
@@ -516,7 +531,7 @@ tiene, y es el que hizo cuatro de los avisos que lo alimentan.
 
 ### Dos columnas de plata, y no son lo mismo
 
-Corrección pedida por Lucas, y tiene razón: poner los $168,7M de C5 y los
+Corrección pedida por Lucas, y tiene razón: poner los $111,8M de C5 y los
 $53.646 de C7 en la misma columna se malinterpreta solo. Son dos cosas
 distintas y hay que leerlas distinto.
 
@@ -545,26 +560,32 @@ número sería fabricarlo.** Se quedan sin monto a propósito.
 | C4 · Doña Elsa | $19.200.000 | — | parcial | ampliar tipos de nota; + ruta |
 | C8 · góndola vacía × central | — | — | parcial | cruzar local × central × regla |
 | **C2 · vence × compra × ruta** | — | **$6.825.532** | **no** | el cruce entero |
-| **C5 · deuda por camión** | **$168.700.000** | — | **no** | dos `for` |
+| **C5 · deuda por camión** | **$111.800.000** | — | **sí, construido** | — |
 | C7 · pasillo 4 explica la diferencia | — | **$53.646** | no | juntar dos consultas |
 | C9 · mortadela: hecho + evidencia | — | — | no | cae con el reclamo dirigido |
 | C10 · «no me lleves más» × pedido | $42.000.000 | — | no | filtro sobre C5 |
 | C12 · el jamón de Tomás | — | $876.101 | no | notas de conteo × vencimientos |
 
 Sumar las dos columnas entre sí no significa nada. La de la izquierda tiene
-solapamiento propio —Doña Elsa está adentro de los $168,7M de C5, y 9 de Julio
+solapamiento propio —Doña Elsa está adentro de los $111,8M de C5, y 9 de Julio
 está en la misma cartera—, así que tampoco se suma consigo misma. Cada monto
 responde a su propio cruce y no hay un total.
 
-**Qué construiría, en este orden, si me lo preguntás:**
+**El orden que quedó acordado, y en qué anda cada uno:**
 
-1. **C5** — la deuda sumada por camión. Es el mejor ratio plata/esfuerzo de todo
-   el documento: dos tablas cargadas, un `for`, $168,7M a la vista.
-2. **Rutear C6 y C11 a quien los originó.** Cero motor. Es lo mismo que ya
-   acordamos en el punto 2 del plan de construcción, aplicado a los cruces.
-3. **C2** — la parada enriquecida. Es el eje que pediste y no existe.
-4. **C7** — la explicación de la diferencia. Chico, y es el que mejor enseña qué
+1. **C5** — la deuda sumada por camión. **Hecho**, en `feat/deuda-por-camion`.
+   Fue el mejor ratio plata/esfuerzo del documento, como estaba previsto — y el
+   número había que deduplicarlo.
+2. **Cerrar el círculo, con el ruteo de C6 y C11 adentro.** Mismo riel:
+   destinatario, estado, notificar al que originó, «lo que reportaste» y «tu
+   aviso en el mapa». *Siguiente.*
+3. **C7** — la explicación de la diferencia. Chico, y es el que mejor enseña qué
    es este producto.
+4. **C2** — la parada enriquecida. Es el eje que pediste y el que no tiene motor.
+
+Después de esos: la ficha de armado de Brian, y los dos gratuitos (el costo de
+536 días en la ficha de mostrador y «preguntarle a Ramón» para el que recién
+entró).
 
 ---
 
