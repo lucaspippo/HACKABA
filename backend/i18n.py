@@ -541,7 +541,7 @@ CATALOGO: dict[str, dict[str, str]] = {
               "delivery note just taken in and posts it to the supplier's account.",
     },
     "muestras.recibo_t": {
-        "es": "3 · Recibo — el moroso pagó",
+        "es": "3 · Recibo — el atrasado pagó",
         "en": "3 · Receipt — the late payer paid",
     },
     "muestras.recibo_d": {
@@ -1386,10 +1386,10 @@ CATALOGO: dict[str, dict[str, str]] = {
               "it with the X or just ask me.",
     },
     # P25·A — oportunidades de verdad (tarjetas con drill-down)
-    "core.opn.morosos_t": {"es": "Cobrar a los {n} morosos", "en": "Collect from the {n} overdue customers"},
+    "core.opn.morosos_t": {"es": "Cobrar a los {n} clientes atrasados", "en": "Collect from the {n} overdue customers"},
     "core.opn.morosos_r": {"es": "El peor: {peor}, {dias} días sin pagar.",
                             "en": "Worst: {peor}, {dias} days without paying."},
-    "core.opn.morosos_chat": {"es": "ayudame a cobrarles a los morosos",
+    "core.opn.morosos_chat": {"es": "ayudame a cobrarles a los que están atrasados",
                                "en": "help me collect from the overdue customers"},
     # No {total}: the overdue sum is `overdue_total`'s own value. This exact
     # line, next to that chip, is the duplication the owner reported.
@@ -2361,11 +2361,11 @@ CATALOGO: dict[str, dict[str, str]] = {
               "soon as it's in, I'll tell you who owes you, how much and for how long.",
     },
     "fb.cta_al_dia": {
-        "es": "Por ahora nadie está en mora. Tus clientes vienen al día.",
+        "es": "Por ahora nadie está atrasado. Tus clientes vienen al día.",
         "en": "Nobody's overdue for now. Your customers are keeping up.",
     },
     "fb.cta_morosos": {
-        "es": "Tenés {n} clientes en mora por {total} en total. "
+        "es": "Tenés {n} clientes atrasados por {total} en total. "
               "El más urgente: {nombre} debe {saldo} hace {dias} "
               "días (está {atraso}% más tarde que su promedio). ¿Le mando un recordatorio?",
         "en": "You have {n} customers overdue for {total} in total. "
@@ -2630,7 +2630,7 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "Its season starts now ({temporada}× the average month): beat the peak by stocking up and promoting it now.",
     },
     "core.analisis.obj_morosos_titulo": {
-        "es": "Cobrar los {n} clientes en mora",
+        "es": "Cobrar a los {n} clientes atrasados",
         "en": "Collect from the {n} overdue customers",
     },
     "core.analisis.obj_morosos_detalle": {
@@ -2676,7 +2676,7 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "Going well: don't ease up on restocking the fast movers.",
     },
     "core.analisis.obj_crec_mal": {
-        "es": "Está cayendo: mirar los que se venden solos de siempre y los morosos.",
+        "es": "Está cayendo: mirar los que se venden solos de siempre y los atrasados.",
         "en": "It's slipping: look at the products that usually sell on their own and the overdue accounts.",
     },
     # --- core/evolucion.py · comparaciones ajustadas por IPC ---------------------
@@ -2990,7 +2990,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.esquema.activa_cliente_1": {"es": "cuentas corrientes con nombre", "en": "customer accounts with names"},
     "core.esquema.activa_proveedor_0": {"es": "costo de reposición por proveedor", "en": "replacement cost per supplier"},
     "core.esquema.activa_proveedor_1": {"es": "órdenes de pedido por proveedor", "en": "purchase orders per supplier"},
-    "core.esquema.activa_cuenta_corriente_0": {"es": "identificación de morosos (nombre, monto, días)",
+    "core.esquema.activa_cuenta_corriente_0": {"es": "identificación de atrasados (nombre, monto, días)",
                                                "en": "overdue customers identified (name, amount, days)"},
     "core.esquema.activa_cuenta_corriente_1": {"es": "alertas de cobro", "en": "collection alerts"},
     "core.esquema.activa_deposito_0": {"es": "consultas de ubicación por producto", "en": "location lookups per product"},
@@ -3137,7 +3137,7 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "Clear the 5 most dormant products (deal, bundle or return): you recover {monto}.",
     },
     "core.doc.acc_recordatorio": {
-        "es": "Mandar el recordatorio de cobro a los {n} morosos ({monto} vencidos). "
+        "es": "Mandar el recordatorio de cobro a los {n} clientes atrasados ({monto} vencidos). "
               "Puedo dejarte el mensaje listo con tu OK.",
         "en": "Send the payment reminder to the {n} overdue customers ({monto} past due). "
               "I can have the message ready with your OK.",
@@ -3495,15 +3495,15 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.f_deposito": {"es": "Depósito", "en": "Warehouse"},
     "core.prio.f_costos": {"es": "Costos", "en": "Costs"},
     "core.prio.f_caja": {"es": "Caja del día", "en": "Today's till"},
-    "core.prio.morosos_t": {"es": "Clientes en mora", "en": "Overdue customers"},
+    "core.prio.morosos_t": {"es": "Clientes atrasados", "en": "Overdue customers"},
     "core.prio.morosos_r": {
         "es": "{n} clientes, {monto} trabado.",
         "en": "{n} customers, {monto} stuck."},
     "core.prio.morosos_p": {
-        "es": "{n} clientes en mora por {monto}.",
+        "es": "{n} clientes atrasados por {monto}.",
         "en": "{n} overdue customers for {monto}."},
     "core.prio.morosos_chat": {
-        "es": "Ayudame a cobrar a los que están en mora.",
+        "es": "Ayudame a cobrar a los que están atrasados.",
         "en": "Help me collect from the overdue customers."},
     "core.prio.atraso_t": {
         "es": "{nombre} viene mucho más lento que de costumbre",
@@ -3589,6 +3589,10 @@ CATALOGO: dict[str, dict[str, str]] = {
                                 "en": "Vendor payments already due"},
     "core.prio.pago_vencido_r": {"es": "{n} pagos, {monto}.",
                                 "en": "{n} payments, {monto}."},
+    "core.prio.pago_vencido_r_1": {"es": "1 pago, {monto}.",
+                                  "en": "1 payment, {monto}."},
+    "core.prio.pago_vencido_p_1": {"es": "Hay 1 pago vencido.",
+                                  "en": "There is 1 overdue payment."},
     "core.prio.pago_vencido_p": {"es": "Hay {n} pagos vencidos.",
                                 "en": "There are {n} overdue payments."},
     "core.prio.pago_vencido_chat": {"es": "Mostrame los pagos vencidos a proveedores.",
