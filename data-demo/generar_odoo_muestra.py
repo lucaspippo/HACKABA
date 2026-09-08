@@ -168,6 +168,31 @@ def main() -> None:
         })
 
     # --- receipts for P00091: done moves plus the open backorder remainder --
+    # --- deliveries: one outgoing picking per logistics order --------------
+    # Derived from apartados["logistica"] — the pedidos the map already shows
+    # (P-44xx, client, truck, status) — never invented. Status maps to Odoo's:
+    # entregado → done, en camino → assigned, pendiente → confirmed. The
+    # dataset carries no product LINES for a pedido, so these pickings ship
+    # without moves (producto "", cantidad 0): a delivery order, not a fake
+    # packing list. When lines exist upstream, they go here and nowhere else.
+    estado_odoo = {"entregado": "done", "en camino": "assigned", "pendiente": "confirmed"}
+    entregas = []
+    for i, ped in enumerate(apartados["logistica"]["filas"], start=1):
+        estado = estado_odoo.get(ped.get("estado"), "confirmed")
+        entregas.append({
+            "id": MOVE_BASE + 500 + i, "picking_id": 700 + i,
+            "fecha": ped.get("fecha_prevista"),
+            "producto": "", "product_tmpl_id": None,
+            "partner": ped.get("cliente"), "cliente": ped.get("cliente"),
+            "cantidad": 0, "qty_ordered": 0,
+            "deposito": "Depósito Central",
+            "origen": f"WH/OUT/{i:05d}", "po_number": "",
+            "so_number": ped.get("pedido"),
+            "estado": estado, "backorder_id": None, "es_backorder": False,
+            "pendiente": estado != "done", "open_backorder": False,
+            "transporte": ped.get("transporte"), "direccion": ped.get("direccion"),
+        })
+
     recepciones = []
     move_id = MOVE_BASE
     for it in oc1_items:
@@ -259,7 +284,7 @@ def main() -> None:
         "ordenes_compra": ordenes_compra,
         "ordenes_venta": ordenes_venta,
         "recepciones": recepciones,
-        "entregas": [],
+        "entregas": entregas,
         "deposito": [],
         "facturas": [],
         "pagos": [],
@@ -271,7 +296,8 @@ def main() -> None:
     print(f"odoo_muestra.json: {len(productos)} productos "
           f"({len(vinculados)} vinculados + {len(nuevos)} nuevos), "
           f"{len(proveedores)} proveedores, {len(ordenes_compra)} OC, "
-          f"{len(ordenes_venta)} ventas, {len(recepciones)} recepciones")
+          f"{len(ordenes_venta)} ventas, {len(recepciones)} recepciones, "
+          f"{len(entregas)} entregas")
 
 
 if __name__ == "__main__":
