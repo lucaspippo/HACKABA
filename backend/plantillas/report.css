@@ -153,3 +153,16 @@ h2 {
   font-size: 7.5pt; color: #6e6a63;
   border-top: 0.5pt solid #e9e7e2; padding-top: 6pt; margin-top: 18pt;
 }
+
+/* --- La carpeta: campos que dicen de dónde salieron (core/carpeta.py) ----- */
+.campos { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 6px 0 12px; }
+.campo { min-width: 170px; max-width: 46%; padding-left: 7px;
+         border-left: 2px solid #e9e7e2; }
+.campo-completo { border-left-color: #2f7d5b; }
+.campo-falta { border-left-color: #d2372b; }
+.campo-etiqueta { font-size: 7.5pt; text-transform: uppercase;
+                  letter-spacing: .06em; color: #6e6a63; }
+.campo-valor { font-size: 10pt; color: #21201d; }
+.campo-hueco { color: #d2372b; font-style: italic; }
+/* La fuente es el motivo por el que este papel se puede auditar: se imprime. */
+.campo-fuente { font-size: 7pt; color: #2b7a8c; }

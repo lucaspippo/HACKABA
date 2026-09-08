@@ -655,6 +655,33 @@ async def documentos_pdf(req: PdfRequest, u: dict = Depends(require_feature("doc
         headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
 
 
+@app.get("/api/carpeta")
+def carpeta_lista(u: dict = Depends(require_feature("documentos"))):
+    """The deliveries a folder can be opened for."""
+    from core import carpeta
+    return {"pedidos": carpeta.pedidos()}
+
+
+@app.get("/api/carpeta/{numero}")
+def carpeta_de(numero: str, u: dict = Depends(require_feature("documentos"))):
+    from core import carpeta
+    r = carpeta.carpeta(numero, _lang(u))
+    if not r:
+        raise HTTPException(status_code=404, detail="pedido inexistente")
+    return r
+
+
+@app.get("/api/carpeta/{numero}/{doc_id}")
+def carpeta_documento(numero: str, doc_id: str,
+                      u: dict = Depends(require_feature("documentos"))):
+    """One document, pre-filled — with its gaps marked, never hidden."""
+    from core import carpeta
+    d = carpeta.documento(numero, doc_id, _lang(u))
+    if not d:
+        raise HTTPException(status_code=404, detail="documento inexistente")
+    return d
+
+
 @app.get("/api/documentos/listado")
 def documentos_listado(u: dict = Depends(require_feature("documentos"))):
     """Los PDFs ya generados. P24·A1: POR USUARIO, server-side — cada uno ve
@@ -2971,11 +2998,18 @@ class CobranzaRegistrarRequest(BaseModel):
 def cobranza_registrar(req: CobranzaRegistrarRequest,
                        u: dict = Depends(require_feature("cuentas"))):
     """El sí del humano: recién acá la gestión existe, y queda auditada."""
-    from core import cobranza
+    from core import carpeta, cobranza
     try:
-        return cobranza.registrar(req.cliente_id, req.estado, actor=u["nombre"],
-                                  nota=req.nota, promesa_fecha=req.promesa_fecha,
-                                  mensaje=req.mensaje)
+        r = cobranza.registrar(req.cliente_id, req.estado, actor=u["nombre"],
+                               nota=req.nota, promesa_fecha=req.promesa_fecha,
+                               mensaje=req.mensaje)
+        # Propose → approve, applied to paperwork: right after chasing a
+        # customer, the statement is the next thing that person needs. It is
+        # OFFERED, never generated: `sugerencia` writes nothing.
+        if "documentos" in perfiles.features_efectivas(u["username"]):
+            r["sugerencia"] = carpeta.sugerencia("cobranza", cliente=r.get("cliente"),
+                                                 lang=_lang(u))
+        return r
     except KeyError:
         raise HTTPException(status_code=404, detail="cliente inexistente")
     except ValueError as e:

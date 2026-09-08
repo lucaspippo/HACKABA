@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Carpeta from "./Carpeta";
 import { FileText, Download, ClipboardList, FileBarChart2, Mail, Receipt, PenLine, ArrowRight } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import { api } from "../../lib/api";
@@ -28,6 +29,7 @@ export default function Documentos({ onPreguntar }) {
   const t = useT();
   const lang = useLang();
   const [generados, setGenerados] = useState([]);
+  const [tab, setTab] = useState("carpeta");
   const refrescarListado = () =>
     api.documentosListado().then((d) => setGenerados(d.documentos || [])).catch(() => {});
   // El listado se repide al cambiar de idioma: el `label` lo traduce el servidor
@@ -41,6 +43,21 @@ export default function Documentos({ onPreguntar }) {
           <h1 className="font-display text-3xl font-bold">{t("documentos.titulo")}</h1>
           <p className="mt-1 text-base text-tinta-suave">{t("documentos.grid_sub")}</p>
         </header>
+        {/* La carpeta va PRIMERO: esta sección dejó de ser la lista de lo que
+            ya se generó y pasó a ser donde se arma un papel. Lo generado sigue
+            abajo, que es su lugar — evidencia, no destino. */}
+        <div className="flex flex-wrap gap-2 border-b border-linea pb-2">
+          {[["carpeta", t("carpeta.tab_carpeta")], ["generados", t("carpeta.tab_generados")]].map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+                tab === id ? "bg-tinta text-crema" : "text-tinta-suave hover:text-tinta"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        {tab === "carpeta" && <Carpeta onPreguntar={onPreguntar} />}
+        {tab === "generados" && (
+        <>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {/* P39·2 — el reporte de cierres por local: LA tarea semanal que una
               persona hacía imputando a mano en un Excel. Es el primero de la
@@ -95,6 +112,8 @@ export default function Documentos({ onPreguntar }) {
               ))}
             </div>
           </section>
+        )}
+        </>
         )}
       </div>
     );

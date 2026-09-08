@@ -223,6 +223,7 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
   const [texto, setTexto] = useState("");
   const [editando, setEditando] = useState(false);
   const [enviando, setEnviando] = useState(false);
+  const [sugerencia, setSugerencia] = useState(null);
 
   useEffect(() => {
     if (!abierto || prop) return;
@@ -233,9 +234,13 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
   const registrar = async (estado, extra = {}) => {
     setEnviando(true);
     try {
-      await api.cobranzaRegistrar(c.id, estado, { mensaje: texto, ...extra });
+      const r = await api.cobranzaRegistrar(c.id, estado, { mensaje: texto, ...extra });
+      // Lo que sigue después de perseguir a un cliente es mandarle el estado
+      // de cuenta. Se OFRECE con la frase que arma el backend; el papel no se
+      // genera solo (core/carpeta.sugerencia no escribe nada).
+      if (r?.sugerencia?.texto) setSugerencia(r.sugerencia);
       toast(t(`cobranzas.ok_${estado}`, { cliente: c.cliente }));
-      onHecho();
+      if (!r?.sugerencia?.texto) onHecho();
     } catch {
       toast(t("cobranzas.err"));
     } finally { setEnviando(false); }
@@ -341,6 +346,23 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
                 <Chip icon={X} onClick={() => registrar("sin_respuesta")}>
                   {t("cobranzas.estado_sin_respuesta")}
                 </Chip>
+              {/* Proponer → aprobar, aplicado a los papeles: recién gestionada
+                  la cobranza, lo que sigue es mandarle el estado de cuenta.
+                  Se OFRECE; el papel no se genera solo. */}
+              {sugerencia && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-violeta/25 bg-violeta/[0.05] px-3 py-2">
+                  <AngelaMark size={16} />
+                  <span className="min-w-0 flex-1 text-sm text-tinta">{sugerencia.texto}</span>
+                  <button onClick={() => { onNavegar?.("documentos", sugerencia.pedido); setSugerencia(null); onHecho(); }}
+                    className="rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema">
+                    {t("cobranzas.sug_si")}
+                  </button>
+                  <button onClick={() => { setSugerencia(null); onHecho(); }}
+                    className="rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
+                    {t("cobranzas.sug_no")}
+                  </button>
+                </div>
+              )}
               </div>
 
               {c.gestion.promesa_fecha && (
