@@ -28,6 +28,7 @@ BUSINESS_DATA_TABLES = (
     "reminders", "user_memory", "macro_cache", "finance_data",
     "client_sales_data",
     "collection_actions", "expiry_actions", "business_knowledge_pieces", "data_sections",
+    "seed_state",
     "sales_validation",
     "floor_reports", "staging_batches", "user_profiles", "supplier_accounts",
     "users",
