@@ -1,0 +1,145 @@
+{
+  "_nota": "Los avisos que cada oficio deja habitualmente, ofrecidos como botones directos en vez de un campo de texto libre. La escritura libre sigue existiendo: es la última opción, detrás del micrófono. Aprobado por Lucas el 2026-09-08; el diseño está en design/mobile/02-ROLES-Y-SUPERFICIE.md §5. TODO lo de acá es HIPÓTESIS sobre cómo trabaja la gente ([S3]): PolPilot no tiene usuarios activos, y las 31 notas sembradas de notas_equipo.json tienen otra forma. La única lista que NO es hipótesis es la de recepción: sus cuatro motivos son los que ya valida core/piso.py (MOTIVOS).",
+  "_ubicacion": "Lucas pidió sembrarlo en `data/`, pero `data/` está en .gitignore (es el directorio de runtime del tenant): un archivo ahí no queda versionado ni se puede revisar. Va acá, con el resto de las semillas del tenant demo.",
+  "_campos": {
+    "tipo": "El riel por el que entra. Los seis primeros son los de core/piso.py:50 (ACCION); `aviso` es el objeto nuevo del modelo de flujo — nace con destinatario propuesto y estado, ver design/mobile/00-MODELO-FLUJO.md.",
+    "motivo": "Sólo para tipo `faltante`. Uno de core/piso.py:62 (MOTIVOS): roto · faltante · vencido · no_pedido.",
+    "necesita": "A qué entidad real hay que engancharlo antes de poder mandarlo. Si un campo no está, se muestra como faltante; no se completa solo.",
+    "destino_probable": "Lo que Ángela PROPONE. La persona confirma con un toque o lo cambia; nunca se manda sin confirmación visible.",
+    "cruza_datos": "false = el aviso no se puede cruzar contra ninguna tabla del sistema. Es un mensaje, no un hecho. Sigue valiendo, pero no alimenta ningún hallazgo."
+  },
+  "oficios": {
+    "deposito_recepcion": {
+      "persona_demo": "nahuel",
+      "_nota": "La única lista que no es hipótesis: los cuatro motivos ya existen en core/piso.py.",
+      "avisos": [
+        {"id": "rec_roto", "texto": "Vino roto", "texto_en": "Came in damaged",
+         "tipo": "faltante", "motivo": "roto",
+         "necesita": ["producto", "cantidad"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "rec_de_menos", "texto": "Vino de menos", "texto_en": "Short delivery",
+         "tipo": "faltante", "motivo": "faltante",
+         "necesita": ["producto", "cantidad"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "rec_vencido", "texto": "Vino vencido o por vencer", "texto_en": "Expired or close to expiry",
+         "tipo": "faltante", "motivo": "vencido",
+         "necesita": ["producto", "cantidad", "lote"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "rec_no_pedido", "texto": "No era lo que pedimos", "texto_en": "Not what we ordered",
+         "tipo": "faltante", "motivo": "no_pedido",
+         "necesita": ["producto", "cantidad"], "destino_probable": "celeste", "cruza_datos": true}
+      ]
+    },
+    "deposito_conteos": {
+      "persona_demo": "tomas",
+      "avisos": [
+        {"id": "cnt_menos", "texto": "Hay menos de lo que dice el sistema", "texto_en": "There is less than the system says",
+         "tipo": "conteo", "necesita": ["producto", "contado"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "cnt_mas", "texto": "Hay más", "texto_en": "There is more",
+         "tipo": "conteo", "necesita": ["producto", "contado"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "cnt_no_encuentro", "texto": "No encuentro el producto", "texto_en": "I cannot find the product",
+         "tipo": "aviso", "necesita": ["producto", "ubicacion"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "cnt_otra_ubicacion", "texto": "Está en otra ubicación", "texto_en": "It is in a different location",
+         "tipo": "aviso", "necesita": ["producto", "ubicacion"], "destino_probable": "ramon", "cruza_datos": true}
+      ]
+    },
+    "deposito_armado": {
+      "persona_demo": "brian",
+      "_nota": "No estaba en el pedido original: este oficio hoy no tiene ninguna acción propia (la regex de lib/roles.js lo mete en `deposito`).",
+      "avisos": [
+        {"id": "arm_sin_stock", "texto": "No hay stock de este renglón", "texto_en": "No stock for this line",
+         "tipo": "aviso", "necesita": ["producto", "pedido"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "arm_menos", "texto": "Hay menos de lo que pide el pedido", "texto_en": "Less than the order asks for",
+         "tipo": "aviso", "necesita": ["producto", "cantidad", "pedido"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "arm_roto", "texto": "El producto está roto", "texto_en": "The product is damaged",
+         "tipo": "faltante", "motivo": "roto",
+         "necesita": ["producto", "cantidad"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "arm_no_entra", "texto": "No entra en el bulto", "texto_en": "It does not fit in the package",
+         "tipo": "aviso", "necesita": ["pedido"], "destino_probable": "ramon", "cruza_datos": true}
+      ]
+    },
+    "deposito_ayudante": {
+      "persona_demo": "kevin",
+      "_nota": "Deliberadamente dos: Kevin entró hace una semana (`antiguedad.nuevo`) y su mentor declarado en usuarios_demo.py es Ramón. Cuando deje de ser nuevo hereda la lista de su oficio.",
+      "avisos": [
+        {"id": "ayu_no_encuentro", "texto": "No encuentro algo", "texto_en": "I cannot find something",
+         "tipo": "aviso", "necesita": ["producto"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "ayu_no_cierra", "texto": "Algo no me cierra", "texto_en": "Something does not add up",
+         "tipo": "aviso", "necesita": [], "destino_probable": "ramon", "cruza_datos": false}
+      ]
+    },
+    "deposito_encargado": {
+      "persona_demo": "ramon",
+      "avisos": [
+        {"id": "enc_camara_llena", "texto": "No entra más en la cámara", "texto_en": "The cold room is full",
+         "tipo": "aviso", "necesita": ["ubicacion"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "enc_falta_gente", "texto": "Falta gente para hoy", "texto_en": "We are short-handed today",
+         "tipo": "aviso", "necesita": [], "destino_probable": "aldo", "cruza_datos": false,
+         "_nota": "Observación de Lucas (2026-09-08): es el único aviso de toda la lista que no cruza con ningún dato del sistema. Es un MENSAJE, no un hecho. Se deja igual, sabiendo que es otra cosa: no alimenta ningún hallazgo y no debería contarse entre los avisos que 'no llegaron al sistema de gestión'."},
+        {"id": "enc_se_rompio", "texto": "Se rompió algo", "texto_en": "Something broke",
+         "tipo": "aviso", "necesita": ["ubicacion"], "destino_probable": "aldo", "cruza_datos": false},
+        {"id": "enc_proveedor_mal", "texto": "Este proveedor entregó mal otra vez", "texto_en": "This vendor delivered badly again",
+         "tipo": "aviso", "necesita": ["proveedor"], "destino_probable": "celeste", "cruza_datos": true}
+      ]
+    },
+    "reparto": {
+      "persona_demo": "walter",
+      "_nota": "Cinco, y es el máximo tolerable. `dev_devolvio` tiene flujo propio (la devolución guiada, design/mobile/01-DEVOLUCIONES-Y-RECLAMOS.md §3.3): en la app vive en el botón de carga, no en esta lista.",
+      "avisos": [
+        {"id": "rep_no_estaba", "texto": "El cliente no estaba", "texto_en": "The customer was not there",
+         "tipo": "aviso", "necesita": ["cliente", "pedido"], "destino_probable": "preventista_del_cliente", "cruza_datos": true},
+        {"id": "rep_rechazo", "texto": "Rechazó parte del pedido", "texto_en": "Rejected part of the order",
+         "tipo": "aviso", "necesita": ["cliente", "pedido", "producto", "cantidad"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "rep_no_pago", "texto": "No pudo pagar", "texto_en": "Could not pay",
+         "tipo": "aviso", "necesita": ["cliente"], "destino_probable": "marta", "cruza_datos": true},
+        {"id": "rep_direccion", "texto": "La dirección está mal", "texto_en": "The address is wrong",
+         "tipo": "aviso", "necesita": ["cliente", "pedido"], "destino_probable": "marta", "cruza_datos": true},
+        {"id": "rep_devolvio", "texto": "Me devolvió mercadería", "texto_en": "They returned goods to me",
+         "tipo": "aviso", "necesita": ["cliente", "pedido", "producto", "cantidad"], "destino_probable": "ramon", "cruza_datos": true,
+         "_nota": "Abre el flujo guiado de devolución, no un formulario."}
+      ]
+    },
+    "preventa": {
+      "persona_demo": "diego",
+      "_nota": "Cambié «me preguntó por una promoción» del pedido original por «está comprando en otro lado»: la segunda aparece literal en el dataset (nota nt05, Diego sobre Proveeduría La Rural) y la primera no aparece nunca.",
+      "avisos": [
+        {"id": "pre_no_tenemos", "texto": "Me pidió algo que no tenemos", "texto_en": "They asked for something we do not carry",
+         "tipo": "aviso", "necesita": ["cliente", "producto"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "pre_otro_precio", "texto": "Me pidió otro precio", "texto_en": "They asked for a different price",
+         "tipo": "aviso", "necesita": ["cliente", "producto"], "destino_probable": "aldo", "cruza_datos": true},
+        {"id": "pre_otro_lado", "texto": "Está comprando en otro lado", "texto_en": "They are buying elsewhere",
+         "tipo": "aviso", "necesita": ["cliente"], "destino_probable": "aldo", "cruza_datos": true},
+        {"id": "pre_complicado", "texto": "Está por cerrar / complicado", "texto_en": "They may be closing / in trouble",
+         "tipo": "aviso", "necesita": ["cliente"], "destino_probable": "marta", "cruza_datos": true}
+      ]
+    },
+    "mostrador": {
+      "persona_demo": "vanesa",
+      "avisos": [
+        {"id": "mos_no_habia", "texto": "Me pidieron algo que no había", "texto_en": "Someone asked for something we did not have",
+         "tipo": "aviso", "necesita": ["producto"], "destino_probable": "celeste", "cruza_datos": true},
+        {"id": "mos_reclamo", "texto": "Un cliente reclamó", "texto_en": "A customer complained",
+         "tipo": "aviso", "necesita": ["producto"], "destino_probable": "norma", "cruza_datos": true},
+        {"id": "mos_precio_mal", "texto": "Este precio parece mal", "texto_en": "This price looks wrong",
+         "tipo": "aviso", "necesita": ["producto"], "destino_probable": "marta", "cruza_datos": true,
+         "_nota": "Cruza con `antiguedad_costo_dias` del catálogo: en el demo hay artículos con el costo cargado hace más de 500 días."},
+        {"id": "mos_por_acabar", "texto": "Se está por acabar", "texto_en": "We are about to run out",
+         "tipo": "reposicion", "necesita": ["producto"], "destino_probable": "ramon", "cruza_datos": true}
+      ]
+    },
+    "sucursal": {
+      "persona_demo": "norma",
+      "avisos": [
+        {"id": "suc_falta_stock", "texto": "Me falta stock de algo", "texto_en": "I am out of stock of something",
+         "tipo": "reposicion", "necesita": ["producto", "cantidad"], "destino_probable": "ramon", "cruza_datos": true},
+        {"id": "suc_novedad", "texto": "Novedad del día", "texto_en": "Something happened today",
+         "tipo": "aviso", "necesita": [], "destino_probable": "aldo", "cruza_datos": false},
+        {"id": "suc_dif_caja", "texto": "Diferencia de caja", "texto_en": "Till discrepancy",
+         "tipo": "aviso", "necesita": ["monto"], "destino_probable": "marta", "cruza_datos": true},
+        {"id": "suc_reclamo", "texto": "Un cliente reclamó", "texto_en": "A customer complained",
+         "tipo": "aviso", "necesita": [], "destino_probable": "aldo", "cruza_datos": false}
+      ]
+    }
+  },
+  "sin_lista": {
+    "_nota": "Administración y Compras no tienen botones de aviso: son oficinas, escriben en vez de avisar desde el piso. Su carga es foto de comprobante y subida de archivo. El dueño tampoco: él decide y anota reglas de la casa.",
+    "oficios": ["administracion", "compras", "dueno"]
+  }
+}
