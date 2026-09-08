@@ -82,7 +82,10 @@ personas que no saben que lo están armando.**
 
 ## 2. Los cruces que están, uno por uno
 
-Ordenados por plata concreta. Los montos que pongo son **valor del lote a costo**
+Ordenados por plata. Ojo con qué clase de plata es cada una: hay cruces que
+**hacen visible** deuda que ya existe y cruces que **evitan** una pérdida. La
+distinción está en §6 y no es cosmética. Los montos de mercadería son **valor
+del lote a costo**
 (`cantidad × costo_iva`); el motor calcula algo más honesto y más chico —
 `vencimientos.plata_en_riesgo` es sólo el **sobrante**, lo que no se va a vender
 antes de la fecha según la velocidad de 12 meses.
@@ -511,20 +514,47 @@ tiene, y es el que hizo cuatro de los avisos que lo alimentan.
 
 ## 6. Resumen: qué tiene motor y qué no
 
-| Cruce | Plata | Motor hoy | Qué falta |
-|---|---|---|---|
-| C6 · cámara × orden entrante | — | **sí, calculado** | sólo ruteo a Ramón |
-| C11 · queja de cliente clave | — | **sí, calculado** | sólo ruteo a Diego |
-| C1 · salame vence × mostrador | $945.431 | parcial | cruzar con `mostrador.grupos` |
-| C3 · Campo Alegre multicanal | — | parcial | unir `notas` con `piso`; contar reincidencia |
-| C4 · Doña Elsa | $19.200.000 de deuda | parcial | ampliar tipos de nota; + ruta |
-| C8 · góndola vacía × central | — | parcial | cruzar local × central × regla |
-| **C2 · vence × compra × ruta** | **$6.825.532** | **no** | el cruce entero |
-| **C5 · deuda por camión** | **$168.700.000** | **no** | dos `for` |
-| C7 · pasillo 4 explica la diferencia | $53.646 | no | juntar dos consultas |
-| C9 · mortadela: hecho + evidencia | — | no | cae con el reclamo dirigido |
-| C10 · «no me lleves más» × pedido | $42.000.000 | no | filtro sobre C5 |
-| C12 · el jamón de Tomás | $876.101 | no | notas de conteo × vencimientos |
+### Dos columnas de plata, y no son lo mismo
+
+Corrección pedida por Lucas, y tiene razón: poner los $168,7M de C5 y los
+$53.646 de C7 en la misma columna se malinterpreta solo. Son dos cosas
+distintas y hay que leerlas distinto.
+
+> **PLATA A LA VISTA** — deuda o exposición que **ya existe** y que el cruce
+> pone delante de alguien que puede hacer algo. **El cruce no la recupera ni la
+> crea: la hace visible.** Cuánto de eso se cobra depende de la gestión, no del
+> software, y prometer lo contrario sería exactamente el tipo de número que este
+> producto no inventa.
+>
+> **PLATA QUE SE AHORRA** — lo que se pierde si nadie hace nada, y que la acción
+> evita. Mercadería que se vence y se tira; un ajuste de stock hecho sobre una
+> diferencia que no existía. Acá el cruce **sí cambia el resultado**, y el monto
+> es el techo de la pérdida evitada, no una ganancia.
+
+Un caso no entra en ninguna de las dos y por eso va vacío: C3, C6, C9 y C11
+tienen un valor operativo real —no confirmarle una orden a un proveedor que
+entregó la mitad, no recibir un camión sin lugar en cámara— pero **ponerles un
+número sería fabricarlo.** Se quedan sin monto a propósito.
+
+| Cruce | A la vista | Se ahorra | Motor hoy | Qué falta |
+|---|---|---|---|---|
+| C6 · cámara × orden entrante | — | — | **sí, calculado** | sólo ruteo a Ramón |
+| C11 · queja de cliente clave | — | — | **sí, calculado** | sólo ruteo a Diego |
+| C1 · salame vence × mostrador | — | $945.431 | parcial | cruzar con `mostrador.grupos` |
+| C3 · Campo Alegre multicanal | — | — | parcial | unir `notas` con `piso`; contar reincidencia |
+| C4 · Doña Elsa | $19.200.000 | — | parcial | ampliar tipos de nota; + ruta |
+| C8 · góndola vacía × central | — | — | parcial | cruzar local × central × regla |
+| **C2 · vence × compra × ruta** | — | **$6.825.532** | **no** | el cruce entero |
+| **C5 · deuda por camión** | **$168.700.000** | — | **no** | dos `for` |
+| C7 · pasillo 4 explica la diferencia | — | **$53.646** | no | juntar dos consultas |
+| C9 · mortadela: hecho + evidencia | — | — | no | cae con el reclamo dirigido |
+| C10 · «no me lleves más» × pedido | $42.000.000 | — | no | filtro sobre C5 |
+| C12 · el jamón de Tomás | — | $876.101 | no | notas de conteo × vencimientos |
+
+Sumar las dos columnas entre sí no significa nada. La de la izquierda tiene
+solapamiento propio —Doña Elsa está adentro de los $168,7M de C5, y 9 de Julio
+está en la misma cartera—, así que tampoco se suma consigo misma. Cada monto
+responde a su propio cruce y no hay un total.
 
 **Qué construiría, en este orden, si me lo preguntás:**
 
