@@ -24,6 +24,67 @@ VENTANA_DIAS = 30
 # Debajo de esto el sobrante es ruido de redondeo, no una decisión.
 MIN_SOBRANTE_PESOS = 1.0
 
+# What the owner decided about a lot that will not sell before it expires.
+# Two ways out, and only two: a promotion, or sending it to the stores that
+# do rotate it. "Aprobar" used to set React state and print a toast — the
+# decision lived nowhere, a reload showed the lot again. Now it is a row.
+TIPOS_GESTION = ("promocion", "locales")
+
+
+def _clave(codigo, lote) -> str:
+    return f"{codigo}|{lote or ''}"
+
+
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("expiry_actions", _tenant.current_tenant_id()) or {}
+
+
+def _save(d: dict) -> None:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("expiry_actions", _tenant.current_tenant_id(), d)
+
+
+def gestiones() -> dict:
+    """Every lot already decided on, keyed by codigo|lote."""
+    return _load()
+
+
+def gestionar(codigo, lote: str | None, tipo: str, actor: str = "dueño",
+              cantidad: float | None = None, nota: str | None = None) -> dict:
+    """The human's yes, written down and audited. Idempotent per lot: deciding
+    twice returns the first decision instead of stacking a second one."""
+    if tipo not in TIPOS_GESTION:
+        raise ValueError(f"tipo desconocido: {tipo!r}")
+    try:
+        codigo = int(codigo)
+    except (TypeError, ValueError):
+        raise ValueError("codigo ilegible")
+    lotes = [f for f in deposito.vencimientos(365)
+             if int(f.get("codigo") or 0) == codigo and (f.get("lote") or "") == (lote or "")]
+    if not lotes:
+        raise KeyError("lote inexistente o sin vencimiento en el año")
+    f = lotes[0]
+    d = _load()
+    k = _clave(codigo, lote)
+    if k in d:
+        return {"ok": True, "ya_estaba": True, "gestion": d[k]}
+    g = {"codigo": codigo, "lote": lote or "", "producto": f.get("producto"),
+         "tipo": tipo, "cantidad": float(cantidad if cantidad is not None else f.get("cantidad") or 0),
+         "vencimiento": f.get("vencimiento"), "actor": actor,
+         "cuando": hoy().isoformat(), "nota": nota}
+    d[k] = g
+    _save(d)
+    store.audit.record(actor=actor, accion="gestionar_vencimiento",
+                       antes={"producto": g["producto"], "lote": g["lote"],
+                              "vencimiento": g["vencimiento"], "gestion": None},
+                       despues={"producto": g["producto"], "lote": g["lote"],
+                                "tipo": tipo, "cantidad": g["cantidad"]})
+    from . import analisis_cache
+    analisis_cache.datos_cambiaron()
+    return {"ok": True, "ya_estaba": False, "gestion": g}
 
 def _t(key, lang=None, **p):
     import i18n
@@ -41,10 +102,18 @@ def en_riesgo(dias: int = VENTANA_DIAS, lang: str | None = None) -> dict:
     unidades = analisis._unidades_por_codigo(365)
 
     items, total_riesgo, sin_ritmo = [], 0.0, 0
+    decididos = _load()
+    gestionados = []
     for f in deposito.vencimientos(dias):
         cod = f.get("codigo")
         a = arts.get(cod)
         if not a:
+            continue
+        g = decididos.get(_clave(cod, f.get("lote")))
+        if g:
+            # Decided: out of the list, but not out of sight — the card says
+            # what was decided, by whom, so the same lot is not decided twice.
+            gestionados.append({**g, "dias_restantes": int(f.get("dias_restantes") or 0)})
             continue
         cant = float(f.get("cantidad") or 0)
         if cant <= 0:
@@ -95,6 +164,7 @@ def en_riesgo(dias: int = VENTANA_DIAS, lang: str | None = None) -> dict:
         "vencidos": len(vencidos),
         "vencidos_pesos": round(perdido, 2),
         "por_vencer_total": len(deposito.vencimientos(dias)),
+        "gestionados": gestionados,
     }
 
 
@@ -118,4 +188,10 @@ def propuesta(lang: str | None = None, dias: int = VENTANA_DIAS) -> dict | None:
                       producto=peor["producto"], dias=peor["dias_restantes"]),
         "codigo": peor["codigo"], "producto": peor["producto"],
         "cantidad": peor["sobrante"],
+        # What "Aprobar" persists (Ángela's suggestion) and the other way out
+        # the owner can pick instead — both are real decisions, one click each.
+        "lote": peor.get("lote"),
+        "gestion": "promocion",
+        "alternativa": {"gestion": "locales",
+                        "label": _t("core.venc.alt_locales", lang)},
     }

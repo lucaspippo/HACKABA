@@ -263,7 +263,10 @@ function formatValue(value, unit, lang) {
   if (value == null || value === "") return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  if (unit === "ars") return peso(n);
+  // One rule for money in this panel: the headline figure is the only
+  // full number; every figure in the body (evidence, metrics, exposure)
+  // is abbreviated. Three formats side by side read as three currencies.
+  if (unit === "ars") return pesoCorto(n);
   return new Intl.NumberFormat(VALUE_LOCALE[lang] || VALUE_LOCALE.es, {
     maximumFractionDigits: Number.isInteger(n) ? 0 : 1,
   }).format(n);
@@ -271,16 +274,28 @@ function formatValue(value, unit, lang) {
 
 // "¿Cómo se calculó?" on every metric. Native <details> so it is keyboard-
 // and screen-reader-correct without any state of its own.
-function MethodDisclosure({ method }) {
+function MethodDisclosure({ method, methods }) {
   const t = useT();
-  if (!method?.label) return null;
+  // `methods`: every distinct method behind a block of evidence, in ONE
+  // disclosure — three identical "¿Cómo se calculó?" under three metrics
+  // read as noise, and the answer was the same sentence each time.
+  const lista = methods
+    ? Array.from(new Map(methods.filter((m) => m?.label).map((m) => [m.label, m])).values())
+    : (method?.label ? [method] : []);
+  if (!lista.length) return null;
   return (
     <details className="group mt-1.5">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-tinta-suave hover:text-tinta [&::-webkit-details-marker]:hidden">
         <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
         {t("cardneg.drill_method")}
       </summary>
-      <p className="mt-1 pl-[15px] text-xs leading-snug text-tinta-suave">{method.label}</p>
+      {lista.length === 1 ? (
+        <p className="mt-1 pl-[15px] text-xs leading-snug text-tinta-suave">{lista[0].label}</p>
+      ) : (
+        <ul className="mt-1 space-y-1 pl-[15px] text-xs leading-snug text-tinta-suave">
+          {lista.map((m, i) => <li key={m.key || i} className="list-disc">{m.label}</li>)}
+        </ul>
+      )}
     </details>
   );
 }
@@ -307,7 +322,7 @@ function EvidenceChart({ chart }) {
 
 // One claim: its label, the number that carries it, how far that number sits
 // from its baseline, how it was computed, and the exact records behind it.
-function EvidenceItem({ item, onVerInvolucrado }) {
+function EvidenceItem({ item, onVerInvolucrado, sinMetodo = false }) {
   const t = useT();
   const lang = useLang();
   const formatted = formatValue(item.value, item.unit, lang);
@@ -341,7 +356,7 @@ function EvidenceItem({ item, onVerInvolucrado }) {
           {item.baseline?.label && t("cardneg.drill_vs", { baseline: item.baseline.label })}
         </p>
       )}
-      <MethodDisclosure method={item.method} />
+      {!sinMetodo && <MethodDisclosure method={item.method} />}
       <EvidenceChart chart={item.chart} />
       {records.length > 0 && (
         <div className="mt-2 overflow-hidden rounded-xl border border-linea">
@@ -355,7 +370,7 @@ function EvidenceItem({ item, onVerInvolucrado }) {
 // Primary evidence is what makes the conclusion true and stays open;
 // supporting evidence is context and waits behind one tap, so the panel opens
 // on the load-bearing facts instead of on everything at once.
-function Evidence({ items, onVerInvolucrado }) {
+function Evidence({ items, onVerInvolucrado, metodoUnico = false }) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
   const [primary, supporting] = useMemo(() => [
@@ -368,11 +383,12 @@ function Evidence({ items, onVerInvolucrado }) {
   return (
     <div className="mt-2 space-y-3">
       {lead.map((e, i) => (
-        <EvidenceItem key={e.id ?? `p${i}`} item={e} onVerInvolucrado={onVerInvolucrado} />
+        <EvidenceItem key={e.id ?? `p${i}`} item={e} onVerInvolucrado={onVerInvolucrado} sinMetodo={metodoUnico} />
       ))}
       {expanded && rest.map((e, i) => (
-        <EvidenceItem key={e.id ?? `s${i}`} item={e} onVerInvolucrado={onVerInvolucrado} />
+        <EvidenceItem key={e.id ?? `s${i}`} item={e} onVerInvolucrado={onVerInvolucrado} sinMetodo={metodoUnico} />
       ))}
+      {metodoUnico && <MethodDisclosure methods={(expanded ? items : lead).map((e) => e.method)} />}
       {rest.length > 0 && (
         <button type="button" onClick={() => setExpanded((v) => !v)}
           className="inline-flex items-center gap-1 text-sm font-semibold text-tinta-suave hover:text-tinta">
@@ -450,6 +466,12 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                propuesta, onAprobarPropuesta, actionTaken,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
+                               // "clasico": the reasoning order (pattern → hypothesis →
+                               // evidence → action), unchanged for every screen that
+                               // already used it. "accion": what happens → what to do →
+                               // the evidence, with the reasoning folded — the order a
+                               // work queue is read in (Prioridades opts in).
+                               layout = "clasico",
                                onFeedback, feedbackBusy, origins = [],
                                onVerFuentes, onVerInvolucrado }) {
   const t = useT();
@@ -500,8 +522,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [panel]);
-  const contenido = (
-    <>
+  const cabecera = (
         <div className="flex items-start justify-between gap-3">
           <div>
             {chip && (
@@ -522,6 +543,110 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
           )}
         </div>
+  );
+
+  const bloqueAccion = (risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken) && (
+    <DrillSection title={t("cardneg.drill_recommend")}>
+      {risk?.label && (
+        <p className={`rounded-lg px-3 py-2 text-sm leading-snug ${
+          risk.level === "high"
+            ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
+            : "bg-papel-hondo/50 text-tinta"
+        }`}>
+          {risk.label}
+          {showExposure && (
+            <span className="plata ml-1.5 font-semibold">{pesoCorto(risk.exposure)}</span>
+          )}
+        </p>
+      )}
+      {recommendation?.label && (
+        <p className={`text-sm font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
+      )}
+      {recommendation?.detail && (
+        <p className="mt-1 text-sm leading-snug text-tinta-suave">{recommendation.detail}</p>
+      )}
+      <AngelaProposal
+        proposal={proposal}
+        onApprove={onAprobarPropuesta}
+        working={propuestaTrabajando}
+        actionTaken={actionTaken}
+      />
+    </DrillSection>
+  );
+
+  // The work-queue arrangement. No cards: hierarchy comes from type size,
+  // hairline separators and native <details>, so the panel keeps reading as
+  // one document and not as another stack of tiles next to the map's.
+  const contenidoAccion = (
+    <>
+        {cabecera}
+        {pattern?.label && (
+          <p className="mt-4 text-base leading-snug text-tinta">{pattern.label}</p>
+        )}
+        {pattern?.since && <p className="mt-1 text-xs text-tinta-suave">{pattern.since}</p>}
+        {macro?.inflacion != null && (
+          <p className="mt-2 rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-sm text-hielo">
+            {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
+          </p>
+        )}
+        {bloqueAccion}
+        {evidence.length > 0 && (
+          <DrillSection title={t("cardneg.drill_evidence")} aside={dataBadge}>
+            <Evidence items={evidence} onVerInvolucrado={onVerInvolucrado} metodoUnico />
+          </DrillSection>
+        )}
+        {(hypothesis?.label || assumptions.length > 0 || alternatives.length > 0 || falsifiers.length > 0 || origins.length > 1) && (
+          <details className="group mt-5 border-t border-linea pt-3">
+            <summary className={`inline-flex cursor-pointer list-none items-center gap-1 ${SECTION_LABEL} hover:text-tinta [&::-webkit-details-marker]:hidden`}>
+              <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
+              {t("cardneg.drill_por_que")}
+              <span className="ml-2 inline-flex flex-wrap items-center gap-1.5 normal-case tracking-normal">
+                <ConfidenceBadge confidence={confidence?.hypothesis} axis="hypothesis" />
+              </span>
+            </summary>
+            <div className="mt-2 pl-[15px]">
+              {hypothesis?.label && (
+                <>
+                  <p className="text-sm leading-snug text-tinta">{hypothesis.label}</p>
+                  <ConfidenceReason confidence={confidence?.data} />
+                  <ConfidenceReason confidence={confidence?.hypothesis} />
+                </>
+              )}
+              {assumptions.length > 0 && (
+                <div className="mt-3">
+                  <p className={SECTION_LABEL}>{t("cardneg.drill_assumptions")}</p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {assumptions.map((s, i) => (
+                      <li key={i} className="text-sm leading-snug text-tinta-suave">
+                        {labelOf(s)}
+                        {s?.if_wrong && <span className="mt-0.5 block text-tinta-suave/80">{s.if_wrong}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <Caveats alternatives={alternatives} falsifiers={falsifiers} />
+              <BasedOn origins={origins} />
+            </div>
+          </details>
+        )}
+        <OwnerLine owner={owner} deadline={deadline} />
+        {fuentes.length > 0 && (
+          <DrillSection title={t("cardneg.drill_fuentes")}>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {fuentes.map((f, i) => (
+                <FuentePill key={i} label={f} onClick={onVerFuentes} />
+              ))}
+            </div>
+          </DrillSection>
+        )}
+        {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
+    </>
+  );
+
+  const contenidoClasico = (
+    <>
+        {cabecera}
 
         {/* 1 · What we observed — the finding itself, no interpretation in it. */}
         {(pattern?.label || macro?.inflacion != null) && (
@@ -577,36 +702,9 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             Risk and recommendation are causally paired — risk is typically one
             short line, too light to earn its own section header — so they
             share this section instead of each getting one. */}
-        {(risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken) && (
-          <DrillSection title={t("cardneg.drill_recommend")}>
-            {risk?.label && (
-              <p className={`rounded-lg px-3 py-2 text-sm leading-snug ${
-                risk.level === "high"
-                  ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
-                  : "bg-papel-hondo/50 text-tinta"
-              }`}>
-                {risk.label}
-                {showExposure && (
-                  <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
-                )}
-              </p>
-            )}
-            {recommendation?.label && (
-              <p className={`text-sm font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
-            )}
-            {recommendation?.detail && (
-              <p className="mt-1 text-sm leading-snug text-tinta-suave">{recommendation.detail}</p>
-            )}
-            {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador
-                firmado. Human-in-the-loop visible. */}
-            <AngelaProposal
-              proposal={proposal}
-              onApprove={onAprobarPropuesta}
-              working={propuestaTrabajando}
-              actionTaken={actionTaken}
-            />
-          </DrillSection>
-        )}
+        {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador
+            firmado. Human-in-the-loop visible. */}
+        {bloqueAccion}
 
         {/* 5 · What we took for granted, and what would change our mind. */}
         {assumptions.length > 0 && (
@@ -642,6 +740,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>
   );
+  const contenido = layout === "accion" ? contenidoAccion : contenidoClasico;
   const pie = acciones && (
     <div className="shrink-0 border-t border-linea bg-crema px-6 py-4">
       <div className="flex flex-wrap items-center gap-2">{acciones}</div>
