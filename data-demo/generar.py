@@ -326,6 +326,19 @@ def generar_deposito(arts):
             "lote": f"L-{vto.year}-{300 + i}", "vencimiento": vto.isoformat(),
             "cantidad": round(cant, 1),
         })
+    # Conciliación — siete lotes CONTADOS con una diferencia contra el sistema:
+    # los cinco que ya tenían menos físico que contable, más dos sanos, con un
+    # conteo que se pasa o se queda corto. Factores fijos, sin consumir R: el
+    # resto del dataset queda byte-igual. Sin esto la pantalla de Conciliación
+    # nacía vacía aunque el motor estuviera escrito y testeado.
+    factores = iter([0.94, 1.03, 0.97, 0.91, 1.02, 0.96, 0.98])
+    contados = [f for f, a in zip(filas, con_stock) if id(a) in discrepan]
+    contados += [f for f, a in zip(filas, con_stock)
+                 if id(a) not in discrepan and id(a) not in vencidos
+                 and id(a) not in por_vencer][:2]
+    for f in contados:
+        f["counted_qty"] = round(f["cantidad"] * next(factores), 1)
+
     # Conocimiento · pieza 12 — una discrepancia de BALANZA por debajo del 1%:
     # la que la regla de Aldo ("la balanza 2 desvía <1%: no me alertes") suprime.
     # Determinista, sin consumir R: el fiambre de mayor valor sin otra anomalía,
@@ -1024,6 +1037,74 @@ def generar_finanzas(arts, recepciones):
     return len(pagos), len(cuotas), len(cheques)
 
 
+def _id_fijo(prefijo, texto):
+    """Un id estable por nombre: el apartado se regenera en cada boot y un id
+    nuevo cada vez rompería cualquier referencia (foco, auditoría)."""
+    import hashlib
+    return prefijo + hashlib.sha1(texto.encode("utf-8")).hexdigest()[:9]
+
+
+def generar_ubicaciones(dep):
+    """Las ubicaciones del depósito como ENTIDAD, derivadas de los strings que
+    ya llevan los lotes — no inventadas: cada una existe porque algún lote está
+    ahí. El orden es el del layout (UBICACIONES), no el de aparición. Las tres
+    cámaras llevan nota; el mapa las trata como zonas propias y los 18 racks
+    como «Pasillos y racks» — este apartado no cambia ese conteo, lo respalda."""
+    usadas = {f["ubicacion"] for f in dep}
+    return [{"id": _id_fijo("u", u), "nombre": u,
+             "nota": "Cámara: frío controlado" if u.startswith("Cámara") else ""}
+            for u in UBICACIONES if u in usadas]
+
+
+def generar_proveedores(recepciones):
+    """La ficha de cada proveedor, derivada de las recepciones: última entrega y
+    cuántas hubo. Contacto, teléfono, mail y CUIT quedan VACÍOS a propósito: no
+    existen en ningún lado del dataset y un teléfono inventado es exactamente el
+    dato que no se puede auditar. El apartado deja de nacer vacío sin fingir
+    nada."""
+    out = []
+    for p in PROVEEDORES:
+        de_p = [r for r in recepciones if r["proveedor"] == p]
+        ultima = max((r["fecha"] for r in de_p), default="")
+        out.append({"id": _id_fijo("p", p), "nombre": p, "contacto": "", "telefono": "",
+                    "email": "", "cuit": "", "source": "", "source_id": "",
+                    "notas": f"Última entrega {ultima} · {len(de_p)} recepciones"})
+    return out
+
+
+def generar_ordenes_compra_historicas():
+    """Tres órdenes ya cerradas —dos recibidas, una cancelada— para que el
+    apartado tenga historia y no una sola fila abierta. Datos fijos, del
+    catálogo real, SIN consumir el Random compartido. Los números quedan por
+    debajo de la abierta (OC-2026-0847) y de la de la muestra Odoo (0863)."""
+    return [
+        {"numero": "OC-2026-0791",
+         "fecha": (HOY - datetime.timedelta(days=41)).isoformat(),
+         "proveedor": "Frigorífico La Ribera", "estado": "recibida",
+         "items": [
+             {"codigo": 1296, "producto": "QUESO CREMOSO GUARANI (HORMA)", "cantidad": 18},
+             {"codigo": 1008, "producto": "ACEITE GIRASOL LA RIBERA 900CC (X12U)", "cantidad": 40},
+             {"codigo": 1417, "producto": "PAPEL HIGIENICO LA RIBERA X4 (X10P)", "cantidad": 30},
+         ]},
+        {"numero": "OC-2026-0812",
+         "fecha": (HOY - datetime.timedelta(days=27)).isoformat(),
+         "proveedor": "Distrib. Mayorista Guaraní", "estado": "recibida",
+         "items": [
+             {"codigo": 1092, "producto": "LENTEJAS LA RIBERA 400G (X12U)", "cantidad": 50},
+             {"codigo": 1129, "producto": "GALLETITAS SURTIDAS LA RIBERA 400G (X20U)", "cantidad": 36},
+             {"codigo": 1027, "producto": "MAYONESA EL PARANA 500G (X12U)", "cantidad": 24},
+             {"codigo": 1185, "producto": "JUGO EN POLVO GUARANI (X20S)", "cantidad": 60},
+         ]},
+        {"numero": "OC-2026-0833",
+         "fecha": (HOY - datetime.timedelta(days=12)).isoformat(),
+         "proveedor": "Golosinas Costa Dulce SRL", "estado": "cancelada",
+         "items": [
+             {"codigo": 1135, "producto": "ALFAJOR TRIPLE MONTE CHICO (X24U)", "cantidad": 45},
+             {"codigo": 1017, "producto": "ACEITE MEZCLA COSTA DULCE 1.5L (X8U)", "cantidad": 20},
+         ]},
+    ]
+
+
 def generar_orden_compra_demo():
     """La orden de compra ABIERTA que espera su remito (P10): los comprobantes
     de muestra (remito → factura) cruzan contra ESTO. Datos fijos, elegidos a
@@ -1094,7 +1175,12 @@ def main():
         "deposito": {"nombre": "Depósito", "filas": dep},
         "logistica": {"nombre": "Logística", "filas": log},
         "recepciones": {"nombre": "Recepciones", "filas": recepciones},
-        "ordenes_compra": {"nombre": "Órdenes de compra", "filas": generar_orden_compra_demo()},
+        "ordenes_compra": {"nombre": "Órdenes de compra",
+                           "filas": generar_ordenes_compra_historicas() + generar_orden_compra_demo()},
+        # Dos apartados que nacían vacíos en la demo aunque el dato existiera en
+        # otro lado: derivados de `dep` y de `recepciones`, nunca inventados.
+        "ubicaciones": {"nombre": "Ubicaciones", "filas": generar_ubicaciones(dep)},
+        "proveedores": {"nombre": "Proveedores", "filas": generar_proveedores(recepciones)},
     }, open(os.path.join(HERE, "apartados.json"), "w", encoding="utf-8"), ensure_ascii=False)
     cuentas_ = generar_cuentas()
     json.dump(cuentas_, open(os.path.join(HERE, "cuentas.json"), "w",
