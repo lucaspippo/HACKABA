@@ -47,6 +47,45 @@
   </div>
   {% endif %}
 
+  {# Carpeta (core/carpeta.py): secciones de CAMPOS, y cada campo dice de
+     dónde salió. La fuente va impresa: un papel que alguien firma no puede
+     tener casilleros de origen desconocido, y lo que falta se marca en vez
+     de esconderse. #}
+  {% if doc.secciones %}
+  {% for s in doc.secciones %}
+  <h2>{{ s.titulo }}</h2>
+  <div class="campos">
+    {% for c in s.campos %}
+    <div class="campo campo-{{ c.estado }}">
+      <div class="campo-etiqueta">{{ c.etiqueta }}</div>
+      <div class="campo-valor">
+        {% if c.valor not in (None, "") %}{{ c.valor }}{% else %}<span class="campo-hueco">{{ t.falta }}</span>{% endif %}
+      </div>
+      {% if c.fuente %}<div class="campo-fuente">{{ t.de }} {{ c.fuente }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% if doc.renglones %}
+  <h2>{{ t.renglones }}</h2>
+  <table>
+    <thead><tr>
+      {% for k in doc.renglones[0].keys() if k != "fuente" %}
+      <th {% if not loop.first %}class="num"{% endif %}>{{ k }}</th>
+      {% endfor %}
+    </tr></thead>
+    <tbody>
+      {% for r in doc.renglones %}
+      <tr>{% for k, v in r.items() if k != "fuente" %}
+        <td {% if not loop.first %}class="num"{% endif %}>{{ v }}</td>
+      {% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if doc.nota_legal %}<p class="nota">{{ doc.nota_legal }}</p>{% endif %}
+  {% endif %}
+
   <!-- 2b · Hallazgos que importan (P18: cada uno cruza ≥2 fuentes, con $) -->
   {% if doc.get("hallazgos") %}
   <h2>{{ t.hallazgos_titulo }}</h2>

@@ -103,6 +103,11 @@ def render_html(doc: dict, lang: str | None, usuario: str) -> str:
         "orden_total": _t("core.doc.orden_total", lang),
         "disclaimer": _t("core.pdf.disclaimer", lang,
                          fecha=fechas.hoy().strftime("%d/%m/%Y")),
+        # La carpeta (core/carpeta.py) imprime la fuente de cada casillero y
+        # marca lo que falta en vez de esconderlo.
+        "de": _t("core.pdf.de", lang),
+        "falta": _t("core.pdf.falta", lang),
+        "renglones": _t("core.pdf.renglones", lang),
     }
     # El veredicto solo existe si el documento lo trae: el PDF dice lo que el
     # draft dice, jamás agrega afirmaciones propias (verdad literal).
