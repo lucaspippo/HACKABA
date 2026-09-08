@@ -113,6 +113,55 @@ The insight LIFECYCLE (`New` / `Confirmed` / `Acted upon` / `Resolved` /
 the planned next step, not yet implemented — see the "Deferred" section of
 `docs/superpowers/specs/2026-09-01-structured-insight-contract-design.md`.
 
+## The Counting Rule
+
+**The unit of a sum is an entity, not a row. And no figure reaches a screen or
+a document unless it came out of tested code.**
+
+This is written here, at the same level as the Action Principle, because it has
+already gone wrong twice in this repo, in the same shape:
+
+- **The "$900M".** The map summed opportunity cards of every kind into one
+  "recoverable capital" headline. Overdue debt, dormant stock and avoided
+  overbuying are not the same magnitude, and adding them produced a number
+  nobody could reproduce. The fix was `oportunidades_neg.recuperable()`: one
+  function, one canonical sum, and `NATURALEZA` deciding what is homogeneous
+  enough to add.
+- **Debt per truck.** A design document reported $168,700,000 of receivables on
+  one delivery run. Two customers had two stops each that day and one balance
+  each, so a third of the figure was the same customer counted twice. The real
+  number is $111,800,000. It was caught by writing the code, not by re-reading
+  the document — see `core/cobranza.exposicion_en_ruta` and the first two tests
+  in `tests/test_deuda_en_ruta.py`.
+
+Twice is not bad luck. It is a pattern, and it has a shape worth naming:
+**a list of rows is not a list of the things the rows are about.** Stops are
+not customers, order lines are not products, lots are not SKUs, notes are not
+authors. Whenever a total is labelled with an entity — customers, vendors,
+products — the sum and the count both have to be over that entity.
+
+### How to apply it
+
+1. **Name the unit before writing the sum.** If the answer is "money per
+   customer", deduplicate by customer, at every level of the aggregation: a
+   customer can repeat inside one group *and* across groups, and the group
+   totals and the grand total need different deduplication.
+2. **Only add what is homogeneous, and say what kind of money it is.** Debt
+   that already exists is exposure and is *surfaced*, not recovered; goods
+   about to expire are a loss *avoided*, not capital freed. `NATURALEZA` is
+   how a card declares which one it is, and `recuperable()` is the only thing
+   allowed to add them up. A figure whose kind is not declared does not get
+   summed with anything.
+3. **The figure comes from `core/`, with a test that pins it.** Not from a
+   `reduce` in a component, not from an ad-hoc script, not from a number
+   computed while writing an analysis. A screen renders totals; it never
+   derives them. When a document quotes a figure, it quotes what the code
+   returns — build it first, then write it down.
+4. **Pin the canonical numbers.** The ones the business repeats out loud belong
+   in a test that fails when they move (see `tests/test_cruces.py`'s
+   "los canónicos no se mueven"). A number nobody guards is a number that
+   drifts.
+
 ## The Action Principle
 
 **A process that ends in a report is unfinished.** PolPilot sits on top of the
@@ -209,6 +258,9 @@ or `MODULOS` (`backend/auth.py`), answer in writing:
 - **Record Rule:** the ERP stores what happened; we store what somebody
   decided, who decided it, and why. A floor report is evidence that a record
   is wrong, never the correction itself — so no floor screen writes to the ERP.
+- **Counting Rule:** the unit of a sum is an entity, not a row, and no figure
+  reaches a screen or a document unless it came out of tested code. See *The
+  Counting Rule* above — it has already cost us twice.
 
 ## Product Principles
 
