@@ -263,7 +263,10 @@ function formatValue(value, unit, lang) {
   if (value == null || value === "") return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return String(value);
-  if (unit === "ars") return peso(n);
+  // One rule for money in this panel: the headline figure is the only
+  // full number; every figure in the body (evidence, metrics, exposure)
+  // is abbreviated. Three formats side by side read as three currencies.
+  if (unit === "ars") return pesoCorto(n);
   return new Intl.NumberFormat(VALUE_LOCALE[lang] || VALUE_LOCALE.es, {
     maximumFractionDigits: Number.isInteger(n) ? 0 : 1,
   }).format(n);
@@ -587,7 +590,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               }`}>
                 {risk.label}
                 {showExposure && (
-                  <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
+                  <span className="plata ml-1.5 font-semibold">{pesoCorto(risk.exposure)}</span>
                 )}
               </p>
             )}

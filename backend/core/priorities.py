@@ -659,7 +659,9 @@ def _alerts_pagos(lang) -> list[dict]:
         out.append(_item(
             id="pago_vencido", tono="rojo", chip=_t("core.prio.chip_pagar", lang),
             titulo=_t("core.prio.pago_vencido_t", lang),
-            resumen=_t("core.prio.pago_vencido_r", lang,
+            # "1 pagos" is not a plural anyone says: one key per number.
+            resumen=_t("core.prio.pago_vencido_r_1" if pv["pagos_vencidos"] == 1
+                       else "core.prio.pago_vencido_r", lang,
                        n=_num(pv["pagos_vencidos"], lang),
                        monto=_pesos(pv["vencidos_total"], lang)),
             origen=["alerta:pago_vencido"], modulos=ALERT_MODULOS["pago_vencido"],
@@ -668,7 +670,8 @@ def _alerts_pagos(lang) -> list[dict]:
             navegar="finanzas",
             accion_chat=_t("core.prio.pago_vencido_chat", lang),
             insight=ins.build(
-                pattern=ins.pattern(_t("core.prio.pago_vencido_p", lang,
+                pattern=ins.pattern(_t("core.prio.pago_vencido_p_1" if pv["pagos_vencidos"] == 1
+                                       else "core.prio.pago_vencido_p", lang,
                                        n=_num(pv["pagos_vencidos"], lang)),
                                     scope={"kind": "payables", "count": pv["pagos_vencidos"]}),
                 evidence=[
