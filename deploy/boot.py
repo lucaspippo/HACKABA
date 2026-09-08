@@ -113,6 +113,14 @@ def main() -> None:
         print(f"[boot] Postgres seed ok (tenant={tenant})", flush=True)
     else:
         print("[boot] seeding skipped (POLPILOT_SEED_ON_BOOT is not 1)", flush=True)
+        # Skipped is not the same as unchecked: if this tenant HAS a seed
+        # baseline and the dataset under it changed, say so out loud.
+        # Never fatal — a productive tenant with its own data is the
+        # normal case, and nothing here touches it.
+        try:
+            seed_db.revisar_seeds()
+        except Exception as e:  # noqa: BLE001 — a warning must never stop a boot
+            print(f"[boot] seed check skipped ({e})", flush=True)
 
     # 5 · dataset verification against POSTGRES, the real runtime source
     #     (inventory.json on disk is only the seed source above). Reading and
