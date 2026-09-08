@@ -643,15 +643,6 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     return () => { vivo = false; };
   }, []);
 
-  // Arriving from a Home card: the finding is pre-chosen. Its path lights and
-  // its panel opens as soon as data lands, so the first second on the map is
-  // the answer, not a search.
-  useEffect(() => {
-    if (!d || d === false || !focoInicial) return;
-    const h = (d.hallazgos || []).find((x) => x.id === focoInicial);
-    if (h) { setFoco(h.id); setAbierto({ hallazgo: h }); }
-  }, [d, focoInicial]);
-
   const camino = useMemo(() => {
     const h = (d?.hallazgos || []).find((x) => x.id === foco);
     return h ? { nodos: new Set(h.camino), aristas: new Set(h.aristas || []) } : null;
@@ -758,6 +749,22 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
       .then((r) => setAbierto({ id, etiqueta, ...r }))
       .catch(() => setAbierto({ id, etiqueta, filas: [] }));
   }, []);
+
+  // Arriving from a Home card: the finding is pre-chosen. Its path lights and
+  // its panel opens as soon as data lands, so the first second on the map is
+  // the answer, not a search.
+  useEffect(() => {
+    if (!d || d === false || !focoInicial) return;
+    const h = (d.hallazgos || []).find((x) => x.id === focoInicial);
+    if (h) { setFoco(h.id); setAbierto({ hallazgo: h }); return; }
+    // A global-search hit is a NODE id, not a finding: open its panel. The
+    // logistics order is the one entity with no list screen of its own, and
+    // the map is where it actually reads.
+    const n = [...(d.nodos || []), ...(d.nodos_contexto || [])]
+      .find((x) => x.id === focoInicial);
+    if (n) abrir(n.id, n.etiqueta);
+  }, [d, focoInicial, abrir]);
+
 
   if (d === null) return <Esqueleto />;
   if (d === false) return <Aviso>{t("mapaop.error_carga")}</Aviso>;

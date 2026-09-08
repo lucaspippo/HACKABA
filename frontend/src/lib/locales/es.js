@@ -588,6 +588,8 @@ export const ES = {
   "nav.ver_perfil": "Ver perfil completo",
   "nav.colapsar_sidebar": "Colapsar el menú",
   "nav.expandir_sidebar": "Expandir el menú",
+  "palette.en_tus_datos": "En tus datos",
+  "palette.buscando": "Buscando…",
   "palette.ir_a": "Ir a",
   "palette.preguntar": "Preguntarle algo a Ángela",
   "palette.preguntar_con": "Preguntarle a Ángela: \"{q}\"",
