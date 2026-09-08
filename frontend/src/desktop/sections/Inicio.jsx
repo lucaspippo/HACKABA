@@ -152,7 +152,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
   }));
 
   const ops = (prio?.act || []).map((o) => ({
-    id: o.id, titulo: o.titulo, detalle: o.resumen, monto: o.monto,
+    id: o.id, titulo: o.titulo, detalle: o.resumen, monto: o.monto, mapa: o.mapa || null,
   }));
 
   // --- La fila de la referencia: hasta 4 tarjetas, cada una con dato real ---
@@ -183,7 +183,11 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
       chip: i === 0 ? t("inicio.card_oportunidad") : t("inicio.card_seguimiento"),
       titulo: o.titulo, detalle: primeraFrase(o.detalle), monto: o.monto,
       icon: i === 0 ? Lightbulb : TrendingUp,
-      cta: t("inicio.card_ver_analisis"), ir: () => onNavegar("prioridades"),
+      // A finding the operation map also has opens THERE, already focused:
+      // path lit, panel open (MapaOperacion `focoInicial`). The rest keep
+      // going to the ranked inbox.
+      cta: o.mapa ? t("inicio.card_ver_mapa") : t("inicio.card_ver_analisis"),
+      ir: o.mapa ? () => onNavegar("mapa", o.mapa) : () => onNavegar("prioridades"),
     });
   }
   const opsUsadas = cartas.filter((c) => c.id.startsWith("op-")).length;
