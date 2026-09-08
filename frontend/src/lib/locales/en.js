@@ -1113,6 +1113,7 @@ export const EN = {
   "cardneg.drill_caveats": "What would change this?",
   "cardneg.drill_alternatives": "Other possible explanations",
   "cardneg.drill_method": "How was this calculated?",
+  "cardneg.drill_por_que": "Why we think so",
   "cardneg.drill_more": "+{n} more",
   "cardneg.drill_less": "Show less",
   "cardneg.conf_data": "data",
