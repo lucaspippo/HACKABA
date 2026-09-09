@@ -219,6 +219,21 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.method.floor_report_po_check": {
         "es": "Controlado contra la orden de compra abierta de ese proveedor.",
         "en": "Checked against that supplier's open purchase order."},
+    # El circuito de vuelta: lo que le llega al que reportó, y al que le
+    # dirigieron el aviso. Cortos a propósito — se leen en una campanita.
+    "piso.recibido_t": {"es": "{quien} te mandó un aviso",
+                        "en": "{quien} sent you a report"},
+    "piso.recibido_c": {"es": "Desde el piso, sin resolver.",
+                        "en": "From the floor, still open."},
+    "piso.visto_t": {"es": "{quien} vio lo que reportaste",
+                     "en": "{quien} saw what you reported"},
+    "piso.visto_c": {"es": "Lo está mirando.", "en": "They are looking at it."},
+    "piso.resuelto_t": {"es": "{quien} cerró lo que reportaste",
+                        "en": "{quien} closed what you reported"},
+    "piso.resuelto_c": {"es": "{nota}", "en": "{nota}"},
+    "api.reporte_ajeno": {
+        "es": "Ese aviso no te lo mandaron a vos.",
+        "en": "That report was not directed to you."},
     "api.reporte_inexistente": {
         "es": "ese reporte no existe",
         "en": "no such report",

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, Check, Loader2, Camera } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Check, Loader2, Camera, ArrowRight } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { CAMPOS_REPORTE } from "../lib/roles";
 import { api } from "../lib/api";
@@ -20,6 +20,14 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
   const [valores, setValores] = useState(() =>
     Object.fromEntries(campos.map((c) => [c.id, c.tipo === "opciones" ? c.opciones[0].v : ""])));
   const [enviando, setEnviando] = useState(false);
+  // P·círculo — A QUIÉN LE LLEGA. Nadie en la cámara de frío elige de una lista
+  // de catorce nombres: Ángela propone por oficio y la persona confirma con un
+  // toque. `null` mientras no contestó el backend; si no contesta, se manda
+  // igual (el hecho vale más que el ruteo) y queda en el pozo del dueño.
+  const [destino, setDestino] = useState(null);
+  useEffect(() => {
+    api.piso.destinatario(tipo).then((d) => setDestino(d.sugerido || null)).catch(() => {});
+  }, [tipo]);
 
   const falta = campos.some((c) => c.requerido && !String(valores[c.id] ?? "").trim());
 
@@ -32,7 +40,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
         if (v === "" || v == null) continue;
         datos[c.id] = c.tipo === "numero" ? Number(v) : v;
       }
-      await api.piso.reportar(tipo, datos);
+      await api.piso.reportar(tipo, datos, destino?.username);
       toast(t(`rol.reporte_ok_${tipo}`));
       onListo?.();
       onCerrar();
@@ -114,11 +122,24 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
           ))}
         </div>
 
+        {/* Ángela propone, la persona confirma. Nunca automático sin que se
+            vea: si se equivoca y nadie lo nota, el aviso se muere en silencio
+            y esta persona no vuelve a usar la app. */}
+        {destino && (
+          <div className="mt-4 rounded-xl border border-violeta/25 bg-violeta/[0.05] px-3.5 py-3">
+            <p className="text-sm leading-snug text-tinta">
+              {t("rol.reporte_destino", { nombre: destino.nombre })}
+            </p>
+            <p className="mt-0.5 text-xs text-tinta-suave">{destino.rol}</p>
+          </div>
+        )}
+
         <div className="mt-4 flex items-center gap-2">
           <button onClick={enviar} disabled={falta || enviando}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5 text-sm font-semibold text-crema active:scale-95 disabled:opacity-40">
             {enviando ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-            {t("rol.reporte_enviar")}
+            {destino ? t("rol.reporte_enviar_a", { nombre: destino.nombre })
+                     : t("rol.reporte_enviar")}
           </button>
           <button onClick={onCerrar}
             className="min-h-11 rounded-full border border-linea px-4 py-2.5 text-sm font-semibold text-tinta-suave">

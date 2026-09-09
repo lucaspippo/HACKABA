@@ -273,7 +273,15 @@ export const api = {
   documento: (tipo) => get(`/api/documentos/${tipo}`),
   // P39 · lo que el piso reporta (y lo que el dueño hace con eso)
   piso: {
-    reportar: (tipo, datos) => post("/api/piso/reporte", { tipo, datos }),
+    reportar: (tipo, datos, destinatario) =>
+      post("/api/piso/reporte", { tipo, datos, destinatario }),
+    // A quién PROPONE Ángela mandarlo. Se consulta antes de mandar para poder
+    // preguntar "esto lo ve Celeste, ¿lo mando?" — nunca se manda solo.
+    destinatario: (tipo) => get(`/api/piso/destinatario?tipo=${encodeURIComponent(tipo)}`),
+    // Lo que mandé, lo que me mandaron, y los hallazgos que se apoyan en algo
+    // que yo dije. La mitad del circuito que faltaba.
+    mios: () => get("/api/piso/mios"),
+    visto: (rid) => post(`/api/piso/reportes/${rid}/visto`, {}),
     reportes: (tipo, estado) => get(`/api/piso/reportes${tipo || estado
       ? `?${[tipo && `tipo=${tipo}`, estado && `estado=${estado}`].filter(Boolean).join("&")}` : ""}`),
     resolver: (rid, nota = "") => post(`/api/piso/reportes/${rid}/resolver`, { nota }),

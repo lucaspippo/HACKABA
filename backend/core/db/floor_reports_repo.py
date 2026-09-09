@@ -8,7 +8,8 @@ from sqlalchemy import text
 from core.db.engine import tenant_connection, to_local_iso
 
 _COLS = ("id, type, actor, created_at, report_date, status, data, "
-         "attachment, resolved_by, resolved_at, resolved_note")
+         "attachment, resolved_by, resolved_at, resolved_note, "
+         "recipient, seen_at, seen_by")
 
 
 def _to_reporte(row) -> dict:
@@ -29,6 +30,11 @@ def _to_reporte(row) -> dict:
         r["resuelto"] = to_local_iso(row["resolved_at"])
     if row["resolved_note"]:
         r["nota_dueno"] = row["resolved_note"]
+    if row["recipient"]:
+        r["destinatario"] = row["recipient"]
+    if row["seen_at"]:
+        r["visto"] = to_local_iso(row["seen_at"])
+        r["visto_por"] = row["seen_by"]
     return r
 
 
@@ -54,8 +60,10 @@ def create(tenant_id: str, reporte: dict) -> None:
         conn.execute(
             text(
                 "INSERT INTO floor_reports "
-                "(tenant_id, id, type, actor, created_at, report_date, status, data, attachment) "
-                "VALUES (:tid, :id, :type, :actor, :created_at, :report_date, :status, :data, :attachment)"
+                "(tenant_id, id, type, actor, created_at, report_date, status, data, "
+                "attachment, recipient) "
+                "VALUES (:tid, :id, :type, :actor, :created_at, :report_date, :status, "
+                ":data, :attachment, :recipient)"
             ),
             {
                 "tid": tenant_id,
@@ -67,8 +75,33 @@ def create(tenant_id: str, reporte: dict) -> None:
                 "status": reporte["estado"],
                 "data": json.dumps(reporte["datos"]),
                 "attachment": reporte.get("adjunto"),
+                "recipient": reporte.get("destinatario"),
             },
         )
+
+
+def mark_seen(tenant_id: str, rid: str, actor: str, visto_iso: str) -> dict | None:
+    """El acuse. Idempotente a propósito: el primero que lo abre es el que
+    queda, y abrirlo de nuevo no reescribe la hora — el que reportó ya vio
+    "visto a las 9:31" y ese dato no se mueve bajo sus pies."""
+    with tenant_connection(tenant_id) as conn:
+        conn.execute(
+            text(
+                "UPDATE floor_reports SET seen_at = :seen_at, seen_by = :actor, "
+                "status = CASE WHEN status = 'nuevo' THEN 'visto' ELSE status END "
+                "WHERE id = :id AND seen_at IS NULL"
+            ),
+            {
+                "actor": actor,
+                "seen_at": datetime.datetime.fromisoformat(visto_iso).astimezone(),
+                "id": rid,
+            },
+        )
+        row = conn.execute(
+            text(f"SELECT {_COLS} FROM floor_reports WHERE id = :id"),
+            {"id": rid},
+        ).mappings().first()
+    return _to_reporte(row) if row else None
 
 
 def resolve(tenant_id: str, rid: str, actor: str, nota: str,
