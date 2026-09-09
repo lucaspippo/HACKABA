@@ -105,6 +105,58 @@ def discrepancias() -> list[dict]:
     return sorted(out, key=lambda x: abs(x["diferencia"]), reverse=True)
 
 
+# Cuánto para atrás se mira una nota que explique una diferencia. Un aviso de
+# hace un mes ya no explica el conteo de hoy; uno de la misma semana, sí.
+DIAS_EXPLICACION = 15
+
+
+def _ubicaciones_de(codigo) -> list[str]:
+    return sorted({f.get("ubicacion") for f in _filas()
+                   if f.get("codigo") == codigo and f.get("ubicacion")})
+
+
+def explicaciones(disc: list[dict] | None = None,
+                  dias: int = DIAS_EXPLICACION) -> list[dict]:
+    """Cada diferencia, con lo que el equipo dijo de esa ubicación.
+
+    EL ERP DICE «FALTAN 6,5». NOSOTROS PODEMOS DECIR POR QUÉ.
+
+    En el dataset del demo hay una diferencia de −6,5 unidades de leche en
+    Pasillo 4 · Rack B, y ese mismo día dos personas dejaron su aviso: Kevin
+    («me mandaron a buscar leche al pasillo 4 y estaba en otro rack») y Nahuel
+    («corrí las cajas del pasillo 4 para hacer lugar»). La diferencia ya estaba
+    explicada y nadie los había juntado — el que la mira iba a mandar a
+    recontar, o peor, a ajustar el stock por un faltante que no existe.
+
+    La nota NO decide nada: es contexto para el que decide. Por eso viaja con
+    la diferencia y no la borra de la lista.
+    """
+    from . import notas as notas_equipo
+    from .fechas import hoy
+    import datetime
+    disc = discrepancias() if disc is None else disc
+    if not disc:
+        return []
+    desde = (hoy() - datetime.timedelta(days=dias)).isoformat()
+    out = []
+    for d in disc:
+        ubis = _ubicaciones_de(d.get("codigo"))
+        notas = []
+        vistas = set()
+        for u in ubis:
+            for n in notas_equipo.por_ubicacion(u, desde=desde):
+                if n["id"] in vistas:
+                    continue
+                vistas.add(n["id"])
+                notas.append({"id": n["id"], "autor": n.get("autor"),
+                              "fecha": n.get("fecha"), "canal": n.get("canal"),
+                              "ubicacion": n.get("ubicacion"), "texto": n.get("texto"),
+                              "texto_en": n.get("texto_en")})
+        out.append({**d, "ubicaciones": ubis,
+                    "notas": sorted(notas, key=lambda x: x["fecha"] or "")})
+    return out
+
+
 def aging(as_of=None) -> list[dict]:
     """Units and inmovilizado by age of in_date vs fechas.hoy() (or as_of).
     Rows without a parseable in_date are omitted, never invented."""

@@ -96,6 +96,45 @@ def _con_nombres(reportes: list[dict]) -> list[dict]:
     return out
 
 
+def explico_una_diferencia(username: str, lang: str | None = None) -> list[dict]:
+    """Las diferencias de stock que una nota de esta persona explica.
+
+    Kevin no necesita ver los $53.646 de la diferencia — eso es del que decide.
+    Necesita ver que lo que dijo del pasillo 4 explicó una. Ésa es la mitad que
+    convierte «te miramos» en «servís», y es la más barata de todas.
+    """
+    from . import deposito
+    out = []
+    try:
+        for d in deposito.explicaciones():
+            mias = [n for n in d.get("notas") or [] if n.get("autor") == username]
+            if not mias:
+                continue
+            out.append({
+                "id": f"dif:{d['codigo']}",
+                "titulo": _t("core.avisos.dif_t", lang, producto=d.get("descripcion")),
+                "resumen": _t("core.avisos.dif_r", lang,
+                              diferencia=f"{d['diferencia']:+g}",
+                              ubicacion=", ".join(d.get("ubicaciones") or []) or "—"),
+                "personas": len({n.get("autor") for n in d["notas"] if n.get("autor")}),
+                "mis_notas": [{"id": n["id"], "fecha": n["fecha"],
+                               "canal": n["canal"], "texto": _texto(n, lang)}
+                              for n in mias],
+            })
+    except Exception:  # noqa: BLE001 — sin depósito, la pantalla igual sirve
+        return []
+    return out
+
+
+def _t(key: str, lang: str | None = None, **p) -> str:
+    import i18n
+    return i18n.t(key, lang, **p)
+
+
+def _texto(n: dict, lang: str | None) -> str:
+    return n.get("texto_en") if (lang == "en" and n.get("texto_en")) else n.get("texto", "")
+
+
 def de(username: str, lang: str | None = None) -> dict:
     """Todo lo de esta persona, en una llamada."""
     from . import piso
@@ -103,5 +142,8 @@ def de(username: str, lang: str | None = None) -> dict:
     return {
         "reporte": _con_nombres(mios["reporte"]),
         "me_mandaron": _con_nombres(mios["me_mandaron"]),
-        "sirvio_para": sirvio_para(username, lang),
+        # Los hallazgos del negocio y las diferencias que explicó, en la misma
+        # lista: para el que las dijo son la misma cosa — "lo que dije sirvió".
+        "sirvio_para": sirvio_para(username, lang)
+                       + explico_una_diferencia(username, lang),
     }

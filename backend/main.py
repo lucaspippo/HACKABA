@@ -1189,7 +1189,9 @@ def deposito_get(dias: int = 15, _u: dict = Depends(require_feature("deposito"))
         "resumen": deposito.resumen(),
         "vencimientos": deposito.vencimientos(dias),
         "vencidos": deposito.vencidos(),
-        "discrepancias": disc_k["visibles"],
+        # C7 — la diferencia llega con lo que el equipo dijo de esa ubicación:
+        # el ERP dice "faltan 6,5", nosotros podemos decir por qué.
+        "discrepancias": deposito.explicaciones(disc_k["visibles"]),
         "discrepancias_suprimidas": disc_k["suprimidas"],  # Piece 12 — "vela acá"
         "aging": deposito.aging(),
     }
