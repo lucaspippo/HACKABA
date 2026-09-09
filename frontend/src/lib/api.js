@@ -280,6 +280,9 @@ export const api = {
     // A quién PROPONE Ángela mandarlo. Se consulta antes de mandar para poder
     // preguntar "esto lo ve Celeste, ¿lo mando?" — nunca se manda solo.
     destinatario: (tipo) => get(`/api/piso/destinatario?tipo=${encodeURIComponent(tipo)}`),
+    // Los avisos que deja ESTE oficio, como botones. El servidor los resuelve
+    // desde el rol de quien pregunta: el cliente no elige su propia lista.
+    avisosOficio: () => get("/api/piso/avisos-oficio"),
     // Lo que mandé, lo que me mandaron, y los hallazgos que se apoyan en algo
     // que yo dije. La mitad del circuito que faltaba.
     mios: () => get("/api/piso/mios"),

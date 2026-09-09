@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
+import fs from "node:fs";
+import path from "node:path";
+import { CATALOGO, accionesDe, atiendeMostrador, avisaDesdeElPiso, cargaLk, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
 
 // The demo team, verbatim from backend/usuarios_demo.py. The role STRING is the
 // only input `rolDe` gets — there is no list of usernames anywhere — so these
@@ -150,5 +152,36 @@ describe("atiendeMostrador", () => {
     for (const x of ["ramon", "brian", "tomas", "nahuel", "kevin"]) {
       expect(atiendeMostrador(de(x))).toBe(false);
     }
+  });
+});
+
+describe("avisaDesdeElPiso", () => {
+  // La lista de avisos vive en el backend (data-demo/avisos_por_oficio.json) y
+  // el flag de acá decide si la barra lleva el botón de carga. Son dos lugares
+  // para un mismo hecho, así que se pinnean uno contra el otro: el día que
+  // alguien agregue un oficio a la semilla y no acá, esto lo dice.
+  const semilla = JSON.parse(fs.readFileSync(
+    path.resolve(__dirname, "../../../data-demo/avisos_por_oficio.json"), "utf8"));
+
+  it("matches exactly the trades the seed gives a list to", () => {
+    const conFlag = CATALOGO.filter((r) => r.avisa).map((r) => r.id).sort();
+    const enSemilla = Object.keys(semilla.oficios).sort();
+    expect(conFlag).toEqual(enSemilla);
+  });
+
+  it("leaves the offices and the owner out, as the seed says", () => {
+    for (const u of ["marta", "celeste", "aldo"]) {
+      expect(avisaDesdeElPiso(de(u))).toBe(false);
+    }
+  });
+
+  it("gives each trade the verb of its own job", () => {
+    // "Contar" and "Log" are not the same thing, and a button that says what it
+    // does gets pressed without thinking.
+    expect(cargaLk(de("tomas"))).toBe("rol.carga_contar");
+    expect(cargaLk(de("brian"))).toBe("rol.carga_armar");
+    expect(cargaLk(de("walter"))).toBe("rol.carga_registrar");
+    // Whoever has no trade of their own still gets a sane default.
+    expect(cargaLk(de("aldo"))).toBe("rol.carga_cargar");
   });
 });

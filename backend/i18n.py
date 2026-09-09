@@ -3466,6 +3466,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                     "en": "Reported a shortage in the warehouse"},
     "audit.acc.avisar_costo_viejo": {"es": "Avisó que un precio salió de un costo viejo",
                                      "en": "Flagged a price built on a stale cost"},
+    "audit.acc.avisar_desde_el_piso": {"es": "Dejó un aviso desde el piso",
+                                       "en": "Left a heads-up from the floor"},
     "audit.acc.preguntar_referente": {"es": "Le preguntó a su referente",
                                       "en": "Asked their go-to person"},
     "audit.acc.marcar_conteo": {"es": "Cargó un conteo de stock",

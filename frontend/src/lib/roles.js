@@ -20,7 +20,7 @@
 // El orden importa, dos veces: "Encargado de depósito" es depósito y no
 // sucursal, y dentro del depósito las cinco fichas específicas van antes que
 // la genérica, que es la red de la que nadie se cae.
-const CATALOGO = [
+export const CATALOGO = [
   {
     id: "administracion",
     match: /administraci/i,
@@ -64,6 +64,8 @@ const CATALOGO = [
   // los cinco comparten las del depósito, y por eso no sale del `id`.
   {
     id: "deposito_encargado",
+    avisa: true,
+    cargaLk: "rol.carga_cargar",
     match: /encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito/i,
     voz: true,
     muestras: "deposito",
@@ -82,6 +84,8 @@ const CATALOGO = [
   },
   {
     id: "deposito_recepcion",
+    avisa: true,
+    cargaLk: "rol.carga_cargar",
     match: /dep[oó]sito.*(recepci|recib)/i,
     voz: true,
     muestras: "deposito",
@@ -98,6 +102,8 @@ const CATALOGO = [
   },
   {
     id: "deposito_conteos",
+    avisa: true,
+    cargaLk: "rol.carga_contar",
     match: /dep[oó]sito.*conteo/i,
     voz: true,
     muestras: "deposito",
@@ -117,6 +123,8 @@ const CATALOGO = [
     // Picking. Su trabajo es el PEDIDO, no el remito: por eso su acción
     // destacada lleva a logística y no a cargar.
     id: "deposito_armado",
+    avisa: true,
+    cargaLk: "rol.carga_armar",
     match: /dep[oó]sito.*(armado|picking|preparaci)/i,
     voz: true,
     muestras: "deposito",
@@ -134,6 +142,8 @@ const CATALOGO = [
   {
     // El que recién entró. Menos es mejor: una acción y una pregunta.
     id: "deposito_ayudante",
+    avisa: true,
+    cargaLk: "rol.carga_avisar",
     match: /dep[oó]sito.*ayudante/i,
     voz: true,
     muestras: "deposito",
@@ -167,6 +177,8 @@ const CATALOGO = [
   },
   {
     id: "reparto",
+    avisa: true,
+    cargaLk: "rol.carga_registrar",
     match: /reparto|chofer|cami[oó]n/i,
     voz: true,
     muestras: "reparto",
@@ -185,6 +197,8 @@ const CATALOGO = [
   },
   {
     id: "preventa",
+    avisa: true,
+    cargaLk: "rol.carga_registrar",
     match: /preventista|vendedor/i,
     acciones: [
       { id: "plazo_seguro", icon: "ShieldCheck", need: ["cuentas"], kind: "angela",
@@ -200,6 +214,8 @@ const CATALOGO = [
   },
   {
     id: "mostrador",
+    avisa: true,
+    cargaLk: "rol.carga_registrar",
     match: /mostrador/i,
     voz: true,
     muestras: "mostrador",
@@ -220,6 +236,8 @@ const CATALOGO = [
   },
   {
     id: "sucursal",
+    avisa: true,
+    cargaLk: "rol.carga_registrar",
     match: /sucursal/i,
     voz: true,
     mostrador: true,
@@ -291,6 +309,20 @@ export function muestrasDe(user) {
 }
 
 /** Las preguntas pre-cargadas de su oficio (sólo las que su rol puede responder). */
+/** ¿Este oficio deja avisos desde el piso? Decide si la barra lleva el botón
+ *  de carga al centro. Las oficinas (administración, compras) y el dueño no:
+ *  escriben en vez de avisar, y así está declarado en la semilla — el flag de
+ *  acá y `avisos_por_oficio.json` están pinneados uno contra otro por test. */
+export function avisaDesdeElPiso(user) {
+  return !!rolDe(user)?.avisa;
+}
+
+/** El verbo del botón de carga de este oficio. «Contar» y «Registrar» no son lo
+ *  mismo, y un botón que dice lo que hace se toca sin pensarlo. */
+export function cargaLk(user) {
+  return rolDe(user)?.cargaLk || "rol.carga_cargar";
+}
+
 /** ¿Atiende un mostrador? Mira precios de venta todo el día, y por eso le
  *  sirve saber cuál de esos precios salió de un costo viejo. */
 export function atiendeMostrador(user) {
@@ -305,6 +337,30 @@ export function chipsDe(user) {
 
 /** Los campos de cada formulario de reporte: qué le pedimos al que está parado
  *  en el depósito o arriba del camión. Corto — se completa con una mano. */
+// Los campos, sueltos, por id. `avisos_por_oficio.json` dice qué necesita CADA
+// aviso (`necesita: ["producto", "cantidad", "lote"]`) y de acá sale el
+// formulario: se piden esos y ninguno más. Un formulario con seis campos para
+// decir "el cliente no estaba" es un formulario que nadie completa.
+export const CAMPO = {
+  producto:  { id: "producto", lk: "rol.f_producto", tipo: "texto" },
+  cantidad:  { id: "cantidad", lk: "rol.f_cantidad", tipo: "numero" },
+  contado:   { id: "contado", lk: "rol.f_contado", tipo: "numero" },
+  cliente:   { id: "cliente", lk: "rol.f_cliente", tipo: "texto" },
+  pedido:    { id: "pedido", lk: "rol.f_pedido", tipo: "texto" },
+  ubicacion: { id: "ubicacion", lk: "rol.f_ubicacion", tipo: "texto" },
+  lote:      { id: "lote", lk: "rol.f_lote", tipo: "texto" },
+  proveedor: { id: "proveedor", lk: "rol.f_proveedor", tipo: "texto" },
+  monto:     { id: "monto", lk: "rol.f_monto", tipo: "numero" },
+};
+
+/** Los campos de un aviso, en el orden que los declara la semilla, más la nota
+ *  libre al final — que es opcional y es donde va lo que no entró en ninguno. */
+export function camposDe(necesita) {
+  const campos = (necesita || []).map((n) => CAMPO[n]).filter(Boolean)
+    .map((c) => ({ ...c, requerido: true }));
+  return [...campos, { id: "nota", lk: "rol.f_nota", tipo: "texto" }];
+}
+
 export const CAMPOS_REPORTE = {
   faltante: [
     { id: "producto", lk: "rol.f_producto", tipo: "texto", requerido: true },

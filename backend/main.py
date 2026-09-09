@@ -1308,6 +1308,28 @@ def piso_reportar(req: ReporteRequest, u: dict = Depends(usuario_actual)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/piso/avisos-oficio")
+def piso_avisos_oficio(u: dict = Depends(usuario_actual)):
+    """Los avisos que ESTE oficio deja, listos para pintar como botones.
+
+    El oficio sale del TEXTO del rol de quien pregunta, no de su username: una
+    persona nueva con el mismo puesto hereda sus avisos sin tocar código. No va
+    detrás de ninguna feature — no es un dato del negocio, es la lista de cosas
+    que esta persona puede decir, y decir siempre puede.
+
+    Cada aviso viene con el destinatario ya resuelto a un username REAL, o
+    vacío: la pantalla no inventa a quién le llega.
+    """
+    from core import avisos_oficio
+    import auth
+    r = avisos_oficio.de(u.get("rol"), _lang(u))
+    for a in r["avisos"]:
+        d = auth.USUARIOS.get(a["destinatario"] or "") or {}
+        a["destinatario"] = ({"username": a["destinatario"], "nombre": d.get("nombre"),
+                              "rol": d.get("rol") or ""} if d else None)
+    return r
+
+
 @app.get("/api/piso/destinatario")
 def piso_destinatario(tipo: str, u: dict = Depends(usuario_actual)):
     """A quién PROPONE Ángela mandar este tipo de aviso.
@@ -1561,7 +1583,8 @@ def _familia_evento(acc: str) -> str | None:
 _TRABAJO_EXTRA = {"validacion_montos_ventas", "preparar_orden_compra",
                   "reportar_faltante", "marcar_conteo", "confirmar_entrega",
                   "cerrar_tarea_piso", "pedir_reposicion", "registrar_pedido",
-                  "registrar_presupuesto", "avisar_costo_viejo"}
+                  "registrar_presupuesto", "avisar_costo_viejo",
+                  "avisar_desde_el_piso"}
 # `preguntar_referente` NO está acá a propósito: preguntar no es trabajo
 # resuelto, y contarlo le inflaría el número justo al que recién entró — que es
 # el que más pregunta y el que menos tiene para mostrar. Queda en el registro

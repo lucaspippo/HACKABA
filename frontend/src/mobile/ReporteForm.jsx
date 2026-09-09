@@ -21,9 +21,13 @@ import { useT } from "../lib/i18n";
 // `inicial` — valores ya puestos (el producto de la fila que tocó). Es la
 // diferencia entre tocar un botón y escribir "JAMON COCIDO GUARANI (HORMA)"
 // parado atrás del mostrador.
-export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inicial }) {
+// `aviso` — cuando el formulario NO sale del tipo sino del aviso que se tocó:
+// su lista de campos (`camposDe(necesita)`), su título, y el destinatario que
+// declara la semilla. Es el reemplazo de la nota de texto libre: el hecho nace
+// dirigido y con la forma que hace falta para cruzarlo.
+export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inicial, aviso }) {
   const t = useT();
-  const campos = CAMPOS_REPORTE[tipo] || [];
+  const campos = aviso ? aviso.campos : (CAMPOS_REPORTE[tipo] || []);
   const [valores, setValores] = useState(() => ({
     ...Object.fromEntries(campos.map((c) => [c.id, c.tipo === "opciones" ? c.opciones[0].v : ""])),
     ...(inicial || {}),
@@ -50,8 +54,10 @@ export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inic
         if (v === "" || v == null) continue;
         datos[c.id] = c.tipo === "numero" ? Number(v) : v;
       }
+      if (aviso) datos.aviso_id = aviso.id;
+      if (aviso?.motivo) datos.motivo = aviso.motivo;
       await api.piso.reportar(tipo, datos, destino?.username);
-      toast(t(`rol.reporte_ok_${tipo}`));
+      toast(aviso ? t("aviso.ok") : t(`rol.reporte_ok_${tipo}`));
       onListo?.();
       onCerrar();
     } catch {
@@ -68,11 +74,23 @@ export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inic
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <AngelaMark size={28} />
-            <h2 className="font-display text-lg font-bold leading-tight">{t(`rol.reporte_t_${tipo}`)}</h2>
+            <h2 className="font-display text-lg font-bold leading-tight">
+              {aviso ? aviso.texto : t(`rol.reporte_t_${tipo}`)}
+            </h2>
           </div>
           <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
-        <p className="mt-1.5 text-sm leading-snug text-tinta-suave">{t(`rol.reporte_sub_${tipo}`)}</p>
+        <p className="mt-1.5 text-sm leading-snug text-tinta-suave">
+          {aviso ? t("aviso.sub") : t(`rol.reporte_sub_${tipo}`)}
+        </p>
+        {/* Un aviso que no se puede cruzar contra ninguna tabla sigue valiendo
+            —«falta gente para hoy» es un mensaje real— pero no alimenta ningún
+            hallazgo, y quien lo manda tiene derecho a saber eso antes. */}
+        {aviso && !aviso.cruza_datos && (
+          <p className="mt-2 rounded-xl bg-papel-hondo/60 px-3 py-2 text-xs leading-snug text-tinta-suave">
+            {t("aviso.no_cruza")}
+          </p>
+        )}
 
         <div className="mt-4 space-y-3">
           {campos.map((c) => (

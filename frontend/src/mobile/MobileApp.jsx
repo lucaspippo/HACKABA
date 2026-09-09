@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin } from "lucide-react";
+import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin, Plus } from "lucide-react";
 import Brand from "../components/Brand";
 import Avatar from "../components/Avatar";
 import { resaltarPorId } from "../lib/navGuiada";
@@ -9,6 +9,9 @@ import Hoy from "./Hoy";
 import MiDia from "./MiDia";
 import Parada from "./Parada";
 import Armado from "./Armado";
+import HojaDeCarga from "./HojaDeCarga";
+import ReporteForm from "./ReporteForm";
+import VozAngela from "../components/VozAngela";
 import EquipoMobile from "./EquipoMobile";
 import InsightsMobile from "./InsightsMobile";
 import MapaSimpleMobile from "./MapaSimpleMobile";
@@ -22,7 +25,7 @@ import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
-import { rolDe, tieneVistaHerramienta } from "../lib/roles";
+import { avisaDesdeElPiso, cargaLk, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
 import Campanita from "../components/Campanita";
@@ -100,6 +103,11 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   const view = resolveView(viewParam, { piso, user, navIds });
   const setView = (v) => navigate(`/${v}`);
   const [consultaAngela, setConsultaAngela] = useState(null);
+  // El botón de carga del centro y lo que abre: la hoja de avisos del oficio,
+  // el formulario del aviso que se tocó, o el micrófono.
+  const [hoja, setHoja] = useState(false);
+  const [avisoAbierto, setAvisoAbierto] = useState(null);
+  const [vozAbierta, setVozAbierta] = useState(false);
 
   const gestionarOp = (op) => {
     // P27: las cards traen su prompt de acción; si no, el genérico de siempre.
@@ -175,7 +183,31 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     tiene("deposito") && { id: "deposito", lk: "mnav.deposito", icon: PackageX },
     tiene("equipo") && { id: "equipo", lk: "mnav.equipo", icon: Users },
   ].filter(Boolean);
-  const nSlots = izqNav.length + derNav.length + 1; // +Ángela (centro)
+
+  // LA BARRA DEL OFICIO — 3 destinos y el botón de carga al centro.
+  //
+  // Quien avisa desde el piso (los nueve oficios con lista) tiene una barra
+  // distinta: sus destinos son SU día, SU vista de oficio y Ángela, y el centro
+  // deja de ser Ángela para ser el botón de carga. El motivo es de uso, no de
+  // estética: lo que esta gente hace treinta veces por día es DECIR algo que
+  // pasó, y eso estaba a dos toques detrás de una acción de una lista.
+  //
+  // Nunca cinco slots. La barra del prototipo son tres destinos + carga y ése
+  // es el techo: a partir de ahí los íconos se comen entre ellos y ya no se
+  // aciertan con el pulgar. Por eso el de piso pierde la solapa «Insights»
+  // cuando tiene una vista de oficio — sus señales (fantasma, balanza,
+  // negativo) YA le llegan como tareas en «Mi día», así que era la misma
+  // información por dos puertas. Sigue alcanzable: Ángela navega ahí, y la URL
+  // /insights sigue siendo válida.
+  const avisa = avisaDesdeElPiso(user);
+  const angelaTab = { id: "angela", lk: "mnav.angela", icon: MessageCircle };
+  // El segundo destino: el de su oficio si lo tiene, y si no, Insights — así
+  // nadie que sólo tenga alertas se queda con dos destinos.
+  const suOficio = derNav[0] || izqNav.find((x) => x.id === "insights") || null;
+  const destinos = avisa
+    ? [izqNav[0], suOficio, angelaTab].filter(Boolean)
+    : null;
+  const nSlots = avisa ? destinos.length + 1 : izqNav.length + derNav.length + 1;
 
   const renderView = () => {
     switch (view) {
@@ -302,16 +334,55 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
             className="mx-auto grid max-w-md items-stretch border-t border-linea bg-crema/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
             style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
           >
-            {izqNav.map((s) => <TabBtn key={s.id} slot={s} />)}
-            <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
-              <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
-                <MessageCircle size={18} />
-              </span>
-              <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
-            </button>
-            {derNav.map((s) => <TabBtn key={s.id} slot={s} />)}
+            {avisa ? (
+              <>
+                {destinos.slice(0, 2).map((s) => <TabBtn key={s.id} slot={s} />)}
+                {/* El botón de carga. Dice el VERBO de su oficio —«Contar»,
+                    «Armar», «Registrar»— porque un botón que dice lo que hace
+                    se toca sin pensarlo. */}
+                <button onClick={() => setHoja(true)} className="relative flex flex-col items-center gap-0.5 py-1.5">
+                  <span className="grid h-9 w-9 -translate-y-1 place-items-center rounded-full bg-tinta text-crema sombra-papel">
+                    <Plus size={20} />
+                  </span>
+                  <span className="-mt-1 text-2xs font-semibold text-tinta">{t(cargaLk(user))}</span>
+                </button>
+                {destinos.slice(2).map((s) => <TabBtn key={s.id} slot={s} />)}
+              </>
+            ) : (
+              <>
+                {izqNav.map((s) => <TabBtn key={s.id} slot={s} />)}
+                <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
+                  <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
+                    <MessageCircle size={18} />
+                  </span>
+                  <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+                </button>
+                {derNav.map((s) => <TabBtn key={s.id} slot={s} />)}
+              </>
+            )}
           </div>
         </nav>
+
+        {/* La hoja de carga: los avisos de SU oficio, el formulario del que
+            tocó, y la voz. Viven al nivel de la app y no de una vista porque el
+            botón que los abre está en la barra, que no se va nunca. */}
+        {hoja && (
+          <HojaDeCarga
+            conVoz={!!rolDe(user)?.voz}
+            onCerrar={() => setHoja(false)}
+            onVoz={() => { setHoja(false); setVozAbierta(true); }}
+            onAviso={(a) => { setHoja(false); setAvisoAbierto(a); }} />
+        )}
+        {avisoAbierto && (
+          <ReporteForm tipo={avisoAbierto.tipo} aviso={avisoAbierto}
+            destinoFijo={avisoAbierto.destino}
+            onCerrar={() => setAvisoAbierto(null)} onListo={onRecargar} />
+        )}
+        {vozAbierta && (
+          <VozAngela rol={muestrasDe(user)} onCerrar={() => setVozAbierta(false)}
+            onListo={onRecargar}
+            onPreguntar={(texto) => { setVozAbierta(false); setConsultaAngela(texto); setView("angela"); }} />
+        )}
       </div>
     </div>
   );
