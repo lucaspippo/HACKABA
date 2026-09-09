@@ -55,6 +55,21 @@ def de_hoy() -> list[dict]:
     return [e for e in envios() if parse_fecha(e.get("fecha_prevista")) == h]
 
 
+def salidas(dia=None) -> list[dict]:
+    """Las paradas de un día que TODAVÍA NO SE ENTREGARON.
+
+    `de_hoy()` devuelve todo lo previsto para hoy, entregado o no, porque
+    responde "¿qué hay hoy?". Esto responde otra pregunta —"¿qué sale?"— y por
+    eso filtra: una parada ya entregada no se puede reasignar ni instruir.
+    """
+    d = parse_fecha(dia) if dia else hoy()
+    if not d:
+        return []
+    return [e for e in envios()
+            if e["estado_norm"] != "entregado"
+            and parse_fecha(e.get("fecha_prevista")) == d]
+
+
 def atrasados() -> list[dict]:
     """Entregas con fecha prevista pasada que todavía no se entregaron."""
     return sorted((e for e in envios() if e["atrasado"]),

@@ -8,6 +8,7 @@ caller’s modules. Ángela and every UI read this; they do not re-sort.
 """
 from __future__ import annotations
 
+from . import fechas
 from . import oportunidades_neg as opn
 from . import patrones
 
@@ -23,7 +24,7 @@ DROP_IDS = frozenset({"solicitud_pendiente"})
 
 # Sort first within `act` (stop the leak today).
 LEAK_TODAY = frozenset({
-    "cobrar_morosos", "morosos", "moroso_atraso",
+    "cobrar_morosos", "morosos", "moroso_atraso", "deuda_en_ruta",
     "quiebre_inminente", "quiebre",
     "venc_riesgo", "dep_vencidos", "pago_vencido",
 })
@@ -48,6 +49,10 @@ ALERT_MODULOS = {
     "costo_viejo": ("inventario",),
     "caja_inusual": ("caja",),
     "caida_interanual": ("evolucion",),
+    # Dos módulos, y el matiz importa: ver esto es ver rutas Y ver saldos.
+    # El encargado de depósito tiene `logistica` y no `cuentas`; el
+    # preventista, al revés. Ninguno de los dos ve la flota entera.
+    "deuda_en_ruta": ("logistica", "cuentas"),
 }
 
 CHIP_BY_TIPO = {
@@ -77,6 +82,7 @@ ACTION_BY_ID = {
     "caida_interanual": "diversificar",
     "morosos": "cobrar",
     "moroso_atraso": "cobrar",
+    "deuda_en_ruta": "cobrar",
     "pago_vencido": "pagar",
     "pago_semana": "pagar",
     "cheques": "ver",
@@ -507,6 +513,7 @@ def _piso_items(lang) -> list[dict]:
 def _alert_items(lang) -> list[dict]:
     out: list[dict] = []
     out.extend(_safe(lambda: _alerts_cuentas(lang)) or [])
+    out.extend(_safe(lambda: _alerts_ruta(lang)) or [])
     out.extend(_safe(lambda: _alerts_ventas(lang)) or [])
     out.extend(_safe(lambda: _alerts_pagos(lang)) or [])
     out.extend(_safe(lambda: _alerts_deposito(lang)) or [])
@@ -609,6 +616,114 @@ def _alerts_cuentas(lang) -> list[dict]:
             ),
         ))
     return out
+
+
+def _alerts_ruta(lang) -> list[dict]:
+    """La deuda que sale a la calle hoy, sumada por camión.
+
+    Vive entre las alertas y no entre los cruces a propósito: `core/cruces.py`
+    reserva la palabra "cruce" para lo que toca TRES dominios o más, y esto
+    junta dos (logística × cuentas). Respetar esa línea es lo que hace que
+    "cruce" siga significando algo.
+
+    `naturaleza="riesgo"`: es deuda que ya existe y que el aviso pone a la
+    vista. No entra en la suma del capital recuperable — misma regla que
+    `concentracion`, y por el mismo motivo.
+
+    UNA NOTA SOBRE EL CACHE: `_compose` vive en el cache de proceso
+    (core/analisis_cache), así que este aviso —que es el más sensible al día de
+    todo el inbox— se congela hasta que el proceso reinicia. Es el
+    comportamiento de todas las alertas y no se cambia acá; vale saberlo porque
+    "sale mañana" envejece en horas y no en semanas.
+    """
+    from . import cobranza, insight as ins
+    peor = _safe(lambda: cobranza.peor_camion())
+    if not peor:
+        return []
+    try:
+        from . import cuentas
+        cartera = cuentas.totales().get("total_adeudado") or 0
+    except Exception:  # noqa: BLE001
+        cartera = 0
+    share = round(peor["expuesto"] / cartera * 100) if cartera else 0
+    # "hoy" y "mañana" en vez de una fecha ISO: esto se lee a las seis de la
+    # tarde para decidir algo de mañana a la mañana, y "el 2026-07-08" obliga a
+    # traducir mentalmente lo único que importa.
+    import datetime as _dt
+    hoy_ = fechas.hoy()
+    dia_ = _dt.date.fromisoformat(peor["dia"])
+    if dia_ == hoy_:
+        cuando = _t("core.prio.ruta_hoy", lang)
+    elif dia_ == hoy_ + _dt.timedelta(days=1):
+        cuando = _t("core.prio.ruta_manana", lang)
+    else:
+        cuando = _t("core.prio.ruta_dia", lang, dia=dia_.strftime("%d/%m"))
+    vencidos = peor["vencidos"]
+    metodo = {"key": "core.method.deuda_en_ruta",
+              "label": _t("core.method.deuda_en_ruta", lang)}
+
+    evidencia = [
+        # Sin `detail`: `metric` no lo tiene, y el matiz que importaba
+        # —un cliente con dos pedidos cuenta una vez— es CÓMO se calculó, así
+        # que su lugar es el método y ahí está.
+        ins.metric("route_exposure",
+                   label=_t("core.prio.ruta_ev", lang,
+                            transporte=peor["transporte"],
+                            paradas=_num(peor["paradas"], lang),
+                            clientes=_num(peor["clientes"], lang)),
+                   value=peor["expuesto"], unit="ars", weight="primary",
+                   method=metodo),
+    ]
+    if vencidos:
+        evidencia.append(ins.records(
+            "route_overdue", label=_t("core.prio.ruta_venc", lang),
+            weight="supporting", method=metodo,
+            rows=[ins.record(kind="client", id=v.get("id"), name=v["cliente"],
+                             amount=v["saldo"],
+                             detail=_t("core.prio.ruta_i", lang,
+                                       dias=_num(v["dias_sin_pagar"], lang),
+                                       plazo=_num(v["plazo_dias"], lang)))
+                  for v in vencidos[:6]]))
+
+    supuestos = [ins.assumption(_t("core.prio.ruta_sup", lang),
+                                if_wrong=_t("core.prio.ruta_sup_if", lang))]
+    if peor["sin_cuenta"]:
+        supuestos.append(ins.assumption(
+            _t("core.prio.ruta_sin_cuenta", lang,
+               n=_num(peor["sin_cuenta"], lang))))
+
+    return [_item(
+        id="deuda_en_ruta", tono="oro", chip=_t("core.prio.chip_cobrar", lang),
+        titulo=_t("core.prio.ruta_t", lang, transporte=peor["transporte"],
+                  cuando=cuando),
+        resumen=_t("core.prio.ruta_r", lang,
+                   paradas=_num(peor["paradas"], lang),
+                   monto=_pesos(peor["expuesto"], lang), share=_num(share, lang)),
+        origen=["alerta:deuda_en_ruta"], modulos=ALERT_MODULOS["deuda_en_ruta"],
+        monto=peor["expuesto"],
+        monto_label=_t("core.prio.ruta_monto_lbl", lang),
+        naturaleza="riesgo",
+        fuentes=[_t("core.prio.f_logistica", lang), _t("core.prio.f_cuentas", lang)],
+        navegar="cobranzas",
+        accion_chat=_t("core.prio.ruta_chat", lang, transporte=peor["transporte"],
+                       cuando=cuando),
+        insight=ins.build(
+            pattern=ins.pattern(
+                _t("core.prio.ruta_p", lang, transporte=peor["transporte"],
+                   cuando=cuando, paradas=_num(peor["paradas"], lang),
+                   monto=_pesos(peor["expuesto"], lang)),
+                scope={"kind": "clients", "count": peor["clientes"]}),
+            hypothesis=ins.hypothesis(_t("core.prio.ruta_hyp", lang)),
+            evidence=evidencia,
+            assumptions=supuestos,
+            risk=ins.risk(_t("core.prio.ruta_risk", lang),
+                          exposure=peor["expuesto"]),
+            recommendation=ins.recommendation(
+                navigate="cobranzas",
+                chat=_t("core.prio.ruta_chat", lang,
+                        transporte=peor["transporte"], cuando=cuando)),
+        ),
+    )]
 
 
 def _alerts_ventas(lang) -> list[dict]:

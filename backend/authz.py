@@ -66,6 +66,24 @@ def require_feature(feature: str):
     return _dep
 
 
+def require_all_features(*features: str):
+    """Exige TODOS los módulos. Para las vistas que cruzan dos dominios: mirar
+    la plata que lleva cada camión es ver rutas Y ver saldos, y quien tenga sólo
+    una de las dos mitades no puede ver el cruce."""
+    wanted = tuple(features)
+
+    def _dep(u: dict = Depends(usuario_actual)) -> dict:
+        tiene = set(perfiles.features_efectivas(u["username"]))
+        falta = [f for f in wanted if f not in tiene]
+        if falta:
+            raise HTTPException(
+                status_code=403,
+                detail=i18n.t("authz.sin_feature",
+                              perfiles.idioma_de(u["username"]), feature=falta[0]))
+        return u
+    return _dep
+
+
 def require_any_feature(*features: str):
     """Exige AL MENOS uno de los módulos (Prioridades: alertas u oportunidades)."""
     wanted = tuple(features)
