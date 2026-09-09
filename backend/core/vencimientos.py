@@ -104,25 +104,49 @@ def en_riesgo(dias: int = VENTANA_DIAS, lang: str | None = None) -> dict:
     items, total_riesgo, sin_ritmo = [], 0.0, 0
     decididos = _load()
     gestionados = []
-    for f in deposito.vencimientos(dias):
+    # FEFO — LA DEMANDA DE UN PRODUCTO ES UNA SOLA Y SE REPARTE ENTRE SUS LOTES.
+    #
+    # `ritmo` es del PRODUCTO, no del lote. Dársela entera a cada lote era
+    # prometerle las mismas ventas a dos lotes a la vez: con dos lotes del
+    # mismo producto venciendo en la misma ventana, el segundo parecía que se
+    # vendía solo y desaparecía del listado. La plata en riesgo salía a la
+    # mitad, y en silencio (ver PRODUCT.md, The Counting Rule: la unidad de
+    # esta cuenta es el PRODUCTO, no la fila del depósito).
+    #
+    # El reparto es el orden real del depósito: primero vence, primero sale.
+    # Cada lote sólo puede vender la demanda que no se llevaron los que vencen
+    # antes que él. `deposito.vencimientos` ya viene ordenado por urgencia; se
+    # reordena igual para no depender en silencio de eso, con el lote como
+    # desempate para que dos que vencen el mismo día repartan siempre igual.
+    #
+    # Un lote YA DECIDIDO (promoción, locales) también consume demanda: la
+    # mercadería sigue existiendo y se sigue vendiendo. Sacarlo del reparto le
+    # regalaría esas ventas al siguiente y volvería a bajar el riesgo.
+    asignado: dict = {}
+    filas = sorted(deposito.vencimientos(dias),
+                   key=lambda x: (int(x.get("dias_restantes") or 0),
+                                  str(x.get("lote") or "")))
+    for f in filas:
         cod = f.get("codigo")
         a = arts.get(cod)
         if not a:
             continue
+        cant = float(f.get("cantidad") or 0)
+        d = int(f.get("dias_restantes") or 0)
+        u12 = unidades.get(cod, 0.0)
+        ritmo = u12 / 365.0
+        vendible = min(max(cant, 0.0), max(0.0, ritmo * d - asignado.get(cod, 0.0)))
+        asignado[cod] = asignado.get(cod, 0.0) + vendible
+
         g = decididos.get(_clave(cod, f.get("lote")))
         if g:
             # Decided: out of the list, but not out of sight — the card says
             # what was decided, by whom, so the same lot is not decided twice.
-            gestionados.append({**g, "dias_restantes": int(f.get("dias_restantes") or 0)})
+            gestionados.append({**g, "dias_restantes": d})
             continue
-        cant = float(f.get("cantidad") or 0)
         if cant <= 0:
             continue
         costo = float(a.get("costo_iva") or 0)
-        d = int(f.get("dias_restantes") or 0)
-        u12 = unidades.get(cod, 0.0)
-        ritmo = u12 / 365.0
-        vendible = ritmo * d
         sobrante = cant - vendible
         if u12 <= 0:
             sin_ritmo += 1
