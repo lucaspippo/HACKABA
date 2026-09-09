@@ -112,7 +112,7 @@ export const EN = {
   "mapa.recc_cobrar_morosos": "collect",
   "mapa.recc_despertar_dormido": "free",
   "mapa.recc_ventana_compra": "save",
-  "mapa.fila_exposicion": "Separately: {monto} of revenue concentrated in 3 customers — that's exposure, not cash to collect.",
+  "mapa.fila_exposicion": "Separately, as exposure and not as cash to collect: {detalle}.",
   "mapa.chip_exposicion": "exposure",
   "mapa.erp_simulado": "Simulated ERP",
   "mapa.h_capital_t": "{pct}% of your capital sits in 10 products",

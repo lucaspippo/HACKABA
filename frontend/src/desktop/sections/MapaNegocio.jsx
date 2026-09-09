@@ -2167,8 +2167,16 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
   // ese es el titular honesto. La concentración es EXPOSICIÓN, se muestra
   // aparte y jamás entra en la suma de plata.
   const recuperables = H.filter((h) => h.naturaleza === "recuperable");
-  const recuperable = recuperables.reduce((a, h) => a + (h.monto || 0), 0);
-  const exposicion = H.filter((h) => h.naturaleza === "riesgo").reduce((a, h) => a + (h.monto || 0), 0);
+  // El NÚMERO lo calcula el backend (`opn.recuperable`, ya recortado por rol);
+  // acá sólo se renderiza. Sumarlo de nuevo en el cliente es de donde salió el
+  // «$900M», y dos sumas del mismo número terminan divergiendo aunque hoy den
+  // igual. La lista `recuperables` sigue usándose para el desglose, que es
+  // rotular lo que ya vino, no derivarlo.
+  const recuperable = d.ops?.recuperable?.total ?? 0;
+  // La exposición NO se suma: la concentración de clientes y la deuda que sale
+  // en un camión comparten clientes, así que un total sería el mismo peso dos
+  // veces. Se listan (ver `opn.exposicion`, que a propósito no tiene `total`).
+  const exposiciones = d.ops?.exposicion?.componentes || [];
   const top = H.find((h) => h.naturaleza === "recuperable") || H[0];
   const act = modelo.actividad;
   const hechoN = act ? (act.correcciones || 0) + (act.staging_procesados || 0) + (act.alertas_emitidas || 0) : 0;
@@ -2317,11 +2325,15 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
           {/* Capital recuperable: número + desglose (2 líneas si hace falta); la
               nota de exposición se conserva como tooltip + ícono info. */}
           <button onClick={() => recuperables[0] && verHallazgo(recuperables[0])}
-            title={exposicion > 0 ? t("mapa.fila_exposicion", { monto: pesoCorto(exposicion) }) : ""}
+            title={exposiciones.length
+              ? t("mapa.fila_exposicion", {
+                  detalle: exposiciones.map((e) => `${e.titulo}: ${e.monto_fmt}`).join(" · "),
+                })
+              : ""}
             className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema px-3.5 py-2.5 text-left sombra-papel">
             <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-salvia">
               <Sparkles size={12} /> {t("mapa.fila_recuperable")}
-              {exposicion > 0 && <Info size={11} className="text-tinta-suave/70" />}
+              {exposiciones.length > 0 && <Info size={11} className="text-tinta-suave/70" />}
             </p>
             <p className="plata mt-0.5 text-xl font-medium leading-none text-salvia">{pesoCorto(recuperable)}</p>
             <p className="mt-1 line-clamp-3 break-words text-2xs leading-snug text-tinta-suave">

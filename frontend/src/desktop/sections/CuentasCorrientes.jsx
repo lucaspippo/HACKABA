@@ -23,11 +23,13 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
   const t = useT();
   const [clientes, setClientes] = useState(null);
   const [alertas, setAlertas] = useState({ cantidad: 0, impacto_pesos: 0 });
+  const [totales, setTotales] = useState({});
   const [error, setError] = useState(null);
   const [sel, setSel] = useState(null);
 
   useEffect(() => {
-    api.cuentas().then((d) => { setClientes(d.clientes); setAlertas(d.alertas); }).catch(setError);
+    api.cuentas().then((d) => { setClientes(d.clientes); setAlertas(d.alertas);
+                                setTotales(d.totales || {}); }).catch(setError);
   }, []);
 
   useEffect(() => {
@@ -68,7 +70,10 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Tarjeta label={t("cuentas.total_adeudado")} valor={pesoCorto(clientes.reduce((a, c) => a + c.saldo, 0))} acento />
+        {/* El total lo calcula `cuentas.totales()`, que es el número canónico y
+            tiene test. Las dos tarjetas de al lado ya leían del backend; ésta se
+            sumaba los saldos sola. */}
+        <Tarjeta label={t("cuentas.total_adeudado")} valor={pesoCorto(totales.total_adeudado || 0)} acento />
         <Tarjeta label={t("cuentas.clientes_en_mora")} valor={num(alertas.cantidad)} />
         <Tarjeta label={t("cuentas.en_mora_pesos")} valor={pesoCorto(alertas.impacto_pesos)} />
       </div>

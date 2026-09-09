@@ -112,7 +112,7 @@ export const ES = {
   "mapa.recc_cobrar_morosos": "cobrar",
   "mapa.recc_despertar_dormido": "liberar",
   "mapa.recc_ventana_compra": "ahorrar",
-  "mapa.fila_exposicion": "Aparte: {monto} de facturación concentrada en 3 clientes — es exposición, no plata a cobrar.",
+  "mapa.fila_exposicion": "Aparte, y como exposición y no como plata a cobrar: {detalle}.",
   "mapa.chip_exposicion": "exposición",
   "mapa.erp_simulado": "ERP simulado",
   "mapa.h_capital_t": "El {pct}% de tu capital está en 10 productos",
