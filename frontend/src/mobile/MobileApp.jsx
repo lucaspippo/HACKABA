@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin, Plus } from "lucide-react";
+import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin, Plus, Search } from "lucide-react";
 import Brand from "../components/Brand";
 import Avatar from "../components/Avatar";
 import { resaltarPorId } from "../lib/navGuiada";
@@ -10,6 +10,8 @@ import MiDia from "./MiDia";
 import Parada from "./Parada";
 import Armado from "./Armado";
 import HojaDeCarga from "./HojaDeCarga";
+import Buscar from "./Buscar";
+import Ficha from "./Ficha";
 import ReporteForm from "./ReporteForm";
 import VozAngela from "../components/VozAngela";
 import EquipoMobile from "./EquipoMobile";
@@ -25,7 +27,7 @@ import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
-import { avisaDesdeElPiso, cargaLk, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
+import { avisaDesdeElPiso, buscaEnMobile, cargaLk, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
 import Campanita from "../components/Campanita";
@@ -77,6 +79,10 @@ function resolveView(raw, { piso, user, navIds }) {
   if (destino === "armado" || destino === "parada") {
     return user.features.includes("logistica") ? destino : null;
   }
+  // Buscar y la ficha no son features: son la puerta y el cuarto. El recorte
+  // real está en el endpoint — `buscar-global` ya filtra por lo que esta
+  // persona puede ver, y la ficha va detrás de `inventario`.
+  if (destino === "buscar" || destino === "ficha") return destino;
     if (MCAT[destino]) return navIds.includes(destino) ? destino : null;
   return null;
 }
@@ -108,6 +114,13 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   const [hoja, setHoja] = useState(false);
   const [avisoAbierto, setAvisoAbierto] = useState(null);
   const [vozAbierta, setVozAbierta] = useState(false);
+  // El producto abierto. Vive en estado y no en la URL porque el router mobile
+  // es /:section: un deep-link a una ficha es deseable y todavía no existe —
+  // queda anotado, no simulado.
+  const [fichaCodigo, setFichaCodigo] = useState(null);
+  // De dónde se vino, para que «volver» de la ficha vuelva a la búsqueda y no
+  // al inicio: la Focus Rule también aplica al camino de vuelta.
+  const [volverA, setVolverA] = useState("buscar");
 
   const gestionarOp = (op) => {
     // P27: las cards traen su prompt de acción; si no, el genérico de siempre.
@@ -243,6 +256,19 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         return <MapaSimpleMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onVolver={() => setView("panel")} />;
       case "aprendizaje":
         return <AprendizajeContinuo onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
+      case "buscar":
+        return <Buscar
+          onProducto={(codigo) => { setFichaCodigo(codigo); setVolverA("buscar"); setView("ficha"); }}
+          onCliente={(nombre) => { setConsultaAngela(t("buscar.consulta_cliente", { cliente: nombre })); setView("angela"); }}
+          onPreguntar={(texto) => { setConsultaAngela(texto); setView("angela"); }}
+          soloDesktop={() => toast(t("mnav.solo_desktop"))} />;
+      case "ficha":
+        // Sin código (una URL pegada a mano) se vuelve a la búsqueda en vez de
+        // pintar una ficha vacía.
+        return fichaCodigo == null
+          ? <Navigate to="/buscar" replace />
+          : <Ficha codigo={fichaCodigo} onVolver={() => setView(volverA)}
+                   onPreguntar={(texto) => { setConsultaAngela(texto); setView("angela"); }} />;
       case "perfil":
         return <MiPerfil user={user} />;
       case "angela":
@@ -297,6 +323,15 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
             <Brand variant="mobile" />
           </div>
           <div className="flex items-center justify-end gap-2">
+            {/* La lupa, sólo para quien la usa. Los seis del piso llegan al
+                dato por escaneo o desde su tarea, y una lupa que nunca se toca
+                es un ícono que le come lugar a los que sí. */}
+            {buscaEnMobile(user) && (
+              <button onClick={() => setView("buscar")} aria-label={t("buscar.titulo")}
+                className={`shrink-0 ${view === "buscar" ? "text-violeta" : "text-tinta-suave hover:text-tinta"}`}>
+                <Search size={18} />
+              </button>
+            )}
             {/* La bandeja también en el celular: solicitudes y avisos del dueño llegan acá */}
             <Campanita
               token={session?.token}

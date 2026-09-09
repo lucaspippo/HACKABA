@@ -3219,6 +3219,25 @@ def inventario_burn(codigo: int, u: dict = Depends(require_feature("inventario")
     return stock_viz.product_burn(codigo, _lang(u))
 
 
+@app.get("/api/ficha/producto/{codigo}")
+def ficha_producto(codigo: int, u: dict = Depends(require_feature("inventario"))):
+    """La ficha de UN producto: dónde está, cuánto hay, a cuánto se vende, qué
+    se vence, quién lo compra y qué dijo el equipo de él.
+
+    En el teléfono no se llega acá por una lista de 430 filas —nadie la
+    scrollea con guantes— sino por una búsqueda, un escaneo o una tarea que ya
+    lo trae enfocado. Todos los números salen de su motor y se citan; no hay
+    ninguno nuevo y no hay ningún total.
+    """
+    from core import ficha
+    f = ficha.producto(codigo, _lang(u))
+    if not f:
+        # Escanear algo que no está en el catálogo es un caso REAL del
+        # depósito. Se dice, no se inventa una ficha vacía.
+        raise HTTPException(404, i18n.t("api.producto_inexistente", _lang(u)))
+    return f
+
+
 @app.get("/api/reponer")
 def reponer_get(u: dict = Depends(require_feature("inventario"))):
     """QUÉ REPONER PRIMERO — el ranking, no un solo hallazgo.

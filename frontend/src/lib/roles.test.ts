@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { CATALOGO, accionesDe, atiendeMostrador, avisaDesdeElPiso, cargaLk, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
+import { CATALOGO, accionesDe, atiendeMostrador, avisaDesdeElPiso, buscaEnMobile, cargaLk, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
 
 // The demo team, verbatim from backend/usuarios_demo.py. The role STRING is the
 // only input `rolDe` gets — there is no list of usernames anywhere — so these
@@ -183,5 +183,22 @@ describe("avisaDesdeElPiso", () => {
     expect(cargaLk(de("walter"))).toBe("rol.carga_registrar");
     // Whoever has no trade of their own still gets a sane default.
     expect(cargaLk(de("aldo"))).toBe("rol.carga_cargar");
+  });
+});
+
+describe("buscaEnMobile", () => {
+  it("gives the magnifier to whoever looks things up, and to nobody else", () => {
+    // The six left out reach the data by SCAN or from their own task, which is
+    // faster and does not pick the wrong product. Nahuel is the interesting
+    // one: he looks like he should search, and he should not — he has the box
+    // in his hand.
+    const con = EQUIPO.filter((u) => buscaEnMobile(u)).map((u) => u.username).sort();
+    expect(con).toEqual(["aldo", "celeste", "diego", "lucia", "marta", "norma", "ramon", "vanesa"]);
+  });
+
+  it("leaves the warehouse floor and the drivers out", () => {
+    for (const x of ["nahuel", "tomas", "brian", "kevin", "walter", "osmar"]) {
+      expect(buscaEnMobile(de(x))).toBe(false);
+    }
   });
 });
