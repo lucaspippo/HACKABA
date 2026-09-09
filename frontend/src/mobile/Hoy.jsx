@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight, Lightbulb } from "lucide-react";
-import AngelaMark from "../components/AngelaMark";
+import { CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight, Lightbulb, MapPin, Clock } from "lucide-react";
+import TarjetaAtencion from "./TarjetaAtencion";
+import AccionesRapidas from "./AccionesRapidas";
+import LoQueSigue from "./LoQueSigue";
 import { FeedActividad } from "../components/ActividadFeed";
 import { armarDecisiones } from "../lib/decisiones";
 import { useEquipo } from "../lib/equipoStore";
@@ -44,11 +46,10 @@ function Bloque({ titulo, accion, onAccion, children }) {
   );
 }
 
-export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
+export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onAccion }) {
   const t = useT();
   const lang = useLang();
   const session = useSession();
-  const nombre = session?.usuario?.nombre || t("inicio.nombre_fallback");
   const equipo = useEquipo();
 
   const [ini, setIni] = useState(null);
@@ -58,6 +59,21 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
     if (!authStore.tiene("inventario")) return;
     api.traslados().then(setEstructura).catch(() => {});
   }, []);
+  // P·inicio — LO QUE HAY QUE DECIDIR AHORA. Las propuestas del piso son la
+  // fuente más fuerte de la card de atención: nacen de algo que una persona vio
+  // y traen la foto que sacó. Sólo el dueño las ve (el endpoint es de admin).
+  // `null` = todavía no contestó. Importa la diferencia con `[]`: si se
+  // renderizara la card mientras carga, el dueño vería primero el riesgo del día
+  // y un segundo después la card se le cambiaría abajo del pulgar por el
+  // reclamo. Una tarjeta que se transforma sola es peor que una que tarda.
+  const esAdmin = !!session?.usuario?.es_admin;
+  const [propuestas, setPropuestas] = useState(esAdmin ? null : []);
+  useEffect(() => {
+    if (!esAdmin) { setPropuestas([]); return; }
+    api.piso.propuestas()
+      .then((d) => setPropuestas(d.propuestas || []))
+      .catch(() => setPropuestas([]));
+  }, [session?.token, lang, esAdmin]);
   const [caja, setCaja] = useState(null);
   useEffect(() => { api.inicio().then(setIni).catch(() => {}); }, [session?.token, lang]);
   useEffect(() => {
@@ -83,8 +99,6 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
   // Necesita tu decisión: la cola de aprobación real (staging + correcciones +
   // solicitudes), máximo 3 + contador.
   const decisiones = armarDecisiones(ini, t);
-  const decVisibles = decisiones.slice(0, 3);
-  const decMas = decisiones.length - decVisibles.length;
 
   // El equipo hoy: objetivos en proceso + recordatorios pendientes, máx 3.
   const enProceso = equipo.objetivos.filter((o) => o.estado === "en_proceso");
@@ -94,26 +108,103 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
     ...pendientes.map((r) => ({ id: `r-${r.id}`, texto: t(r.texto), quien: r.responsable })),
   ].slice(0, 3);
 
+  // LA CARD DE ATENCIÓN — una sola, la de arriba, y por orden de peso:
+  //   1. un reclamo armado con lo que reportó el piso (trae foto y plata),
+  //   2. lo primero de la cola de aprobación (oro: espera al dueño),
+  //   3. el riesgo más grande del día.
+  // Si no hay ninguna de las tres, no se fuerza: la card no aparece.
+  const riesgo = (oportunidades?.cards || [])
+    .filter((c) => c.naturaleza === "riesgo")
+    .sort((a, b) => (b.monto || 0) - (a.monto || 0))[0];
+  const p0 = propuestas?.[0];
+  const atencion = propuestas === null
+    ? null
+    : p0
+    ? { tono: "rojo", rotulo: t("atencion.rotulo_piso"), hecho: p0.titulo,
+        contexto: p0.resumen, monto: p0.monto,
+        foto: p0.prueba ? api.piso.pruebaUrl(p0.prueba) : null,
+        cta: t("atencion.cta_reclamo"),
+        onCta: () => onGestionar({ titulo: p0.titulo, accion_chat: p0.accion_chat }) }
+    : decisiones[0]
+    ? { tono: "oro", rotulo: t("atencion.rotulo"), hecho: decisiones[0].titulo,
+        contexto: decisiones[0].detalle, monto: decisiones[0].monto,
+        cta: t("atencion.cta_ver"),
+        onCta: () => onGestionar({ titulo: decisiones[0].titulo }) }
+    : riesgo
+    ? { tono: "rojo", rotulo: t("atencion.rotulo_riesgo"), hecho: riesgo.titulo,
+        contexto: riesgo.resumen, monto: riesgo.monto,
+        cta: t("atencion.cta_ver"),
+        onCta: () => onGestionar({ titulo: riesgo.titulo, accion_chat: riesgo.accion_chat }) }
+    : null;
+
+  // LO QUE SIGUE, para el dueño: el hallazgo de más peso del día. No es «la
+  // próxima entrega» —él no entrega— sino lo próximo que va a tener enfrente.
+  const masPeso = importantes[0] || cruces[0];
+
+  // TU TRABAJO: la cola que queda después de la card de arriba, más lo que el
+  // equipo tiene asignado. Es la lista, no la decisión: la decisión está arriba.
+  const trabajo = [
+    ...decisiones.slice(atencion && !p0 ? 1 : 0).map((d) => ({
+      id: d.id, titulo: d.titulo, detalle: d.detalle, monto: d.monto,
+      onClick: () => onGestionar({ titulo: d.titulo }),
+    })),
+  ].slice(0, 4);
+
   return (
     <div className="space-y-6 pb-2">
-      {/* 1 · Saludo + estado */}
-      <section className="rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-4">
-        <div className="flex items-center gap-2.5">
-          <AngelaMark size={32} estado={decisiones.length ? "esperando" : "idle"} />
-          <div className="min-w-0">
-            <p className="font-display text-lg font-bold leading-tight">{t("hoy.saludo", { nombre })}</p>
-            <p className="text-sm text-tinta-suave">{t("hoy.trabajo_hecho")}</p>
-          </div>
-        </div>
-        <button
-          onClick={() => onTab("angela")}
-          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
-        >
-          {t("hoy.hablar_angela")} <ArrowRight size={15} />
-        </button>
-      </section>
+      {/* 1 · LO QUE HAY QUE DECIDIR AHORA. Va primero y es lo único grande.
+          El inicio abría con un saludo y una caja de preguntar: un saludo no es
+          una decisión, y quien abre esto a las siete de la mañana no necesita
+          que le digan hola. Si no hay nada que decidir, la card no aparece y el
+          silencio también es una respuesta. */}
+      {atencion && <TarjetaAtencion {...atencion} />}
 
-      {/* 2 · Caja de hoy — solo si el dato existe (nunca inventar) */}
+      {/* 2 · Acciones rápidas — las de SU oficio, no las mismas para todos.
+          Ángela no está acá: vive en la barra. */}
+      <AccionesRapidas user={user} onAccion={onAccion} />
+
+      {/* 3 · Lo que sigue: para el dueño, lo de más peso del día, con la
+          recomendación de Ángela adentro. */}
+      {masPeso && (
+        <LoQueSigue
+          titulo={t("sigue.titulo_dueno")}
+          icono={Sparkles}
+          principal={masPeso.titulo}
+          detalle={[masPeso.resumen]}
+          monto={masPeso.monto}
+          recomienda={masPeso.insight?.recommendation?.detail}
+          pregunta={masPeso.accion_chat}
+          onRecomienda={() => onGestionar({ titulo: masPeso.titulo, accion_chat: masPeso.accion_chat })}
+          verLk="hoy.ver_todo"
+          onAbrir={() => onTab("insights")} />
+      )}
+
+      {/* 4 · Tu trabajo — la lista, con su detalle. La decisión de arriba ya
+          salió de acá, así que no se repite. */}
+      {trabajo.length > 0 && (
+        <Bloque titulo={t("hoy.trabajo_titulo")}>
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
+            {trabajo.map((x) => (
+              <button key={x.id} onClick={x.onClick}
+                className="flex w-full items-start gap-3 border-b border-linea px-1 py-3 text-left last:border-0">
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-oro" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium leading-snug text-tinta">{x.titulo}</span>
+                  {x.detalle && (
+                    <span className="block text-xs leading-snug text-tinta-suave">{x.detalle}</span>
+                  )}
+                </span>
+                {x.monto ? (
+                  <span className="plata shrink-0 text-sm font-medium text-tinta">{pesoCorto(x.monto)}</span>
+                ) : null}
+                <ChevronRight size={16} className="mt-0.5 shrink-0 text-tinta-suave" />
+              </button>
+            ))}
+          </div>
+        </Bloque>
+      )}
+
+      {/* 5 · Caja de hoy — solo si el dato existe (nunca inventar) */}
       {caja != null && (
         <section className="flex items-center justify-between rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-3.5 sombra-papel">
           <span className="text-sm text-tinta-suave">{t("hoy.caja_hoy")}</span>
@@ -164,21 +255,6 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
           <div className="rounded-[var(--radius-card)] border border-linea bg-crema px-3 py-1 sombra-papel">
             <FeedActividad act={ini.actividad} estructura={estructura} />
           </div>
-        </Bloque>
-      )}
-
-      {/* 5 · Necesita tu decisión — approval queue compacta, máx 3 + contador */}
-      {decVisibles.length > 0 && (
-        <Bloque titulo={t("hoy.decision_titulo")}>
-          <div className="overflow-hidden rounded-[var(--radius-card)] border border-oro/30 bg-crema px-3 sombra-papel">
-            {decVisibles.map((d) => (
-              <Fila key={d.id} icon={ClipboardCheck} tono="oro" titulo={d.titulo} monto={d.monto}
-                chevron onClick={() => onGestionar({ titulo: d.titulo })} />
-            ))}
-          </div>
-          {decMas > 0 && (
-            <p className="mt-2 px-1 text-sm text-tinta-suave">{t("hoy.decision_mas", { n: decMas })}</p>
-          )}
         </Bloque>
       )}
 

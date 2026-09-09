@@ -7,8 +7,9 @@ import Onboarding from "../components/Onboarding";
 import ReporteForm from "./ReporteForm";
 import LoQueReporte from "./LoQueReporte";
 import CostoViejo from "./CostoViejo";
+import LoQueSigue from "./LoQueSigue";
 import { derivarTareas } from "../lib/piso";
-import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, reportaPorVoz } from "../lib/roles";
+import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, reportaPorVoz, rolDe } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
 import { useSession } from "../lib/auth";
 import { api } from "../lib/api";
@@ -61,6 +62,24 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
   // de la fila que tocó.
   const [preguntaA, setPreguntaA] = useState(null);   // el referente
   const [costoDe, setCostoDe] = useState(null);       // el producto
+
+  // LO QUE SIGUE — lo próximo que esta persona va a tener enfrente. Donde la
+  // imagen de referencia pone «Próxima entrega», cada oficio pone lo suyo: el
+  // chofer su próxima parada, el que arma su próximo pedido.
+  //
+  // Nahuel NO tiene bloque, y no es un olvido: «la recepción del día» no se
+  // puede armar. `ordenes_compra` no tiene fecha de llegada esperada —sólo la
+  // fecha en que se creó la orden— así que el dataset no sabe qué entra hoy.
+  // Se declara en vez de inventarlo.
+  const rolId = rolDe(user)?.id;
+  const conRuta = rolId === "reparto" || rolId === "deposito_armado";
+  const [proximas, setProximas] = useState(null);
+  useEffect(() => {
+    if (!conRuta) return;
+    const quien = rolId === "reparto" ? (session?.usuario?.nombre || "") : undefined;
+    api.paradasProximas(quien).then((d) => setProximas(d.paradas || [])).catch(() => setProximas([]));
+  }, [conRuta, rolId, session?.usuario?.nombre]);
+  const proxima = proximas?.[0];
   const [consulta, setConsulta] = useState("");   // P41·4 — la consulta rápida
   // P41·4 — TAREAS ASIGNADAS: las que el dueño le dejó a ESTA persona. Persisten
   // (recordatorios del backend, con destinatario) y se marcan hechas desde acá.
@@ -193,6 +212,18 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
       {/* EL COSTO VIEJO — sólo para quien atiende un mostrador: es quien mira
           ese precio todos los días. Se esconde solo cuando no hay ninguno. */}
       {atiendeMostrador(user) && <CostoViejo onAvisar={setCostoDe} />}
+
+      {proxima && (
+        <LoQueSigue
+          titulo={t(rolId === "reparto" ? "sigue.titulo_ruta" : "sigue.titulo_armado")}
+          icono={rolId === "reparto" ? Truck : ClipboardList}
+          principal={proxima.cliente}
+          detalle={[proxima.direccion, proxima.dia, proxima.pedido]}
+          pregunta={t("sigue.pregunta_cliente", { cliente: proxima.cliente })}
+          onRecomienda={() => onAbrirAngela?.(t("sigue.pregunta_cliente", { cliente: proxima.cliente }))}
+          verLk={rolId === "reparto" ? "sigue.ver_ruta" : "sigue.ver_armado"}
+          onAbrir={() => onNavegar?.(rolId === "reparto" ? "parada" : "armado")} />
+      )}
 
       {/* P·círculo — QUÉ PASÓ CON LO QUE DIJE. Va primero, arriba de todo: es
           lo único de esta pantalla que le devuelve algo a la persona por haber

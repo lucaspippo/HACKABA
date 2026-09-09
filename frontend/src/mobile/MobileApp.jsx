@@ -27,7 +27,7 @@ import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
-import { avisaDesdeElPiso, buscaEnMobile, cargaLk, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
+import { barraDe, buscaEnMobile, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
 import Campanita from "../components/Campanita";
@@ -95,9 +95,6 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // acciones de su oficio y los chips de Ángela), no en el chat vacío ni en el
   // Today del dueño. El dueño sigue con su panel.
   const piso = tieneVistaHerramienta(user);
-  // El id del oficio: lo usa la barra para elegir entre destinos que salen
-  // del mismo módulo (armado vs. ruta, los dos de `logistica`).
-  const rolId = rolDe(user)?.id;
   // P24·D1 — Ángela primero: en el celular la pantalla inicial es el CHAT (la
   // interfaz natural del teléfono); la bottom-nav queda para moverse. Para el de
   // a pie, la pantalla inicial es "Mi día".
@@ -121,6 +118,16 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // De dónde se vino, para que «volver» de la ficha vuelva a la búsqueda y no
   // al inicio: la Focus Rule también aplica al camino de vuelta.
   const [volverA, setVolverA] = useState("buscar");
+
+  // Ejecuta una acción del oficio venga de donde venga (las acciones rápidas
+  // del inicio, la vista de trabajo). Vive acá porque `voz` abre un overlay que
+  // es de la app, no de una pantalla.
+  const ejecutarAccion = (a) => {
+    if (a.kind === "navegar") return navegarMobile(a.a);
+    if (a.kind === "angela") return abrirAngelaCon(t(a.pregunta));
+    if (a.kind === "voz") return setVozAbierta(true);
+    if (a.kind === "reporte") return setAvisoAbierto({ tipo: a.tipo });
+  };
 
   const gestionarOp = (op) => {
     // P27: las cards traen su prompt de acción; si no, el genérico de siempre.
@@ -170,57 +177,44 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     toast(t("mnav.solo_desktop"));
   };
 
-  // P35·E2 — Barra inferior FIJA y simétrica: 5 slots en orden fijo con Ángela
-  // al centro (botón circular). Se OCULTA el slot cuya feature el rol no tiene
-  // (Ángela siempre presente). Insights = fusión Alertas+Oportunidades (E3):
-  // basta con tener alguna de las dos. Ya no hay "Más" ni el mapa en la barra
-  // (el mapa se abre desde Today, E4/E6).
-  const tiene = (f) => user.features.includes(f);
-  const izqNav = [
-    // El de a pie ve "Mi día" en el primer slot (en lugar del Today del dueño).
-    piso ? { id: "mi_dia", lk: "mnav.mi_dia", icon: ClipboardList }
-         : (tiene("panel") && { id: "panel", lk: "mnav.hoy", icon: Sun }),
-    (tiene("alertas") || tiene("oportunidades")) && { id: "insights", lk: "mnav.insights", icon: Sparkles },
-  ].filter(Boolean);
-  const derNav = [
-    // C2 — LA PARADA, para quien hace calle. Va antes que "Depósito" porque el
-    // chofer y el preventista no entran al galpón: su pantalla es la puerta del
-    // cliente. Sale de `logistica`, que es justo lo que tienen los dos.
-    // Los dos salen de `logistica`; los distingue el OFICIO, que ya está
-    // partido en lib/roles.js. El que arma no sale a la calle y el que sale a
-    // la calle no arma: darles el mismo destino sería volver al problema que
-    // la regex partida vino a arreglar.
-    tiene("logistica") && (rolId === "deposito_armado"
-      ? { id: "armado", lk: "mnav.armado", icon: ClipboardList }
-      : { id: "parada", lk: "mnav.parada", icon: MapPin }),
-    tiene("deposito") && { id: "deposito", lk: "mnav.deposito", icon: PackageX },
-    tiene("equipo") && { id: "equipo", lk: "mnav.equipo", icon: Users },
-  ].filter(Boolean);
-
-  // LA BARRA DEL OFICIO — 3 destinos y el botón de carga al centro.
+  // LA BARRA — TRES DESTINOS Y EL BOTÓN DEL CENTRO. Para todos, sin excepción.
   //
-  // Quien avisa desde el piso (los nueve oficios con lista) tiene una barra
-  // distinta: sus destinos son SU día, SU vista de oficio y Ángela, y el centro
-  // deja de ser Ángela para ser el botón de carga. El motivo es de uso, no de
-  // estética: lo que esta gente hace treinta veces por día es DECIR algo que
-  // pasó, y eso estaba a dos toques detrás de una acción de una lista.
+  // Antes había dos barras: la del piso (tres + carga) y la de "el resto", que
+  // era la vieja y que escaneaba FEATURES para llenar slots. Con eso Aldo
+  // terminaba con seis ítems, y uno de ellos era «Mi ruta» — el dueño no
+  // reparte. Ramón igual, por el mismo motivo: tener `logistica` no es salir a
+  // la calle. **Tener el módulo no es hacer el trabajo**, y la barra es lo que
+  // esta persona hace, no lo que puede ver.
   //
-  // Nunca cinco slots. La barra del prototipo son tres destinos + carga y ése
-  // es el techo: a partir de ahí los íconos se comen entre ellos y ya no se
-  // aciertan con el pulgar. Por eso el de piso pierde la solapa «Insights»
-  // cuando tiene una vista de oficio — sus señales (fantasma, balanza,
-  // negativo) YA le llegan como tareas en «Mi día», así que era la misma
-  // información por dos puertas. Sigue alcanzable: Ángela navega ahí, y la URL
-  // /insights sigue siendo válida.
-  const avisa = avisaDesdeElPiso(user);
-  const angelaTab = { id: "angela", lk: "mnav.angela", icon: MessageCircle };
-  // El segundo destino: el de su oficio si lo tiene, y si no, Insights — así
-  // nadie que sólo tenga alertas se queda con dos destinos.
-  const suOficio = derNav[0] || izqNav.find((x) => x.id === "insights") || null;
-  const destinos = avisa
-    ? [izqNav[0], suOficio, angelaTab].filter(Boolean)
-    : null;
-  const nSlots = avisa ? destinos.length + 1 : izqNav.length + derNav.length + 1;
+  // Ahora hay UNA regla:
+  //
+  //   slot 1 · su inicio        — «Mi día» para el piso, el panel para el resto
+  //   slot 2 · su oficio        — sale del catálogo (`destino`), no de features
+  //   centro · lo que más hace  — carga para el piso, la pantalla de carga para
+  //                               la oficina, Ángela para el dueño (él no carga:
+  //                               decide y pregunta)
+  //   slot 3 · Ángela           — salvo para el dueño, que ya la tiene al centro
+  //                               y en su lugar lleva Equipo
+  //
+  // Nunca cinco. Tres destinos + centro es el techo del prototipo: a partir de
+  // ahí los íconos se comen entre ellos y ya no se aciertan con el pulgar.
+  const VISTA = {
+    panel: { lk: "mnav.hoy", icon: Sun },
+    mi_dia: { lk: "mnav.mi_dia", icon: ClipboardList },
+    insights: { lk: "mnav.insights", icon: Sparkles },
+    deposito: { lk: "mnav.deposito", icon: PackageX },
+    armado: { lk: "mnav.armado", icon: ClipboardList },
+    parada: { lk: "mnav.parada", icon: MapPin },
+    cobranzas: { lk: "mnav.cobranzas", icon: HandCoins },
+    administracion: { lk: "mnav.oficina", icon: ClipboardList },
+    equipo: { lk: "mnav.equipo", icon: Users },
+    angela: { lk: "mnav.angela", icon: MessageCircle },
+  };
+  // Qué barra le toca a esta persona. La decisión vive en lib/roles.js —es de
+  // oficio, no de pantalla— y ahí está pinneada contra el equipo entero.
+  const { destinos: destinoIds, centro } = barraDe(user);
+  const destinos = destinoIds.map((id) => ({ id, ...VISTA[id] })).filter((x) => x.lk);
+  const nSlots = destinos.length + 1;
 
   const renderView = () => {
     switch (view) {
@@ -228,7 +222,8 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         return <MiDia user={user} onAbrirAngela={abrirAngelaCon} onTarea={abrirTarea}
                       onCerrada={onRecargar} onNavegar={navegarMobile} />;
       case "panel":
-        return <Hoy data={data} oportunidades={oportunidades} onTab={setView} onGestionar={gestionarOp} />;
+        return <Hoy data={data} oportunidades={oportunidades} onTab={setView}
+                    onGestionar={gestionarOp} user={user} onAccion={ejecutarAccion} />;
       // P35·E3 — "insights": fusión de Alertas + Oportunidades en filas compactas.
       case "insights":
         return <InsightsMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onNavegar={navegarMobile} />;
@@ -369,32 +364,31 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
             className="mx-auto grid max-w-md items-stretch border-t border-linea bg-crema/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
             style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
           >
-            {avisa ? (
-              <>
-                {destinos.slice(0, 2).map((s) => <TabBtn key={s.id} slot={s} />)}
-                {/* El botón de carga. Dice el VERBO de su oficio —«Contar»,
-                    «Armar», «Registrar»— porque un botón que dice lo que hace
-                    se toca sin pensarlo. */}
-                <button onClick={() => setHoja(true)} className="relative flex flex-col items-center gap-0.5 py-1.5">
-                  <span className="grid h-9 w-9 -translate-y-1 place-items-center rounded-full bg-tinta text-crema sombra-papel">
-                    <Plus size={20} />
-                  </span>
-                  <span className="-mt-1 text-2xs font-semibold text-tinta">{t(cargaLk(user))}</span>
-                </button>
-                {destinos.slice(2).map((s) => <TabBtn key={s.id} slot={s} />)}
-              </>
+            {destinos.slice(0, 2).map((x) => <TabBtn key={x.id} slot={x} />)}
+            {/* EL CENTRO. Ángela mantiene su azul —es lo único que lo usa— y el
+                botón de carga va en tinta: es la acción de la persona, no de la
+                asistente, y confundirlos sería romper la regla de un solo
+                significado por color. El rótulo dice el VERBO del oficio
+                («Contar», «Armar») porque un botón que dice lo que hace se toca
+                sin pensarlo. */}
+            {centro.tipo === "angela" ? (
+              <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
+                <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
+                  <MessageCircle size={18} />
+                </span>
+                <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+              </button>
             ) : (
-              <>
-                {izqNav.map((s) => <TabBtn key={s.id} slot={s} />)}
-                <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
-                  <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
-                    <MessageCircle size={18} />
-                  </span>
-                  <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
-                </button>
-                {derNav.map((s) => <TabBtn key={s.id} slot={s} />)}
-              </>
+              <button
+                onClick={() => (centro.tipo === "hoja" ? setHoja(true) : navegarMobile(centro.a))}
+                className="relative flex flex-col items-center gap-0.5 py-1.5">
+                <span className="grid h-9 w-9 -translate-y-1 place-items-center rounded-full bg-tinta text-crema sombra-papel">
+                  <Plus size={20} />
+                </span>
+                <span className="-mt-1 text-2xs font-semibold text-tinta">{t(centro.lk)}</span>
+              </button>
             )}
+            {destinos.slice(2).map((x) => <TabBtn key={x.id} slot={x} />)}
           </div>
         </nav>
 
@@ -408,8 +402,12 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
             onVoz={() => { setHoja(false); setVozAbierta(true); }}
             onAviso={(a) => { setHoja(false); setAvisoAbierto(a); }} />
         )}
+        {/* `aviso` sólo cuando VIENE de la hoja: ahí trae sus campos y su
+            destinatario. Una acción del catálogo con `kind: "reporte"` abre el
+            formulario del TIPO, como siempre. */}
         {avisoAbierto && (
-          <ReporteForm tipo={avisoAbierto.tipo} aviso={avisoAbierto}
+          <ReporteForm tipo={avisoAbierto.tipo}
+            aviso={avisoAbierto.campos ? avisoAbierto : undefined}
             destinoFijo={avisoAbierto.destino}
             onCerrar={() => setAvisoAbierto(null)} onListo={onRecargar} />
         )}

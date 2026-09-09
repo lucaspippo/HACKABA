@@ -138,7 +138,7 @@ def _dominios():
     seed_domains() has always called.
     """
     from core import (caja, conocimiento, cuentas, esquema, mostrador, notas,
-                      pagos, reposicion, store, traslados, ventas,
+                      pagos, piso, reposicion, store, traslados, ventas,
                       ventas_cliente)
     return [
         ("inventory_working", ["inventory.json"], ["inventory_working"],
@@ -163,6 +163,11 @@ def _dominios():
         ("data_sections", ["apartados.json"], ["data_sections"], esquema._load),
         ("sales_validation", ["ventas_validacion.json"], ["sales_validation"],
          ventas._val_load),
+        # Lo que el piso reportó. El demo arrancaba con cero, y por eso el
+        # circuito entero —aviso dirigido, acuse, reclamo del dueño— no se veía
+        # en ninguna pantalla aunque el motor existiera.
+        ("floor_reports", ["piso_seed/reportes.json"], ["floor_reports"],
+         piso.listar),
     ]
 
 

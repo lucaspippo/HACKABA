@@ -267,11 +267,17 @@ def test_estos_tests_no_le_dejan_actividad_al_equipo(circuito):
         "acc = ('reportar_faltante', 'marcar_conteo', 'resolver_reporte_piso');"
         "hoy = [e for e in audit_repo.list_events(_t.current_tenant_id())"
         "       if e.get('accion') in acc];"
-        "print(json.dumps({'reportes': len(piso.listar()),"
-        " 'auditoria_de_piso': len(hoy)}))")
-    # El dataset del demo no trae reportes de piso sembrados: si quedó alguno,
-    # es mío y no lo limpié.
-    assert out["reportes"] == 0, out
+        "print(json.dumps({'reportes': [r['id'] for r in piso.listar()],"
+        " 'sembrados': [r['id'] for r in piso._seed_inicial()],"
+        " 'auditoria_de_piso': len(hoy)}, ensure_ascii=False))")
+    # Lo único que puede quedar es la SEMILLA del tenant (data-demo/piso_seed):
+    # cualquier otro reporte es mío y no lo limpié. Antes esto comparaba contra
+    # cero, que era cierto mientras el demo arrancaba vacío y dejó de serlo el
+    # día que se sembró el circuito — comparar contra la semilla dice lo mismo
+    # y no se rompe cuando la semilla crece.
+    assert sorted(out["reportes"]) == sorted(out["sembrados"]), out
+    # La auditoría del piso sí tiene que quedar en cero: la semilla entra por el
+    # repositorio, no por `reportar()`, así que no audita nada.
     assert out["auditoria_de_piso"] == 0, out
 
 
