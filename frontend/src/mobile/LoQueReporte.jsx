@@ -31,11 +31,14 @@ function Estado({ r, t }) {
   return (
     <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-tinta-suave">
       <span className={`h-2 w-2 shrink-0 rounded-full ${PUNTO[r.estado] || "bg-linea"}`} />
+      {/* `<campo>_nombre` es el nombre de pantalla que resuelve el backend
+          (mis_avisos._con_nombres); el username es el fallback y no debería
+          verse nunca — «celeste lo cerró» en minúscula era eso. */}
       {clave === "resuelto"
-        ? t("circulo.est_resuelto", { quien: r.resuelto_por || "" })
+        ? t("circulo.est_resuelto", { quien: r.resuelto_por_nombre || r.resuelto_por || "" })
         : clave === "visto"
-          ? t("circulo.est_visto", { quien: r.visto_por || "" })
-          : t("circulo.est_enviado", { quien: r.destinatario || "" })}
+          ? t("circulo.est_visto", { quien: r.visto_por_nombre || r.visto_por || "" })
+          : t("circulo.est_enviado", { quien: r.destinatario_nombre || r.destinatario || "" })}
     </span>
   );
 }
@@ -92,7 +95,7 @@ export default function LoQueReporte({ onCambio }) {
                 <button onClick={() => abrir(r)} className="w-full text-left">
                   <p className="text-sm font-semibold leading-snug text-tinta">{titulo(r, t)}</p>
                   <p className="text-xs text-tinta-suave">
-                    {t("circulo.de_quien", { quien: r.actor })} · {t(`rol.reporte_t_${r.tipo}`)}
+                    {t("circulo.de_quien", { quien: r.actor_nombre || r.actor })} · {t(`rol.reporte_t_${r.tipo}`)}
                   </p>
                 </button>
                 {r.estado !== "resuelto" && (
