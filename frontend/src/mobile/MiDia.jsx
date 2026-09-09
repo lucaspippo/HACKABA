@@ -6,8 +6,9 @@ import AngelaMark from "../components/AngelaMark";
 import Onboarding from "../components/Onboarding";
 import ReporteForm from "./ReporteForm";
 import LoQueReporte from "./LoQueReporte";
+import CostoViejo from "./CostoViejo";
 import { derivarTareas } from "../lib/piso";
-import { accionesDe, chipsDe, muestrasDe, reportaPorVoz } from "../lib/roles";
+import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, reportaPorVoz } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
 import { useSession } from "../lib/auth";
 import { api } from "../lib/api";
@@ -54,6 +55,12 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
   const chips = chipsDe(user);
   const acciones = accionesDe(user);
   const [reporte, setReporte] = useState(null);   // tipo de reporte abierto
+  // Los dos avisos que NO salen del catálogo de acciones del oficio, porque su
+  // destinatario o su contenido salen de otro lado: la pregunta va al referente
+  // de ESTA persona (dato de su ficha) y el costo viejo lleva puesto el producto
+  // de la fila que tocó.
+  const [preguntaA, setPreguntaA] = useState(null);   // el referente
+  const [costoDe, setCostoDe] = useState(null);       // el producto
   const [consulta, setConsulta] = useState("");   // P41·4 — la consulta rápida
   // P41·4 — TAREAS ASIGNADAS: las que el dueño le dejó a ESTA persona. Persisten
   // (recordatorios del backend, con destinatario) y se marcan hechas desde acá.
@@ -179,8 +186,13 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
           Sale de su fecha de ingreso (perfil), no de un flag prendido a mano:
           cuando deje de ser nuevo, el bloque desaparece solo. */}
       {session?.usuario?.antiguedad?.nuevo && (
-        <Onboarding onPreguntar={(texto) => onAbrirAngela?.(texto)} />
+        <Onboarding onPreguntar={(texto) => onAbrirAngela?.(texto)}
+                    onPreguntarleA={setPreguntaA} />
       )}
+
+      {/* EL COSTO VIEJO — sólo para quien atiende un mostrador: es quien mira
+          ese precio todos los días. Se esconde solo cuando no hay ninguno. */}
+      {atiendeMostrador(user) && <CostoViejo onAvisar={setCostoDe} />}
 
       {/* P·círculo — QUÉ PASÓ CON LO QUE DIJE. Va primero, arriba de todo: es
           lo único de esta pantalla que le devuelve algo a la persona por haber
@@ -344,6 +356,20 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
       {/* Lo que reporta desde el piso entra al sistema a su nombre (P39·3) */}
       {reporte && (
         <ReporteForm tipo={reporte} onCerrar={() => setReporte(null)} onListo={onCerrada} />
+      )}
+
+      {/* La pregunta al referente. El destinatario no se propone por oficio:
+          ya se sabe, es el suyo — y se muestra igual, para que vea a quién le
+          va antes de mandarla. */}
+      {preguntaA && (
+        <ReporteForm tipo="pregunta" destinoFijo={preguntaA}
+          onCerrar={() => setPreguntaA(null)} onListo={onCerrada} />
+      )}
+
+      {/* El aviso del costo viejo, con el producto ya puesto. */}
+      {costoDe && (
+        <ReporteForm tipo="costo" inicial={{ producto: costoDe.producto }}
+          onCerrar={() => setCostoDe(null)} onListo={onCerrada} />
       )}
     </div>
   );

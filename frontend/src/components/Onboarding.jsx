@@ -74,7 +74,11 @@ function Tema({ id, titulo, sub, preguntas, children, abierto, onToggle, onPregu
   );
 }
 
-export default function Onboarding({ onPreguntar }) {
+// `onPreguntarleA` recibe al referente de esta persona y abre el aviso dirigido
+// a él. `usuarios_demo.py` le declara un `mentor` a quien recién entró y hasta
+// ahora era una línea de texto: saber a quién preguntarle no sirve si preguntar
+// sigue siendo pararse a buscarlo por el galpón.
+export default function Onboarding({ onPreguntar, onPreguntarleA }) {
   const t = useT();
   const lang = useLang();
   const [g, setG] = useState(null);
@@ -245,6 +249,20 @@ export default function Onboarding({ onPreguntar }) {
                                           rol: tRol(persona.puesto.mentor.rol) })}</>
                 )}
               </p>
+            )}
+            {/* Y acá se le pregunta. La respuesta vuelve por el mismo circuito
+                que el resto —lo vio, lo cerró, con lo que contestó— así que
+                una duda de martes deja de ser algo que el que entró tiene que
+                acordarse de volver a preguntar. */}
+            {persona?.puesto?.mentor && onPreguntarleA && (
+              <button
+                onClick={() => onPreguntarleA({ ...persona.puesto.mentor,
+                                                rol: tRol(persona.puesto.mentor.rol) })}
+                className="mt-2.5 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-violeta/40 bg-crema px-4 py-2 text-sm font-semibold text-violeta transition-transform active:scale-95"
+              >
+                <MessageCircle size={15} />
+                {t("onb.preguntarle_a", { nombre: persona.puesto.mentor.nombre })}
+              </button>
             )}
           </div>
         </div>

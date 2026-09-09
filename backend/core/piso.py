@@ -21,6 +21,14 @@ Seis cosas que el piso reporta, cada una con su acción en la vista del rol:
                   bot de WhatsApp de cara al cliente (ver `datos.canal`)
   · presupuesto — cotización que un cliente pidió por WhatsApp, sin
                   confirmar todavía compra
+  · pregunta    — el que recién entró le pregunta a SU referente. No es un
+                  hecho del negocio: es la duda que hoy se hace en voz alta y
+                  se pierde. Va por acá y no por Ángela porque la respuesta la
+                  tiene una persona, no el sistema — y porque el que contesta
+                  queda registrado, que es lo que hace que la respuesta llegue.
+  · costo       — el precio de venta salió de un costo viejo. Lo levanta quien
+                  está en el mostrador, que es quien mira ese precio todos los
+                  días; lo arregla quien carga los costos.
 
 Un `pedido` acá NO es una orden de venta: la facturación sigue siendo del ERP.
 Es el registro de que alguien (preventista, o el bot de WhatsApp hablando con
@@ -54,6 +62,8 @@ ACCION = {
     "reposicion": "pedir_reposicion",
     "pedido": "registrar_pedido",
     "presupuesto": "registrar_presupuesto",
+    "pregunta": "preguntar_referente",
+    "costo": "avisar_costo_viejo",
 }
 TIPOS = tuple(ACCION)
 
@@ -83,6 +93,14 @@ DESTINO = {
     "reposicion": r"encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito",
     "pedido": r"administraci",
     "presupuesto": r"administraci",
+    # Un costo viejo no lo arregla el que vende: lo arregla el que compra. Es
+    # el mismo oficio que ya recibe los faltantes, y por el mismo motivo — la
+    # relación con el proveedor es suya.
+    "costo": r"compras",
+    # `pregunta` NO tiene patrón a propósito: su destinatario es el referente
+    # de ESA persona (`puesto.mentor` de su ficha), que la pantalla manda
+    # explícito. Sin referente cargado cae en el dueño, como todo lo demás:
+    # una pregunta sin respuesta es peor que una pregunta mal dirigida.
 }
 
 
@@ -182,6 +200,10 @@ def reportar(tipo: str, actor: str, datos: dict | None = None,
         raise ValueError("Un presupuesto necesita al menos un producto.")
     if tipo == "reposicion" and not (d.get("producto") or d.get("nota")):
         raise ValueError("Decí qué necesitás reponer.")
+    if tipo == "pregunta" and not (d.get("nota") or "").strip():
+        raise ValueError("Escribí la pregunta.")
+    if tipo == "costo" and not (d.get("producto") or d.get("codigo")):
+        raise ValueError("Falta el producto.")
 
     # P41·4 — la PRUEBA de la entrega (foto del remito firmado o firma en
     # pantalla) viaja como data-URL en `datos.prueba`, se guarda como archivo y

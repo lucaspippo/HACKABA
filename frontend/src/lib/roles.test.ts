@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accionesDe, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
+import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
 
 // The demo team, verbatim from backend/usuarios_demo.py. The role STRING is the
 // only input `rolDe` gets — there is no list of usernames anywhere — so these
@@ -134,5 +134,21 @@ describe("muestrasDe", () => {
     }
     expect(muestrasDe(de("walter"))).toBe("reparto");
     expect(muestrasDe(de("vanesa"))).toBe("mostrador");
+  });
+});
+
+describe("atiendeMostrador", () => {
+  it("is the two people who look at a selling price all day, and nobody else", () => {
+    // Decides who gets the stale-cost heads-up. Goes by TRADE and not by
+    // feature: half the team has `inventario`, and the warehouse does not
+    // price anything.
+    const atienden = EQUIPO.filter((u) => atiendeMostrador(u)).map((u) => u.username);
+    expect(atienden.sort()).toEqual(["norma", "vanesa"]);
+  });
+
+  it("leaves the warehouse out even though it has the same module", () => {
+    for (const x of ["ramon", "brian", "tomas", "nahuel", "kevin"]) {
+      expect(atiendeMostrador(de(x))).toBe(false);
+    }
   });
 });

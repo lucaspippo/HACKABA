@@ -14,20 +14,30 @@ import { useT } from "../lib/i18n";
 // Entra al sistema atribuido a la persona, el dueño lo ve en su panel y Ángela
 // lo cruza para proponerle una decisión (el reclamo al proveedor, por ejemplo).
 
-export default function ReporteForm({ tipo, onCerrar, onListo }) {
+// `destinoFijo` — cuando el destinatario NO sale del oficio sino de la ficha de
+// quien reporta: la pregunta del que recién entró va a SU referente, y ése es un
+// dato de su perfil, no del tipo de aviso. Se sigue mostrando y confirmando
+// igual; lo único que cambia es de dónde salió la propuesta.
+// `inicial` — valores ya puestos (el producto de la fila que tocó). Es la
+// diferencia entre tocar un botón y escribir "JAMON COCIDO GUARANI (HORMA)"
+// parado atrás del mostrador.
+export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inicial }) {
   const t = useT();
   const campos = CAMPOS_REPORTE[tipo] || [];
-  const [valores, setValores] = useState(() =>
-    Object.fromEntries(campos.map((c) => [c.id, c.tipo === "opciones" ? c.opciones[0].v : ""])));
+  const [valores, setValores] = useState(() => ({
+    ...Object.fromEntries(campos.map((c) => [c.id, c.tipo === "opciones" ? c.opciones[0].v : ""])),
+    ...(inicial || {}),
+  }));
   const [enviando, setEnviando] = useState(false);
   // P·círculo — A QUIÉN LE LLEGA. Nadie en la cámara de frío elige de una lista
   // de catorce nombres: Ángela propone por oficio y la persona confirma con un
   // toque. `null` mientras no contestó el backend; si no contesta, se manda
   // igual (el hecho vale más que el ruteo) y queda en el pozo del dueño.
-  const [destino, setDestino] = useState(null);
+  const [destino, setDestino] = useState(destinoFijo || null);
   useEffect(() => {
+    if (destinoFijo) return;   // ya lo sabemos: no hay a quién preguntarle
     api.piso.destinatario(tipo).then((d) => setDestino(d.sugerido || null)).catch(() => {});
-  }, [tipo]);
+  }, [tipo, destinoFijo]);
 
   const falta = campos.some((c) => c.requerido && !String(valores[c.id] ?? "").trim());
 
