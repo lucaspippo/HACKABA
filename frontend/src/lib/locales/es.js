@@ -2462,6 +2462,10 @@ export const ES = {
   "rol.acc_reportar_faltante_sub": "Lo que llegó roto, de menos o vencido. Queda a tu nombre.",
   "rol.acc_marcar_conteo": "Marcar un conteo",
   "rol.acc_marcar_conteo_sub": "Contaste un producto y no coincide: decilo acá.",
+  "rol.acc_ver_deposito": "Ver cómo está el depósito",
+  "rol.acc_ver_deposito_sub": "Lo que vence y las diferencias sin resolver, en una pantalla.",
+  "rol.acc_mis_pedidos": "Ver los pedidos para armar",
+  "rol.acc_mis_pedidos_sub": "Qué sale hoy, con el cliente y el camión de cada uno.",
   // reparto
   "rol.acc_mi_ruta": "Ver mi ruta de hoy",
   "rol.acc_mi_ruta_sub": "Qué bajar en cada parada, en unidades — no en kilos.",
@@ -2492,6 +2496,7 @@ export const ES = {
   "rol.chip_donde_esta": "¿Dónde está guardado el jamón cocido?",
   "rol.chip_ultimo_remito": "¿Qué entró en el último remito?",
   "rol.chip_negativos": "¿Qué productos están en negativo?",
+  "rol.chip_que_vence": "¿Qué vence en los próximos 15 días?",
   "rol.chip_unidades_bajo": "¿Cuántas unidades bajo en el próximo cliente?",
   "rol.chip_falta_entregar": "¿Qué me falta entregar hoy?",
   "rol.chip_plazo": "¿Cuánto plazo le puedo dar a Almacén San Martín?",
