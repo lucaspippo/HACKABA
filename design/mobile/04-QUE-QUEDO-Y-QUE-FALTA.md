@@ -77,7 +77,32 @@ El botón comparte la caja de búsqueda, como pide el diseño, pero enfoca el ca
 en vez de abrir un lector. No hay lector cableado y fingirlo sería el tipo de
 comportamiento falso que este producto no hace.
 
-**e · La ficha no tiene deep-link.**
+**e · «La recepción del día» de Nahuel no se puede armar.**
+`ordenes_compra` no tiene fecha de llegada esperada —sólo la fecha en que se
+creó la orden— así que **el dataset no sabe qué entra hoy**. Lo más cercano que
+existe es la orden abierta, que no es lo mismo: saber que hay una orden viva no
+es saber que el camión llega esta mañana. El bloque «lo que sigue» de Nahuel
+queda sin construir, declarado.
+
+**f · «PolPilot recomienda» no tiene texto en ninguna card.**
+Ninguna de las diez cards de oportunidades trae `insight.recommendation.detail`.
+Lo único que hay es `accion_chat`, que es el prompt que se le **manda** a Ángela
+(«ayudame a cobrarles a los que están atrasados»). Rotularlo «PolPilot
+recomienda» sería ponerle en la boca un consejo que no dio. La banda quedó con
+dos modos —la recomendación de verdad cuando existe, «Preguntarle a Ángela»
+cuando no— y hoy todas caen en el segundo. **Llenar `recommendation.detail` es
+trabajo de backend**, en `core/insight.py`, y no lo inventé.
+
+**g · Los pasteles de la imagen de referencia no se pueden usar.**
+La imagen pinta cada acción rápida de un color distinto, y eso es color
+decorativo: el celeste del escáner no significa nada distinto del verde de la
+cámara. `DESIGN.md` lo prohíbe dos veces (One Meaning Rule, y el azul es
+exclusivamente de Ángela). Se copió la composición entera y el relleno va en
+`papel-hondo` con el ícono en `tinta`: el ritmo de la fila lo dan la forma y el
+espaciado. La única alternativa que no rompe la regla es `hielo-claro` para los
+seis por igual —un tono, que es superficie y no código de color—.
+
+**h · La ficha no tiene deep-link.**
 El router mobile es `/:section`, así que el código del producto vive en estado.
 Se llega por búsqueda o por tarea, que es como se llega de verdad; un link
 directo a una ficha es deseable y no existe.
@@ -119,6 +144,8 @@ Todo esto tiene motor o le falta poco. Ninguno estaba en los diez puntos.
 | **Progreso personal** («contaste 14 de 21 ubicaciones») | todo el piso | No. **Nunca comparación entre compañeros** |
 | **La ficha de cliente** como pantalla propia | preventa, mostrador | Existe como `parada.de()`; falta la entrada por búsqueda |
 | **El lector de código de barras** | depósito | No hay nada |
+| **`recommendation.detail` en las cards** | todos | El campo existe y viene vacío — ver §2·f |
+| **Fecha de llegada esperada en las órdenes** | Nahuel | No está en el dataset — ver §2·e |
 
 ---
 
