@@ -281,6 +281,7 @@ export const api = {
     // Lo que mandé, lo que me mandaron, y los hallazgos que se apoyan en algo
     // que yo dije. La mitad del circuito que faltaba.
     mios: () => get("/api/piso/mios"),
+
     visto: (rid) => post(`/api/piso/reportes/${rid}/visto`, {}),
     reportes: (tipo, estado) => get(`/api/piso/reportes${tipo || estado
       ? `?${[tipo && `tipo=${tipo}`, estado && `estado=${estado}`].filter(Boolean).join("&")}` : ""}`),
@@ -305,6 +306,10 @@ export const api = {
     get(`/api/carpeta/${encodeURIComponent(numero)}/${encodeURIComponent(docId)}`),
   cuentas: () => get("/api/cuentas"),
   cuentaCobro: (id, monto) => post(`/api/cuentas/${id}/cobro`, { monto }),
+  // C2 · la parada enriquecida: quién está parado frente a quién.
+  parada: (cliente) => get(`/api/parada?cliente=${encodeURIComponent(cliente)}`),
+  paradasProximas: (transporte) =>
+    get("/api/parada/proximas" + (transporte ? `?transporte=${encodeURIComponent(transporte)}` : "")),
   cuentaRecordatorio: (id) => get(`/api/cuentas/${id}/recordatorio`),
   // P24·D6 — reglas de aviso del usuario (recordatorios condicionales)
   recordatorios: () => get("/api/recordatorios"),

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints } from "lucide-react";
+import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin } from "lucide-react";
 import Brand from "../components/Brand";
 import Avatar from "../components/Avatar";
 import { resaltarPorId } from "../lib/navGuiada";
 import Hoy from "./Hoy";
 import MiDia from "./MiDia";
+import Parada from "./Parada";
 import EquipoMobile from "./EquipoMobile";
 import InsightsMobile from "./InsightsMobile";
 import MapaSimpleMobile from "./MapaSimpleMobile";
@@ -41,6 +42,8 @@ const MCAT = {
   oportunidades: { lk: "mnav.oportunidades", icon: Sparkles },
   // P28 — el mapa, en su versión apilada honesta (el canvas es de desktop).
   mapa: { lk: "nav.mapa", icon: Waypoints },
+  // C2 — la parada enriquecida: una parada por pantalla, no una lista.
+  parada: { lk: "mnav.parada", icon: MapPin },
 };
 
 // Nombres "de dueño" que Ángela usa para navegar → vista mobile real.
@@ -148,6 +151,10 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     (tiene("alertas") || tiene("oportunidades")) && { id: "insights", lk: "mnav.insights", icon: Sparkles },
   ].filter(Boolean);
   const derNav = [
+    // C2 — LA PARADA, para quien hace calle. Va antes que "Depósito" porque el
+    // chofer y el preventista no entran al galpón: su pantalla es la puerta del
+    // cliente. Sale de `logistica`, que es justo lo que tienen los dos.
+    tiene("logistica") && { id: "parada", lk: "mnav.parada", icon: MapPin },
     tiene("deposito") && { id: "deposito", lk: "mnav.deposito", icon: PackageX },
     tiene("equipo") && { id: "equipo", lk: "mnav.equipo", icon: Users },
   ].filter(Boolean);
@@ -177,6 +184,10 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         return <Administracion data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
       // P35·E6 — el mapa en mobile es la VISTA SIMPLE read-only (sin React Flow),
       // accesible solo desde "Ver el mapa" de Today. Volver → Today.
+      case "parada":
+        // El transporte se filtra por el NOMBRE de la persona: el chofer no
+        // tiene por qué saber cómo se escribe su camión en el export del TMS.
+        return <Parada transporte={session?.usuario?.nombre || user?.nombre} />;
       case "mapa":
         return <MapaSimpleMobile onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} onVolver={() => setView("panel")} />;
       case "aprendizaje":

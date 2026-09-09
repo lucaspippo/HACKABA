@@ -1221,6 +1221,41 @@ def logistica_get(_u: dict = Depends(require_feature("logistica"))):
     }
 
 
+@app.get("/api/parada")
+def parada_get(cliente: str, u: dict = Depends(require_feature("logistica"))):
+    """La parada de una persona: quién es, qué debe, qué dijeron de él y qué se
+    vence que él compre.
+
+    QUIÉN VE LA DEUDA, Y POR QUÉ NO LO DECIDO ACÁ. Ver saldos es `cuentas`, y
+    el chofer no lo tiene: tiene `logistica`. Así que la parada le llega SIN el
+    bloque de deuda, y con las otras dos preguntas completas — que ya es la
+    mitad de lo que hoy no tiene.
+
+    Darle al chofer el saldo del cliente que está por visitar es una decisión
+    de producto razonable y probablemente correcta (es la plata que puede
+    cobrar, del cliente que tiene enfrente), pero **cambia qué ve un rol** y
+    eso no se resuelve dentro de un PR de pantallas. Queda anotado en
+    `design/mobile/03-CRUCES.md` §3 y lo decide el dueño del permiso.
+
+    El recorte va del lado del SERVIDOR: mandar el saldo y esconderlo en el
+    front sería regalarlo en la respuesta.
+    """
+    from core import parada
+    p = parada.de(cliente, _lang(u))
+    if "cuentas" not in perfiles.features_efectivas(u["username"]):
+        p["deuda"] = None
+        p["deuda_oculta"] = True
+    return p
+
+
+@app.get("/api/parada/proximas")
+def parada_proximas(transporte: str | None = None,
+                    u: dict = Depends(require_feature("logistica"))):
+    """Las paradas que le quedan a alguien, sin entregar, en orden."""
+    from core import parada
+    return {"paradas": parada.proximas(transporte)}
+
+
 @app.get("/api/logistica/exposicion")
 def logistica_exposicion(
         _u: dict = Depends(require_all_features("logistica", "cuentas"))):
