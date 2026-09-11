@@ -114,6 +114,26 @@ storage. Two things reliably need updating:
   **twice** to catch anything that only breaks on a second pass (a stale
   cache, a non-idempotent seed).
 
+**When a module's whole state is one blob (not per-entity rows)** — `core/
+caja.py`'s single dict (`abierta`/`movimientos`/`historial`), `core/store.py`'s
+full article list — a table with **one JSONB row per tenant** is the
+faithful migration, not N normalized rows. These modules always read/write
+the entire thing at once and compute everything in Python; nothing ever
+queries a field in SQL. Forcing a many-row schema on data that's never
+queried that way is extra design and mapping work for no real benefit — see
+`inventory_working`/`caja_state` for the pattern (`tenant_id` primary key,
+one `data`/`articulos` JSONB column, upsert-by-replace).
+
+**`git checkout -- data-demo/` reverts tracked source files in that
+directory too, not just the gitignored runtime JSON.** `data-demo/seed_db.py`
+lives there — if you have uncommitted edits to it when you run the repo's
+usual "restore the seeds" cleanup step after a test run, that command
+silently discards them (git checkout only touches tracked files with
+uncommitted changes; gitignored runtime files were never affected either
+way, so the visible risk is entirely to files like `seed_db.py`). Commit
+`seed_db.py` changes — or otherwise get them safely stashed — before
+running that cleanup, not after.
+
 ## 7. Add the module's seed data to `data-demo/seed_db.py`
 
 Prefer triggering the module's own `listar()`/equivalent (which already
@@ -135,6 +155,14 @@ tenant-switching tests in this suite already use.
 
 - `core/cuentas.py` → tables `customer_accounts`, `account_movements`;
   repo `core/db/customer_accounts_repo.py` (foundation plan, Task 8)
+- `core/audit.py` → table `audit_events` (JSONB before/after); repo
+  `core/db/audit_repo.py`
+- `core/versioning.py` → table `data_versions` (JSONB snapshot); repo
+  `core/db/versions_repo.py`
+- `core/store.py` (inventory) → table `inventory_working` (one JSONB row per
+  tenant); repo `core/db/inventory_repo.py`
+- `core/caja.py` → table `caja_state` (one JSONB row per tenant); repo
+  `core/db/caja_repo.py`
 
 ## Known follow-ups not covered by this playbook
 
