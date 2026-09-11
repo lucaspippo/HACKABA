@@ -9,41 +9,17 @@ que la mezcla local↔server sea idempotente, sin duplicados.
 """
 from __future__ import annotations
 
-import datetime
-import json
-import os
 import secrets
-
-from . import paths
-
-DATA_DIR = paths.DATA_DIR
-OBJETIVOS_JSON = os.path.join(DATA_DIR, "objetivos.json")
 
 ESTADOS = ("pendiente", "en_proceso", "listo")
 
 
-def _ahora() -> str:
-    return datetime.datetime.now().isoformat(timespec="seconds")
-
-
-def _load() -> list[dict]:
-    try:
-        return json.load(open(OBJETIVOS_JSON, encoding="utf-8"))
-    except Exception:
-        return []
-
-
-def _save(items: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(items, open(OBJETIVOS_JSON, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=2)
-
-
 def crear(nombre: str, responsable: str | None = None, fecha: str | None = None,
           creado_por: str | None = None, oid: str | None = None) -> dict:
-    items = _load()
+    from core.db import team_goals_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
     if oid:
-        ya = next((o for o in items if o["id"] == oid), None)
+        ya = team_goals_repo.get(tid, oid)
         if ya:
             return ya  # idempotente: el cliente reintenta sin duplicar
     o = {
@@ -53,24 +29,24 @@ def crear(nombre: str, responsable: str | None = None, fecha: str | None = None,
         "fecha": fecha or "sin fecha",
         "estado": "pendiente",
         "creado_por": creado_por or "dueño",
-        "creado": _ahora(),
     }
-    items.insert(0, o)
-    _save(items)
-    return o
+    team_goals_repo.create(tid, o)
+    return team_goals_repo.get(tid, o["id"])
 
 
 def listar() -> list[dict]:
-    return _load()
+    from core.db import team_goals_repo, tenant as _tenant
+    return team_goals_repo.list_goals(_tenant.current_tenant_id())
 
 
 def cambiar_estado(oid: str, estado: str) -> dict:
     if estado not in ESTADOS:
         raise ValueError(f"estado inválido: {estado}")
-    items = _load()
-    o = next((x for x in items if x["id"] == oid), None)
+    from core.db import team_goals_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    o = team_goals_repo.get(tid, oid)
     if not o:
         raise KeyError("objetivo inexistente")
+    team_goals_repo.update_status(tid, oid, estado)
     o["estado"] = estado
-    _save(items)
     return o
