@@ -392,3 +392,32 @@ for its own tenant (`main.admin_reset_demo`, after truncating). Never
 touches `AUTH_TABLES` — resetting those would log out every visitor and
 rotate their already-known password. See `tests/test_db_reset.py` and
 `tests/test_admin_reset_demo.py`.
+
+**A real bug this introduced, found and fixed shortly after:** the first
+version of `tests/test_admin_reset_demo.py` ran the reset flow against
+`POLPILOT_TENANT=demo` — the real, shared "demo" tenant, not a throwaway
+one. The endpoint doesn't care which tenant it's pointed at, so this
+worked, but it meant every run of that single test truncated and
+re-seeded the *actual* demo tenant's Postgres business data from whatever
+happened to be on disk in that checkout at the time — in particular
+`data-demo/audit.json`, which is gitignored and only exists if
+`generar.py` has been run there. A fresh git worktree has no gitignored
+files at all, so running the suite from a brand-new worktree silently
+wiped the real demo tenant's rich audit history down to a nearly-empty
+fallback — a *persistent* change to shared local Postgres state, not a
+this-test-run-only mutation. That broke unrelated canonical-number tests
+(`test_p34.py`, `test_p39.py`, `test_kpis.py`, ...) in every subsequent
+run, from any worktree, until someone happened to notice and manually
+re-seeded the demo tenant by hand.
+
+Fixed by having the test seed and exercise a **throwaway** tenant
+(`seed_db.run(f"test-reset-{uuid4().hex[:8]}", ...)`, deleted from
+`tenants` in a `finally` block — cascades everything) instead of "demo".
+The general lesson: **any test that can reach `core/db/reset.py` or
+otherwise truncate real tenant-scoped tables must never point at a tenant
+slug another test or a human relies on** — not even read-only-seeming
+demo data. A `db_tenant`-style throwaway tenant (or a slug the test itself
+provisions and tears down) is the only safe target for a destructive
+operation, the same way `tests/conftest.py`'s own destructive resets are
+scoped to "piloto"/"demo" specifically and never to some tenant a
+developer might be interactively using in another terminal.
