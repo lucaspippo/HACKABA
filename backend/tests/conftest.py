@@ -31,6 +31,7 @@ if "POLPILOT_DATA_DIR" not in os.environ:
 # "piloto" tenant needs a row in `tenants` before any test that touches
 # login/credentials runs — idempotent, so re-running the suite is a no-op.
 from core.db.engine import get_admin_engine as _get_admin_engine  # noqa: E402
+from core.db.tenant_tables import TENANT_SCOPED_TABLES as _TENANT_SCOPED_TABLES  # noqa: E402
 from sqlalchemy import text as _text_bootstrap  # noqa: E402
 
 with _get_admin_engine().begin() as _conn:
@@ -56,33 +57,20 @@ with _get_admin_engine().begin() as _conn:
     # from **os.environ, so the flag propagates to any subprocess spawned after
     # this point without needing to be threaded through explicitly.
     #
-    # PILOTO_MUTABLE_TABLES: every tenant-scoped table any core/*.py module
-    # has moved to Postgres so far. Add a new one here whenever a new module
-    # gets migrated (see core/db/MIGRATING_A_MODULE.md) — piloto's whole point
-    # is to behave like a freshly-mounted tenant with no history (per the
-    # comment at the top of this file), which the old JSON-file suite got for
-    # free from a brand-new temp scratch directory every `pytest` invocation.
-    # Postgres rows don't get that for free — they persist across separate
-    # suite runs, not just within one run, unless explicitly reset here.
+    # Every tenant-scoped table any core/*.py module has moved to Postgres so
+    # far (core.db.tenant_tables.TENANT_SCOPED_TABLES — add a new one there,
+    # not here, whenever a module gets migrated; see core/db/MIGRATING_A_MODULE.md).
+    # piloto's whole point is to behave like a freshly-mounted tenant with no
+    # history (per the comment at the top of this file), which the old
+    # JSON-file suite got for free from a brand-new temp scratch directory
+    # every `pytest` invocation. Postgres rows don't get that for free — they
+    # persist across separate suite runs, not just within one run, unless
+    # explicitly reset here.
     if not os.environ.get("_POLPILOT_TEST_TENANT_RESET"):
         _piloto_id = _conn.execute(_text_bootstrap(
             "SELECT id FROM tenants WHERE slug = 'piloto'"
         )).scalar_one()
-        for _tabla in (
-            "auth_credentials", "sessions",
-            "account_movements", "customer_accounts",
-            "audit_events", "data_versions",
-            "inventory_working", "caja_state", "organization_config",
-            "purchase_orders", "team_goals", "supplier_conditions",
-            "team_notes", "notifications",
-            "automation_policies", "retail_counter_data", "internal_transfers",
-            "inventory_baseline", "sample_extractions",
-            "reminders", "user_memory", "macro_cache", "finance_data",
-            "client_sales_data",
-            "collection_actions", "business_knowledge", "data_sections",
-            "sales_validation",
-            "floor_reports", "staging_batches", "user_profiles", "supplier_accounts",
-        ):
+        for _tabla in _TENANT_SCOPED_TABLES:
             _conn.execute(_text_bootstrap(
                 f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
             ), {"tid": _piloto_id})
@@ -93,7 +81,8 @@ with _get_admin_engine().begin() as _conn:
         _demo_id = _conn.execute(_text_bootstrap(
             "SELECT id FROM tenants WHERE slug = 'demo'"
         )).scalar_one()
-        for _tabla in ("auth_credentials", "sessions"):
+        from core.db.tenant_tables import AUTH_TABLES as _AUTH_TABLES
+        for _tabla in _AUTH_TABLES:
             _conn.execute(_text_bootstrap(
                 f"DELETE FROM {_tabla} WHERE tenant_id = :tid"
             ), {"tid": _demo_id})

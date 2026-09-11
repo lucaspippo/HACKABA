@@ -1,18 +1,18 @@
 """
 Seeds (or resets) a tenant's row, its auth credentials, and every domain
-migrated to Postgres so far (cuentas, audit, versioning*, inventory, caja —
-* versioning has no seed data, it's an empty append-only log for a new
-tenant). Ports data-demo/generar.py's role for those domains — as more
-core/*.py modules move off JSON, see backend/core/db/MIGRATING_A_MODULE.md,
-their seed data joins this script the same way: trigger the module's own
+migrated to Postgres (all of core/*.py's storage, per
+backend/core/db/MIGRATING_A_MODULE.md). Ports data-demo/generar.py's role
+for those domains: seed_domains() below triggers each module's own
 first-read, which already knows to prefer its real on-disk dataset over its
 in-code fallback. Don't duplicate seed data here.
 
-Must run as a fresh process per tenant, never called for a second tenant
-from within an already-running one: core.paths.TENANT/DATA_DIR are resolved
-once at first import (same one-process-per-tenant assumption the rest of the
-codebase makes — see the plan's Global Constraints) and won't retarget just
-because POLPILOT_TENANT changes later in that same process.
+run() must run as a fresh process per tenant, never called for a second
+tenant from within an already-running one: core.paths.TENANT/DATA_DIR are
+resolved once at first import (same one-process-per-tenant assumption the
+rest of the codebase makes — see the plan's Global Constraints) and won't
+retarget just because POLPILOT_TENANT changes later in that same process.
+seed_domains() alone is safe to call from within an already-running process
+for its OWN tenant — see its docstring.
 
 Usage: python seed_db.py [tenant_slug]   (default: demo)
 """
@@ -65,12 +65,24 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
             import bcrypt
             credentials_repo.set(tid, username, bcrypt.hashpw(b"demo-password", bcrypt.gensalt()).decode())
 
-    # Each call below triggers that module's own first-read seed (real
-    # on-disk dataset if present, else its in-code fallback) — see the
-    # module docstring above for why nothing is duplicated here. Modules
-    # with no seed data at all (purchase_orders, team_goals, notifications —
-    # they start empty for every tenant, same as the old missing-file
-    # behavior) don't need a call here.
+    seed_domains()
+    print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
+
+
+def seed_domains() -> None:
+    """Triggers every migrated domain module's own first-read seed (real
+    on-disk dataset if present, else its in-code fallback) — see the module
+    docstring above for why nothing is duplicated here. Modules with no seed
+    data at all (purchase_orders, team_goals, notifications — they start
+    empty for every tenant, same as the old missing-file behavior) don't
+    need a call here.
+
+    Unlike run(), this assumes POLPILOT_TENANT/core.paths.TENANT are ALREADY
+    correctly set for the current process — true both when run() calls this
+    from a fresh subprocess, and when an already-running server process
+    (which resolved its own tenant at boot) calls this directly to re-seed
+    after core.db.reset.truncate_business_data() (see main.py's
+    admin_reset_demo)."""
     from core import cuentas as core_cuentas
     core_cuentas.listar()  # customer_accounts / account_movements
 
@@ -116,8 +128,6 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
 
     from core import ventas as core_ventas
     core_ventas._val_load()  # sales_validation
-
-    print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
 
 if __name__ == "__main__":

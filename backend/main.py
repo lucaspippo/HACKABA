@@ -19,6 +19,7 @@ Endpoints:
 from __future__ import annotations
 
 import os
+import sys
 import time
 from contextlib import asynccontextmanager
 
@@ -2220,7 +2221,17 @@ def admin_reset_demo(token: str):
     """Vuelve el demo público al estado canónico SIN reiniciar el contenedor.
     Protegido por POLPILOT_RESET_TOKEN (secret de Render, no es una credencial
     de usuario): sin el token exacto, 404 — el endpoint ni se revela. Además,
-    el filesystem de Render es efímero: cada restart/redeploy resetea solo."""
+    el filesystem de Render es efímero: cada restart/redeploy resetea solo.
+
+    Dos mitades, porque el estado vivo del demo vive en dos lugares:
+      1. Archivos (fotos de perfil, adjuntos de piso, documentos generados,
+         audios de muestra) — se restauran copiando de POLPILOT_CANONICAL_DIR,
+         como siempre.
+      2. Postgres (TODO lo demás — inventario, cuentas, caja, auditoría,
+         staging, perfiles, etc., ver core/db/MIGRATING_A_MODULE.md) — se
+         vacía para este tenant y se re-siembra desde el dataset real en
+         disco (seed_db.seed_domains(), el mismo camino que un tenant recién
+         montado)."""
     import shutil
     esperado = os.environ.get("POLPILOT_RESET_TOKEN")
     canonical = os.environ.get("POLPILOT_CANONICAL_DIR")
@@ -2241,6 +2252,17 @@ def admin_reset_demo(token: str):
         if not os.path.exists(os.path.join(canonical, nombre)):
             ruta = os.path.join(data_dir, nombre)
             (shutil.rmtree if os.path.isdir(ruta) else os.remove)(ruta)
+
+    from core.db import reset as db_reset
+    from core.db import tenant as db_tenant
+    tid = db_tenant.current_tenant_id()
+    db_reset.truncate_business_data(tid)
+
+    if data_dir not in sys.path:
+        sys.path.insert(0, data_dir)
+    import seed_db
+    seed_db.seed_domains()
+
     from core import analisis_cache
     store.reload()
     ds.reload_data()

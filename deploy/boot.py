@@ -6,12 +6,15 @@ sale con error, el contenedor no queda healthy y Render no lo publica.
 Pasos:
   1. Alembic (backend/migrations): el schema de Postgres queda al día antes
      de que el server toque una sola tabla.
-  2. generar.py (idempotente, determinista): siembra lo que falte en DATA_DIR
-     para los dominios que TODAVÍA son JSON (inventario y el resto — ver
-     backend/core/db/MIGRATING_A_MODULE.md para qué falta migrar).
-  3. seed_db.run(): siembra Postgres para los dominios YA migrados (tenant,
-     auth_credentials, cuentas — ver Task 8/9 del plan de fundación).
-  4. Verificación dura: inventario cargado y con artículos.
+  2. generar.py (idempotente, determinista): regenera en DATA_DIR el dataset
+     fuente que Postgres siembra desde disco (inventory.json y el resto).
+     Ya no es storage en vivo — todo dominio de core/*.py vive en Postgres
+     (ver backend/core/db/MIGRATING_A_MODULE.md) — esto es sólo el seed
+     source que seed_db.run() lee la primera vez que ve el tenant.
+  3. seed_db.run(): siembra Postgres — tenant, auth_credentials, y TODOS
+     los dominios migrados (ver backend/core/db/MIGRATING_A_MODULE.md).
+  4. Verificación dura: el inventario quedó sembrado en POSTGRES (no el
+     JSON de disco, que el server ya no lee en runtime).
   5. Copia canónica para el RESET (DATA_DIR → POLPILOT_CANONICAL_DIR): el
      endpoint admin de reset restaura ESTE estado sin reiniciar el contenedor.
      (Además, el filesystem de Render es efímero: cada restart/redeploy ya
@@ -20,7 +23,6 @@ Pasos:
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
@@ -49,7 +51,8 @@ def main() -> None:
         fallar("alembic upgrade head falló — el server NO levanta con un schema desactualizado")
     print("[boot] migraciones aplicadas", flush=True)
 
-    # 2 · seed idempotente (el mismo generar.py de siempre — dominios aún JSON)
+    # 2 · seed idempotente (el mismo generar.py de siempre — regenera el
+    #     dataset FUENTE en disco; Postgres es quien sirve en runtime)
     gen = os.path.join(DATA_DIR, "generar.py")
     if not os.path.exists(gen):
         fallar(f"no existe {gen} — ¿la imagen copió data-demo/?")
@@ -60,7 +63,7 @@ def main() -> None:
         fallar("generar.py falló — el server NO levanta sin datos")
     print("[boot] seed verificado (generar.py)", flush=True)
 
-    # 3 · seed idempotente de Postgres (dominios ya migrados: tenant, auth, cuentas)
+    # 3 · seed idempotente de Postgres (tenant, auth, y todos los dominios migrados)
     tenant = os.environ.get("POLPILOT_TENANT", "demo")
     sys.path.insert(0, DATA_DIR)
     sys.path.insert(0, BACKEND)
@@ -71,15 +74,15 @@ def main() -> None:
         fallar(f"seed_db.run() falló ({e}) — el server NO levanta sin datos")
     print(f"[boot] Postgres seed ok (tenant={tenant})", flush=True)
 
-    # 4 · verificación dura del dataset
-    inv = os.path.join(DATA_DIR, "inventory.json")
+    # 4 · verificación dura del dataset — contra POSTGRES, la fuente real en
+    #     runtime (inventory.json en disco es sólo el seed source de arriba)
     try:
-        articulos = json.load(open(inv, encoding="utf-8"))
-        n = len(articulos.get("articulos") or articulos) if isinstance(articulos, dict) else len(articulos)
+        from core import store as core_store
+        n = len(core_store.raw_actual())
         assert n > 0
     except Exception as e:  # noqa: BLE001
-        fallar(f"inventario ilegible o vacío ({e}) — el server NO levanta sin datos")
-    print(f"[boot] dataset ok: {n} artículos", flush=True)
+        fallar(f"inventario ilegible o vacío en Postgres ({e}) — el server NO levanta sin datos")
+    print(f"[boot] dataset ok: {n} artículos (Postgres)", flush=True)
 
     # 5 · copia canónica para el reset manual
     if CANONICAL:
