@@ -23,12 +23,12 @@ _SNIPPET = r"""
 import json
 from fastapi.testclient import TestClient
 import auth, main
+from tests.conftest import DEMO_TEST_PASSWORD  # importing conftest seeds it too
 
 client = TestClient(main.app)
-creds = auth.cargar_o_generar_credenciales()
 
 def _tok(u):
-    return client.post("/api/login", json={"username": u, "password": creds[u]}).json()["token"]
+    return client.post("/api/login", json={"username": u, "password": DEMO_TEST_PASSWORD}).json()["token"]
 
 def _code(u, method, path):
     h = {"Authorization": "Bearer " + _tok(u)}
@@ -58,11 +58,11 @@ import json, os
 os.environ["POLPILOT_DEMO_ROLE_SWITCH"] = "1"
 from fastapi.testclient import TestClient
 import auth, main
+from tests.conftest import DEMO_TEST_PASSWORD  # importing conftest seeds it too
 
 client = TestClient(main.app)
-creds = auth.cargar_o_generar_credenciales()
 dueno = auth.dueno()["username"]
-tok = client.post("/api/login", json={"username": dueno, "password": creds[dueno]}).json()["token"]
+tok = client.post("/api/login", json={"username": dueno, "password": DEMO_TEST_PASSWORD}).json()["token"]
 h = {"Authorization": "Bearer " + tok}
 
 out = {}

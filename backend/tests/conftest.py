@@ -27,6 +27,72 @@ if "POLPILOT_DATA_DIR" not in os.environ:
                  os.path.join(_scratch, "inventory.json"))
     os.environ["POLPILOT_DATA_DIR"] = _scratch
 
+# auth.py is now Postgres-backed (see core/db/), so the suite's pinned
+# "piloto" tenant needs a row in `tenants` before any test that touches
+# login/credentials runs — idempotent, so re-running the suite is a no-op.
+from core.db.engine import get_admin_engine as _get_admin_engine  # noqa: E402
+from sqlalchemy import text as _text_bootstrap  # noqa: E402
+
+with _get_admin_engine().begin() as _conn:
+    _conn.execute(_text_bootstrap(
+        "INSERT INTO tenants (slug, name, short_name, source) "
+        "VALUES ('piloto', 'Supermercados Horizonte', 'Horizonte', "
+        "'Faro ERP - nucleo de verdad PolPilot') "
+        "ON CONFLICT (slug) DO NOTHING"
+    ))
+    _conn.execute(_text_bootstrap(
+        "INSERT INTO tenants (slug, name, short_name, source) "
+        "VALUES ('demo', 'Distribuidora del Litoral', 'Distribuidora del Litoral', "
+        "'ERP de la distribuidora (DEMO)') "
+        "ON CONFLICT (slug) DO NOTHING"
+    ))
+    # Credentials are reset once per SUITE RUN, not once per PROCESS. Several
+    # tests spawn subprocesses that import this module fresh (test_frontline_
+    # scope.py, etc.) — without the env-var guard below, each of those re-runs
+    # this DELETE too, wiping out "piloto" credentials the main pytest process
+    # already generated and cached in auth._GENERADAS_ESTE_PROCESO, and every
+    # test after that point fails to log in. The guard var is set in os.environ
+    # (not just a Python global) because subprocess calls below build their env
+    # from **os.environ, so the flag propagates to any subprocess spawned after
+    # this point without needing to be threaded through explicitly.
+    if not os.environ.get("_POLPILOT_TEST_CREDS_RESET"):
+        for _slug in ("piloto", "demo"):
+            _tid = _conn.execute(_text_bootstrap(
+                "SELECT id FROM tenants WHERE slug = :slug"
+            ), {"slug": _slug}).scalar_one()
+            _conn.execute(_text_bootstrap(
+                "DELETE FROM auth_credentials WHERE tenant_id = :tid"
+            ), {"tid": _tid})
+            _conn.execute(_text_bootstrap(
+                "DELETE FROM sessions WHERE tenant_id = :tid"
+            ), {"tid": _tid})
+        os.environ["_POLPILOT_TEST_CREDS_RESET"] = "1"
+
+DEMO_TEST_PASSWORD = "polpilot-suite-test-password"
+
+
+def _seed_demo_credentials() -> None:
+    """Every 'demo' USUARIOS entry gets DEMO_TEST_PASSWORD, fixed and known —
+    see the comment above for why. Called lazily (not at import time) since
+    it needs usuarios_demo, which core.paths.TENANT gates on POLPILOT_TENANT;
+    subprocess-spawning demo tests set that env var themselves per-call."""
+    import bcrypt
+
+    from core.db import credentials_repo
+    from core.db.engine import get_admin_engine as _admin
+
+    with _admin().begin() as conn:
+        tid = conn.execute(_text_bootstrap(
+            "SELECT id FROM tenants WHERE slug = 'demo'"
+        )).scalar_one()
+    import usuarios_demo
+    hashed = bcrypt.hashpw(DEMO_TEST_PASSWORD.encode("utf-8"), bcrypt.gensalt()).decode()
+    for _username in usuarios_demo.USUARIOS:
+        credentials_repo.set(str(tid), _username, hashed)
+
+
+_seed_demo_credentials()
+
 
 @pytest.fixture
 def db_tenant():
