@@ -44,9 +44,12 @@ _SEED = {
 }
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    """El estado REAL del tenant si existe en disco (p.ej. data-demo/caja.json,
+    regenerado por generar.py en cada boot), usado SOLO para la siembra
+    inicial en Postgres (una vez por tenant). _SEED es el fallback de un
+    tenant sin dataset propio (piloto de test) — ver core/db/MIGRATING_A_MODULE.md."""
     if not os.path.exists(CAJA_JSON):
-        _save(_SEED)
         return json.loads(json.dumps(_SEED))
     try:
         return json.load(open(CAJA_JSON, encoding="utf-8"))
@@ -54,9 +57,19 @@ def _load() -> dict:
         return json.loads(json.dumps(_SEED))
 
 
+def _load() -> dict:
+    from core.db import caja_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    estado = caja_repo.get_state(tid)
+    if estado is None:
+        estado = _seed_inicial()
+        caja_repo.save_state(tid, estado)
+    return estado
+
+
 def _save(c: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(c, open(CAJA_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import caja_repo, tenant as _tenant
+    caja_repo.save_state(_tenant.current_tenant_id(), c)
 
 
 def _totales(caja: dict) -> dict:
@@ -131,5 +144,5 @@ def historial() -> list[dict]:
 
 
 def resetear() -> None:
-    if os.path.exists(CAJA_JSON):
-        os.remove(CAJA_JSON)
+    from core.db import caja_repo, tenant as _tenant
+    caja_repo.save_state(_tenant.current_tenant_id(), _seed_inicial())

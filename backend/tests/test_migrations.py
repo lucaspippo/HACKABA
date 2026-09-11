@@ -100,3 +100,14 @@ def test_inventory_working_table_has_rls_enabled():
         )).mappings().all()
         assert len(rows) == 1
         assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
+
+
+def test_caja_state_table_has_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = 'caja_state'"
+        )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
