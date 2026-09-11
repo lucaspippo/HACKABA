@@ -6,7 +6,6 @@ de mostrar números, (c) el dry-run no compromete nada y Evolución sigue viva.
 from __future__ import annotations
 
 import datetime
-import os
 
 import pytest
 
@@ -22,14 +21,12 @@ def d(n):
 
 @pytest.fixture(autouse=True)
 def limpio():
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     limpiar_tabla_tenant("data_sections")
     limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()
     yield
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     limpiar_tabla_tenant("data_sections")
     limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()

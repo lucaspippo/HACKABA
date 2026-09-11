@@ -244,6 +244,32 @@ tenant-switching tests in this suite already use.
   etc.); repo `core/db/blob_repo.py` (generic)
 - `core/ventas.py` → table `sales_validation` (one JSONB row per tenant,
   the monto-validator state); repo `core/db/blob_repo.py` (generic)
+- `core/piso.py` → table `floor_reports` (per-row, client-generated `id`);
+  repo `core/db/floor_reports_repo.py` — unlike `reminders`, this module's
+  mutations are always narrow (one new row, or one row's status), so it
+  uses targeted `create()`/`resolve()` calls instead of a full-list
+  `save_all()`. Photo attachments (`piso_adjuntos/`) stay on disk — only
+  the report record itself moved.
+- `core/perfiles.py` → table `user_profiles` (one JSONB row per tenant, the
+  `{"usuarios": {...}, "solicitudes": [...]}` state); repo
+  `core/db/blob_repo.py` (generic). Profile photos (`fotos/`) stay on disk.
+- `core/staging.py` → table `staging_batches` (one JSONB row per tenant,
+  the list of import batches); repo `core/db/blob_repo.py` (generic)
+- `core/comprobantes.py` → table `supplier_accounts` (one JSONB row per
+  tenant, the list of `{proveedor, saldo, movimientos}` running accounts —
+  the module's only own persisted state; everything else it touches is
+  already-migrated `esquema`/`store`/`cuentas`); repo `core/db/blob_repo.py`
+  (generic)
+- `core/grafo.py` — **no new table.** It only ever *read* `finanzas.json`
+  and `traslados_internos.json` directly (no `_save`), and both are now
+  Postgres-backed via already-migrated `core/pagos.py` (`finance_data`) and
+  `core/traslados.py` (`internal_transfers`). Swapped the two direct
+  `open(...)`/`json.load(...)` reads for `pagos._load()` /
+  `traslados._load()` and deleted the local `_json()` helper — no schema
+  change needed. Worth checking for this shortcut before writing a new
+  migration: a "read-only" module reading another module's *raw JSON file*
+  (not calling that module's own functions) is very likely reading data a
+  previous batch already moved to Postgres.
 
 **Forgetting a module's `_seed_inicial()` is a silent, cascading bug, not a
 loud one.** Migrating `core/ventas.py`'s `_val_load()` straight onto

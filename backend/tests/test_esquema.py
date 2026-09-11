@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from core import esquema, staging, store
@@ -14,13 +12,11 @@ VENTAS_CSV = (
 
 @pytest.fixture(autouse=True)
 def limpio():
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
     yield
-    if os.path.exists(staging.STAGING_JSON):
-        os.remove(staging.STAGING_JSON)
+    limpiar_tabla_tenant("staging_batches")
     limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
 

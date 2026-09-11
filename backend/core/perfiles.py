@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import base64
 import datetime
-import json
 import os
 import secrets
 import unicodedata
@@ -26,9 +25,7 @@ import unicodedata
 from . import paths
 from . import notificaciones
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-PERFILES_JSON = os.path.join(DATA_DIR, "perfiles.json")
 FOTOS_DIR = os.path.join(DATA_DIR, "fotos")
 
 # Señales → módulo sugerido, con el porqué en una línea (lo que ve el empleado).
@@ -86,15 +83,16 @@ def _ahora() -> str:
 
 
 def _load() -> dict:
-    try:
-        return json.load(open(PERFILES_JSON, encoding="utf-8"))
-    except Exception:
-        return {"usuarios": {}, "solicitudes": []}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("user_profiles", _tenant.current_tenant_id()) \
+        or {"usuarios": {}, "solicitudes": []}
 
 
 def _save(d: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(d, open(PERFILES_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("user_profiles", _tenant.current_tenant_id(), d)
 
 
 def _audit(actor: str, accion: str, antes=None, despues=None) -> None:

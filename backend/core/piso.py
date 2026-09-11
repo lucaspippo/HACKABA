@@ -29,14 +29,12 @@ lee "qué resolvió esta semana" del panel del dueño (main._TRABAJO_EXTRA).
 from __future__ import annotations
 
 import base64
-import json
 import os
 import secrets
 
 from . import fechas, paths
 from .audit import AuditLog
 
-PISO_JSON = os.path.join(paths.DATA_DIR, "piso.json")
 # P41·4 — la PRUEBA de una entrega (foto del remito firmado, firma en pantalla).
 # Mismo criterio que las fotos de perfil: archivo local, sin servicios externos.
 ADJUNTOS_DIR = os.path.join(paths.DATA_DIR, "piso_adjuntos")
@@ -59,17 +57,9 @@ MOTIVOS = ("roto", "faltante", "vencido", "no_pedido")
 
 
 def _load() -> list[dict]:
-    try:
-        with open(PISO_JSON, encoding="utf-8") as f:
-            return json.load(f) or []
-    except Exception:  # noqa: BLE001
-        return []
-
-
-def _save(items: list[dict]) -> None:
-    os.makedirs(paths.DATA_DIR, exist_ok=True)
-    with open(PISO_JSON, "w", encoding="utf-8") as f:
-        json.dump(items, f, ensure_ascii=False, indent=1)
+    from core.db import floor_reports_repo
+    from core.db import tenant as _tenant
+    return floor_reports_repo.list_all(_tenant.current_tenant_id())
 
 
 def _ahora() -> str:
@@ -151,9 +141,9 @@ def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
     }
     if prueba:
         r["adjunto"] = _guardar_adjunto(rid, prueba)
-    items = _load()
-    items.append(r)
-    _save(items)
+    from core.db import floor_reports_repo
+    from core.db import tenant as _tenant
+    floor_reports_repo.create(_tenant.current_tenant_id(), r)
     _audit.record(actor, ACCION[tipo], None,
                   {k: v for k, v in d.items() if k in
                    ("producto", "codigo", "cantidad", "contado", "motivo",
@@ -174,16 +164,12 @@ def listar(tipo: str | None = None, estado: str | None = None,
 
 
 def resolver(rid: str, actor: str, nota: str = "") -> dict:
-    items = _load()
-    r = next((x for x in items if x["id"] == rid), None)
-    if not r:
+    from core.db import floor_reports_repo
+    from core.db import tenant as _tenant
+    if floor_reports_repo.get(_tenant.current_tenant_id(), rid) is None:
         raise KeyError("reporte inexistente")
-    r["estado"] = "resuelto"
-    r["resuelto_por"] = actor
-    r["resuelto"] = _ahora()
-    if nota:
-        r["nota_dueno"] = nota
-    _save(items)
+    r = floor_reports_repo.resolve(_tenant.current_tenant_id(), rid, actor,
+                                    nota, _ahora())
     _audit.record(actor, "resolver_reporte_piso",
                   antes={"reporte": rid, "tipo": r["tipo"]}, despues={"estado": "resuelto"})
     return r
