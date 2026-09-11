@@ -67,7 +67,10 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
 
     # Each call below triggers that module's own first-read seed (real
     # on-disk dataset if present, else its in-code fallback) — see the
-    # module docstring above for why nothing is duplicated here.
+    # module docstring above for why nothing is duplicated here. Modules
+    # with no seed data at all (purchase_orders, team_goals, notifications —
+    # they start empty for every tenant, same as the old missing-file
+    # behavior) don't need a call here.
     from core import cuentas as core_cuentas
     core_cuentas.listar()  # customer_accounts / account_movements
 
@@ -77,6 +80,15 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
 
     from core import caja as core_caja
     core_caja.estado()  # caja_state
+
+    from core import organizacion as core_organizacion
+    core_organizacion.get()  # organization_config
+
+    from core import reposicion as core_reposicion
+    core_reposicion.condiciones()  # supplier_conditions
+
+    from core import notas as core_notas
+    core_notas.listar()  # team_notes
 
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 

@@ -14,16 +14,18 @@ import angela
 import auth
 import main
 from core import perfiles, notificaciones
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [perfiles.PERFILES_JSON, notificaciones.NOTIFICACIONES_JSON]
+    files = [perfiles.PERFILES_JSON]
     backup = {}
     for f in files:
         if os.path.exists(f):
             backup[f] = open(f, encoding="utf-8").read()
             os.remove(f)
+    limpiar_tabla_tenant("notifications")
     # los tests de Ángela mutan los globals de sesión: restaurarlos siempre
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     yield
@@ -33,6 +35,7 @@ def limpio():
             os.remove(f)
         if f in backup:
             open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("notifications")
 
 
 @pytest.fixture()

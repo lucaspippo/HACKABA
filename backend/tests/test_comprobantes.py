@@ -88,10 +88,8 @@ def h():
 def _aislar():
     """Apartados/proveedores/cuentas como estaban + inventario restaurado."""
     from core import caja as caja_mod
-    from core import notificaciones as notif_mod
-    from tests.conftest import limpiar_cuentas_db
-    files = [esquema.APARTADOS_JSON, comprobantes.PROVEEDORES_JSON,
-             notif_mod.NOTIFICACIONES_JSON]
+    from tests.conftest import limpiar_cuentas_db, limpiar_tabla_tenant
+    files = [esquema.APARTADOS_JSON, comprobantes.PROVEEDORES_JSON]
     backup, existia = {}, set()
     for f in files:
         if os.path.exists(f):
@@ -100,11 +98,13 @@ def _aislar():
             os.remove(f)
     limpiar_cuentas_db()
     caja_mod.resetear()
+    limpiar_tabla_tenant("notifications")
     snapshot = copy.deepcopy(store.raw_actual())
     yield
     store.guardar(snapshot)
     limpiar_cuentas_db()
     caja_mod.resetear()
+    limpiar_tabla_tenant("notifications")
     for f in files:
         if os.path.exists(f):
             os.remove(f)
