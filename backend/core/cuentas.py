@@ -17,10 +17,6 @@ from . import paths
 from . import fechas
 from . import conocimiento
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-CUENTAS_JSON = os.path.join(DATA_DIR, "cuentas.json")
-
 # Datos demo de la distribuidora (saldo en $, días desde la última cancelación).
 _SEED = [
     {"id": "perez", "nombre": "Almacén Don Pérez", "saldo": 30_000_000, "limite_credito": 32_000_000,
@@ -55,19 +51,33 @@ _SEED = [
 ]
 
 
-def _load() -> list[dict]:
-    if not os.path.exists(CUENTAS_JSON):
-        _save(_SEED)
-        return [dict(c) for c in _SEED]
+def _seed_inicial() -> list[dict]:
+    """El dataset REAL del tenant si existe en disco (p.ej. data-demo/cuentas.json,
+    generado por data-demo/generar.py — la fuente de los números canónicos del
+    demo), usado SOLO para la siembra inicial en Postgres (una vez por tenant,
+    ver customer_accounts_repo.seed_if_empty). _SEED de más arriba es el
+    fallback de un tenant sin dataset propio todavía (piloto de test)."""
+    cuentas_json = os.path.join(paths.DATA_DIR, "cuentas.json")
+    if not os.path.exists(cuentas_json):
+        return _SEED
     try:
-        return json.load(open(CUENTAS_JSON, encoding="utf-8"))
+        return json.load(open(cuentas_json, encoding="utf-8"))
     except Exception:
-        return [dict(c) for c in _SEED]
+        return _SEED
+
+
+def _load() -> list[dict]:
+    from core.db import customer_accounts_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    customer_accounts_repo.seed_if_empty(tid, _seed_inicial())
+    return customer_accounts_repo.list_accounts(tid)
 
 
 def _save(clientes: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(clientes, open(CUENTAS_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import customer_accounts_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    for c in clientes:
+        customer_accounts_repo.upsert_account(tid, c)
     # P11·B4: un cobro/venta cambia morosos y objetivos → análisis cacheados afuera.
     from . import analisis_cache
     analisis_cache.datos_cambiaron()
@@ -206,6 +216,8 @@ def mensaje_cobro(cliente_id: str, lang: str | None = None) -> dict | None:
 
 
 def registrar_cobro(cliente_id: str, monto: float, medio: str = "transferencia") -> dict:
+    from core.db import customer_accounts_repo, tenant as _tenant
+
     clientes = _load()
     c = next((x for x in clientes if x["id"] == cliente_id), None)
     if not c:
@@ -214,7 +226,13 @@ def registrar_cobro(cliente_id: str, monto: float, medio: str = "transferencia")
     c["dias_sin_pagar"] = 0
     c.setdefault("movimientos", []).append({"fecha": fechas.hoy().isoformat(), "tipo": "cobro",
                                             "monto": monto, "detalle": "Cobro"})
-    _save(clientes)
+
+    tid = _tenant.current_tenant_id()
+    customer_accounts_repo.upsert_account(tid, c)
+    customer_accounts_repo.add_movement(tid, cliente_id, c["movimientos"][-1])
+    from . import analisis_cache
+    analisis_cache.datos_cambiaron()
+
     # El grafo propaga: un cobro de cuenta corriente es plata que entra a la caja del día.
     # Best-effort: si la caja está cerrada o falla, no rompemos el cobro (que ya se guardó).
     try:

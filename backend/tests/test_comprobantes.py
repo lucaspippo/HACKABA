@@ -87,20 +87,22 @@ def h():
 @pytest.fixture(autouse=True)
 def _aislar():
     """Apartados/proveedores/cuentas como estaban + inventario restaurado."""
-    from core import caja as caja_mod, cuentas as cuentas_mod
+    from core import caja as caja_mod
     from core import notificaciones as notif_mod
+    from tests.conftest import limpiar_cuentas_db
     files = [esquema.APARTADOS_JSON, comprobantes.PROVEEDORES_JSON,
-             cuentas_mod.CUENTAS_JSON, caja_mod.CAJA_JSON,
-             notif_mod.NOTIFICACIONES_JSON]
+             caja_mod.CAJA_JSON, notif_mod.NOTIFICACIONES_JSON]
     backup, existia = {}, set()
     for f in files:
         if os.path.exists(f):
             backup[f] = open(f, encoding="utf-8").read()
             existia.add(f)
             os.remove(f)
+    limpiar_cuentas_db()
     snapshot = copy.deepcopy(store.raw_actual())
     yield
     store.guardar(snapshot)
+    limpiar_cuentas_db()
     for f in files:
         if os.path.exists(f):
             os.remove(f)

@@ -116,6 +116,19 @@ def db_tenant():
         conn.execute(_text("DELETE FROM tenants WHERE id = :id"), {"id": tid})
 
 
+def limpiar_cuentas_db() -> None:
+    """Vacía customer_accounts/account_movements del tenant activo — el
+    equivalente DB de "borrar cuentas.json" (core/cuentas.py._load() re-siembra
+    desde _SEED en la próxima llamada, como hacía con el archivo ausente)."""
+    from core.db import tenant as _tenant_mod
+    from core.db.engine import tenant_connection
+
+    tid = _tenant_mod.current_tenant_id()
+    with tenant_connection(tid) as conn:
+        conn.execute(_text("DELETE FROM account_movements"))
+        conn.execute(_text("DELETE FROM customer_accounts"))
+
+
 @pytest.fixture(autouse=True)
 def _analisis_cache_limpio():
     """P11·B4: el cache de análisis jamás se filtra entre tests — ni siquiera
