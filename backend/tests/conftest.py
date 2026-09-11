@@ -129,6 +129,19 @@ def limpiar_cuentas_db() -> None:
         conn.execute(_text("DELETE FROM customer_accounts"))
 
 
+def limpiar_tabla_tenant(tabla: str) -> None:
+    """Vacía UNA tabla (una fila o varias) para el tenant activo — el
+    equivalente DB genérico de "borrar el .json de este módulo", para los
+    módulos de una sola fila por tenant (organization_config, caja_state,
+    inventory_working, ...)."""
+    from core.db import tenant as _tenant_mod
+    from core.db.engine import tenant_connection
+
+    tid = _tenant_mod.current_tenant_id()
+    with tenant_connection(tid) as conn:
+        conn.execute(_text(f"DELETE FROM {tabla}"))
+
+
 @pytest.fixture(autouse=True)
 def _analisis_cache_limpio():
     """P11·B4: el cache de análisis jamás se filtra entre tests — ni siquiera
