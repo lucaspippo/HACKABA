@@ -3,9 +3,16 @@
 # .dockerignore y lo verifica la guardia del Dockerfile (el build falla si se cuela).
 #
 # "New +" → "Blueprint" → conectar este repo → Render lee este archivo.
-# Los dos secrets (sync: false) se cargan a mano en el dashboard:
+# Los cuatro secrets (sync: false) se cargan a mano en el dashboard:
 #   ANTHROPIC_API_KEY   → la key real (jamás en el repo)
 #   POLPILOT_RESET_TOKEN → cualquier string largo random (protege el reset manual)
+#   DATABASE_URL         → Supabase pooler, transaction mode, puerto 6543,
+#                          sslmode=require — el rol ADMIN (Alembic y tenants).
+#   APP_DATABASE_URL      → un rol Postgres SIN BYPASSRLS ni superuser (ver
+#                          docker/init-app-role.sql para el equivalente local)
+#                          — todo lo tenant-scoped pasa por acá. Reusar
+#                          DATABASE_URL acá haría que Row-Level Security no
+#                          se aplique nunca, sin ningún error visible.
 services:
   - type: web
     name: polpilot-demo
@@ -17,6 +24,10 @@ services:
         sync: false        # secret: se carga en el dashboard, nunca en el repo
       - key: POLPILOT_RESET_TOKEN
         sync: false        # secret: token del reset manual (/api/admin/reset-demo)
+      - key: DATABASE_URL
+        sync: false        # secret: Supabase pooler, rol admin (Alembic + tenants)
+      - key: APP_DATABASE_URL
+        sync: false        # secret: rol restringido sin BYPASSRLS (todo lo tenant-scoped)
       # El modelo de Ángela. NO es un secreto (es config), pero tampoco puede
       # quedar implícito: sin esta línea el código cae a su default histórico
       # (`claude-sonnet-4-6`, ver backend/config.MODELO_VALIDACION) y producción
