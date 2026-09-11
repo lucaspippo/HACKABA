@@ -46,6 +46,10 @@ def test_seed_db_creates_tenant_and_data():
         n_accounts = conn.execute(text("SELECT count(*) FROM customer_accounts WHERE tenant_id = :tid"),
                                   {"tid": tid}).scalar_one()
         assert n_accounts > 0
+        assert conn.execute(text("SELECT count(*) FROM inventory_working WHERE tenant_id = :tid"),
+                            {"tid": tid}).scalar_one() == 1
+        assert conn.execute(text("SELECT count(*) FROM caja_state WHERE tenant_id = :tid"),
+                            {"tid": tid}).scalar_one() == 1
 
     # idempotent: running twice must not fail or duplicate
     _run_seed_db(slug, name="Seed Test Co", short_name="SeedCo", source="test")
