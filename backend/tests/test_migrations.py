@@ -191,6 +191,10 @@ def test_notifications_table_has_rls_enabled():
     "macro_cache",
     "finance_data",
     "client_sales_data",
+    "collection_actions",
+    "business_knowledge",
+    "data_sections",
+    "sales_validation",
 ])
 def test_blob_tables_have_rls_enabled(table_name):
     engine = get_engine()

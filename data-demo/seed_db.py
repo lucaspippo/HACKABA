@@ -108,6 +108,15 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     from core import ventas_cliente as core_ventas_cliente
     core_ventas_cliente._load()  # client_sales_data
 
+    from core import conocimiento as core_conocimiento
+    core_conocimiento.listar()  # business_knowledge
+
+    from core import esquema as core_esquema
+    core_esquema._load()  # data_sections
+
+    from core import ventas as core_ventas
+    core_ventas._val_load()  # sales_validation
+
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
 
