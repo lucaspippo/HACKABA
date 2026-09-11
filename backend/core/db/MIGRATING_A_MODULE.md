@@ -319,14 +319,56 @@ already relied on, just pointed at the new storage.
 
 ## Known follow-ups not covered by this playbook
 
-- Full `users` table replacing the hardcoded `USUARIOS` dicts, plus an
-  admin user-provisioning UI/endpoint (deferred — see Global Constraints
-  in the foundation plan).
 - Per-request dynamic tenant resolution for a single process serving
   multiple tenants (deferred — RLS ships now, routing topology doesn't
   change yet).
 - Redis-backed sessions, if/when Postgres session-table latency actually
   becomes a bottleneck (not expected at pilot scale).
+- `auth._USUARIOS_CACHE` (see below) is per-process. A multi-worker
+  deployment (`uvicorn --workers N`) would let one worker's provisioning
+  change (create/edit/deactivate) go unseen by another worker until that
+  worker restarts — session deletion on deactivate still takes effect
+  everywhere since `sessions` is shared Postgres state, but a *new* login
+  attempt against a stale worker would still succeed. Not an issue at the
+  current one-worker-per-tenant-process deployment topology; would need a
+  cache-invalidation broadcast (or simply dropping the cache and hitting
+  Postgres every time — `users` reads are cheap) before running multiple
+  workers per tenant.
+
+## Done: real `users` table + admin provisioning
+
+Replaced the hardcoded `auth.USUARIOS` / `usuarios_demo.USUARIOS` dicts
+with a per-row `users` table (`core/db/users_repo.py`), plus admin-only
+endpoints to create/edit/deactivate/reactivate an employee
+(`POST /api/admin/usuarios`, `PATCH /api/admin/usuarios/{u}`,
+`POST /api/admin/usuarios/{u}/desactivar|reactivar` — see `auth.
+crear_usuario/editar_usuario/desactivar_usuario/reactivar_usuario`). This
+was the actual blocker for onboarding a real (non-demo) tenant: before
+this, adding an employee meant editing Python and redeploying.
+
+**`auth.USUARIOS` stays a drop-in dict for all existing call sites** —
+none of the ~17 places across `main.py`, `angela.py`, `core/perfiles.py`,
+`core/piso.py`, `core/onboarding.py` needed to change. Implemented via a
+module-level `__getattr__` (PEP 562): `auth.USUARIOS` lazily loads (and
+seeds once, from `_SEED_HORIZONTE` or `usuarios_demo.USUARIOS` depending
+on the tenant — see `_seed_roster()`) on first touch, same "seed once from
+disk/code, Postgres wins after" pattern as every blob module. Deliberately
+**not** loaded at raw import time — `import auth` must not require a live
+Postgres connection, matching every other migrated module's convention.
+Internal references inside `auth.py` itself had to change from the bare
+name `USUARIOS` to `usuarios()` (the function) — `__getattr__` only
+intercepts *external* `auth.USUARIOS` attribute access, not a module's own
+global-name lookups of its own (now-removed) top-level name.
+
+Deactivation only excludes a user from `usuarios()`'s result (`users_repo.
+list_all()` defaults to active-only) — it doesn't touch their row. Their
+live sessions are purged immediately (`sessions_repo.delete_for_user()`),
+so a deactivation takes effect before their current token would have
+expired on its own. The owner can't deactivate themselves
+(`UsuarioInvalido`).
+
+See `tests/test_users_repo.py`, `tests/test_auth_users.py`,
+`tests/test_admin_usuarios.py`.
 
 ## Fixed: the demo reset endpoint (`/api/admin/reset-demo`)
 
