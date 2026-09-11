@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import datetime
+
 from sqlalchemy import text
 
-from core.db.engine import tenant_connection
+from core.db.engine import tenant_connection, to_local_iso
 
 
 def record(tenant_id: str, *, actor: str, action: str, before=None, after=None) -> dict:
@@ -54,7 +56,11 @@ def seed_if_empty(tenant_id: str, eventos: list[dict]) -> None:
                     "action": ev["accion"],
                     "before": _to_json_param(ev.get("antes")),
                     "after": _to_json_param(ev.get("despues")),
-                    "created_at": ev["cuando"],
+                    # ev["cuando"] is a naive local-time string (the seed file's
+                    # own format) — attach the correct local offset explicitly
+                    # so Postgres stores the right instant regardless of session
+                    # timezone, instead of silently mis-parsing it as UTC.
+                    "created_at": datetime.datetime.fromisoformat(ev["cuando"]).astimezone(),
                 },
             )
 
@@ -72,5 +78,5 @@ def _to_evento(row) -> dict:
         "accion": row["action"],
         "antes": row["before"],
         "despues": row["after"],
-        "cuando": row["created_at"].isoformat(timespec="seconds"),
+        "cuando": to_local_iso(row["created_at"]),
     }

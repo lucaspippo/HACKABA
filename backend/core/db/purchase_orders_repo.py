@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import datetime
 import json
 
 from sqlalchemy import text
 
-from core.db.engine import tenant_connection
+from core.db.engine import tenant_connection, to_local_iso
 
 _COLS = ("number", "date", "supplier", "status", "origin", "reason",
          "prepared_by", "approved_by", "prepared_at", "items")
@@ -20,7 +21,7 @@ def _to_orden(row) -> dict:
         "motivo": row["reason"],
         "preparada_por": row["prepared_by"],
         "aprobada_por": row["approved_by"],
-        "preparada": row["prepared_at"].isoformat(timespec="seconds"),
+        "preparada": to_local_iso(row["prepared_at"]),
         "items": row["items"],
     }
 
@@ -76,7 +77,12 @@ def create(tenant_id: str, orden: dict) -> None:
                 "reason": orden.get("motivo"),
                 "prepared_by": orden["preparada_por"],
                 "approved_by": orden["aprobada_por"],
-                "prepared_at": orden["preparada"],
+                # orden["preparada"] is a naive local-time string (computed by
+                # datetime.datetime.now().isoformat() in core/ordenes.py) —
+                # attach the correct local offset so Postgres stores the right
+                # instant regardless of session timezone, same fix as
+                # audit_repo.seed_if_empty().
+                "prepared_at": datetime.datetime.fromisoformat(orden["preparada"]).astimezone(),
                 "items": json.dumps(orden["items"]),
             },
         )
