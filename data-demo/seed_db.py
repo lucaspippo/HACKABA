@@ -102,6 +102,12 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     from core import extraccion as core_extraccion
     core_extraccion._muestras()  # sample_extractions
 
+    from core import pagos as core_pagos
+    core_pagos._load()  # finance_data
+
+    from core import ventas_cliente as core_ventas_cliente
+    core_ventas_cliente._load()  # client_sales_data
+
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
 

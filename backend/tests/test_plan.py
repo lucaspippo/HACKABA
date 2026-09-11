@@ -9,25 +9,22 @@ del router simulado (plan → OK → ejecutado).
 """
 from __future__ import annotations
 
-import os
-
 import pytest
 
 import angela
 from core import store, saneamiento, memoria
+from tests.conftest import limpiar_tabla_tenant
 
 
 @pytest.fixture(autouse=True)
 def estado_limpio():
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     usuario, rol = angela._usuario_actual(), angela._rol_actual()
     yield
     angela._set_sesion(usuario=usuario, rol=rol)
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
 
 
 def test_armar_plan_con_numeros_reales():

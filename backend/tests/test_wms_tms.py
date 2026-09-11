@@ -19,6 +19,7 @@ import pytest
 import angela
 import auth
 from core import staging, store, esquema, deposito, logistica, recordatorios
+from tests.conftest import limpiar_tabla_tenant
 
 HOY = datetime.date.today()
 
@@ -30,13 +31,14 @@ def d(n: int) -> str:
 @pytest.fixture(autouse=True)
 def limpio():
     """Aísla apartados/recordatorios/staging: guarda lo que hubiera y lo restaura."""
-    files = [esquema.APARTADOS_JSON, recordatorios.RECORDATORIOS_JSON, staging.STAGING_JSON]
+    files = [esquema.APARTADOS_JSON, staging.STAGING_JSON]
     backup = {}
     for f in files:
         if os.path.exists(f):
             backup[f] = open(f, encoding="utf-8").read()
             os.remove(f)
     store.resetear_actual()
+    limpiar_tabla_tenant("reminders")
     yield
     for f in files:
         if os.path.exists(f):
@@ -44,6 +46,7 @@ def limpio():
         if f in backup:
             open(f, "w", encoding="utf-8").write(backup[f])
     store.resetear_actual()
+    limpiar_tabla_tenant("reminders")
 
 
 def _articulos(n=3):

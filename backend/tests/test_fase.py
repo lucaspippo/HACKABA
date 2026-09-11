@@ -6,6 +6,7 @@ import sys
 import pytest
 
 from core import fase, store, memoria
+from tests.conftest import limpiar_tabla_tenant
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAIZ = os.path.dirname(BACKEND)
@@ -15,8 +16,7 @@ DATA_DEMO = os.path.join(RAIZ, "data-demo")
 @pytest.fixture(autouse=True)
 def estado_limpio():
     store.resetear_actual()
-    if os.path.exists(memoria.MEMORIA_JSON):
-        os.remove(memoria.MEMORIA_JSON)
+    limpiar_tabla_tenant("user_memory")
     yield
     store.resetear_actual()
 

@@ -223,13 +223,35 @@ tenant-switching tests in this suite already use.
   mtime-based file hot-reload with a one-time Postgres seed, same tradeoff
   every other read-only reference module already made); repo
   `core/db/blob_repo.py` (generic)
+- `core/recordatorios.py` → table `reminders` (per-row, client-generated
+  `id`); repo `core/db/reminders_repo.py` — `save_all()` does a full
+  delete+reinsert per call, matching the old JSON file's whole-list rewrite
+  exactly, since every caller in the module already expects that semantics.
+- `core/memoria.py` → table `user_memory` (one JSONB row per tenant, the
+  whole `{username: {...}}` map); repo `core/db/blob_repo.py` (generic)
+- `core/macro.py` → table `macro_cache` (one JSONB row per tenant, the
+  day's cached indicators); repo `core/db/blob_repo.py` (generic)
+- `core/pagos.py` → table `finance_data` (one JSONB row per tenant,
+  read-only reference); repo `core/db/blob_repo.py` (generic)
+- `core/ventas_cliente.py` → table `client_sales_data` (one JSONB row per
+  tenant, read-only reference); repo `core/db/blob_repo.py` (generic)
 
 **`core/db/blob_repo.py`**: once a module's whole state is a single JSONB
 blob per tenant (the pattern described two sections up), don't write a new
-`<domain>_repo.py` for it — the five most recent migrations above share
+`<domain>_repo.py` for it — the migrations above share
 `blob_repo.get_blob(table, tenant_id)` / `save_blob(table, tenant_id, data)`,
 parametrized by table name. `table` must always be a literal from the
 caller's own code, never a value derived from user input.
+
+**A test that seeds by writing the module's *old* JSON file directly no
+longer works once the module is migrated** — `core/pagos.py` has no public
+write API (it's read-only), so `test_pagos.py` used to call
+`json.dump(..., open(pagos._path(), "w"))` to set up fixture state. Once a
+tenant has a Postgres row, `_load()` never re-reads the disk file, so this
+silently stopped seeding anything. Fixed by writing straight to
+`blob_repo.save_blob("finance_data", tenant_id, {...})` in the test instead
+— the same "bypass the module, hit storage directly" trick the old test
+already relied on, just pointed at the new storage.
 
 ## Known follow-ups not covered by this playbook
 
