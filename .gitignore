@@ -1,0 +1,54 @@
+# Secretos y credenciales — JAMÁS al repo.
+.env
+*.env
+!.env.example
+backend/credenciales.json
+data-demo/credenciales.json
+
+# Dependencias y builds
+node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Data dirs de OTROS tenants (si alguien monta uno local, no se versiona).
+data/
+
+# Runtime del DEMO (los seeds generados sí se versionan; el estado vivo no)
+data-demo/versions/
+data-demo/audit.json
+data-demo/inventory_actual.json
+data-demo/memoria.json
+data-demo/staging.json
+data-demo/macro_cache.json
+data-demo/organizacion.json
+data-demo/recordatorios.json
+data-demo/perfiles.json
+data-demo/notificaciones.json
+data-demo/fotos/
+data-demo/documentos/
+data-demo/caja.json
+data-demo/contexto.json
+
+# Estado vivo de la cobranza y de la autonomía de Ángela (P42/E-F): se genera
+# al aprobar una gestión o al mover la perilla. Nunca se versiona.
+data-demo/cobranza.json
+data-demo/autonomia.json
+
+# Adjuntos que sube el piso (prueba de entrega, fotos de faltantes): runtime.
+data-demo/piso_adjuntos/
+
+# Capturas locales de los scripts de verificación
+frontend/shots/
+frontend/*.png
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Isolated worktrees for in-progress feature work (superpowers:using-git-worktrees)
+.worktrees/

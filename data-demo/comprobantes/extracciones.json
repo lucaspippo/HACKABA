@@ -1,0 +1,187 @@
+{
+  "_nota": "Lo que dice cada muestra, escrito por el MISMO script que dibuja la imagen (no pueden divergir). core/extraccion.py lo sirve por hash cuando la foto subida ES una muestra; cualquier otra imagen va a la visión real.",
+  "muestras": {
+    "remito": {
+      "sha256": "14c3747490c25619540ed77c824f1f0e4c3a0bf6d95a30e7b7485c718f4fc2a0",
+      "extraccion": {
+        "es_comprobante": true,
+        "legible": true,
+        "tipo_comprobante": "remito",
+        "proveedor": {
+          "razon_social": "LÁCTEOS CAMPO ALEGRE S.A.",
+          "cuit": "30-58732109-4"
+        },
+        "numero": "0001-00058214",
+        "fecha": "2026-07-07",
+        "fecha_texto": "07/07/2026",
+        "orden_compra_referencia": "OC-2026-0847",
+        "items": [
+          {
+            "codigo": 1215,
+            "descripcion": "LECHE ENTERA CAMPO ALEGRE 1L (X12U)",
+            "cantidad": 60.0,
+            "lote": "L-2608-A",
+            "vencimiento": "2026-09-14",
+            "vencimiento_texto": "14/09/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1211,
+            "descripcion": "LECHE ENTERA TIERRA ROJA 1L (X12U)",
+            "cantidad": 40.0,
+            "lote": "L-2608-B",
+            "vencimiento": "2026-09-02",
+            "vencimiento_texto": "02/09/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1236,
+            "descripcion": "MANTECA SANTA CLARA 200G (X30U)",
+            "cantidad": 25.0,
+            "lote": "L-2607-M",
+            "vencimiento": "2026-11-20",
+            "vencimiento_texto": "20/11/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1239,
+            "descripcion": "MANTECA CAMPO ALEGRE 200G (X30U)",
+            "cantidad": 8.0,
+            "lote": "L-2607-M",
+            "vencimiento": "2026-11-20",
+            "vencimiento_texto": "20/11/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1237,
+            "descripcion": "MANTECA LA RIBERA 200G (X30U)",
+            "cantidad": 12.0,
+            "lote": "L-2606-R",
+            "vencimiento": "2026-10-28",
+            "vencimiento_texto": "28/10/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1249,
+            "descripcion": "CREMA DE LECHE EL PARANA 360G (X12U)",
+            "cantidad": 30.0,
+            "lote": "L-2608-C",
+            "vencimiento": "2026-07-28",
+            "vencimiento_texto": "28/07/2026",
+            "precio_unitario": null,
+            "subtotal": null,
+            "confianza": "leido"
+          }
+        ],
+        "subtotal": null,
+        "iva": null,
+        "total": null,
+        "campos_dudosos": [],
+        "campos_ilegibles": []
+      }
+    },
+    "factura": {
+      "sha256": "e4b31b789e47fed05e1cd2b600c30e8922e6b89333f3b225de9bb4c79a31ce35",
+      "extraccion": {
+        "es_comprobante": true,
+        "legible": true,
+        "tipo_comprobante": "factura",
+        "proveedor": {
+          "razon_social": "LÁCTEOS CAMPO ALEGRE S.A.",
+          "cuit": "30-58732109-4"
+        },
+        "numero": "0001-00091352",
+        "fecha": "2026-07-07",
+        "fecha_texto": "07/07/2026",
+        "condicion": "Cuenta corriente 30 días",
+        "items": [
+          {
+            "codigo": 1215,
+            "descripcion": "LECHE ENTERA CAMPO ALEGRE 1L (X12U)",
+            "cantidad": 60.0,
+            "precio_unitario": 5120.1,
+            "subtotal": 307206.0,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1211,
+            "descripcion": "LECHE ENTERA TIERRA ROJA 1L (X12U)",
+            "cantidad": 40.0,
+            "precio_unitario": 4363.92,
+            "subtotal": 174556.8,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1236,
+            "descripcion": "MANTECA SANTA CLARA 200G (X30U)",
+            "cantidad": 25.0,
+            "precio_unitario": 5508.59,
+            "subtotal": 137714.75,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1239,
+            "descripcion": "MANTECA CAMPO ALEGRE 200G (X30U)",
+            "cantidad": 8.0,
+            "precio_unitario": 4076.16,
+            "subtotal": 32609.28,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1237,
+            "descripcion": "MANTECA LA RIBERA 200G (X30U)",
+            "cantidad": 12.0,
+            "precio_unitario": 2110.44,
+            "subtotal": 25325.28,
+            "confianza": "leido"
+          },
+          {
+            "codigo": 1249,
+            "descripcion": "CREMA DE LECHE EL PARANA 360G (X12U)",
+            "cantidad": 30.0,
+            "precio_unitario": 5595.39,
+            "subtotal": 167861.7,
+            "confianza": "leido"
+          }
+        ],
+        "subtotal": 845273.81,
+        "iva": 177507.5,
+        "total": 1022781.31,
+        "campos_dudosos": [],
+        "campos_ilegibles": []
+      }
+    },
+    "recibo": {
+      "sha256": "7f5a85a3768620c9264311c347590f949c9eb4b03a1ef2fb773135ce20f1a67b",
+      "extraccion": {
+        "es_comprobante": true,
+        "legible": true,
+        "tipo_comprobante": "recibo",
+        "cliente": {
+          "razon_social": "ALMACÉN SAN MARTÍN"
+        },
+        "proveedor": {
+          "razon_social": "DISTRIBUIDORA DEL LITORAL S.R.L.",
+          "cuit": "30-70918234-6"
+        },
+        "numero": "0001-00003412",
+        "fecha": "2026-07-07",
+        "fecha_texto": "07/07/2026",
+        "items": [],
+        "total": 8000000.0,
+        "campos_dudosos": [],
+        "campos_ilegibles": []
+      }
+    }
+  }
+}

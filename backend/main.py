@@ -1,0 +1,2264 @@
+"""
+main.py · API REST de PolPilot (Sprint 0)
+=========================================
+Expone los datos del consolidado de Horizonte y el chat de Ángela.
+
+Correr en local:
+    cd backend
+    uvicorn main:app --reload --port 8000
+
+Endpoints:
+    GET  /api/health                  estado del servicio
+    GET  /api/inventario              resumen + alertas + top inmovilizado
+    GET  /api/inventario/top?n=10     top productos por plata inmovilizada
+    GET  /api/grupo/{nombre}          listado de un grupo de problemas
+    GET  /api/buscar?q=texto          búsqueda de artículos
+    POST /api/angela                  conversación con Ángela
+"""
+
+from __future__ import annotations
+
+import os
+import time
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
+
+import angela
+import auth
+import authz
+import config
+import data_store as ds
+import i18n
+from authz import require_admin, require_feature, usuario_actual
+from core import (store, saneamiento, fase, memoria, importer, staging, anomalias,
+                  organizacion, documentos, cuentas, caja, sync, conectores,
+                  deposito, logistica, recordatorios, perfiles, notificaciones,
+                  evolucion, ventas, pagos, paths, conocimiento, piso, onboarding)
+
+
+def _lang(u: dict | None = None) -> str:
+    """El idioma del usuario resuelto SERVER-SIDE (perfil → default del tenant).
+    Sin usuario conocido (401 pre-sesión) rige el default del tenant."""
+    return perfiles.idioma_de(u["username"]) if u else paths.DEFAULT_LANG
+
+
+def _usuario_de(token: str) -> dict:
+    """Sesión válida o 401. El username sale del token, nunca del body."""
+    u = auth.usuario_por_token(token)
+    if not u:
+        raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
+    return u
+
+
+def _admin_de(token: str) -> dict:
+    """Sólo el dueño (scope organización) o 403."""
+    u = _usuario_de(token)
+    if not u.get("es_admin"):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("authz.solo_dueno", _lang(u)))
+    return u
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    auth.cargar_o_generar_credenciales()
+    # Las credenciales YA NO se imprimen en consola en cada arranque (P9·C6,
+    # M10): viven en credenciales.json (gitignored). Para verlas en desarrollo:
+    # POLPILOT_PRINT_CREDS=1.
+    try:
+        if os.environ.get("POLPILOT_PRINT_CREDS") == "1":
+            creds = auth.credenciales_actuales()
+            lineas = ["", "=== CREDENCIALES (solo con POLPILOT_PRINT_CREDS=1) ==="]
+            for u, pw in creds.items():
+                lineas.append(f"  {u:10s} -> {pw}")
+            lineas.append("=" * 51)
+            print("\n".join(lineas), flush=True)
+        else:
+            print(f"[polpilot] credenciales en {auth.CREDS_FILE} (no se imprimen; "
+                  "POLPILOT_PRINT_CREDS=1 para verlas)", flush=True)
+    except Exception:
+        pass
+    # P11·B4: precálculo de análisis al arrancar — la primera entrada a
+    # Oportunidades/Alertas ya sale del cache (clave con YC en la URL pública).
+    try:
+        from core import analisis_cache
+        analisis_cache.precalentar()
+    except Exception:
+        pass  # sin precalc el endpoint computa on-demand: nunca rompe el arranque
+    yield
+
+
+app = FastAPI(title="PolPilot", version="0.2.0", lifespan=lifespan)
+
+# El frontend (Vite) corre en otro puerto durante desarrollo.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ChatTurn(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    mensaje: str
+    historial: list[ChatTurn] | None = None
+    token: str | None = None
+    # rol/nombre del body quedan SÓLO por compatibilidad legacy (WhatsApp, tests):
+    # si viene token, la identidad sale del token y estos se IGNORAN (no se puede
+    # falsear el rol desde el request). Ver /api/angela.
+    rol: str | None = None
+    nombre: str | None = None
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+def login(req: LoginRequest):
+    res = auth.login(req.username, req.password)
+    if not res:
+        raise HTTPException(status_code=401, detail=i18n.t("api.login_incorrecto"))
+    return res
+
+
+@app.get("/api/me")
+def me(token: str):
+    u = auth.usuario_por_token(token)
+    if not u:
+        raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
+    return u
+
+
+@app.get("/api/perfiles")
+def perfiles_equipo(token: str):
+    # OJO: no llamar "perfiles" a esta función — pisa el módulo core.perfiles.
+    dueno = _admin_de(token)
+    # Los labels de módulo, en el idioma del que MIRA (P39·1): la ficha de cada
+    # empleado se lee entera en un solo idioma, el del dueño.
+    return {"perfiles": auth.listar_perfiles(_lang(dueno))}
+
+
+class VerComoRequest(BaseModel):
+    username: str
+
+
+@app.post("/api/demo/ver-como")
+def demo_ver_como(req: VerComoRequest, _u: dict = Depends(usuario_actual)):
+    """"View as / Ver como" del TENANT DEMO (P9·E): los reviewers de YC ven el
+    producto desde los ojos de cada empleado sin pelear con logins. Emite una
+    sesión legítima del usuario destino (server-side), detrás del feature flag
+    POLPILOT_DEMO_ROLE_SWITCH y de una sesión ya válida. En el piloto el flag
+    no existe → 404: para un empleado real de Horizonte este endpoint
+    directamente NO EXISTE."""
+    if not auth.role_switch_activo():
+        raise HTTPException(status_code=404, detail="Not Found")
+    s = auth.sesion_para(req.username)
+    if not s:
+        raise HTTPException(status_code=404, detail="usuario inexistente")
+    return s
+
+
+@app.post("/api/demo/autologin")
+def demo_autologin():
+    """Entrada directa del link de YC (P11·B8): con POLPILOT_DEMO_AUTOLOGIN=1,
+    abrir la URL mintea una sesión LEGÍTIMA del DUEÑO (server-side, mismo riel
+    que ver-como); desde "View as" se cambia de rol. El logout lleva al login
+    normal, que sigue existiendo detrás. En el piloto el flag no existe →
+    404: este endpoint directamente NO EXISTE."""
+    if not auth.autologin_activo():
+        raise HTTPException(status_code=404, detail="Not Found")
+    s = auth.sesion_para(auth.dueno()["username"])
+    if not s:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return s
+
+
+@app.get("/api/equipo/nombres")
+def equipo_nombres(_u: dict = Depends(usuario_actual)):
+    """Nombre y rol del equipo del tenant (sin datos sensibles): lo usa
+    "Adoptar objetivo" para asignar un responsable REAL (P9·C2, M3)."""
+    # P11·B9: `superficies` viaja con cada empleado — el selector "View as"
+    # de desktop filtra a los roles cuyo trabajo no es de escritorio
+    # (reparto/camión y depósito operativo van por mobile/WhatsApp); acá
+    # siguen TODOS: Objetivos y Equipo los necesitan completos.
+    # P·onboarding: viaja también la ANTIGÜEDAD (None para quien no declara
+    # ingreso). Con eso la lista del equipo puede distinguir de un vistazo al que
+    # recién entró de los que llevan años, sin pedir otra vuelta al servidor.
+    return {"equipo": [{"username": u["username"], "nombre": u["nombre"], "rol": u["rol"],
+                        "superficies": u.get("superficies", []),
+                        "antiguedad": auth.antiguedad(u["username"])}
+                       for u in auth.USUARIOS.values() if not u.get("interno")]}
+
+
+@app.get("/api/onboarding")
+def onboarding_guia(u: dict = Depends(usuario_actual)):
+    """La guía del que recién entró: ubicaciones del depósito, cada cuánto repone
+    cada proveedor, los procesos paso a paso, las reglas del dueño que le aplican
+    y a quién avisarle. TODO sale de datos que ya existen (ver core/onboarding.py)
+    y viene recortado a las features de quien pregunta — la misma matriz «Quién ve
+    qué» de siempre. Cualquiera puede consultarla: no hay nada acá que la persona
+    no pudiera ver por su cuenta; lo que cambia es que está junto y explicado."""
+    return onboarding.guia(u)
+
+
+# --- Carga de comprobantes por FOTO (P10): visión → confirmación → rieles ---
+
+class FacturaLeerRequest(BaseModel):
+    imagen: str                       # base64 (sin encabezado data:)
+    media_type: str = "image/jpeg"
+
+
+class FacturaConfirmarRequest(BaseModel):
+    extraccion: dict                  # lo extraído, con las correcciones del humano
+
+
+class RemitoReclamarRequest(BaseModel):
+    """Lo que faltó de un remito, para reclamárselo al proveedor."""
+    proveedor: str
+    items: list[dict]                 # [{producto, falta, ...}] de reclamo_sugerido
+    oc: str | None = None
+
+
+@app.post("/api/remito/reclamar")
+def remito_reclamar(req: RemitoReclamarRequest,
+                    u: dict = Depends(require_feature("cargar"))):
+    """El segundo SÍ: Ángela propuso el reclamo al confirmar el remito y el
+    humano lo acepta acá. Cada faltante entra por el MISMO riel que usa el
+    depósito cuando reporta a mano (core/piso), así que sale agrupado por
+    proveedor en las propuestas de Equipo — un solo camino, no dos."""
+    from core import piso
+    lang = _lang(u)
+    creados = []
+    for it in req.items:
+        falta = float(it.get("falta") or 0)
+        if falta <= 0 or not it.get("producto"):
+            continue
+        creados.append(piso.reportar("faltante", u["username"], {
+            "producto": it["producto"], "cantidad": falta, "motivo": "faltante",
+            "nota": i18n.t("core.comp.reclamo_prop", lang, n=1,
+                           proveedor=req.proveedor),
+            "origen_remito": req.oc,
+        })["id"])
+    if not creados:
+        raise HTTPException(status_code=422, detail=i18n.t("api.nada_que_reclamar", lang))
+    return {"ok": True, "reportes": creados,
+            "mensaje": i18n.t("core.comp.reclamo_hecho", lang,
+                              n=len(creados), proveedor=req.proveedor)}
+
+
+@app.post("/api/factura/leer")
+def factura_leer(req: FacturaLeerRequest, request: Request,
+                 u: dict = Depends(require_feature("cargar"))):
+    """Foto → extracción estructurada + chequeos automáticos + el CRUCE del
+    circuito de compra (remito↔OC, factura↔remito) — todo ANTES de confirmar.
+    Acá no se persiste nada: la tesis es ejecución con aprobación humana."""
+    from core import comprobantes, extraccion
+    lang = _lang(u)
+    # (B) Freno de gasto por IP (visión = LLM, solo demo): mismo cap que el chat.
+    # El endpoint ya exige token (feature cargar), pero autologin lo regala: el
+    # cap por IP sobrevive al re-login. En piloto _cap_ip()=0 → no aplica.
+    # Un comprobante de MUESTRA se resuelve sin LLM (core/extraccion): no gasta,
+    # así que el cap no lo frena — el cap existe para el gasto, no para la demo.
+    if not extraccion.es_muestra(req.imagen) and \
+            _ip_excedido(_client_ip(request), _cap_ip()):
+        return {"ok": False, "motivo": i18n.t("angela.cap_alcanzado", lang)}
+    r = extraccion.extraer(req.imagen, req.media_type, lang)
+    if not r.get("ok"):
+        return r
+    ext = r["extraccion"]
+    r["chequeos"] = comprobantes.chequeos(ext, lang)
+    if ext.get("tipo_comprobante") == "remito":
+        r["cruce"] = comprobantes.cruzar_remito(ext)
+    elif ext.get("tipo_comprobante") == "factura":
+        r["cruce"] = comprobantes.cruzar_factura(ext)
+    elif ext.get("tipo_comprobante") == "lista_precios":
+        # P22·A — el diff contra el catálogo REAL: subas, saltos sospechosos y
+        # códigos pisados, ANTES del OK. El validador hace el trabajo.
+        from core import lista_precios
+        r["cruce"] = lista_precios.diff(ext, lang)
+    return r
+
+
+@app.post("/api/factura/confirmar")
+def factura_confirmar(req: FacturaConfirmarRequest,
+                      u: dict = Depends(require_feature("cargar"))):
+    """El SÍ explícito del humano: recién acá el comprobante entra al dominio
+    real (stock/recepciones/compras/cuenta del proveedor/cobro del cliente),
+    con backup + audit. El tramo al ERP queda en cola SIMULADA y declarada."""
+    from core import comprobantes
+    try:
+        r = comprobantes.confirmar(req.extraccion, actor=u["nombre"], lang=_lang(u))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    # El texto que Ángela dice en pantalla se arma en el FRONTEND, en el idioma
+    # que el usuario está mirando. Acá viajan la decisión y los números.
+    if r.get("ok"):
+        r["mensaje_angela_partes"] = comprobantes.mensaje_proactivo_partes(
+            r, req.extraccion)
+    # Si cargó un EMPLEADO, el dueño se entera por la campanita (con el mismo
+    # análisis que dijo Ángela). El dueño cargando no se auto-notifica.
+    if r.get("ok") and not u.get("es_admin"):
+        try:
+            d = auth.dueno()
+            lang_dueno = _lang({"username": d["username"]})
+            notificaciones.emitir(
+                para=d["username"],
+                titulo=i18n.t("notif.comprobante_t", lang_dueno, actor=u["nombre"]),
+                cuerpo=comprobantes.mensaje_proactivo(r, req.extraccion, lang_dueno),
+                tipo="comprobante", ref=req.extraccion.get("numero"))
+        except Exception:
+            pass  # la carga ya está hecha: una notificación fallida no la rompe
+    return r
+
+
+_MUESTRAS = ("remito", "factura", "recibo", "lista")  # el orden CUENTA la historia
+
+
+@app.get("/api/comprobantes/muestras")
+def comprobantes_muestras(u: dict = Depends(require_feature("cargar"))):
+    """Los comprobantes de muestra — SOLO TENANT DEMO (los reviewers de YC no
+    tienen una factura argentina a mano). La imagen viene provista; de ahí en
+    más el pipeline es EXACTAMENTE el real (la visión los lee de verdad)."""
+    if paths.TENANT != "demo":
+        raise HTTPException(status_code=404, detail="Not Found")
+    # Sin `titulo`/`descripcion` renderizados: el texto lo arma el frontend con
+    # su propio idioma (muestras.<id>_t / _d). El backend manda el ID, que es un
+    # identificador y no se traduce.
+    return {"muestras": [
+        {"id": mid, "url": f"/api/comprobantes/muestras/{mid}.png"}
+        for mid in _MUESTRAS
+    ]}
+
+
+@app.get("/api/comprobantes/muestras/{mid}.png")
+def comprobante_muestra_png(mid: str, _u: dict = Depends(require_feature("cargar"))):
+    if paths.TENANT != "demo" or mid not in _MUESTRAS:
+        raise HTTPException(status_code=404, detail="Not Found")
+    ruta = os.path.join(paths.DATA_DIR, "comprobantes", f"{mid}.png")
+    if not os.path.exists(ruta):
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(ruta, media_type="image/png")
+
+
+class ObjetivoRequest(BaseModel):
+    nombre: str
+    responsable: str | None = None
+    fecha: str | None = None
+    id: str | None = None  # uid del tablero del cliente (mezcla idempotente)
+
+
+class ObjetivoEstadoRequest(BaseModel):
+    estado: str
+
+
+@app.get("/api/objetivos")
+def objetivos_listar(_u: dict = Depends(usuario_actual)):
+    """Objetivos del equipo, SERVER-SIDE (P9·C5, M9): lo que Ángela o el dueño
+    crean lo ve todo el equipo, no solo el localStorage de quien lo pidió."""
+    from core import objetivos
+    return {"objetivos": objetivos.listar()}
+
+
+@app.post("/api/objetivos")
+def objetivos_crear(req: ObjetivoRequest, u: dict = Depends(usuario_actual)):
+    from core import objetivos
+    if not req.nombre.strip():
+        raise HTTPException(status_code=422, detail="nombre vacío")
+    return objetivos.crear(req.nombre, req.responsable, req.fecha,
+                           creado_por=u["nombre"], oid=req.id)
+
+
+@app.post("/api/objetivos/{oid}/estado")
+def objetivos_estado(oid: str, req: ObjetivoEstadoRequest,
+                     _u: dict = Depends(usuario_actual)):
+    from core import objetivos
+    try:
+        return objetivos.cambiar_estado(oid, req.estado)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="objetivo inexistente")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+def _cuerpo_actividad():
+    """Lo que PolPilot hizo DE VERDAD en este tenant (P9·C2, M4): la franja de
+    ahorro y el feed de Inicio se alimentan de acá — nada de texto fijo.
+    Correcciones = eventos de auditoría; staging = integraciones; alertas =
+    notificaciones emitidas. Todo contado de los registros reales."""
+    from core import notificaciones as notif_mod, ventas as ventas_mod, fechas
+    # P36·E1 — VERDAD LITERAL en el feed: solo eventos de NEGOCIO de Ángela, y
+    # NUNCA posteriores a la fecha congelada del tenant (el trabajo de dev/seed
+    # queda fuera). Tres guardas: por tipo (admin+técnico), por fecha, y dedup.
+    hoy_iso = fechas.hoy().isoformat()
+    # Eventos administrativos (perfil, idioma, permisos): quedan en la auditoría
+    # cruda (/api/audit) pero NO son "trabajo de Ángela".
+    administrativos = {"editar_descripcion_perfil", "cambiar_foto_perfil",
+                       "cambiar_idioma", "solicitar_modulo",
+                       "resolver_solicitud_modulo", "cambiar_modulo_empleado",
+                       "consulta_angela"}
+    # Técnicos/seed: `crear_apartado` (nuevas:0) lo emite el seed en cada boot —
+    # NO es una acción de negocio; se excluye del feed por tipo.
+    tecnicos = {"crear_apartado"}
+    integraciones = {"integrar_staging"}   # el ÚNICO "archivo procesado" real
+
+    def _negocio(e):
+        acc = e.get("accion")
+        return (acc not in administrativos and acc not in tecnicos
+                and (e.get("cuando") or "")[:10] <= hoy_iso)  # guarda dura de fecha
+
+    eventos = [e for e in store.audit.list() if _negocio(e)]
+    correcciones = [e for e in eventos if e["accion"] not in integraciones]
+    procesados = [e for e in eventos if e["accion"] in integraciones]
+
+    # Feed: por fecha DESC, deduplicado (mismo tipo+día+desc colapsa con `veces`).
+    ordenados = sorted(eventos, key=lambda e: e.get("cuando") or "", reverse=True)
+    feed, indice = [], {}
+    for e in ordenados:
+        clave = (e["accion"], (e.get("cuando") or "")[:10], repr(e.get("despues")))
+        if clave in indice:
+            feed[indice[clave]]["veces"] += 1
+            continue
+        indice[clave] = len(feed)
+        feed.append({
+            "tipo": "staging" if e["accion"] in integraciones else "correccion",
+            "accion": e["accion"], "actor": e["actor"], "cuando": e["cuando"],
+            "veces": 1,
+            # P36·E2 — el detalle real para expandir la línea (del audit ya existente)
+            "detalle": {"antes": e.get("antes"), "despues": e.get("despues")},
+        })
+    feed = feed[:5]
+
+    return {
+        # Contadores calculados bajo EXACTAMENTE el mismo filtro que el feed.
+        "correcciones": len(correcciones),
+        "staging_procesados": len(procesados),
+        "alertas_emitidas": notif_mod.total_emitidas(hasta_iso=hoy_iso),
+        "hay_ventas": ventas_mod.hay_datos(),
+        "hoy": hoy_iso,   # P36·E2 — la fecha de referencia para las fechas RELATIVAS del feed
+        "feed": feed,
+    }
+
+
+@app.get("/api/actividad")
+def actividad(_u: dict = Depends(usuario_actual)):
+    return _cuerpo_actividad()
+
+
+@app.get("/api/inicio")
+def inicio(u: dict = Depends(usuario_actual)):
+    """El resumen ejecutivo del Home en UNA llamada (P13): agregación pura de
+    fuentes que YA existen, cada una respetando el gating por feature de su
+    endpoint original (un rol sin el módulo recibe null, no datos filtrados).
+    Cero lógica de dominio nueva: solo selección y empaquetado."""
+    from core import analisis, analisis_cache, autonomia
+    lang = _lang(u)
+    feats = perfiles.features_efectivas(u["username"])
+    analisis_objetivos = None
+    if "oportunidades" in feats:
+        completo = analisis_cache.get_o_computar("analisis", lang,
+                                                 lambda: analisis.completo(lang))
+        if completo.get("disponible"):
+            analisis_objetivos = completo.get("objetivos") or []
+    return {
+        "staging": {"batches": staging.listar()} if "cargar" in feats else None,
+        "calidad": store.libro_triado(lang) if "saneamiento" in feats else None,
+        "solicitudes": perfiles.solicitudes(estado="pendiente") if u.get("es_admin") else [],
+        "actividad": _cuerpo_actividad(),
+        "analisis_objetivos": analisis_objetivos,
+        # Bloque F·3 — contra la fatiga de aprobación: el nivel que el dueño
+        # eligió decide si la cola de decisión pide de a una o agrupa lo
+        # rutinario y reversible. Va acá para no sumar una llamada al Home.
+        "autonomia_datos": autonomia.nivel_de("datos"),
+        "fase": fase.actual(lang),
+    }
+
+
+@app.get("/api/objetivos-medidos")
+def objetivos_medidos_endpoint(u: dict = Depends(usuario_actual)):
+    """P36·E4 — Objetivos que Ángela MIDE contra datos reales. El `actual` de
+    cada objetivo sale del MISMO cálculo que ya alimenta el resto de la app (una
+    sola fuente de verdad); el baseline+historial son sintéticos (solo demo). El
+    progreso se calcula, nunca se hardcodea. Permisos server-side: el dueño ve
+    todos; cada empleado, sólo los suyos (sin bypass)."""
+    from core import analisis, analisis_cache, objetivos_medidos, oportunidades_neg, fechas
+    lang = _lang(u)
+    completo = analisis_cache.get_o_computar("analisis", lang, lambda: analisis.completo(lang))
+    k = (completo or {}).get("kpis") or {}
+    dormido = (k.get("dormido") or {}).get("monto")
+    sin_pvp = (k.get("margen_teorico") or {}).get("sin_pvp")
+    # concentración top-3: de la card REAL de oportunidades (misma cuenta que el mapa)
+    pct_top3 = None
+    try:
+        cards = analisis_cache.get_o_computar("oportunidades", lang,
+                                              lambda: oportunidades_neg.cards(lang))
+        if isinstance(cards, dict):
+            cards = cards.get("cards", [])
+        conc = next((c for c in (cards or []) if c.get("id") == "concentracion"), None)
+        pct_top3 = ((conc or {}).get("datos") or {}).get("pct_top3")
+    except Exception:
+        pass
+    try:
+        total_issues = store.libro_triado(lang).get("total_issues")
+    except Exception:
+        total_issues = None
+    # P41·3.3 — la mora viva ($): el MISMO total que ya muestran Alertas, el
+    # panel y la card de morosos. Se LEE, no se recalcula.
+    mora = None
+    try:
+        mora = (cuentas.alertas() or {}).get("impacto_pesos")
+    except Exception:
+        pass
+    # P41·3.3 — productos por quebrar: los que tienen menos cobertura que el
+    # umbral del hallazgo de quiebre, sobre el detalle de rotación ya calculado.
+    por_quebrar = None
+    try:
+        det = ((completo or {}).get("rotacion") or {}).get("detalle") or []
+        umbral = objetivos_medidos.COBERTURA_QUIEBRE_DIAS
+        por_quebrar = sum(1 for x in det
+                          if x.get("dias_rotacion") is not None and 0 < x["dias_rotacion"] <= umbral)
+    except Exception:
+        pass
+    base_dormido = objetivos_medidos.DEFS["liberar_dormido"]["baseline_dormido"]
+    actuales = {
+        "dias_cobro": k.get("cobro_dias"),
+        "datos_corregir": total_issues,
+        "liberar_dormido": (base_dormido - dormido) if dormido is not None else None,
+        "pvp_margen": sin_pvp,
+        "concentracion": pct_top3,
+        "cobrar_morosos": mora,
+        "reponer_quiebres": por_quebrar,
+    }
+    objs = objetivos_medidos.construir(actuales, fechas.hoy().isoformat())
+    if not u.get("es_admin"):
+        objs = [o for o in objs if o["responsable"] == u["username"]]
+    return {"objetivos": objs, "resumen": objetivos_medidos.resumen(objs)}
+
+
+@app.get("/api/health")
+def health():
+    return {
+        "ok": True,
+        "servicio": "polpilot-demo",
+        "angela_online": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "modo_angela": config.modo(),          # "simulado" o "claude", evaluado en runtime
+        "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
+        "routing_modelos": config.ROUTING_ACTIVO,  # apagado durante validación
+        "idioma_default": paths.DEFAULT_LANG,  # default del tenant (Login lo usa pre-sesión)
+        "tenant": paths.TENANT,  # el frontend elige seeds/copys por config, no por nombre
+        "role_switch": auth.role_switch_activo(),  # "View as" del demo (P9·E)
+        "autologin": auth.autologin_activo(),      # entrada directa del demo (P11·B8)
+        # P37 — el logo del cliente lo decide el BACKEND por tenant (el frontend
+        # ya no hardcodea ningún cliente): el piloto se sirve de su data dir.
+        "meta": {**ds.meta(), "logo": paths.LOGO},
+    }
+
+
+@app.get("/api/marca/logo")
+def marca_logo():
+    """P37 (incidente de privacidad) — el logo del cliente del TENANT ACTIVO,
+    servido desde SU data dir (`{DATA_DIR}/logo.*`), NUNCA empaquetado en el
+    frontend. El logo del piloto vive solo en data/ (en la imagen del piloto);
+    la imagen de la demo no lo tiene. Así el bundle público jamás incluye el
+    logo/nombre de otro tenant."""
+    import glob
+    tipos = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+             "svg": "image/svg+xml", "webp": "image/webp"}
+    for ext, mt in tipos.items():
+        hit = glob.glob(os.path.join(paths.DATA_DIR, f"logo.{ext}"))
+        if hit:
+            return FileResponse(hit[0], media_type=mt)
+    raise HTTPException(status_code=404, detail="sin logo de marca")
+
+
+@app.get("/api/organizacion")
+def organizacion_get(_u: dict = Depends(usuario_actual)):
+    """Config del tenant (margen mínimo, balanzas por peso). Base multi-tenant.
+    Lectura para cualquier usuario logueado; cambiarla es scope organización (Ángela)."""
+    return organizacion.get()
+
+
+# --- P17·E1 · PDF real. Rutas fijas ANTES de la paramétrica /{tipo} ---------
+
+class PdfRequest(BaseModel):
+    documento: dict
+
+
+@app.post("/api/documentos/pdf")
+async def documentos_pdf(req: PdfRequest, u: dict = Depends(require_feature("documentos"))):
+    """Renderiza el documento EDITADO por el usuario (la única copia con sus
+    cambios vive en el cliente) a PDF real, lo guarda en Documentos y lo
+    devuelve para descargar. No calcula nada: maqueta lo que el draft dice."""
+    from core import pdf as pdf_mod
+    if not pdf_mod.disponible():
+        raise HTTPException(status_code=503, detail=i18n.t("api.pdf_no_disponible", _lang(u)))
+    import asyncio
+    import io
+    try:
+        # write_pdf es síncrono y CPU-bound: fuera del event loop.
+        pdf_bytes, meta = await asyncio.to_thread(
+            pdf_mod.render_y_guardar, req.documento, _lang(u),
+            u.get("nombre", u["username"]), u["username"])
+    except Exception:
+        raise HTTPException(status_code=500, detail=i18n.t("api.pdf_error", _lang(u)))
+    from fastapi.responses import StreamingResponse
+    nombre = f"{meta['tipo']}-{meta['fecha']}.pdf"
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes), media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
+
+
+@app.get("/api/documentos/listado")
+def documentos_listado(u: dict = Depends(require_feature("documentos"))):
+    """Los PDFs ya generados. P24·A1: POR USUARIO, server-side — cada uno ve
+    solo los suyos; el dueño ve los de todo el equipo (con 'pedido por X').
+
+    P43·C5.3 — el LABEL sigue el idioma de quien mira, el ARCHIVO no. `titulo`
+    quedó congelado en el idioma en que se generó (y está bien: es el nombre del
+    documento, que adentro está escrito en ese idioma). Pero mostrar "Inventory
+    executive summary" en una lista en castellano parece un bug de traducción.
+    Se manda `label` traducido desde `tipo` —que es una key estable, no texto— y
+    `lang` para que la pantalla avise cuando el PDF está en otro idioma."""
+    from core import pdf as pdf_mod
+    lang = _lang(u)
+    docs = []
+    for d in pdf_mod.listado(u["username"], u.get("es_admin", False)):
+        d = dict(d)
+        clave = f"doc.tipo.{d.get('tipo', 'documento')}"
+        d["label"] = i18n.t(clave, lang) if clave in i18n.CATALOGO else d.get("titulo")
+        docs.append(d)
+    return {"documentos": docs, "pdf_disponible": pdf_mod.disponible(), "lang": lang}
+
+
+@app.get("/api/documentos/archivo/{doc_id}")
+def documentos_archivo(doc_id: str, u: dict = Depends(require_feature("documentos"))):
+    from core import pdf as pdf_mod
+    # P24·A1 — mismo guard en la DESCARGA: un id ajeno da 404, ni existe.
+    if not pdf_mod.puede_ver(doc_id, u["username"], u.get("es_admin", False)):
+        raise HTTPException(status_code=404, detail="Not Found")
+    path = pdf_mod.archivo_path(doc_id)
+    if not path:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return FileResponse(path, media_type="application/pdf")
+
+
+@app.get("/api/documentos/{tipo}")
+def documento_get(tipo: str, proveedor: str | None = None, dias: int | None = None,
+                  u: dict = Depends(require_feature("documentos"))):
+    """Genera el contenido de un documento desde los datos reales del negocio."""
+    try:
+        return documentos.generar(tipo, {"proveedor": proveedor, "dias": dias},
+                                  _lang(u))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# --- Plan 6 · Cuentas corrientes de clientes (datos de clientes → feature "cuentas") ---
+
+@app.get("/api/cuentas")
+def cuentas_listar(_u: dict = Depends(require_feature("cuentas"))):
+    return {"clientes": cuentas.listar(), "alertas": cuentas.alertas()}
+
+
+@app.get("/api/cuentas/{cliente_id}")
+def cuentas_get(cliente_id: str, u: dict = Depends(require_feature("cuentas"))):
+    c = cuentas.get(cliente_id)
+    if not c:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.cliente_inexistente", _lang(u)))
+    return c
+
+
+@app.get("/api/cuentas/{cliente_id}/recordatorio")
+def cuentas_recordatorio(cliente_id: str, u: dict = Depends(require_feature("cuentas"))):
+    m = cuentas.mensaje_cobro(cliente_id, _lang(u))
+    if not m:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.cliente_inexistente", _lang(u)))
+    return m
+
+
+class CobroRequest(BaseModel):
+    monto: float
+
+
+@app.post("/api/cuentas/{cliente_id}/cobro")
+def cuentas_cobro(cliente_id: str, req: CobroRequest,
+                  u: dict = Depends(require_feature("cuentas"))):
+    try:
+        return cuentas.registrar_cobro(cliente_id, req.monto)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.cliente_inexistente", _lang(u)))
+
+
+# --- Plan 7 · Caja y tesorería (plata → feature "caja") ---
+
+@app.get("/api/caja")
+def caja_estado(_u: dict = Depends(require_feature("caja"))):
+    return caja.estado()
+
+
+class CajaAbrirRequest(BaseModel):
+    saldo_inicial: float = 0
+
+
+class MovimientoRequest(BaseModel):
+    tipo: str
+    medio: str
+    monto: float
+    detalle: str = ""
+
+
+class CierreRequest(BaseModel):
+    declarado: float | None = None
+
+
+@app.post("/api/caja/abrir")
+def caja_abrir(req: CajaAbrirRequest, _u: dict = Depends(require_feature("caja"))):
+    return caja.abrir(req.saldo_inicial)
+
+
+@app.post("/api/caja/movimiento")
+def caja_movimiento(req: MovimientoRequest, _u: dict = Depends(require_feature("caja"))):
+    return caja.movimiento(req.tipo, req.medio, req.monto, req.detalle)
+
+
+@app.post("/api/caja/cerrar")
+def caja_cerrar(req: CierreRequest, u: dict = Depends(require_feature("caja"))):
+    return caja.cerrar(req.declarado, _lang(u))
+
+
+# --- Perfiles autoadministrados: el empleado describe, Ángela propone, el dueño decide ---
+
+class DescripcionRequest(BaseModel):
+    token: str
+    texto: str
+
+
+class IdiomaRequest(BaseModel):
+    token: str
+    idioma: str
+
+
+class FotoRequest(BaseModel):
+    token: str
+    imagen: str  # data-URL base64
+
+
+class SolicitudRequest(BaseModel):
+    token: str
+    modulos: list[str]
+    motivo: str = ""          # P39·1.2 — por qué la necesita, en sus palabras
+
+
+class ResolverSolicitudRequest(BaseModel):
+    token: str
+    aprobar: bool
+    motivo: str = ""
+
+
+class FeatureRequest(BaseModel):
+    token: str
+    usuario: str
+    modulo: str
+    habilitar: bool
+
+
+# Módulos de fábrica: no se piden ni se tildan (son parte del piso mínimo o del
+# equipo PolPilot). Mismo criterio que las columnas de la matriz «Quién ve qué».
+_MODULOS_NO_PEDIBLES = {"angela", "perfil", "admin_contexto", "gestion_equipo",
+                        # el registro de auditoría es scope organización, como
+                        # gestion_equipo: no se pide, se tiene por ser dueño.
+                        "auditoria"}
+
+
+@app.get("/api/perfil/{usuario}")
+def perfil_get(usuario: str, u: dict = Depends(usuario_actual)):
+    p = auth.perfil_publico(usuario, _lang(u))   # labels en el idioma del que MIRA
+    if not p:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.usuario_inexistente", _lang(u)))
+    p["sugerencias"] = perfiles.sugerir_modulos(usuario)
+    p["solicitudes"] = perfiles.solicitudes(usuario=usuario)
+    # P39·1.2 — TODO lo que puede pedir, no sólo lo que Ángela le sugirió: el
+    # empleado sabe qué necesita para trabajar. Mismas columnas que la matriz
+    # «Quién ve qué» (los módulos de fábrica no se piden), menos lo que ya tiene
+    # y lo que ya está esperando respuesta.
+    if not p.get("es_admin"):
+        labels = auth.modulos_labels(_lang(u))
+        tiene = set(p.get("features") or [])
+        esperando = {s["modulo"] for s in p["solicitudes"] if s["estado"] == "pendiente"}
+        p["pedibles"] = [{"modulo": m, "label": labels.get(m, l)}
+                         for m, l in auth.MODULOS.items()
+                         if m not in _MODULOS_NO_PEDIBLES and m not in tiene
+                         and m not in esperando]
+    return p
+
+
+@app.post("/api/perfil/{usuario}/descripcion")
+def perfil_descripcion(usuario: str, req: DescripcionRequest):
+    quien = _usuario_de(req.token)
+    # Scope usuario: cada uno edita SU descripción (el dueño también puede).
+    if quien["username"] != usuario and not quien.get("es_admin"):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("perfil.solo_propio", _lang(quien)))
+    if not req.texto.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.descripcion_vacia", _lang(quien)))
+    return perfiles.set_descripcion(usuario, req.texto)
+
+
+@app.post("/api/perfil/{usuario}/idioma")
+def perfil_idioma(usuario: str, req: IdiomaRequest):
+    quien = _usuario_de(req.token)
+    # Scope usuario: cada uno elige SU idioma (el dueño también puede setearlo).
+    if quien["username"] != usuario and not quien.get("es_admin"):
+        raise HTTPException(status_code=403, detail=i18n.t("perfil.solo_propio",
+                                                           perfiles.idioma_de(quien["username"])))
+    try:
+        return perfiles.set_idioma(usuario, req.idioma)
+    except ValueError:
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("perfil.idioma_invalido",
+                                          perfiles.idioma_de(quien["username"]),
+                                          validos=", ".join(paths.IDIOMAS)))
+
+
+@app.post("/api/perfil/{usuario}/foto")
+def perfil_foto_subir(usuario: str, req: FotoRequest):
+    quien = _usuario_de(req.token)
+    if quien["username"] != usuario and not quien.get("es_admin"):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("perfil.solo_propio", _lang(quien)))
+    try:
+        return perfiles.set_foto(usuario, req.imagen)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/perfil/{usuario}/foto")
+def perfil_foto(usuario: str):
+    """La foto de perfil, o 204 si esa persona no subió ninguna.
+
+    P43·C5.4 — sin foto la respuesta era 404, y como el Avatar pide la foto
+    SIEMPRE a propósito (el servidor decide si existe, así una sesión vieja no
+    esconde una foto recién subida), la consola se llenaba de 404 rojos por cada
+    empleado sin foto. 204 dice lo mismo sin parecer un error: la persona existe,
+    su avatar no tiene contenido. El `onError` del <img> sigue disparando y
+    caemos a las iniciales igual que antes."""
+    path = perfiles.foto_path(usuario)
+    if not path:
+        return Response(status_code=204)
+    return FileResponse(path)
+
+
+@app.post("/api/solicitudes")
+def solicitudes_crear(req: SolicitudRequest):
+    quien = _usuario_de(req.token)  # el solicitante sale del token, no del body
+    sugeridas = {s["modulo"]: s["motivo"] for s in perfiles.sugerir_modulos(quien["username"])}
+    creadas, errores = [], []
+    for m in req.modulos:
+        try:
+            if m in _MODULOS_NO_PEDIBLES:
+                raise ValueError(i18n.t("api.modulo_no_pedible", _lang(quien)))
+            creadas.append(perfiles.crear_solicitud(
+                quien["username"], m, sugeridas.get(m, ""), motivo_empleado=req.motivo))
+        except ValueError as e:
+            errores.append({"modulo": m, "error": str(e)})
+    return {"creadas": creadas, "errores": errores}
+
+
+@app.get("/api/solicitudes")
+def solicitudes_listar(token: str, estado: str | None = None):
+    quien = _usuario_de(token)
+    if quien.get("es_admin"):
+        return {"solicitudes": perfiles.solicitudes(estado=estado)}
+    return {"solicitudes": perfiles.solicitudes(usuario=quien["username"], estado=estado)}
+
+
+@app.post("/api/solicitudes/{sid}/resolver")
+def solicitudes_resolver(sid: str, req: ResolverSolicitudRequest):
+    dueno = _admin_de(req.token)  # habilitar módulos = configuración de negocio
+    try:
+        return perfiles.resolver_solicitud(sid, req.aprobar, actor=dueno["username"], motivo=req.motivo)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/admin/matriz")
+def admin_matriz(token: str):
+    _admin_de(token)
+    return {"matriz": perfiles.matriz(), "modulos": auth.MODULOS}
+
+
+@app.post("/api/admin/feature")
+def admin_feature(req: FeatureRequest):
+    dueno = _admin_de(req.token)
+    try:
+        return perfiles.set_feature(req.usuario, req.modulo, req.habilitar, actor=dueno["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class AvisoRequest(BaseModel):
+    para: str
+    titulo: str
+    cuerpo: str = ""
+
+
+@app.post("/api/notificaciones/avisar")
+def notificaciones_avisar(req: AvisoRequest, u: dict = Depends(require_admin)):
+    """El dueño manda un aviso a un empleado por el sistema de notificaciones
+    real (le llega a SU campanita, no al localStorage del navegador del dueño)."""
+    import auth as _auth
+    if req.para not in _auth.USUARIOS:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.empleado_inexistente", _lang(u)))
+    return notificaciones.emitir(para=req.para, titulo=req.titulo,
+                                 cuerpo=req.cuerpo, tipo="aviso_dueno")
+
+
+@app.get("/api/notificaciones")
+def notificaciones_listar(token: str):
+    quien = _usuario_de(token)
+    # P24·D6 — el poll de la campanita re-evalúa las condiciones latentes
+    # (umbral de dormida, atraso de clientes, programados) contra los datos
+    # vivos: si una se cumplió, la notificación aparece en ESTE mismo fetch.
+    try:
+        recordatorios.evaluar()
+    except Exception:  # noqa: BLE001 — la campanita nunca se cae por esto
+        pass
+    items = notificaciones.listar(quien["username"])
+    return {"notificaciones": items,
+            "no_leidas": sum(1 for n in items if not n["leida"]),
+            "destinos": notificaciones.destinos_registrados()}
+
+
+@app.post("/api/notificaciones/{nid}/leida")
+def notificaciones_leida(nid: str, token: str):
+    quien = _usuario_de(token)
+    try:
+        return notificaciones.marcar_leida(nid)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.notificacion_inexistente", _lang(quien)))
+
+
+# --- Ventas: rotación + margen real + quiebre (despiertan con el CSV, tras validar montos) ---
+
+class ValidacionRequest(BaseModel):
+    esperado: float | None = None
+    confirmar: bool = False
+
+
+@app.get("/api/ventas")
+def ventas_get(u: dict = Depends(require_feature("inventario"))):
+    """Rotación/excedente, margen real y quiebre. disponible=False hasta que haya
+    ventas Y el dueño confirme el validador de montos."""
+    return ventas.panorama(_lang(u))
+
+
+@app.get("/api/ventas/validacion")
+def ventas_validacion(u: dict = Depends(usuario_actual)):
+    return ventas.validacion(_lang(u))
+
+
+@app.post("/api/ventas/validacion")
+def ventas_validar(req: ValidacionRequest, u: dict = Depends(require_admin)):
+    """Confirmar el total del mes es decir 'la verdad del negocio': sólo el dueño."""
+    try:
+        return ventas.confirmar_validacion(req.esperado, req.confirmar,
+                                           actor=u["username"], lang=_lang(u))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class DryRunRequest(BaseModel):
+    csv: str
+
+
+@app.post("/api/ventas/dryrun")
+def ventas_dryrun(req: DryRunRequest, _u: dict = Depends(require_feature("cargar"))):
+    """Probar un CSV de ventas SIN comprometer nada: qué se detecta y qué activaría."""
+    if not req.csv.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.archivo_vacio", _lang(_u)))
+    try:
+        return ventas.dry_run(req.csv)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# --- Evolución: comparación histórica ajustada por IPC (despierta con las ventas) ---
+
+@app.get("/api/evolucion")
+def evolucion_get(u: dict = Depends(require_feature("evolucion"))):
+    # P11·B4: mismo cache que /api/analisis — las alertas de negocio salen de acá.
+    from core import analisis_cache
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("evolucion", lang,
+                                         lambda: evolucion.panorama(lang))
+
+
+# --- Depósito y logística (capa sobre el WMS/TMS: consultas, no picking ni rutas) ---
+
+@app.get("/api/deposito")
+def deposito_get(dias: int = 15, _u: dict = Depends(require_feature("deposito"))):
+    disc_k = deposito.discrepancias_conocimiento()
+    return {
+        "resumen": deposito.resumen(),
+        "vencimientos": deposito.vencimientos(dias),
+        "vencidos": deposito.vencidos(),
+        "discrepancias": disc_k["visibles"],
+        "discrepancias_suprimidas": disc_k["suprimidas"],  # Piece 12 — "vela acá"
+    }
+
+
+@app.get("/api/pagos")
+def pagos_get(u: dict = Depends(require_feature("finanzas"))):
+    """Pagos y liquidez (P16): lo por pagar, lo que acredita y los cheques.
+    Sin datos (piloto) devuelve vacío honesto y la UI muestra su placeholder.
+    P24·F1: + la proyección 30/60/90 (trabajo de PolPilot, no data a cargar)."""
+    return {
+        "resumen": pagos.resumen(),
+        "pagos_por_vencer": pagos.pagos_por_vencer(14),
+        "pagos_vencidos": pagos.pagos_vencidos(),
+        "tarjeta_por_acreditar": pagos.tarjeta_por_acreditar(30),
+        "cheques": pagos.cheques_en_cartera(),
+        "proyeccion": pagos.proyeccion_flujo(_lang(u)),
+    }
+
+
+@app.get("/api/logistica")
+def logistica_get(_u: dict = Depends(require_feature("logistica"))):
+    return {
+        "reparto": logistica.resumen_reparto(),
+        "hoy": logistica.de_hoy(),
+        "atrasados": logistica.atrasados(),
+    }
+
+
+# --- P39 · lo que el piso REPORTA (y el cruce que produce) ---------------------
+# El empleado reporta un hecho (faltante, conteo, entrega, reposición). No mueve
+# stock ni ERP: eso sigue siendo decisión del dueño sobre una PROPUESTA.
+
+class ReporteRequest(BaseModel):
+    tipo: str
+    datos: dict = {}
+
+
+class ResolverReporteRequest(BaseModel):
+    nota: str = ""
+
+
+@app.post("/api/piso/reporte")
+def piso_reportar(req: ReporteRequest, u: dict = Depends(usuario_actual)):
+    """Cada tipo pide el módulo del trabajo que reporta: un faltante o un conteo
+    es depósito; confirmar una entrega es logística; pedir reposición, caja de
+    la sucursal. Sin ese módulo, la acción no existe para ese rol."""
+    requiere = {"faltante": "deposito", "conteo": "deposito",
+                "entrega": "logistica", "reposicion": "inventario",
+                "pedido": "cuentas"}.get(req.tipo)
+    if requiere and requiere not in (u.get("features") or []):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("authz.sin_feature", _lang(u), feature=requiere))
+    try:
+        return piso.reportar(req.tipo, u["username"], req.datos)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class VozRequest(BaseModel):
+    """Una nota de voz del piso. Llega transcrita por el navegador (Web Speech)
+    o como audio para el camino de muestras."""
+    texto: str | None = None
+    audio: str | None = None          # base64
+    media_type: str = "audio/webm"
+
+
+@app.post("/api/voz/escuchar")
+def voz_escuchar(req: VozRequest, request: Request,
+                 u: dict = Depends(usuario_actual)):
+    """Voz → lo que Ángela ENTENDIÓ y lo que PROPONE. No persiste nada.
+
+    El empleado tiene las manos ocupadas: habla en vez de tipear. Pero un
+    número o un producto que salen de una voz pasan por el MISMO peaje
+    determinista que los de un remito (core/validacion), y lo que quede dudoso
+    vuelve marcado para que lo resuelva una persona."""
+    from core import transcripcion, voz
+    lang = _lang(u)
+    if not req.texto and _ip_excedido(_client_ip(request), _cap_ip()):
+        return {"ok": False, "motivo": i18n.t("angela.cap_alcanzado", lang)}
+    t = transcripcion.transcribir(texto=req.texto, audio_b64=req.audio, lang=lang)
+    if not t.get("ok"):
+        return {"ok": False, "motivo": t.get("motivo")}
+    p = voz.proponer(t["texto"], actor=u["username"], lang=lang)
+    p["ok"] = True
+    p["origen_transcripcion"] = t["origen"]
+    return p
+
+
+@app.get("/api/voz/muestras")
+def voz_muestras(u: dict = Depends(usuario_actual)):
+    """Las notas de voz preparadas — SOLO TENANT DEMO. El plan B honesto para
+    cuando el navegador no tiene Web Speech (Safari/iOS) o la sala no tiene red:
+    recorren EXACTAMENTE la misma tubería que una voz real."""
+    if paths.TENANT != "demo":
+        return {"muestras": []}
+    from core import transcripcion
+    datos = transcripcion.muestras_crudas().get("muestras") or {}
+    return {"muestras": [{"id": k, "rol": m.get("rol"),
+                          "titulo": m.get("titulo"), "texto": m.get("texto")}
+                         for k, m in datos.items()]}
+
+
+class VozConfirmarRequest(BaseModel):
+    """El sí del humano, con las correcciones que haya hecho."""
+    tipo: str
+    datos: dict
+    transcripcion: str | None = None
+
+
+@app.post("/api/voz/confirmar")
+def voz_confirmar(req: VozConfirmarRequest, u: dict = Depends(usuario_actual)):
+    """El reporte dictado entra por el MISMO riel que el cargado a mano
+    (core/piso) — no hay un camino paralelo para la voz. Se revalida acá, sobre
+    lo que el humano confirma, no sobre lo que se le mostró antes."""
+    from core import voz as _voz
+    lang = _lang(u)
+    if req.tipo not in _voz.INTENCIONES or req.tipo == "consulta":
+        raise HTTPException(status_code=422,
+                            detail=i18n.t("core.voz.falta_producto", lang))
+    datos = dict(req.datos or {})
+    if req.transcripcion:
+        # queda la frase textual: es la prueba de qué se dijo
+        datos["dictado"] = req.transcripcion
+    return piso_reportar(ReporteRequest(tipo=req.tipo, datos=datos), u)
+
+
+@app.get("/api/piso/reportes")
+def piso_reportes(tipo: str | None = None, estado: str | None = None,
+                  u: dict = Depends(usuario_actual)):
+    """El dueño ve todo lo que reportó el equipo; cada empleado, lo suyo."""
+    actor = None if u.get("es_admin") else u["username"]
+    return {"reportes": piso.listar(tipo=tipo, estado=estado, actor=actor)}
+
+
+@app.post("/api/piso/reportes/{rid}/resolver")
+def piso_resolver(rid: str, req: ResolverReporteRequest,
+                  u: dict = Depends(require_admin)):
+    try:
+        return piso.resolver(rid, u["username"], req.nota)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.reporte_inexistente", _lang(u)))
+
+
+@app.get("/api/piso/reportes/{rid}/prueba")
+def piso_prueba(rid: str, u: dict = Depends(usuario_actual)):
+    """P41·4 — la prueba de una entrega. La ve quien la sacó y el dueño: es el
+    respaldo de esa persona si un cliente dice que no recibió."""
+    r = next((x for x in piso.listar() if x["id"] == rid), None)
+    if not r or (not u.get("es_admin") and r["actor"] != u["username"]):
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.reporte_inexistente", _lang(u)))
+    path = piso.adjunto_path(rid)
+    if not path:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.reporte_inexistente", _lang(u)))
+    return FileResponse(path)
+
+
+@app.get("/api/piso/propuestas")
+def piso_propuestas(u: dict = Depends(require_admin)):
+    """P39·3 — lo que el equipo reportó, cruzado con stock y órdenes de compra,
+    convertido en decisiones del dueño (con su aprobación, nunca sin ella)."""
+    return {"propuestas": piso.propuestas(_lang(u))}
+
+
+# --- Recordatorios (transversal: simples, por condición de datos y por evento) ---
+
+class RecordatorioRequest(BaseModel):
+    texto: str
+    para: str | None = None
+    creado_por: str | None = None
+    condicion: dict | None = None
+
+
+@app.get("/api/recordatorios")
+def recordatorios_listar(para: str | None = None,
+                         u: dict = Depends(usuario_actual)):
+    # Scope: cada uno ve los suyos; el dueño puede mirar los de otro con ?para=.
+    objetivo = para if u.get("es_admin") else u["username"]
+    return {"recordatorios": recordatorios.listar(objetivo)}
+
+
+@app.post("/api/recordatorios")
+def recordatorios_crear(req: RecordatorioRequest, u: dict = Depends(usuario_actual)):
+    if not req.texto.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.recordatorio_vacio", _lang(u)))
+    # el creador sale del token; asignar a otro es potestad del dueño
+    creado_por = u["username"]
+    para = req.para if (u.get("es_admin") and req.para) else creado_por
+    return recordatorios.crear(req.texto, para, creado_por, req.condicion)
+
+
+@app.post("/api/recordatorios/{rid}/completar")
+def recordatorios_completar(rid: str, u: dict = Depends(usuario_actual)):
+    # P41·4 — una tarea la cierra SU destinatario (o el dueño). Antes cualquier
+    # sesión válida podía marcar hecha la tarea de otro: el scope de lectura ya
+    # existía, el de escritura faltaba.
+    try:
+        mia = next((r for r in recordatorios.listar(u["username"]) if r["id"] == rid), None)
+        if not mia and not u.get("es_admin"):
+            raise HTTPException(status_code=403,
+                                detail=i18n.t("api.recordatorio_ajeno", _lang(u)))
+        return recordatorios.completar(rid)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.recordatorio_inexistente", _lang(u)))
+
+
+# --- P24·E4 — "Lo que pasó con tu equipo": agregador de actividad REAL --------
+
+# P34·2 — el trabajo REAL que registra el audit, por familia. Los slugs son los
+# que efectivamente se graban (audit.record en core/*); antes la lista blanca
+# tenía nombres muertos ("confirmar_remito"…) y subcontaba el trabajo real.
+_CARGAS_ACC = {"cargar_orden_compra", "cargar_remito", "cargar_factura",
+               "cargar_recibo", "integrar_staging", "crear_apartado"}
+_CORRECCIONES_EXTRA = {"aplicar_lista_precios", "corregir_precio_perdida"}
+# Las correcciones de saneamiento son `sanear_<lo que sea>` (fantasma, balanza,
+# costo_viejo, fantasma_custom…): se cuentan por prefijo, robusto a categorías.
+
+
+def _familia_evento(acc: str) -> str | None:
+    if acc == "consulta_angela":
+        return "consulta"
+    if acc in _CARGAS_ACC:
+        return "carga"
+    if acc.startswith("sanear_") or acc in _CORRECCIONES_EXTRA:
+        return "correccion"
+    return None
+
+
+# P39·1.3 — trabajo REAL que no cae en carga/corrección pero sí es "algo que
+# esta persona resolvió" (validó los montos del mes, dejó una orden armada, y
+# lo que reporta el de a pie desde el piso). Se suma a lo de arriba para el
+# bloque "qué resolvió esta semana" de la ficha.
+_TRABAJO_EXTRA = {"validacion_montos_ventas", "preparar_orden_compra",
+                  "reportar_faltante", "marcar_conteo", "confirmar_entrega",
+                  "cerrar_tarea_piso", "pedir_reposicion", "registrar_pedido"}
+
+
+def _es_trabajo(acc: str) -> bool:
+    return _familia_evento(acc) in ("carga", "correccion") or acc in _TRABAJO_EXTRA
+
+
+@app.get("/api/equipo/actividad")
+def equipo_actividad(u: dict = Depends(require_admin)):
+    """Panel de gestión: por CADA empleado del tenant, lo que el sistema
+    registró de verdad — consultas a Ángela (TEMAS = tools, jamás el texto de la
+    conversación), cargas por foto/archivo, correcciones con backup, recencia y
+    objetivos. Es un AGREGADOR de la auditoría real: cero actividad inventada; un
+    empleado sin eventos se muestra vacío, no relleno. WhatsApp jamás aparece
+    acá (futuro declarado en pantalla). Solo el dueño (require_admin)."""
+    import auth as _auth
+    import datetime as _dt
+    from core import objetivos as obj_mod, fechas
+    hoy = fechas.hoy()
+
+    def _dias_desde(cuando: str | None) -> int | None:
+        if not cuando:
+            return None
+        try:
+            d = _dt.date.fromisoformat(cuando[:10])
+        except (ValueError, TypeError):
+            return None
+        # clamp >=0: el audit graba con reloj REAL; un evento en vivo (fecha real
+        # posterior a la congelada del demo) no debe dar "hace -N días".
+        return max(0, (hoy - d).days)
+
+    # Un bucket por CADA persona del tenant (no-interno): los inactivos también
+    # son información — se listan con actividad en cero.
+    # P39·1.1 — el dueño ENTRA a la lista: la nómina es UNA sola y la misma en
+    # "Ver como", "Lo que pasó con tu equipo" y "Quién ve qué" (antes acá se
+    # excluía a los admin y daban 12 contra 13 de la matriz).
+    por_usuario: dict[str, dict] = {}
+    for username, base in _auth.USUARIOS.items():
+        if base.get("interno"):
+            continue
+        por_usuario[username] = {
+            "username": username, "nombre": base["nombre"], "rol": base["rol"],
+            "es_admin": base.get("es_admin", False),
+            "consultas": 0, "temas": {}, "cargas": 0, "correcciones": 0,
+            "resueltos": {}, "ultima": None,
+        }
+
+    for e in store.audit.list():
+        b = por_usuario.get(e.get("actor") or "")
+        if b is None:
+            continue
+        accion = e.get("accion") or ""
+        # "Qué resolvió esta semana": lo concreto de los últimos 7 días, contado
+        # por acción (3 remitos, 2 productos corregidos…). Nada agregado a mano.
+        dd = _dias_desde(e.get("cuando"))
+        if _es_trabajo(accion) and dd is not None and dd <= 7:
+            b["resueltos"][accion] = b["resueltos"].get(accion, 0) + 1
+        fam = _familia_evento(accion)
+        if fam == "consulta":
+            b["consultas"] += 1
+            for tema in (e.get("despues") or {}).get("tools", []):
+                b["temas"][tema] = b["temas"].get(tema, 0) + 1
+        elif fam == "carga":
+            b["cargas"] += 1
+        elif fam == "correccion":
+            b["correcciones"] += 1
+        elif not _es_trabajo(accion):
+            continue    # administrativo puro (idioma, foto): no es "actividad"
+        if not b["ultima"] or (e.get("cuando") or "") > b["ultima"]:
+            b["ultima"] = e.get("cuando")
+
+    objetivos = obj_mod.listar()
+    obj_por_nombre: dict[str, list] = {}
+    for o in objetivos:
+        obj_por_nombre.setdefault(o.get("responsable"), []).append(o)
+
+    filas = []
+    temas_equipo: dict[str, int] = {}
+    for b in por_usuario.values():
+        temas = b.pop("temas")
+        for k, v in temas.items():
+            temas_equipo[k] = temas_equipo.get(k, 0) + v
+        b["temas_top"] = sorted(temas.items(), key=lambda kv: -kv[1])[:3]
+        b["acciones"] = b["cargas"] + b["correcciones"]
+        # (slug, n) ordenado por volumen — el frontend le pone las palabras
+        b["resueltos"] = sorted(b.pop("resueltos").items(), key=lambda kv: -kv[1])[:6]
+        b["dias_desde"] = _dias_desde(b["ultima"])
+        mios = obj_por_nombre.get(b["nombre"], [])
+        b["objetivos_en_curso"] = sum(1 for o in mios if o.get("estado") != "listo")
+        b["objetivos_listos"] = sum(1 for o in mios if o.get("estado") == "listo")
+        filas.append(b)
+    # más activos primero; los sin actividad (dias_desde None) al final
+    filas.sort(key=lambda f: (f["consultas"] + f["acciones"], -(f["dias_desde"] if f["dias_desde"] is not None else 10**6)), reverse=True)
+
+    # Resumen del equipo (2.C), todo derivado de lo real:
+    resumen = {
+        "personas": len(filas),
+        "activos_semana": sum(1 for f in filas if f["dias_desde"] is not None and f["dias_desde"] <= 7),
+        "acciones_total": sum(f["acciones"] for f in filas),
+        "consultas_total": sum(f["consultas"] for f in filas),
+        "objetivos_en_curso": sum(1 for o in objetivos if o.get("estado") != "listo"),
+        "objetivos_listos": sum(1 for o in objetivos if o.get("estado") == "listo"),
+        "tema_top": (sorted(temas_equipo.items(), key=lambda kv: -kv[1])[0][0]
+                     if temas_equipo else None),
+    }
+    return {"actividad": filas, "resumen": resumen,
+            "objetivos": [{"nombre": o.get("nombre"), "responsable": o.get("responsable"),
+                           "estado": o.get("estado")} for o in objetivos]}
+
+
+# --- Sync bidireccional con sistemas externos (Fase 1: delta export) ---
+
+@app.get("/api/sync/delta")
+def sync_delta(formato: str = "generico", _u: dict = Depends(require_admin)):
+    """Genera el CSV con SOLO los registros corregidos (UPDATE), para re-importar en Faro/Tango."""
+    return sync.generar_delta_export(formato)
+
+
+@app.get("/api/sync/config")
+def sync_config(_u: dict = Depends(require_admin)):
+    """Quién gana por campo (resolución de conflictos) + conflictos detectados."""
+    return {"source_of_truth": sync.SOURCE_OF_TRUTH, "conflictos": sync.detectar_conflictos()}
+
+
+@app.get("/api/conectores")
+def conectores_listar(_u: dict = Depends(require_admin)):
+    """Plan 11: conectores disponibles (CSV/BCRA activos, MCP slot pendiente)."""
+    return {"conectores": conectores.disponibles()}
+
+
+# FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
+# EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
+# sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/
+# HMAC en el header), no login. Hoy no hace nada, así que queda abierto e inocuo.
+@app.post("/api/sync/webhook/{origen}")
+def sync_webhook(origen: str, payload: dict | None = None):
+    return {"ok": True, "origen": origen, "procesado": False}
+
+
+# --- WhatsApp (canal sobre el mismo cerebro): número → empleado → rol → Ángela ---
+
+class WhatsAppRequest(BaseModel):
+    numero: str
+    mensaje: str
+
+
+# EXCEPCIÓN documentada: canal máquina-a-máquina (Twilio). Identifica al empleado
+# por su número (usuario_por_numero), no por token de sesión. Cuando se conecte la
+# Business API real necesitará validar la firma del webhook de Twilio, no login.
+@app.post("/api/whatsapp")
+def whatsapp_in(req: WhatsAppRequest):
+    u = auth.usuario_por_numero(req.numero)
+    if not u:
+        return {"autorizado": False,
+                "respuesta": i18n.t("api.whatsapp_sin_cuenta")}
+    # Mismo filtro anti-fuga que el chat web: el WhatsApp de cada empleado ve sólo
+    # los módulos de su rol (las features salen de su cuenta, no del mensaje).
+    r = angela.responder(req.mensaje, [], rol=u.get("rol"), nombre=u.get("username"),
+                         features=u.get("features"))
+    return {"autorizado": True, "usuario": u.get("nombre"), "rol": u.get("rol"),
+            "respuesta": r["respuesta"], "acciones": r.get("acciones", [])}
+
+
+@app.get("/api/inventario")
+def inventario(u: dict = Depends(require_feature("inventario"))):
+    data = ds.resumen(_lang(u))
+    data["top_inmovilizado"] = ds.top_inmovilizado(10)
+    data["grupos_disponibles"] = ds.grupos_disponibles(_lang(u))
+    return data
+
+
+@app.get("/api/inventario/top")
+def inventario_top(n: int = 10, _u: dict = Depends(require_feature("inventario"))):
+    return {"items": ds.top_inmovilizado(n)}
+
+
+@app.get("/api/grupo/{nombre}")
+def grupo(nombre: str, limit: int | None = None,
+          u: dict = Depends(require_feature("inventario"))):
+    if nombre not in ds.GRUPOS_LABEL:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.grupo_desconocido", _lang(u),
+                                          nombre=nombre))
+    items = ds.listar_grupo(nombre, limit)
+    return {
+        "grupo": nombre,
+        "label": ds.grupo_label(nombre, _lang(u)),
+        "total": len(items),
+        "items": items,
+    }
+
+
+@app.get("/api/buscar")
+def buscar(q: str, _u: dict = Depends(require_feature("inventario"))):
+    return {"query": q, "items": ds.buscar_productos(q)}
+
+
+# Freno de gasto del TENANT DEMO (P9·F): límite blando de mensajes de Ángela
+# por sesión (token). Solo si POLPILOT_DEMO_MSG_CAP está seteada — el piloto,
+# sin la var, no cambia en nada. Contador en memoria: muere con el proceso,
+# igual que las sesiones.
+_CHAT_POR_SESION: dict[str, int] = {}
+
+
+def _cap_mensajes() -> int:
+    try:
+        return int(os.environ.get("POLPILOT_DEMO_MSG_CAP", "0"))
+    except ValueError:
+        return 0
+
+
+# --- Freno de gasto por IP (deploy público, SOLO tenant demo) ----------------
+# El cap por sesión (token) se evade re-logueando (autologin mintea token nuevo)
+# y no toca el path sin token. Este freno cuenta por IP real del visitante, con
+# ventana DIARIA (epoch real, no la fecha congelada del demo) y limpieza de
+# entradas viejas para no crecer en memoria. En el PILOTO (tenant != demo) el
+# cap es 0: nada nuevo aplica. El techo duro real lo pone el spend limit de
+# Anthropic (fuera de la app).
+_IP_CONTEO: dict[str, tuple[int, int]] = {}  # ip -> (llamadas_hoy, dia_epoch)
+
+
+def _es_demo() -> bool:
+    return paths.TENANT == "demo"
+
+
+def _cap_ip() -> int:
+    if not _es_demo():
+        return 0
+    try:
+        return int(os.environ.get("POLPILOT_DEMO_IP_CAP", "60"))
+    except ValueError:
+        return 60
+
+
+def _client_ip(request: Request) -> str:
+    """La IP REAL del visitante detrás del proxy de Render: el primer valor de
+    X-Forwarded-For (cliente, proxy1, …); si no está, la IP directa."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        primera = xff.split(",")[0].strip()
+        if primera:
+            return primera
+    return request.client.host if request.client else "desconocida"
+
+
+def _ip_excedido(ip: str, cap: int) -> bool:
+    """Cuenta UNA llamada de esta IP en el día actual; True si ya superó el cap.
+    Con cap<=0 nunca frena (piloto). Ventana diaria real; purga entradas de días
+    previos cuando el dict crece, para acotar la memoria."""
+    if cap <= 0:
+        return False
+    hoy = int(time.time() // 86400)  # día epoch REAL (no fechas.hoy() congelada)
+    if len(_IP_CONTEO) > 10000:
+        for k in [k for k, (_, d) in _IP_CONTEO.items() if d != hoy]:
+            _IP_CONTEO.pop(k, None)
+    n, dia = _IP_CONTEO.get(ip, (0, hoy))
+    if dia != hoy:
+        n = 0
+    if n >= cap:
+        _IP_CONTEO[ip] = (n, hoy)  # se mantiene topado hasta que cambie el día
+        return True
+    _IP_CONTEO[ip] = (n + 1, hoy)
+    return False
+
+
+def _mensaje_cap(request: Request, token: str | None) -> dict:
+    """El mismo mensaje amable del cap de sesión, en el idioma del usuario si
+    hay token; si no, el default del tenant."""
+    u = auth.usuario_por_token(token) if token else None
+    return {"respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
+            "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": []}
+
+
+@app.post("/api/angela")
+def chat(req: ChatRequest, request: Request):
+    historial = [t.model_dump() for t in (req.historial or [])]
+    # (B) Freno de gasto por IP (deploy público, solo demo): antes de cualquier
+    # llamada al modelo. En piloto _cap_ip()=0 → no aplica.
+    if _ip_excedido(_client_ip(request), _cap_ip()):
+        return _mensaje_cap(request, req.token)
+    # La identidad SALE DEL TOKEN, no del body. Un rol/nombre falso en el request
+    # se IGNORA: no da acceso a nada. Con token → rol/nombre/features reales del
+    # usuario logueado; las features acotan qué puede ver por chat (anti-fuga).
+    if req.token:
+        u = auth.usuario_por_token(req.token)
+        if not u:
+            raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
+        cap = _cap_mensajes()
+        if cap > 0:
+            usados = _CHAT_POR_SESION.get(req.token, 0)
+            if usados >= cap:
+                return {"respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
+                        "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": []}
+            _CHAT_POR_SESION[req.token] = usados + 1
+        import time as _time
+        _t0 = _time.monotonic()
+        r = angela.responder(req.mensaje, historial, rol=u.get("rol"),
+                             nombre=u.get("username"), features=u.get("features"))
+        _ms = round((_time.monotonic() - _t0) * 1000)
+        # P24·F4 — telemetría simple de latencia por tipo de pedido (log local):
+        # para saber qué esperar en la grabación, sin servicios externos.
+        print(f"[angela] {_ms}ms tools={','.join(r.get('tools_usadas') or []) or '-'} "
+              f"user={u['username']}", flush=True)
+        # P24·E4 — registro LIVIANO de la interacción (tema = tools usadas, sin
+        # transcripciones): alimenta "Lo que pasó con tu equipo". Es un evento
+        # administrativo: no infla el feed del Home (filtrado en _cuerpo_actividad).
+        try:
+            store.audit.record(actor=u["username"], accion="consulta_angela",
+                               despues={"tools": (r.get("tools_usadas") or [])[:4],
+                                        "ms": _ms})
+        except Exception:  # noqa: BLE001
+            pass
+        return r
+    # (A) Sin token en el DEMO público: se rechaza limpio, SIN llamar a Claude.
+    # La UI siempre manda token (autologin), así que esto solo frena el abuso
+    # directo del endpoint. En el PILOTO se mantiene el anónimo restringido de
+    # siempre (NO confía en req.rol/req.nombre; features=[] → nada sensible).
+    if _es_demo():
+        raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
+    return angela.responder(req.mensaje, historial, rol="invitado", nombre=None, features=[])
+
+
+@app.get("/api/oportunidades")
+def oportunidades(u: dict = Depends(usuario_actual)):
+    # P27·A — el set CERRADO de tarjetas con drill-down (cards), servido por el
+    # MISMO cache que el resto del análisis (se invalida cuando los datos
+    # cambian). El shape legacy (concretas/pendientes) se mantiene por compat.
+    from core import analisis_cache, oportunidades_neg
+    lang = _lang(u)
+    r = ds.oportunidades(lang)
+    todas = analisis_cache.get_o_computar(
+        "oportunidades", lang, lambda: oportunidades_neg.cards(lang))
+    # P43·C3 — cada rol ve los hallazgos de SU incumbencia. El cálculo es el
+    # mismo para todos (y sigue siendo el canónico, cacheado una sola vez); el
+    # recorte se aplica acá, por los módulos que la matriz «Quién ve qué» ya le
+    # dio a esta persona. Al de depósito le llegaban los $85,7M de cobranza y la
+    # exposición de clientes: no es su trabajo ni su información.
+    r["cards"] = oportunidades_neg.visibles_para(
+        todas, perfiles.features_efectivas(u["username"]))
+    return r
+
+
+@app.get("/api/margenes")
+def margenes_get(grupo: str | None = None, u: dict = Depends(require_feature("inventario"))):
+    """P38·C — cuánto ganás por grupo, en los DOS canales (mayorista y
+    mostrador), y el detalle producto por producto adentro de un grupo.
+    Cacheado como el resto del análisis: se invalida cuando los datos cambian."""
+    from core import analisis_cache, margenes
+    lang = _lang(u)
+    if grupo:
+        return analisis_cache.get_o_computar(
+            f"margenes_detalle_{grupo}", lang, lambda: margenes.detalle(grupo, lang))
+    return analisis_cache.get_o_computar("margenes", lang, lambda: margenes.completo(lang))
+
+
+@app.get("/api/traslados-internos")
+def traslados_internos(u: dict = Depends(require_feature("inventario"))):
+    """P38·F — lo que se movió a locales PROPIOS, separado de la venta real.
+    Devuelve las dos lecturas del ranking: la cruda del ERP y la verdadera."""
+    from core import analisis_cache, traslados
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("traslados", lang,
+                                         lambda: traslados.resumen(lang))
+
+
+@app.get("/api/vencimientos")
+def vencimientos_get(dias: int = 30, u: dict = Depends(require_feature("deposito"))):
+    """P38·H — vencimiento × ritmo real de venta: qué NO llegás a vender antes
+    de que se venza, cuánta plata es y qué hacer con eso."""
+    from core import vencimientos
+    lang = _lang(u)
+    r = vencimientos.en_riesgo(dias, lang)
+    if r.get("disponible"):
+        r["propuesta"] = vencimientos.propuesta(lang, dias)
+    return r
+
+
+@app.get("/api/cierres-locales")
+def cierres_locales(dias: int = 7, u: dict = Depends(require_feature("caja"))):
+    """P38·E — el reporte comparativo de cierres por local. Lo que una empleada
+    imputa a mano en un Excel toda la semana, ya calculado."""
+    from core import mostrador
+    r = mostrador.comparativo(dias)
+    if not r.get("disponible"):
+        raise HTTPException(404, i18n.t("api.sin_mostrador", _lang(u)))
+    return r
+
+
+class OrdenCompraRequest(BaseModel):
+    codigo: int | None = None
+    producto: str
+    proveedor: str = ""
+    cantidad: float = 0
+    motivo: str = ""
+    origen: str = "quiebre_inminente"
+
+
+@app.post("/api/orden-compra/preparar")
+def orden_compra_preparar(req: OrdenCompraRequest,
+                          u: dict = Depends(require_feature("inventario"))):
+    """P38·B — el dueño APRUEBA la orden que Ángela dejó armada. Aprobar no la
+    manda al proveedor: la deja en borrador, firmada y auditada, lista para
+    salir. Human-in-the-loop de punta a punta."""
+    from core import ordenes
+    orden = ordenes.preparar(producto=req.producto, codigo=req.codigo,
+                             cantidad=req.cantidad, proveedor=req.proveedor,
+                             actor=u.get("nombre") or u.get("username") or "dueño",
+                             motivo=req.motivo, origen=req.origen)
+    return {"ok": True, "orden": orden,
+            "mensaje": i18n.t("api.oc_preparada", _lang(u), numero=orden["numero"],
+                              proveedor=orden["proveedor"] or "—")}
+
+
+@app.get("/api/ordenes-preparadas")
+def ordenes_preparadas(_u: dict = Depends(require_feature("inventario"))):
+    from core import ordenes
+    return {"ordenes": ordenes.listar()}
+
+
+@app.get("/api/macro")
+def macro_get(u: dict = Depends(require_feature("mapa"))):
+    """P28 — el nodo 'Contexto económico' del mapa: IPC y dólar REALES ya
+    cargados (core/macro trae su propio cache y su fallback honesto:
+    disponible=False cuando no hay dato — el nodo lo dice, no inventa)."""
+    from core import macro
+    return macro.consultar(["inflacion", "dolar"], _lang(u))
+
+
+@app.get("/api/cobranza")
+def cobranza_get(u: dict = Depends(require_feature("cuentas"))):
+    """A QUIÉN COBRAR PRIMERO — sobre la deuda que YA existe.
+
+    No es credit scoring: no decide a quién darle crédito ni a quién cortárselo.
+    Ordena por `saldo × días de más respecto del promedio de ESE cliente`, que
+    es la plata que te están financiando fuera de su propia costumbre. La mora
+    la sigue calculando cuentas.py; acá no se recalcula nada."""
+    from core import cobranza
+    return cobranza.prioridad()
+
+
+@app.get("/api/cobranza/{cliente_id}/propuesta")
+def cobranza_propuesta(cliente_id: str, u: dict = Depends(require_feature("cuentas"))):
+    """El recordatorio listo para mandar. NO manda nada: es la propuesta."""
+    from core import cobranza
+    r = cobranza.proponer(cliente_id, _lang(u))
+    if not r:
+        raise HTTPException(status_code=404, detail="cliente inexistente")
+    return r
+
+
+class CobranzaRegistrarRequest(BaseModel):
+    cliente_id: str
+    estado: str                       # recordado | promesa | pagado | sin_respuesta
+    nota: str | None = None
+    promesa_fecha: str | None = None  # ISO, cuando el cliente se comprometió
+    mensaje: str | None = None        # lo que se mandó, con las ediciones del dueño
+
+
+@app.post("/api/cobranza/registrar")
+def cobranza_registrar(req: CobranzaRegistrarRequest,
+                       u: dict = Depends(require_feature("cuentas"))):
+    """El sí del humano: recién acá la gestión existe, y queda auditada."""
+    from core import cobranza
+    try:
+        return cobranza.registrar(req.cliente_id, req.estado, actor=u["nombre"],
+                                  nota=req.nota, promesa_fecha=req.promesa_fecha,
+                                  mensaje=req.mensaje)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="cliente inexistente")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.get("/api/reponer")
+def reponer_get(u: dict = Depends(require_feature("inventario"))):
+    """QUÉ REPONER PRIMERO — el ranking, no un solo hallazgo.
+
+    La card de quiebre muestra el peor producto del top-15 por facturación.
+    Esto contesta la pregunta que sigue: "¿y qué más?". Ordenado por la plata
+    que se deja de facturar (días sin stock × venta diaria) y agrupado por
+    proveedor, que es como se compra de verdad: una orden, N renglones.
+
+    Determinista: acá no opina el modelo, y la cobertura sale de la MISMA
+    derivación que rotación."""
+    from core import analisis_cache, reponer
+    return analisis_cache.get_o_computar("reponer", None, lambda: reponer.analizar())
+
+
+@app.get("/api/grafo")
+def grafo_get(u: dict = Depends(require_feature("mapa"))):
+    """EL CEREBRO — las ENTIDADES del negocio (productos, clientes, proveedores,
+    remitos, cuentas, locales, rubros) y las relaciones reales que las cruzan.
+
+    Aditivo: el mapa de árbol (P28–P41) no consume este endpoint y no cambia.
+    Acá no nace ningún número canónico — core/grafo.py cruza lo que cuentas,
+    depósito, finanzas y oportunidades ya decidieron. Cacheado como el resto
+    del análisis: el cruce completo se paga una vez por idioma."""
+    from core import analisis_cache, grafo
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("grafo", lang, lambda: grafo.completo(lang))
+
+
+@app.get("/api/analisis")
+def analisis_completo(u: dict = Depends(require_feature("oportunidades"))):
+    """Los cruces (P7): rotación×inmovilizado, estacionalidad decenal, push/pull
+    y objetivos propuestos. Sin ventas validadas → disponible=False con motivo.
+    P11·B4: cacheado por tenant e idioma — entrar a Oportunidades es instantáneo
+    y gratis; se recomputa solo cuando los datos cambian."""
+    from core import analisis, analisis_cache
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("analisis", lang,
+                                         lambda: analisis.completo(lang))
+
+
+@app.get("/api/widget-datos/plata-parada")
+def widget_plata_parada(dias: int = 120, u: dict = Depends(require_feature("inventario"))):
+    """P19·C — el dato de las cards a pedido ('plata en productos de 120+ días'):
+    corte por umbral sobre la MISMA derivación de rotación. Se recalcula en cada
+    carga; si no hay ventas validadas responde disponible=False con motivo."""
+    from core import analisis
+    return analisis.plata_parada_mas_de(dias, _lang(u))
+
+
+class ConsultaRequest(BaseModel):
+    consulta: dict
+
+
+@app.post("/api/consulta-serie")
+def consulta_serie(req: ConsultaRequest, u: dict = Depends(usuario_actual)):
+    """P21 — el dato de los widgets generativos: LECTURA pura contra el contrato
+    validado de core/consultas.py, recalculada en cada entrada. El gate es por
+    FUENTE (cada fuente pertenece a su módulo)."""
+    from core import consultas, perfiles
+    fuente = str(req.consulta.get("fuente") or "ventas").strip().lower()
+    fuente = consultas.FUENTE_ALIAS.get(fuente, fuente)  # el gate ve la fuente real
+    feature = {"ventas": "evolucion", "inventario": "inventario",
+               "cuentas": "cuentas", "caja": "caja"}.get(fuente)
+    if feature and feature not in perfiles.features_efectivas(u["username"]):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("authz.sin_feature", _lang(u), feature=feature))
+    return consultas.consultar(req.consulta, _lang(u))
+
+
+@app.get("/api/fase")
+def fase_actual(u: dict = Depends(usuario_actual)):
+    """La fase del negocio: el sistema define qué mostrar según la etapa."""
+    return fase.actual(_lang(u))
+
+
+@app.get("/api/articulos")
+def articulos(_u: dict = Depends(require_feature("inventario"))):
+    """Todos los artículos con su estado de calidad (tabla 'ver todo')."""
+    return {"items": store.articulos_con_estado()}
+
+
+@app.get("/api/balanzas")
+def balanzas(_u: dict = Depends(require_feature("inventario"))):
+    """Productos de balanza (venta por peso): su propia categoría con kg y $/kg."""
+    items = store.articulos_balanza()
+    return {"items": items, "total": len(items)}
+
+
+# --- Memoria del usuario (Plan 4) ---
+
+def _propio_o_admin(usuario: str, u: dict):
+    """La memoria/preferencias son del propio usuario (o el dueño)."""
+    if u["username"] != usuario and not u.get("es_admin"):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("api.solo_preferencias", _lang(u)))
+
+
+@app.get("/api/memoria/{usuario}")
+def memoria_get(usuario: str, u: dict = Depends(usuario_actual)):
+    _propio_o_admin(usuario, u)
+    return memoria.get(usuario)
+
+
+class PrefRequest(BaseModel):
+    clave: str
+    valor: object
+
+
+@app.post("/api/memoria/{usuario}")
+def memoria_set(usuario: str, req: PrefRequest, u: dict = Depends(usuario_actual)):
+    _propio_o_admin(usuario, u)
+    return memoria.set_pref(usuario, req.clave, req.valor)
+
+
+# --- P19·A — preferencias de vista (transparencia total: se ven y se borran) ---
+# El MISMO espacio que escribe Ángela por chat (memoria.json → vista): acá el
+# frontend lo hidrata al entrar, Mi perfil lo lista, y cada preferencia se
+# borra una por una. Siempre del PROPIO usuario (el token decide, no la URL).
+
+@app.get("/api/preferencias")
+def preferencias_get(u: dict = Depends(usuario_actual)):
+    m = memoria.get(u["username"])
+    return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}
+
+
+@app.post("/api/preferencias")
+def preferencias_set(req: PrefRequest, u: dict = Depends(usuario_actual)):
+    """Escritura directa del frontend (la X de un widget, deshacer un orden).
+    Mismas validaciones que la tool de Ángela: catálogo cerrado."""
+    try:
+        vista = memoria.set_vista(u["username"], req.clave, req.valor)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "vista": vista}
+
+
+@app.delete("/api/preferencias/{clave}")
+def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
+    borrada = memoria.borrar_vista(u["username"], clave)
+    if not borrada:
+        raise HTTPException(status_code=404, detail="esa preferencia no existe")
+    m = memoria.get(u["username"])
+    return {"ok": True, "vista": m.get("vista", {}), "notas": m.get("preferencias", {})}
+
+
+# --- Conocimiento del negocio ("lo que Aldo le enseñó a Ángela") ---
+# La capa no estructurada: reglas, excepciones, protocolos y contexto que ningún
+# ERP tiene. Lectura scopeada por rol (el dueño ve todo; el empleado, lo suyo);
+# escritura solo el dueño (require_admin) — el chat de Ángela también escribe por
+# acá. Persiste por-tenant en conocimiento_negocio.json.
+
+@app.get("/api/conocimiento")
+def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
+                        entidad: str | None = None, ambito: str | None = None,
+                        u: dict = Depends(usuario_actual)):
+    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
+    piezas = conocimiento.visibles_para(u, piezas)
+    return {"piezas": piezas, "total": len(piezas)}
+
+
+@app.get("/api/conocimiento/{pid}")
+def conocimiento_detalle(pid: str, u: dict = Depends(usuario_actual)):
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return p
+
+
+class ConocimientoNuevo(BaseModel):
+    texto: str
+    tipo: str
+    ambito: str
+    nodo: str
+    efecto: str
+    entidad: str | None = None
+    params: dict | None = None
+
+
+@app.post("/api/conocimiento")
+def conocimiento_crear(req: ConocimientoNuevo, u: dict = Depends(require_admin)):
+    from core import fechas
+    try:
+        pieza = conocimiento.crear(
+            texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
+            efecto=req.efecto, entidad=req.entidad, params=req.params,
+            origen={"quien": u["username"], "cuando": fechas.hoy().isoformat()})
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "pieza": pieza}
+
+
+class ConocimientoEstado(BaseModel):
+    estado: str
+
+
+@app.post("/api/conocimiento/{pid}/estado")
+def conocimiento_estado(pid: str, req: ConocimientoEstado, u: dict = Depends(require_admin)):
+    try:
+        pieza = conocimiento.set_estado(pid, req.estado)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not pieza:
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return {"ok": True, "pieza": pieza}
+
+
+@app.delete("/api/conocimiento/{pid}")
+def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
+    if not conocimiento.borrar(pid):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return {"ok": True}
+
+
+# --- Importador asistido (Plan 4) ---
+
+class ImportPreviewRequest(BaseModel):
+    csv: str
+    destino: str = "venta_historica"
+    usuario: str | None = None
+
+
+@app.post("/api/import/preview")
+def import_preview(req: ImportPreviewRequest, _u: dict = Depends(require_feature("cargar"))):
+    if not req.csv.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.archivo_vacio", _lang(_u)))
+    info = importer.previsualizar_csv(req.csv, req.destino)
+    if req.usuario:
+        memoria.marcar_dato_cargado(req.usuario, req.destino)
+    return info
+
+
+class OtroArchivoRequest(BaseModel):
+    nombre: str
+    descripcion: str = ""
+    usuario: str | None = None
+
+
+@app.post("/api/cargar/otro")
+def cargar_otro(req: OtroArchivoRequest, _u: dict = Depends(require_feature("cargar"))):
+    memoria.agregar_archivo_libre(req.usuario or "dueño", req.nombre, req.descripcion)
+    desc = f" Entendí que es: {req.descripcion}." if req.descripcion.strip() else ""
+    return {"ok": True, "mensaje": f"Recibí «{req.nombre}».{desc} Lo guardé en la memoria de tu negocio."}
+
+
+# --- Staging Area (zona de revisión): los datos nuevos pasan por acá ---
+
+class StagingCrearRequest(BaseModel):
+    nombre: str
+    csv: str
+
+
+class ResolverRequest(BaseModel):
+    obs_id: str
+    accion: str
+    params: dict = {}
+
+
+@app.post("/api/staging")
+def staging_crear(req: StagingCrearRequest, u: dict = Depends(require_feature("cargar"))):
+    if not req.csv.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.archivo_vacio", _lang(u)))
+    return staging.crear_batch(req.nombre, req.csv, _lang(u))
+
+
+@app.get("/api/staging")
+def staging_listar(u: dict = Depends(require_feature("cargar"))):
+    # P24·G4 — la revisión habla el idioma de QUIEN MIRA, no del que creó el batch
+    lang = _lang(u)
+    return {"batches": [staging.localizar_batch(b, lang) for b in staging.listar()]}
+
+
+@app.post("/api/staging/{batch_id}/resolver")
+def staging_resolver(batch_id: str, req: ResolverRequest,
+                     _u: dict = Depends(require_feature("cargar"))):
+    try:
+        return staging.resolver(batch_id, req.obs_id, req.accion, req.params)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/staging/{batch_id}/preview")
+def staging_preview(batch_id: str, _u: dict = Depends(require_feature("cargar"))):
+    try:
+        return staging.preview(batch_id)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/api/staging/{batch_id}/integrar")
+def staging_integrar(batch_id: str, u: dict = Depends(require_feature("cargar"))):
+    try:
+        return staging.integrar(batch_id, lang=_lang(u))
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/api/staging/{batch_id}/descartar")
+def staging_descartar(batch_id: str, _u: dict = Depends(require_feature("cargar"))):
+    return staging.descartar(batch_id)
+
+
+@app.post("/api/staging/{batch_id}/normalizacion/revertir")
+def staging_revertir_normalizacion(batch_id: str,
+                                   u: dict = Depends(require_feature("cargar"))):
+    """Deshace el Nivel 1 (normalización automática) de un batch: vuelve al crudo."""
+    try:
+        return staging.revertir_normalizacion(batch_id, lang=_lang(u))
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/contexto")
+def contexto_listar(_u: dict = Depends(require_feature("admin_contexto"))):
+    return {"items": ds.contexto_listar()}
+
+
+class ContextoRequest(BaseModel):
+    nombre: str
+    tipo: str = "general"
+    texto: str
+
+
+@app.post("/api/contexto")
+def contexto_agregar(req: ContextoRequest,
+                     _u: dict = Depends(require_feature("admin_contexto"))):
+    if not req.texto.strip():
+        raise HTTPException(status_code=400,
+                            detail=i18n.t("api.contenido_vacio", _lang(_u)))
+    return ds.contexto_agregar(req.nombre, req.tipo, req.texto)
+
+
+@app.get("/api/calidad")
+def calidad(u: dict = Depends(require_feature("saneamiento"))):
+    """Libro triado de calidad de dato (reemplaza las 'alertas')."""
+    return store.libro_triado(_lang(u))
+
+
+@app.get("/api/anomalias")
+def anomalias_listar(_u: dict = Depends(require_feature("saneamiento"))):
+    """Anomalías de negocio sobre los datos existentes (precio a pérdida, etc.)."""
+    return {"anomalias": anomalias.analizar_existentes()}
+
+
+class AnomaliaAplicarRequest(BaseModel):
+    tipo: str
+    accion: str
+    params: dict = {}
+
+
+@app.post("/api/anomalias/aplicar")
+def anomalias_aplicar(req: AnomaliaAplicarRequest,
+                      _u: dict = Depends(require_feature("saneamiento"))):
+    try:
+        return anomalias.aplicar(req.tipo, req.accion, req.params)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/versiones")
+def versiones(_u: dict = Depends(require_feature("saneamiento"))):
+    return {"versiones": store.versiones.list()}
+
+
+@app.post("/api/versiones/{version_id}/restaurar")
+def restaurar(version_id: int, u: dict = Depends(require_feature("saneamiento"))):
+    try:
+        snapshot = store.versiones.restore(version_id)
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.version_inexistente", _lang(u),
+                                          version_id=version_id))
+    store.audit.record(actor=u["username"], accion="restaurar_version",
+                       despues={"version_id": version_id})
+    return {"version_id": version_id, "snapshot": snapshot}
+
+
+@app.get("/api/audit")
+def audit(_u: dict = Depends(require_admin)):
+    return {"eventos": store.audit.list()}
+
+
+# --- Bloque F · el registro de auditoría, LEGIBLE -----------------------------
+# /api/audit sigue devolviendo el JSON crudo (depuración). Esto es la lectura
+# para humanos: la misma fuente, clasificada, traducida y filtrable. No calcula
+# nada nuevo — ver core/auditoria.py.
+
+@app.get("/api/auditoria")
+def auditoria_registro(clase: str | None = None, actor: str | None = None,
+                       desde: str | None = None, hasta: str | None = None,
+                       q: str | None = None, limite: int = 300,
+                       u: dict = Depends(require_feature("auditoria"))):
+    from core import auditoria
+    return auditoria.registro(_lang(u), clase=clase, actor=actor,
+                              desde=desde, hasta=hasta, q=q,
+                              limite=max(1, min(limite, 2000)))
+
+
+@app.get("/api/auditoria/hilo")
+def auditoria_hilo(sujeto: str, u: dict = Depends(require_feature("auditoria"))):
+    """La historia completa de UN cliente/archivo/persona: el «y después qué pasó»."""
+    from core import auditoria
+    return {"sujeto": sujeto, "eventos": auditoria.hilo(sujeto, _lang(u))}
+
+
+# --- Bloque F · autonomía graduada -------------------------------------------
+
+@app.get("/api/autonomia")
+def autonomia_get(u: dict = Depends(require_feature("auditoria"))):
+    from core import autonomia
+    return autonomia.estado(_lang(u))
+
+
+class AutonomiaRequest(BaseModel):
+    clase: str
+    nivel: str
+
+
+@app.post("/api/autonomia")
+def autonomia_set(req: AutonomiaRequest, u: dict = Depends(require_admin)):
+    """Sólo el dueño mueve la perilla, y queda auditado como cualquier decisión.
+    Las clases con candado (plata/stock/permisos) devuelven 422: no es un
+    setting con default conservador, es una regla del producto."""
+    from core import autonomia
+    try:
+        return autonomia.set_nivel(req.clase, req.nivel, actor=u["nombre"])
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+# --- Saneamiento conversacional (Ángela ejecuta, con backup y reversión) ---
+
+class SaneamientoRequest(BaseModel):
+    # 'actor' del body ya NO se usa para identidad: el actor sale del token.
+    actor: str = "dueño"
+
+
+@app.get("/api/saneamiento/proponer/{categoria}")
+def saneamiento_proponer(categoria: str, u: dict = Depends(require_feature("saneamiento"))):
+    return saneamiento.proponer(categoria, _lang(u))
+
+
+@app.post("/api/saneamiento/aplicar/{categoria}")
+def saneamiento_aplicar(categoria: str, req: SaneamientoRequest | None = None,
+                        u: dict = Depends(require_feature("saneamiento"))):
+    try:
+        return saneamiento.aplicar(categoria, actor=u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/saneamiento/revertir/{version_id}")
+def saneamiento_revertir(version_id: int, req: SaneamientoRequest | None = None,
+                         u: dict = Depends(require_feature("saneamiento"))):
+    try:
+        return saneamiento.revertir(version_id, actor=u["username"])
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.version_inexistente", _lang(u),
+                                          version_id=version_id))
+
+
+@app.post("/api/saneamiento/resetear")
+def saneamiento_resetear(_u: dict = Depends(require_feature("saneamiento"))):
+    store.resetear_actual()
+    return {"ok": True, "mensaje": "Datos restaurados al original."}
+
+
+# ---------------------------------------------------------------------------
+# P22·C — Deploy de un solo servicio: reset admin + el frontend compilado.
+# El catch-all del SPA va AL FINAL (los /api/* ya están registrados y ganan).
+# ---------------------------------------------------------------------------
+
+@app.post("/api/admin/reset-demo")
+def admin_reset_demo(token: str):
+    """Vuelve el demo público al estado canónico SIN reiniciar el contenedor.
+    Protegido por POLPILOT_RESET_TOKEN (secret de Render, no es una credencial
+    de usuario): sin el token exacto, 404 — el endpoint ni se revela. Además,
+    el filesystem de Render es efímero: cada restart/redeploy resetea solo."""
+    import shutil
+    esperado = os.environ.get("POLPILOT_RESET_TOKEN")
+    canonical = os.environ.get("POLPILOT_CANONICAL_DIR")
+    if not esperado or token != esperado or not canonical or not os.path.isdir(canonical):
+        raise HTTPException(status_code=404, detail="Not Found")
+    data_dir = paths.DATA_DIR
+    for nombre in os.listdir(canonical):
+        origen = os.path.join(canonical, nombre)
+        destino = os.path.join(data_dir, nombre)
+        if os.path.isdir(origen):
+            if os.path.isdir(destino):
+                shutil.rmtree(destino)
+            shutil.copytree(origen, destino)
+        else:
+            shutil.copy2(origen, destino)
+    # lo que el runtime creó y el canónico no tiene, se borra (sesiones ajenas)
+    for nombre in os.listdir(data_dir):
+        if not os.path.exists(os.path.join(canonical, nombre)):
+            ruta = os.path.join(data_dir, nombre)
+            (shutil.rmtree if os.path.isdir(ruta) else os.remove)(ruta)
+    from core import analisis_cache
+    store.reload()
+    ds.reload_data()
+    analisis_cache.datos_cambiaron()
+    analisis_cache.precalentar()
+    store.audit.record(actor="admin", accion="reset_demo_publico")
+    return {"ok": True, "mensaje": "demo restaurado al estado canónico"}
+
+
+_STATIC_DIR = os.environ.get("POLPILOT_STATIC_DIR", "")
+if _STATIC_DIR and os.path.isdir(_STATIC_DIR):
+    @app.get("/{spa_path:path}", include_in_schema=False)
+    def spa(spa_path: str):
+        """El frontend compilado (Vite) servido por FastAPI: un servicio, un
+        puerto. Cualquier ruta que no sea un archivo real cae al index (SPA)."""
+        candidato = os.path.normpath(os.path.join(_STATIC_DIR, spa_path))
+        if not candidato.startswith(os.path.normpath(_STATIC_DIR)):
+            raise HTTPException(status_code=404, detail="Not Found")  # path traversal
+        if spa_path and os.path.isfile(candidato):
+            return FileResponse(candidato)
+        return FileResponse(os.path.join(_STATIC_DIR, "index.html"))

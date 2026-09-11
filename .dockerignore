@@ -1,0 +1,21 @@
+# P22·C — CRÍTICO DE PRIVACIDAD: nada del piloto real entra a la imagen pública.
+# El Dockerfile además tiene una guardia que hace FALLAR el build si algo de
+# esto se cuela (defensa en profundidad).
+data/
+backend/.env
+.env
+*.env
+backend/credenciales.json
+data-demo/credenciales.json
+
+# Ruido de build (el frontend se compila en su propia etapa)
+frontend/node_modules/
+frontend/dist/
+**/__pycache__/
+**/*.pyc
+.git/
+.gitignore
+*.md
+backend/tests/
+data-demo/versions/
+data-demo/documentos/

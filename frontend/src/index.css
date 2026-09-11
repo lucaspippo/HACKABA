@@ -1,0 +1,402 @@
+@import "tailwindcss";
+
+/* Fuentes locales (bundle propio: la grabación no depende de ningún CDN) */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-v7-latin-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-v7-latin-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/fonts/schibsted-grotesk-v7-latin-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/hanken-grotesk-v12-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/hanken-grotesk-v12-latin-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/hanken-grotesk-v12-latin-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hanken Grotesk";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/hanken-grotesk-v12-latin-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/dm-mono-v16-latin-regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/dm-mono-v16-latin-500.woff2") format("woff2");
+}
+
+/*
+  PolPilot · Sistema de diseño v2 "Aire"
+  --------------------------------------
+  Base blanca con muchísimo espacio; cada color tiene UN significado y nunca
+  es decoración: violeta = Ángela/IA, rojo = problema real, naranja = decisión
+  pendiente, verde = éxito, hielo = capital congelado (concepto del producto).
+  La plata sigue en mono (cinta de caja).
+*/
+
+@theme {
+  /* Neutros: blanco con gris cálido muy suave (muere el beige) */
+  --color-papel: #fbfbfa; /* fondo base */
+  --color-papel-hondo: #f4f3f0; /* fondos secundarios / superficies hundidas */
+  --color-crema: #ffffff; /* tarjetas elevadas */
+  --color-tinta: #21201d; /* texto principal */
+  --color-tinta-suave: #6e6a63; /* texto secundario */
+  --color-linea: #e9e7e2; /* hairlines */
+
+  /* Azul PolPilot: EXCLUSIVO de Ángela / IA (esfera, acciones del agente,
+     highlights). Es el azul del logo — la marca y el agente son lo mismo.
+     (El token conserva el nombre "violeta" por historia; el valor es azul.) */
+  --color-violeta: #2a5cdf;
+  --color-violeta-hondo: #1d3fae;
+  --color-violeta-suave: #eaf0fd;
+
+  /* Semánticos: un color, un significado */
+  --color-rojo: #d2372b; /* SOLO problema real */
+  --color-rojo-hondo: #a82a20;
+  --color-oro: #de7c1a; /* SOLO decisión pendiente / atención */
+  --color-oro-tinta: #96560a; /* texto legible del estado pendiente */
+  --color-salvia: #2f7d5b; /* SOLO éxito / en orden */
+  --color-hielo: #2b7a8c; /* capital congelado / datos */
+  --color-hielo-claro: #e9f1f4;
+
+  /* Tipografía */
+  --font-display: "Schibsted Grotesk", system-ui, sans-serif;
+  --font-sans: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  /* Radios: tarjetas con esquina suave, no chips genéricos */
+  --radius-card: 1.25rem;
+
+  /* Breakpoint extra: monitores anchos donde la fila del Home pasa a 4 columnas
+     aun con el panel de Ángela abierto (P15·E5). En rem como los default:
+     con unidades mixtas Tailwind no puede ordenar los variants y sm: lo pisa.
+     P35·E5 — bajado de 106.25rem (1700px) a 85rem (1360px): con la densidad
+     desktop, la fila de hallazgos (y las grillas anchas de Evolución/Alertas/
+     Oportunidades) disparan su layout ancho a 1440px — igual que hoy lo hacen
+     a 75% de zoom, donde el viewport reporta ~1920 CSS px. Las media queries
+     evalúan `rem` contra 16px fijo (ignoran el font-size de :root), así que
+     este token es la ÚNICA palanca que corre ese breakpoint. A 1280px sigue
+     en 2×2, como se permite. */
+  --breakpoint-3xl: 85rem; /* 1360px */
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  /* P35·E5 — DENSIDAD DESKTOP. "Que al 100% se vea como al 75-80%" sin que el
+     usuario toque el zoom. Punto ÚNICO de escala: el font-size de :root. Como
+     toda la escala de Tailwind v4 (tipografía, spacing, radios, contenedores)
+     está en `rem`, bajar la base los encoge a TODOS de forma uniforme y
+     proporcional — sin `transform:scale`/`zoom` (que rompen hit-testing,
+     position:fixed, tooltips y el canvas de React Flow). Acotado a la
+     superficie desktop (useViewport.js: DESKTOP_MIN=1024): el celular queda a
+     100%. Lo que NO escala (px puro, dvh, calc con px) se revisa aparte. */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 80%;
+    }
+  }
+  body {
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01";
+    /* P17·E4: TODO número de la app en cifras tabulares — los dígitos no
+       bailan al cambiar (KPIs, tablas, ejes, tooltips). */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  /* Focus visible con el hue de la IA: SOLO en navegación por teclado. */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-papel), 0 0 0 4px rgb(42 92 223 / 0.4);
+    border-radius: 8px;
+  }
+  /* Acción táctil estándar de la casa */
+  button {
+    transition: color 150ms ease-out, background-color 150ms ease-out,
+      border-color 150ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out;
+  }
+  /* La plata siempre en mono y con cifras tabulares */
+  .plata {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: var(--color-violeta-suave);
+    color: var(--color-tinta);
+  }
+}
+
+@layer utilities {
+  /* La esfera de Ángela: núcleo violeta con luz arriba a la izquierda.
+     El keyline blanco exterior la separa cuando vive sobre fondos violetas. */
+  .esfera {
+    background:
+      radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0) 24%),
+      radial-gradient(circle at 35% 30%, #7ea6f2 0%, var(--color-violeta) 52%, #14257a 100%);
+    box-shadow:
+      0 0 0 1px rgba(251, 251, 250, 0.45),
+      0 1px 3px rgba(33, 32, 29, 0.18),
+      inset 0 -2px 4px rgba(20, 37, 122, 0.35);
+  }
+  .esfera--idle {
+    animation: esferaRespira 6s ease-in-out infinite;
+  }
+  .esfera--pensando {
+    animation: esferaPiensa 1.4s ease-in-out infinite;
+  }
+  .esfera--esperando {
+    animation: esferaEspera 1.6s ease-in-out infinite;
+  }
+  .esfera-giro {
+    background: conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 255, 255, 0.35) 40deg,
+      rgba(255, 255, 255, 0) 95deg
+    );
+    animation: esferaGira 2.2s linear infinite;
+  }
+  @keyframes esferaRespira {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.035);
+    }
+  }
+  @keyframes esferaPiensa {
+    0%,
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    50% {
+      transform: scale(1.07);
+      filter: brightness(1.18);
+    }
+  }
+  @keyframes esferaGira {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  /* El estado más importante: hay una decisión esperando al dueño (naranja = pendiente) */
+  @keyframes esferaEspera {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 1px rgba(251, 251, 250, 0.45),
+        0 1px 3px rgba(33, 32, 29, 0.18),
+        inset 0 -2px 4px rgba(20, 37, 122, 0.35),
+        0 0 0 0 rgba(222, 124, 26, 0);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(251, 251, 250, 0.45),
+        0 1px 3px rgba(33, 32, 29, 0.18),
+        inset 0 -2px 4px rgba(20, 37, 122, 0.35),
+        0 0 0 4px rgba(222, 124, 26, 0.35);
+    }
+  }
+
+  /* Sombras: extremadamente suaves, solo donde importa */
+  .sombra-papel {
+    box-shadow: 0 1px 2px rgba(33, 32, 29, 0.03), 0 6px 20px -14px rgba(33, 32, 29, 0.1);
+  }
+  .sombra-alta {
+    box-shadow: 0 1px 3px rgba(33, 32, 29, 0.04), 0 14px 40px -20px rgba(33, 32, 29, 0.16);
+  }
+  /* Card interactiva (P17·E4): la elevación comunica jerarquía al hover */
+  .card-hover {
+    transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+  }
+  .card-hover:hover {
+    box-shadow: 0 2px 4px rgba(33, 32, 29, 0.05), 0 12px 32px -14px rgba(33, 32, 29, 0.16);
+    transform: translateY(-2px);
+  }
+  /* Skeleton de carga (P17·E4): shimmer GRIS con la forma del contenido —
+     nunca un spinner ni un frame vacío. El gris es "cargando"; el glow
+     violeta es "Ángela trabajando": jamás se confunden. */
+  .skeleton {
+    background: linear-gradient(90deg, #eeedeb 25%, #f6f5f3 50%, #eeedeb 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+    border-radius: 8px;
+    color: transparent;
+  }
+  @keyframes skeletonShimmer {
+    to {
+      background-position: -200% 0;
+    }
+  }
+  /* Glow cuando Ángela te lleva a un elemento (violeta = el agente actuando) */
+  .nav-glow {
+    animation: navGlow 2.6s ease-out;
+    border-radius: var(--radius-card);
+  }
+  @keyframes navGlow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(42, 92, 223, 0);
+    }
+    15% {
+      box-shadow: 0 0 0 4px rgba(42, 92, 223, 0.45), 0 0 22px 2px rgba(42, 92, 223, 0.3);
+    }
+    60% {
+      box-shadow: 0 0 0 3px rgba(42, 92, 223, 0.3);
+    }
+  }
+  /* Pulso persistente: "tocá ACÁ" — titila hasta que el usuario lo apreta */
+  .nav-pulse {
+    animation: navPulse 1.1s ease-in-out infinite;
+    border-radius: var(--radius-card);
+    position: relative;
+    z-index: 5;
+  }
+  @keyframes navPulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(42, 92, 223, 0.5);
+    }
+    50% {
+      box-shadow: 0 0 0 7px rgba(42, 92, 223, 0.12), 0 0 18px 2px rgba(42, 92, 223, 0.3);
+    }
+  }
+}
+
+/* P28 — "El mapa de tu negocio": el lienzo claro con los círculos
+   concéntricos sutiles de la referencia (profundidad sin dark mode), el
+   pulso de los nodos con algo activo y el patrón focus (hover atenúa el
+   resto). El kill-switch global de prefers-reduced-motion (abajo) apaga
+   el pulso y las animaciones de edges solo. */
+.mapa-lienzo {
+  background-color: var(--color-papel);
+  background-image: repeating-radial-gradient(
+    circle at 50% 46%,
+    transparent 0,
+    transparent 118px,
+    rgba(33, 32, 29, 0.05) 118px,
+    rgba(33, 32, 29, 0.05) 119px
+  );
+}
+.rf-suave { transition: opacity 0.18s ease; }
+.rf-apagado { opacity: 0.2; }
+.nodo-pulso { position: relative; }
+.nodo-pulso::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid var(--pulso-color, rgba(210, 55, 43, 0.5));
+  animation: nodoPulso 2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes nodoPulso {
+  0% { transform: scale(0.92); opacity: 0.85; }
+  70% { transform: scale(1.14); opacity: 0; }
+  100% { transform: scale(1.14); opacity: 0; }
+}
+.react-flow__attribution { opacity: 0.35; }
+/* P31·3 — pulso-pista: invita a expandir la 1ª vez (3 latidos, luego para).
+   El kill-switch global de prefers-reduced-motion lo apaga. */
+.pista-pulso {
+  animation: pistaPulso 1.1s ease-out 3;
+}
+@keyframes pistaPulso {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(42, 92, 223, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(42, 92, 223, 0.12), 0 0 12px 2px rgba(42, 92, 223, 0.35); }
+}
+/* P29·C5 — el centro respira (anillo sutil) y la esfera de Ángela acompaña */
+.anillo-respira { position: relative; }
+.anillo-respira::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(42, 92, 223, 0.28);
+  animation: anilloRespira 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes anilloRespira {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.06); opacity: 0.95; }
+}
+/* P35 — la esfera de Ángela CENTRADA en el nodo del logo (antes flotaba suelta
+   en la esquina sup-derecha, "fuera" del logo). Badge inferior-centro: simétrica,
+   pegada al nodo, sin tapar el logo. El float combina con el centrado horizontal. */
+.esfera-orbita {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  animation: esferaFlota 4.5s ease-in-out infinite;
+}
+@keyframes esferaFlota {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Impresión: sólo la hoja del documento sale en el PDF. */
+@media print {
+  body * { visibility: hidden; }
+  .doc-imprimible, .doc-imprimible * { visibility: visible; }
+  .doc-imprimible {
+    position: absolute; left: 0; top: 0; width: 100%;
+    border: none !important; box-shadow: none !important; max-width: none;
+  }
+  .no-print { display: none !important; }
+}

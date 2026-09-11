@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head><meta charset="utf-8"><title>{{ doc.titulo }}</title></head>
+<body>
+  {# GOTCHA WeasyPrint: el elemento running debe aparecer TEMPRANO en el HTML #}
+  <header id="corrida">
+    <span class="corrida-marca">{{ empresa }}</span>
+    <span class="corrida-doc">{{ doc.titulo }}</span>
+  </header>
+
+  <!-- 1 · HEADER -->
+  <div class="cabecera">
+    {% if logo_b64 %}
+      <img class="logo" src="data:image/jpeg;base64,{{ logo_b64 }}" alt="">
+    {% else %}
+      <div class="logo-texto">{{ empresa }}</div>
+    {% endif %}
+    <div class="cabecera-textos">
+      <h1>{{ doc.titulo }}</h1>
+      <p class="meta">
+        {{ doc.subtitulo }}<br>
+        {{ t.pedido_por }}: {{ usuario }} · {{ t.generado_por }}
+      </p>
+    </div>
+  </div>
+
+  <!-- 2 · ESTADO: el veredicto en una línea -->
+  {% if veredicto %}<p class="veredicto">{{ veredicto }}</p>{% endif %}
+
+  <!-- 3 · NÚMERO PRINCIPAL -->
+  {% if doc.kpis %}
+  <div class="kpis">
+    {% for k in doc.kpis %}
+    <div class="kpi {% if loop.first %}kpi-principal{% endif %}">
+      <div class="kpi-valor">{{ k.valor }}</div>
+      <div class="kpi-label">{{ k.label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Carta: cuerpo libre #}
+  {% if doc.tipo == "carta" %}
+  <div class="carta">
+    {% if doc.destinatario %}<p class="destinatario">{{ t.destinatario }}: {{ doc.destinatario }}</p>{% endif %}
+    <div class="cuerpo">{{ doc.cuerpo }}</div>
+  </div>
+  {% endif %}
+
+  <!-- 2b · Hallazgos que importan (P18: cada uno cruza ≥2 fuentes, con $) -->
+  {% if doc.get("hallazgos") %}
+  <h2>{{ t.hallazgos_titulo }}</h2>
+  {% for h in doc.get("hallazgos") %}
+  <p class="hallazgo">{{ h }}</p>
+  {% endfor %}
+  {% endif %}
+
+  {# Orden de pedido: items. OJO Jinja: doc.items (o subscript de key ausente)
+     resuelve al MÉTODO del dict — .get() devuelve None limpio. #}
+  {% if doc.get("items") %}
+  <p class="bloque-meta">
+    {% if doc.proveedor %}{{ t.proveedor }}: <b>{{ doc.proveedor }}</b>{% endif %}
+    {% if doc.plazo_pago %} · {{ t.plazo }}: {{ doc.plazo_pago }}{% endif %}
+  </p>
+  <table class="tabla">
+    <thead><tr><th>{{ t.col_producto }}</th><th class="num">{{ t.col_cantidad }}</th><th>{{ t.col_motivo }}</th><th class="num">{{ t.col_costo }}</th></tr></thead>
+    <tbody>
+      {% for it in doc.get("items") %}
+      <tr>
+        <td>{{ it.producto }}</td>
+        <td class="num">{{ it.cantidad }} {{ it.unidad }}</td>
+        <td class="suave">{{ it.motivo }}</td>
+        <td class="num">{{ it.costo_txt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if doc.get("total_estimado") %}
+    <tfoot><tr><td colspan="3" class="total-label">{{ t.orden_total }}</td>
+    <td class="num total">{{ doc.get("total_estimado") }}</td></tr></tfoot>
+    {% endif %}
+  </table>
+  {% endif %}
+
+  <!-- 3 · QUÉ HACER AHORA: acciones con $ y próximo paso -->
+  {% if doc.acciones %}
+  <h2>{{ t.acciones_titulo }}</h2>
+  <ol class="acciones">
+    {% for a in doc.acciones %}<li>{{ a }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+
+  <!-- 4 · PARA VIGILAR: riesgos honestos -->
+  {% if doc.get("vigilar") %}
+  <h2>{{ t.vigilar_titulo }}</h2>
+  <ul class="vigilar">
+    {% for v in doc.get("vigilar") %}<li>{{ v }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <!-- 5 · ANEXO DE DATOS: recién acá las tablas completas -->
+  {% if doc.anomalias or doc.tablas %}
+  <h2 class="anexo">{{ t.anexo_titulo }}</h2>
+  {% endif %}
+
+  {% if doc.anomalias %}
+  <h3>{{ t.issues_titulo }}</h3>
+  <table class="tabla">
+    <thead><tr><th>{{ t.col_problema }}</th><th class="num">{{ t.col_items }}</th><th class="num">{{ t.col_riesgo }}</th></tr></thead>
+    <tbody>
+      {% for a in doc.anomalias %}
+      <tr>
+        <td class="{% if loop.first %}critico{% endif %}">{{ a.titulo }}</td>
+        <td class="num">{{ a.items }}</td>
+        <td class="num {% if loop.first %}critico{% endif %}">{{ a.impacto }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {# Tablas genéricas (top inmovilizado, movimientos del estado de cuenta) #}
+  {% for tabla in doc.tablas or [] %}
+  <h3>{{ tabla.titulo }}</h3>
+  <table class="tabla">
+    <thead><tr>{% for c in tabla.columnas %}<th {% if not loop.first %}class="num"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for fila in tabla.filas %}
+      <tr>{% for celda in fila %}<td {% if not loop.first %}class="num"{% endif %}>{{ celda }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endfor %}
+
+  {% if doc.nota %}<p class="nota">{{ doc.nota }}</p>{% endif %}
+
+  <!-- 6 · FOOTER: el disclaimer va fijo al pie de la última página vía CSS -->
+  <p class="disclaimer">{{ t.disclaimer }}</p>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+ "_nota": "Condiciones comerciales de los proveedores del demo (100% ficticio). `dias_reposicion` = lo que tarda el proveedor desde que se emite la orden hasta que la mercadería entra al depósito: es el dato que convierte 'me estoy quedando sin stock' en 'tengo N días para negociar'. El primer proveedor de la lista es el de la ventana de compra (P27·A3) y sus campos históricos no se tocan.",
+ "proveedores": [
+  {
+   "proveedor": "Lácteos Campo Alegre",
+   "frecuencia_lista_dias": 30,
+   "ultima_lista": "2026-06-07",
+   "ultima_suba_promedio_pct": 5.7,
+   "nota": "Actualiza la lista de precios una vez por mes; la última subió 5.7% promedio.",
+   "dias_reposicion": 4,
+   "historial_listas": [
+    {"fecha": "2026-01-09", "suba_promedio_pct": 4.4},
+    {"fecha": "2026-02-07", "suba_promedio_pct": 4.6},
+    {"fecha": "2026-03-09", "suba_promedio_pct": 5.1},
+    {"fecha": "2026-04-08", "suba_promedio_pct": 4.8},
+    {"fecha": "2026-05-08", "suba_promedio_pct": 5.4},
+    {"fecha": "2026-06-07", "suba_promedio_pct": 5.7}
+   ]
+  },
+  {"proveedor": "Frigorífico La Ribera", "dias_reposicion": 3,
+   "nota": "Frío: entrega en 72 h pero exige el pedido en firme."},
+  {"proveedor": "Alimentos del Paraná SA", "dias_reposicion": 9,
+   "nota": "Reparte por zona; el camión de esta zona pasa cada semana y media."},
+  {"proveedor": "Distrib. Mayorista Guaraní", "dias_reposicion": 12,
+   "nota": "Consolida pedidos: si no llegás al mínimo, la entrega se corre."},
+  {"proveedor": "Golosinas Costa Dulce SRL", "dias_reposicion": 15,
+   "nota": "Fabrica contra pedido; en temporada alta estira a 20 días."},
+  {"proveedor": "Limpieza Total SA", "dias_reposicion": 21,
+   "nota": "El más lento de todos: hay que pedirle con tres semanas de anticipación."}
+ ],
+ "dias_reposicion_default": 10,
+ "ofertas": [
+  {
+   "id": "of-2026-071",
+   "proveedor": "Frigorífico La Ribera",
+   "codigo": 1282,
+   "producto": "SALAME MILAN LA RIBERA (PLANCHA)",
+   "cantidad": 689.0,
+   "unidad": "kg",
+   "piezas": 25,
+   "descuento_pct": 18,
+   "vence_oferta": "2026-07-17",
+   "vencimiento_lote": "2026-10-15",
+   "nota": "Pallet completo de 25 planchas con 18% de descuento. Vence la oferta el 17/07."
+  }
+ ]
+}
