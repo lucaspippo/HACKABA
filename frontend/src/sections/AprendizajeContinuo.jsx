@@ -60,8 +60,15 @@ const UPCOMING = [
 ];
 
 // A hand-written stand-in with the exact anatomy a live card would have,
-// used only when this tenant has no matching live finding right now.
+// used only when this tenant has no matching live finding right now. Shaped
+// as an `insight` (backend/core/insight.py) exactly like a real card's, so
+// DrillNegocio renders it the same way — pattern → hypothesis → evidence →
+// assumptions — just with illustrative content instead of live numbers.
 function illustrativeExample(example, t) {
+  const [porquePattern, porqueHypothesis] = example.porque.map((k) => t(k));
+  const involvedRows = example.involucrados.map((iv) => ({
+    kind: null, id: null, name: t(iv.nombre), amount: null, detail: null,
+  }));
   return {
     id: example.id,
     tono: example.tono,
@@ -71,11 +78,24 @@ function illustrativeExample(example, t) {
     montoLabel: t(example.montoLabel),
     cifraTexto: null,
     fuentes: [],
-    drill: {
-      porque: example.porque.map((k) => t(k)),
-      grafico: null,
-      involucrados: example.involucrados.map((iv) => ({ nombre: t(iv.nombre) })),
-      supuestos: example.supuestos.map((k) => t(k)),
+    insight: {
+      pattern: { label: porquePattern, since: null, scope: null },
+      hypothesis: porqueHypothesis ? { label: porqueHypothesis } : null,
+      evidence: involvedRows.length > 0
+        ? [{
+            id: null, kind: "records", label: t(example.titulo),
+            value: null, unit: null, baseline: null, deviation: null,
+            weight: "primary", method: null, records: involvedRows, chart: null,
+          }]
+        : [],
+      assumptions: example.supuestos.map((k) => ({ label: t(k), if_wrong: null })),
+      alternatives: [],
+      falsifiers: [],
+      risk: null,
+      recommendation: null,
+      owner: null,
+      deadline: null,
+      confidence: null,
     },
     isIllustrative: true,
     summary: t(example.dato),
