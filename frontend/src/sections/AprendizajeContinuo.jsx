@@ -6,14 +6,6 @@ import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
 import { useT } from "../lib/i18n";
 
-// The three reactions the owner can give a live finding — see
-// backend/core/db/pattern_feedback_repo.py's ACTIONS for the source of truth.
-const FEEDBACK_ACTIONS = [
-  { action: "accepted", lk: "aprendizaje.feedback_aceptado" },
-  { action: "already_knew", lk: "aprendizaje.feedback_ya_sabia" },
-  { action: "dismissed", lk: "aprendizaje.feedback_descartado" },
-];
-
 const HISTORY_ACTION_LABEL = {
   accepted: "aprendizaje.historial_accepted",
   dismissed: "aprendizaje.historial_dismissed",
@@ -232,21 +224,9 @@ export default function AprendizajeContinuo({ onPreguntar }) {
               monto={selected.monto} montoLabel={selected.montoLabel} cifraTexto={selected.cifraTexto}
               porque={selected.drill?.porque || []} grafico={selected.drill?.grafico}
               involucrados={selected.drill?.involucrados || []} supuestos={selected.drill?.supuestos || []}
-              fuentes={selected.fuentes || []} />
-            {!selected.isIllustrative && (
-              <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
-                <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {FEEDBACK_ACTIONS.map((f) => (
-                    <button key={f.action} disabled={feedbackBusy}
-                      onClick={() => giveFeedback(selected.id, f.action)}
-                      className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
-                      {t(f.lk)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+              fuentes={selected.fuentes || []}
+              onFeedback={selected.isIllustrative ? undefined : (action) => giveFeedback(selected.id, action)}
+              feedbackBusy={feedbackBusy} />
             <button onClick={() => setSelected(null)}
               className="mt-4 w-full rounded-full border border-linea py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta">
               {t("aprendizaje.cerrar")}

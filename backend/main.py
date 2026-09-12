@@ -2183,31 +2183,51 @@ class PatternFeedbackRequest(BaseModel):
     note: str | None = None
 
 
+def _feedback_sources():
+    """Every source of findings that can receive feedback through the one
+    endpoint below: (module-gating dict, record_feedback function). Checked
+    in order; the first source whose gating dict declares this card_id
+    wins. core/patrones.py (learned patterns) and core/oportunidades_neg.py
+    (the fixed rule set) share the same underlying mechanism
+    (core/pattern_feedback.py) — this is just where the two get dispatched
+    from one API surface."""
+    from core import oportunidades_neg
+    return (
+        (patrones.MODULES_BY_ID, patrones.record_feedback),
+        (oportunidades_neg.DOMINIO, oportunidades_neg.record_feedback),
+    )
+
+
 @app.post("/api/patrones/feedback")
 def patrones_feedback(req: PatternFeedbackRequest, u: dict = Depends(usuario_actual)):
-    """Owner's reaction (accepted/dismissed/already knew) to a continuous-
-    learning finding (core/patrones.py) — persisted so the same instance
-    doesn't resurface. Gated by the finding's own domain, not a fixed
-    feature, since each pattern id declares its own modules."""
-    needed = set(patrones.MODULES_BY_ID.get(req.card_id, ("__no_domain__",)))
-    if not needed <= set(perfiles.features_efectivas(u["username"])):
-        raise HTTPException(status_code=403,
-                            detail=i18n.t("authz.sin_feature", _lang(u), feature=req.card_id))
-    try:
-        return patrones.record_feedback(req.card_id, req.action, actor=u["username"],
-                                        note=req.note, lang=_lang(u))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except KeyError:
-        raise HTTPException(status_code=404,
-                            detail=i18n.t("api.patron_inexistente", _lang(u)))
+    """Owner's reaction (accepted/dismissed/already knew) to a finding, from
+    any source — persisted so the same instance doesn't resurface. Gated by
+    the finding's own domain, not a fixed feature, since each id declares
+    its own modules."""
+    for modules_by_id, record_fn in _feedback_sources():
+        if req.card_id not in modules_by_id:
+            continue
+        needed = set(modules_by_id[req.card_id])
+        if not needed <= set(perfiles.features_efectivas(u["username"])):
+            raise HTTPException(status_code=403,
+                                detail=i18n.t("authz.sin_feature", _lang(u), feature=req.card_id))
+        try:
+            return record_fn(req.card_id, req.action, actor=u["username"],
+                             note=req.note, lang=_lang(u))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except KeyError:
+            raise HTTPException(status_code=404,
+                                detail=i18n.t("api.patron_inexistente", _lang(u)))
+    raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
 
 
 @app.get("/api/patrones/historial")
 def patrones_historial(u: dict = Depends(usuario_actual)):
-    """What Ángela has flagged through core/patrones.py and what the owner
-    said back — the Aprendizaje page's memory of past findings."""
-    return {"historial": patrones.feedback_history()}
+    """What Ángela has flagged — from any source — and what the owner said
+    back (core/pattern_feedback.py) — the Aprendizaje page's memory."""
+    from core import pattern_feedback
+    return {"historial": pattern_feedback.history()}
 
 
 @app.get("/api/margenes")

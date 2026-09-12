@@ -97,12 +97,41 @@ function Propuesta({ propuesta, onAprobar, resultado, trabajando }) {
   );
 }
 
+// Closing the loop on a finding (core/pattern_feedback.py, shared by
+// core/patrones.py and core/oportunidades_neg.py alike): the owner's
+// reaction to the SPECIFIC instance shown, so it doesn't resurface. Purely
+// presentational like the rest of this file — the caller owns the actual
+// API call and decides whether this card's id can take feedback at all.
+const FEEDBACK_ACTIONS = [
+  { action: "accepted", lk: "aprendizaje.feedback_aceptado" },
+  { action: "already_knew", lk: "aprendizaje.feedback_ya_sabia" },
+  { action: "dismissed", lk: "aprendizaje.feedback_descartado" },
+];
+
+export function FindingFeedback({ onFeedback, busy }) {
+  const t = useT();
+  return (
+    <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
+      <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {FEEDBACK_ACTIONS.map((f) => (
+          <button key={f.action} disabled={busy} onClick={() => onFeedback(f.action)}
+            className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
+            {t(f.lk)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
-                               chip, chipIcon: ChipIcon, chipCls }) {
+                               chip, chipIcon: ChipIcon, chipCls,
+                               onFeedback, feedbackBusy }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
@@ -179,6 +208,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
         {fuentes.length > 0 && (
           <p className="mt-3 text-[0.72rem] text-tinta-suave/80">{t("cardneg.cruce")} {fuentes.join(" · ")}</p>
         )}
+
+        {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
 
         {acciones && (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-linea pt-4">

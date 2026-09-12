@@ -16,7 +16,7 @@ client = TestClient(main.app)
 def tokens():
     creds = auth.cargar_o_generar_credenciales()
     return {u: client.post("/api/login", json={"username": u, "password": creds[u]}).json()["token"]
-            for u in ("emilio", "paula", "vendedor")}
+            for u in ("emilio", "paula", "vendedor", "deposito")}
 
 
 def _h(tok):
@@ -42,6 +42,13 @@ def _seed_combo(monkeypatch):
     from tests.test_patrones import _combo_orders
     monkeypatch.setattr(ventas_cliente, "all_orders",
                         lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+
+
+def _seed_moroso(monkeypatch):
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [
+        {"nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
+         "saldo": 50_000, "promedio_pago_dias": 30, "movimientos": []}])
 
 
 def test_no_token_is_rejected():
@@ -92,4 +99,31 @@ def test_feedback_on_a_card_that_is_not_live_is_a_404(tokens, monkeypatch):
     monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
     r = client.post("/api/patrones/feedback", headers=_h(tokens["emilio"]),
                     json={"card_id": "combo_no_percibido", "action": "dismissed"})
+    assert r.status_code == 404
+
+
+# --- the same endpoint also dispatches to core/oportunidades_neg.py --------------
+
+def test_owner_can_give_feedback_on_an_oportunidad_card(tokens, monkeypatch):
+    _seed_moroso(monkeypatch)
+    r = client.post("/api/patrones/feedback", headers=_h(tokens["emilio"]),
+                    json={"card_id": "cobrar_morosos", "action": "already_knew"})
+    assert r.status_code == 200, r.text
+    assert r.json()["pattern_id"] == "cobrar_morosos"
+
+    r = client.get("/api/patrones/historial", headers=_h(tokens["emilio"]))
+    assert any(h["pattern_id"] == "cobrar_morosos" for h in r.json()["historial"])
+
+
+def test_role_missing_the_oportunidad_domain_is_rejected(tokens, monkeypatch):
+    _seed_moroso(monkeypatch)
+    # deposito has neither "cuentas" nor "oportunidades": cobrar_morosos needs "cuentas".
+    r = client.post("/api/patrones/feedback", headers=_h(tokens["deposito"]),
+                    json={"card_id": "cobrar_morosos", "action": "dismissed"})
+    assert r.status_code == 403
+
+
+def test_unknown_card_id_is_a_404(tokens):
+    r = client.post("/api/patrones/feedback", headers=_h(tokens["emilio"]),
+                    json={"card_id": "no_existe_este_hallazgo", "action": "dismissed"})
     assert r.status_code == 404

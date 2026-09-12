@@ -308,7 +308,8 @@ def test_feedback_history_snapshots_the_finding_even_after_it_stops_firing(monke
 
     # The finding is gone from the live feed, but the history still has it.
     monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
-    hist = patrones.feedback_history()
+    from core import pattern_feedback
+    hist = pattern_feedback.history()
     assert len(hist) == 1
     assert hist[0]["pattern_id"] == "combo_no_percibido"
     assert "YERBA X" in hist[0]["snapshot"]["titulo"]
