@@ -1549,6 +1549,17 @@ def odoo_sync_productos(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/ingest-productos")
+def odoo_ingest_productos(_u: dict = Depends(require_admin)):
+    """Real ingestion: already-linked Odoo products are updated directly;
+    new ones land in a Staging batch for review."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_productos(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/conectores/odoo/sync-proveedores")
 def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
     """Trae los contactos-proveedor de Odoo (res.partner, supplier_rank > 0)
@@ -1561,6 +1572,28 @@ def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/ingest-proveedores")
+def odoo_ingest_proveedores(_u: dict = Depends(require_admin)):
+    """Real ingestion: already-linked Odoo vendors are updated directly;
+    new ones land in a Staging batch for review."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_proveedores(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-contactos")
+def odoo_ingest_contactos(_u: dict = Depends(require_admin)):
+    """Real ingestion: already-linked Odoo customers are updated directly;
+    new ones land in a Staging batch for review."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_clientes(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/conectores/odoo/sync-ordenes-compra")
 def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
     """Trae las órdenes de compra de Odoo (purchase.order) con sus líneas,
@@ -1569,6 +1602,17 @@ def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
     conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
     try:
         return conector.pull_ordenes_compra()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-ordenes-compra")
+def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
+    """Real ingestion: already-linked Odoo purchase orders are updated
+    directly; new ones land in a Staging batch for review."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_ordenes_compra(actor=_u["username"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -15,7 +15,8 @@ from .audit import AuditLog
 
 _audit = AuditLog(esquema.DATA_DIR)
 _TIPO = "proveedores"
-_CAMPOS = ("nombre", "contacto", "telefono", "email", "notas")
+_CAMPOS = ("nombre", "contacto", "telefono", "email", "notas",
+           "cuit", "source", "source_id")
 
 
 def listar() -> list[dict]:
@@ -57,3 +58,29 @@ def eliminar(id_: str, actor: str) -> None:
     borrado = next(f for f in filas if f["id"] == id_)
     esquema.reemplazar_filas(_TIPO, quedan)
     _audit.record(actor, "eliminar_proveedor", borrado, None)
+
+
+def upsert_desde_conector(filas: list[dict], actor: str) -> dict:
+    """Bulk create-or-update of vendors coming from an external connector
+    (Odoo), matched by (source, source_id) — unlike crear()/actualizar()
+    (one record at a time, meant for the dueño typing), this resolves the
+    match automatically."""
+    actuales = esquema.filas(_TIPO)
+    por_source = {(f.get("source"), f.get("source_id")): f
+                  for f in actuales if f.get("source")}
+    nuevos, actualizados = 0, 0
+    for entrante in filas:
+        key = (entrante.get("source"), entrante.get("source_id"))
+        existente = por_source.get(key)
+        if existente:
+            existente.update({c: entrante.get(c, existente.get(c)) for c in _CAMPOS})
+            actualizados += 1
+        else:
+            fila = {"id": uuid.uuid4().hex[:10], **{c: entrante.get(c, "") for c in _CAMPOS}}
+            actuales.append(fila)
+            por_source[key] = fila
+            nuevos += 1
+    esquema.reemplazar_filas(_TIPO, actuales)
+    _audit.record(actor, "upsert_proveedores_conector", None,
+                  {"nuevos": nuevos, "actualizados": actualizados})
+    return {"nuevos": nuevos, "actualizados": actualizados}

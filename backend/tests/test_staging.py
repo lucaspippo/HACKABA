@@ -21,6 +21,126 @@ def limpio():
     store.resetear_actual()
 
 
+def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
+    store.resetear_actual()
+    filas_odoo = [
+        {"id": 501, "codigo": "ODOO-NEW-1", "nombre": "Producto Totalmente Nuevo",
+         "categoria": "General", "precio": 999.0, "stock": 5.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    assert r["tipo"] == "producto"
+    assert r["total_filas"] == 1
+
+
+def test_crear_batch_odoo_producto_detecta_duplicado_por_nombre():
+    store.resetear_actual()
+    existente = store.raw_actual()[0]
+    filas_odoo = [
+        {"id": 502, "codigo": "ODOO-DUP-1", "nombre": existente["descripcion"],
+         "categoria": "General", "precio": 10.0, "stock": 1.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    tipos = {o["tipo"] for o in r["observaciones"]}
+    assert "duplicado" in tipos
+
+
+def test_integrar_batch_odoo_usa_upsert_con_source():
+    store.resetear_actual()
+    filas_odoo = [
+        {"id": 601, "codigo": "ODOO-INT-1", "nombre": "Producto Integrado Odoo",
+         "categoria": "General", "precio": 42.0, "stock": 3.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(d for d in store.raw_actual() if d.get("source_id") == "601")
+    assert creado["source"] == "odoo"
+    assert creado["sku"] == "ODOO-INT-1"
+
+
+def test_crear_batch_odoo_proveedor_nuevo():
+    r = staging.crear_batch_odoo("proveedor", [
+        {"id": 801, "nombre": "Proveedor Staging Nuevo", "cuit": "30-2-2",
+         "localidad": "Rosario", "telefono": "341-000", "email": "p@example.com"},
+    ])
+    assert r["tipo"] == "proveedor"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_proveedor():
+    from core import proveedores
+    r = staging.crear_batch_odoo("proveedor", [
+        {"id": 802, "nombre": "Proveedor Integrado Odoo", "cuit": "30-3-3",
+         "localidad": "", "telefono": "", "email": ""},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(p for p in proveedores.listar() if p.get("source_id") == "802")
+    assert creado["nombre"] == "Proveedor Integrado Odoo"
+
+
+def test_crear_batch_odoo_cliente_nuevo():
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 901, "nombre": "Cliente Staging Nuevo", "cuit": "20-4-4",
+         "localidad": "CABA", "telefono": "11-000", "email": "cl@example.com"},
+    ])
+    assert r["tipo"] == "cliente"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_cliente():
+    from core import cuentas
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 902, "nombre": "Cliente Integrado Odoo", "cuit": "20-5-5",
+         "localidad": "", "telefono": "", "email": ""},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(c for c in cuentas.listar() if c.get("source_id") == "902")
+    assert creado["nombre"] == "Cliente Integrado Odoo"
+    assert creado["saldo"] == 0
+
+
+def test_crear_batch_odoo_orden_compra_nueva():
+    r = staging.crear_batch_odoo("orden_compra", [
+        {"id": 1001, "numero": "P00201", "proveedor": "Proveedor X", "estado": "confirmada",
+         "fecha": "2026-08-20", "total": 500.0,
+         "items": [{"producto": "Y", "cantidad": 2, "precio_unitario": 250.0}]},
+    ])
+    assert r["tipo"] == "orden_compra"
+    assert r["total_filas"] == 1
+    assert r["observaciones"] == []
+
+
+def test_integrar_batch_odoo_orden_compra():
+    from core.db import purchase_orders_repo, tenant as _tenant
+    r = staging.crear_batch_odoo("orden_compra", [
+        {"id": 1002, "numero": "P00202", "proveedor": "Proveedor Y", "estado": "cerrada",
+         "fecha": "2026-08-15", "total": 300.0,
+         "items": [{"producto": "Z", "cantidad": 1, "precio_unitario": 300.0}]},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creada = purchase_orders_repo.find_by_number(_tenant.current_tenant_id(), "P00202")
+    assert creada["estado"] == "recibida"  # "cerrada" (Odoo) -> "recibida" (PolPilot)
+    assert creada["source_status"] == "cerrada"
+
+
+def test_localizar_batch_odoo_cliente_usa_el_sustantivo_correcto():
+    """The duplicate card is re-localized on read by (tipo, obs tipo); without
+    a cliente-specific entry it would fall back to the products wording."""
+    from core import cuentas
+    existente = cuentas.listar()[0]
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 903, "nombre": existente["nombre"], "cuit": "", "localidad": "",
+         "telefono": "", "email": ""},
+    ])
+    b = next(x for x in staging._load() if x["id"] == r["id"])
+    obs = staging.localizar_batch(b, "en")["observaciones"][0]
+    assert "customers" in obs["descripcion"]
+    assert "products" not in obs["descripcion"]
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}

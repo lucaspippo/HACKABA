@@ -38,6 +38,12 @@ def test_plan_relaciona_ventas_con_inventario():
     assert any("rotación" in a for a in plan["activa"])
 
 
+def test_plan_integracion_orden_compra_usa_nombre_ordenes_compra():
+    plan = esquema.plan_integracion("orden_compra")
+    assert plan["nombre"] == "Órdenes de compra"
+    assert plan["tipo"] == "orden_compra"
+
+
 def test_staging_ventas_detecta_huerfana():
     r = staging.crear_batch("ventas.csv", VENTAS_CSV)
     assert r["tipo"] == "venta"

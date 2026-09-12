@@ -146,9 +146,13 @@ export const api = {
   odooConfigGuardar: (config) => put("/api/conectores/odoo", config),
   odooConfigBorrar: () => del("/api/conectores/odoo"),
   odooSync: () => post("/api/conectores/odoo/sync", {}),
+  odooIngestContactos: () => post("/api/conectores/odoo/ingest-contactos", {}),
   odooSyncProductos: () => post("/api/conectores/odoo/sync-productos", {}),
+  odooIngestProductos: () => post("/api/conectores/odoo/ingest-productos", {}),
   odooSyncProveedores: () => post("/api/conectores/odoo/sync-proveedores", {}),
+  odooIngestProveedores: () => post("/api/conectores/odoo/ingest-proveedores", {}),
   odooSyncOrdenesCompra: () => post("/api/conectores/odoo/sync-ordenes-compra", {}),
+  odooIngestOrdenesCompra: () => post("/api/conectores/odoo/ingest-ordenes-compra", {}),
   cobranza: () => get("/api/cobranza"),
   cobranzaPropuesta: (id) => get(`/api/cobranza/${id}/propuesta`),
   cobranzaRegistrar: (cliente_id, estado, extra = {}) =>

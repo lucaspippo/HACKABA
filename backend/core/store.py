@@ -119,6 +119,44 @@ def actualizar_articulo(codigo: int, cambios: dict, actor: str) -> dict:
     raise KeyError(codigo)
 
 
+def buscar_por_source(source: str, source_id: str) -> dict | None:
+    return next((d for d in raw_actual()
+                 if d.get("source") == source and d.get("source_id") == source_id), None)
+
+
+def upsert_desde_conector(fila: dict, actor: str) -> dict:
+    """Create-or-update a product coming from an external connector (e.g.
+    Odoo), as opposed to crear_articulo/actualizar_articulo (the dueño's
+    manual edits): it resolves the internal codigo automatically and accepts
+    the provenance fields (source, source_id, sku). Used both for the
+    auto-upsert of already-linked products (core/odoo_ingest.py) and when
+    integrating a Staging batch of new products."""
+    raw = raw_actual()
+    existente = next((d for d in raw if d.get("source") == fila["source"]
+                       and d.get("source_id") == fila["source_id"]), None)
+    if existente:
+        antes = dict(existente)
+        for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp"):
+            if campo in fila:
+                existente[campo] = fila[campo]
+        _recalcular_inmovilizado(existente)
+        guardar(raw)
+        audit.record(actor, "actualizar_articulo_conector", antes, existente)
+        return existente
+    siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
+    nuevo = {
+        "codigo": siguiente, "descripcion": fila["descripcion"], "estado": "activo",
+        "stock": fila.get("stock") or 0, "costo_iva": fila.get("costo_iva"),
+        "pvp": fila.get("pvp"), "venta_x_peso": False,
+        "sku": fila.get("sku"), "source": fila["source"], "source_id": fila["source_id"],
+    }
+    _recalcular_inmovilizado(nuevo)
+    raw.append(nuevo)
+    guardar(raw)
+    audit.record(actor, "crear_articulo_conector", None, nuevo)
+    return nuevo
+
+
 def resetear_actual() -> None:
     """Descarta las correcciones y vuelve al inventory.json original."""
     global _panorama_cache
