@@ -9,7 +9,7 @@ def _chart(points: int) -> dict:
             "meta": {}}
 
 
-def _insight(*, points=0, records=0, assumptions=0, alternatives=0):
+def _insight(*, points=0, records=0, assumptions=0, alternatives=0, knowledge=()):
     ev = []
     if points:
         ev.append(insight.series("s", label="l", chart=_chart(points),
@@ -19,6 +19,8 @@ def _insight(*, points=0, records=0, assumptions=0, alternatives=0):
             "r", label="l",
             rows=[insight.record(kind="client", id=i, name=str(i)) for i in range(records)],
             method={"key": "k", "label": "l"}))
+    for k in knowledge:
+        ev.append(k)
     return insight.build(
         pattern=insight.pattern("p"),
         evidence=ev,
@@ -64,3 +66,42 @@ def test_signals_are_exposed_for_the_ui():
 def test_both_axes_always_carry_a_reason_string():
     c = confidence.split_for(_insight())
     assert c["data"]["reason"] and c["hypothesis"]["reason"]
+
+
+def _knowledge_evidence(*, fresh: bool) -> dict:
+    """A hand-built knowledge-kind evidence item, bypassing insight.knowledge()
+    (which needs a real DB-backed piece) — confidence.py only needs the
+    evidence dict's shape, not a live piece."""
+    return {"id": "k01", "kind": "knowledge", "label": "x", "value": None,
+            "unit": None, "baseline": None, "deviation": None, "weight": "supporting",
+            "method": {"source": "conocimiento", "tipo": "regla"}, "records": [], "chart": None,
+            "origen": {}, "freshness": "fresco" if fresh else "revisar",
+            "needs_review": not fresh}
+
+
+def test_knowledge_evidence_counts_toward_data_confidence():
+    c = confidence.split_for(_insight(knowledge=[_knowledge_evidence(fresh=True),
+                                                 _knowledge_evidence(fresh=True)]))
+    assert c["data"]["level"] == "medium"  # 2 knowledge items == DATA_MEDIUM_RECORDS
+    assert c["data"]["signals"]["record_count"] == 2
+
+
+def test_knowledge_evidence_never_affects_hypothesis_confidence():
+    c = confidence.split_for(_insight(knowledge=[_knowledge_evidence(fresh=True)]))
+    assert c["hypothesis"]["level"] == "high"  # no assumptions/alternatives declared
+
+
+def test_sources_stale_true_when_any_cited_knowledge_needs_review():
+    c = confidence.split_for(_insight(
+        knowledge=[_knowledge_evidence(fresh=True), _knowledge_evidence(fresh=False)]))
+    assert c["data"]["signals"]["sources_stale"] is True
+
+
+def test_sources_stale_false_with_no_stale_knowledge():
+    c = confidence.split_for(_insight(knowledge=[_knowledge_evidence(fresh=True)]))
+    assert c["data"]["signals"]["sources_stale"] is False
+
+
+def test_sources_stale_false_with_no_knowledge_evidence_at_all():
+    c = confidence.split_for(_insight(points=12))
+    assert c["data"]["signals"]["sources_stale"] is False
