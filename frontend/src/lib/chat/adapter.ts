@@ -10,6 +10,7 @@
  * MessagePrimitive.Error owns the error state and a retry is possible.
  */
 import type {
+  ChatModelAdapter,
   ChatModelRunOptions,
   ChatModelRunResult,
   ThreadAssistantMessagePart,
@@ -180,5 +181,5 @@ export function createChatModelAdapter(
 
       yield snapshot();
     },
-  };
+  } satisfies ChatModelAdapter;
 }

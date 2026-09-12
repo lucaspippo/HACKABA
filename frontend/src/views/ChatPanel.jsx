@@ -104,7 +104,7 @@ export default function ChatPanel({
 
   // Every assistant message carries its full result (answer/mode/actions/
   // options) in metadata.custom — the same shape /api/angela has always
-  // returned (see lib/chatRuntime.js). Side effects apply here ONCE per
+  // returned (see lib/chat/adapter.ts). Side effects apply here ONCE per
   // message, as soon as it finishes running.
   useEffect(() => {
     for (const m of messages) {
