@@ -17,7 +17,7 @@ import { useT } from "../lib/i18n";
 // reads); otherwise we fall back to a clearly-labeled illustrative example
 // with the exact shape a live one would take.
 
-const EJEMPLOS = [
+const EXAMPLES = [
   {
     id: "combo_no_percibido",
     tono: "salvia",
@@ -45,7 +45,7 @@ const EJEMPLOS = [
   },
 ];
 
-const PROXIMAMENTE = [
+const UPCOMING = [
   { icon: Truck, t: "aprendizaje.fut_proveedor_t", d: "aprendizaje.fut_proveedor_d" },
   { icon: ShieldCheck, t: "aprendizaje.fut_riesgo_t", d: "aprendizaje.fut_riesgo_d" },
   { icon: CalendarClock, t: "aprendizaje.fut_estacion_t", d: "aprendizaje.fut_estacion_d" },
@@ -55,24 +55,24 @@ const PROXIMAMENTE = [
 
 // A hand-written stand-in with the exact anatomy a live card would have,
 // used only when this tenant has no matching live finding right now.
-function ejemploIlustrativo(ejemplo, t) {
+function illustrativeExample(example, t) {
   return {
-    id: ejemplo.id,
-    tono: ejemplo.tono,
-    chip: t(ejemplo.chip),
-    titulo: t(ejemplo.titulo),
+    id: example.id,
+    tono: example.tono,
+    chip: t(example.chip),
+    titulo: t(example.titulo),
     monto: null,
-    montoLabel: t(ejemplo.montoLabel),
+    montoLabel: t(example.montoLabel),
     cifraTexto: null,
     fuentes: [],
     drill: {
-      porque: ejemplo.porque.map((k) => t(k)),
+      porque: example.porque.map((k) => t(k)),
       grafico: null,
-      involucrados: ejemplo.involucrados.map((iv) => ({ nombre: t(iv.nombre) })),
-      supuestos: ejemplo.supuestos.map((k) => t(k)),
+      involucrados: example.involucrados.map((iv) => ({ nombre: t(iv.nombre) })),
+      supuestos: example.supuestos.map((k) => t(k)),
     },
-    esIlustrativo: true,
-    resumen: t(ejemplo.dato),
+    isIllustrative: true,
+    summary: t(example.dato),
   };
 }
 
@@ -82,30 +82,30 @@ export default function AprendizajeContinuo({ onPreguntar }) {
   const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    let cancelado = false;
+    let cancelled = false;
     api.prioridades()
       .then((inbox) => {
-        if (cancelado) return;
-        const todos = [...(inbox?.act || []), ...(inbox?.watch || [])];
-        const porId = {};
-        for (const e of EJEMPLOS) {
-          const found = todos.find((it) => it.id === e.id);
-          if (found) porId[e.id] = found;
+        if (cancelled) return;
+        const all = [...(inbox?.act || []), ...(inbox?.watch || [])];
+        const byId = {};
+        for (const example of EXAMPLES) {
+          const found = all.find((it) => it.id === example.id);
+          if (found) byId[example.id] = found;
         }
-        setLive(porId);
+        setLive(byId);
       })
-      .catch(() => setLive({})); // sin datos en vivo: se ven los ejemplos igual
-    return () => { cancelado = true; };
+      .catch(() => setLive({})); // no live data: the illustrative examples still show
+    return () => { cancelled = true; };
   }, []);
 
-  const cards = EJEMPLOS.map((e) => {
-    const found = live?.[e.id];
-    if (!found) return ejemploIlustrativo(e, t);
+  const cards = EXAMPLES.map((example) => {
+    const found = live?.[example.id];
+    if (!found) return illustrativeExample(example, t);
     return {
       id: found.id, tono: found.tono, chip: found.chip, titulo: found.titulo,
       monto: found.monto, montoLabel: found.monto_label, cifraTexto: found.cifra_texto,
-      fuentes: found.fuentes || [], drill: found.drill, esIlustrativo: false,
-      resumen: found.resumen,
+      fuentes: found.fuentes || [], drill: found.drill, isIllustrative: false,
+      summary: found.resumen,
     };
   });
 
@@ -126,12 +126,12 @@ export default function AprendizajeContinuo({ onPreguntar }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {cards.map((c) => (
             <div key={c.id} className="flex flex-col gap-2">
-              <CardNegocio tono={c.tono} chip={c.chip} titulo={c.titulo} dato={c.resumen}
+              <CardNegocio tono={c.tono} chip={c.chip} titulo={c.titulo} dato={c.summary}
                 monto={c.monto} montoLabel={c.montoLabel} cifraTexto={c.cifraTexto}
                 fuentes={c.fuentes} accion={t("aprendizaje.ver_como")}
                 onClick={() => setSelected(c)} />
               <span className="self-start rounded-full bg-papel-hondo px-2.5 py-1 text-[0.68rem] font-semibold text-tinta-suave">
-                {c.esIlustrativo ? t("aprendizaje.chip_ejemplo") : t("aprendizaje.chip_en_tu_negocio")}
+                {c.isIllustrative ? t("aprendizaje.chip_ejemplo") : t("aprendizaje.chip_en_tu_negocio")}
               </span>
             </div>
           ))}
@@ -143,7 +143,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
           {t("aprendizaje.proximamente_titulo")}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {PROXIMAMENTE.map((f) => {
+          {UPCOMING.map((f) => {
             const Icon = f.icon;
             return (
               <div key={f.t} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
