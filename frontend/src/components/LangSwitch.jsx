@@ -1,7 +1,5 @@
 import { langStore, useLang, t } from "../lib/i18n.js";
 
-// EN | ES — discreto pero encontrable, arriba a la derecha (Prompt 8).
-// El mismo componente sirve en desktop, mobile, Login y Mi perfil.
 export default function LangSwitch({ className = "" }) {
   const lang = useLang();
   return (
