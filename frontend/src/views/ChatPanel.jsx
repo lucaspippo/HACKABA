@@ -50,9 +50,7 @@ export default function ChatPanel({
   const hasCamera = useHasCamera();
   const messages = useAuiState((s) => s.thread.messages);
   const isRunning = useAuiState((s) => s.thread.isRunning);
-  const activeThreadTitle = useActiveThreadTitle(
-    variant === "fullscreen" ? "Ángela" : undefined,
-  );
+  const activeThreadTitle = useActiveThreadTitle(undefined);
   const [executing, setExecuting] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [feed, setFeed] = useState([]);

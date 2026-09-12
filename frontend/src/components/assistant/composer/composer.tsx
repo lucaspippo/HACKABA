@@ -16,8 +16,8 @@ import {
   ComposerToolbar,
   ComposerVoice,
   ComposerVoiceButton,
-} from "@/components/composer";
-import type { ComposerAttachment } from "@/components/composer";
+} from "../composer";
+import type { ComposerAttachment } from "../composer";
 import { useT } from "../../../lib/i18n";
 import { authStore } from "../../../lib/auth";
 import { equipoReal } from "../../../lib/equipoReal";
