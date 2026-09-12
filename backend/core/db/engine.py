@@ -24,6 +24,8 @@ from typing import Iterator
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Connection, Engine
 
+from core.db.url import normalize_driver
+
 try:
     from dotenv import load_dotenv
 
@@ -38,7 +40,7 @@ _ADMIN_ENGINE: Engine | None = None
 def get_engine() -> Engine:
     global _ENGINE
     if _ENGINE is None:
-        url = os.environ["APP_DATABASE_URL"]
+        url = normalize_driver(os.environ["APP_DATABASE_URL"])
         _ENGINE = create_engine(url, pool_pre_ping=True)
     return _ENGINE
 
@@ -46,7 +48,7 @@ def get_engine() -> Engine:
 def get_admin_engine() -> Engine:
     global _ADMIN_ENGINE
     if _ADMIN_ENGINE is None:
-        url = os.environ["DATABASE_URL"]
+        url = normalize_driver(os.environ["DATABASE_URL"])
         _ADMIN_ENGINE = create_engine(url, pool_pre_ping=True)
     return _ADMIN_ENGINE
 

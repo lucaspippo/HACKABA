@@ -2,6 +2,8 @@
 // Date-range presets must use this, not the browser clock, or July demo data
 // disappears the moment someone opens the app in August.
 
+import { apiUrl } from "./apiUrl";
+
 let _hoy = null;
 let _promise = null;
 
@@ -19,7 +21,7 @@ export function isoHoy() {
 export function ensureHoy() {
   if (_hoy) return Promise.resolve(_hoy);
   if (_promise) return _promise;
-  _promise = fetch("/api/health")
+  _promise = fetch(apiUrl("/api/health"))
     .then((r) => r.json())
     .then((h) => {
       if (h?.hoy) _hoy = h.hoy;

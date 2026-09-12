@@ -4,6 +4,7 @@ import AngelaSays from "../components/AngelaSays";
 import { ActividadEquipo } from "../sections/GestionEquipo";
 import ObjetivosPanel from "../sections/ObjetivosPanel";
 import { api } from "../lib/api";
+import { apiUrl } from "../lib/apiUrl";
 import { useSession } from "../lib/auth";
 import { useEquipo, equipoStore, ESTADO_LABEL } from "../lib/equipoStore";
 import { useT } from "../lib/i18n";
@@ -20,7 +21,7 @@ export default function EquipoMobile() {
   const [solicitudes, setSolicitudes] = useState([]);
   useEffect(() => {
     if (!session?.token || !esAdmin) return;
-    fetch(`/api/perfiles?token=${encodeURIComponent(session.token)}`)
+    fetch(apiUrl(`/api/perfiles?token=${encodeURIComponent(session.token)}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(r))).then((d) => setPerfiles(d.perfiles)).catch(() => {});
     api.solicitudes(session.token, "pendiente").then((d) => setSolicitudes(d.solicitudes)).catch(() => {});
   }, [session, esAdmin]);

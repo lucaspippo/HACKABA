@@ -17,6 +17,7 @@ without ever entering a lifespan.
 from __future__ import annotations
 
 import asyncio
+import threading
 
 import httpx
 import pytest
@@ -26,6 +27,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.routing import Mount
 
+import angela
 import auth
 import main
 import mcp_server
@@ -169,3 +171,48 @@ def test_consultar_serie_never_pins_a_widget(tokens):
     result = _mcp_call(tokens["emilio"], lambda s: s.call_tool("consultar_serie", args))
     structured = result.structuredContent or {}
     assert structured.get("fijado") is not True
+
+
+def test_run_tool_does_not_run_on_the_event_loop(tokens, monkeypatch):
+    """A heavy MCP tool must not occupy the event loop: on a single uvicorn
+    worker that would stall every concurrent web request, the chat stream
+    included. Asserting the executing thread is the deterministic form of
+    'the loop stayed free' — a timing assertion would flake under CI load."""
+    seen = {}
+    real_run_tool = angela._run_tool
+
+    def spy(name, args):
+        seen["tool_thread"] = threading.get_ident()
+        return real_run_tool(name, args)
+
+    monkeypatch.setattr(angela, "_run_tool", spy)
+
+    session_manager = StreamableHTTPSessionManager(app=mcp_server.server, json_response=True, stateless=True)
+
+    async def asgi(scope, receive, send):
+        await session_manager.handle_request(scope, receive, send)
+
+    async def run():
+        seen["loop_thread"] = threading.get_ident()
+        transport = httpx.ASGITransport(app=asgi)
+        headers = {"Authorization": f"Bearer {tokens['emilio']}"}
+
+        def factory(**kw):
+            kw.pop("transport", None)
+            return httpx.AsyncClient(transport=transport, base_url="http://test",
+                                      follow_redirects=True, **kw)
+
+        async with session_manager.run():
+            async with streamablehttp_client("http://test/mcp", headers=headers,
+                                              httpx_client_factory=factory) as (r, w, _):
+                async with ClientSession(r, w) as session:
+                    await session.initialize()
+                    await session.call_tool("resumen_negocio", {})
+
+    asyncio.run(run())
+
+    assert "tool_thread" in seen, "_run_tool was never called"
+    assert seen["tool_thread"] != seen["loop_thread"], (
+        "angela._run_tool ran on the event loop thread — a slow tool call "
+        "will stall every concurrent request on the single uvicorn worker"
+    )
