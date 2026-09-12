@@ -1692,6 +1692,83 @@ def odoo_ingest_recepciones(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/sync-entregas")
+def odoo_sync_entregas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_entregas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-entregas")
+def odoo_ingest_entregas(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_entregas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-facturas")
+def odoo_sync_facturas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_facturas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-facturas")
+def odoo_ingest_facturas(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_facturas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-pagos")
+def odoo_sync_pagos(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_pagos()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-pagos")
+def odoo_ingest_pagos(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_pagos(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-listas-precios")
+def odoo_sync_listas_precios(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_listas_precios()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-monedas")
+def odoo_sync_monedas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_monedas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
 # EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
 # sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/

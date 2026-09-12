@@ -162,22 +162,34 @@ def ingest_ordenes_compra(actor: str = "dueño") -> dict:
 
 
 def _flatten_confirmed_sale_lines(ordenes: list[dict]) -> list[dict]:
-    """One ingest row per confirmed sale.order.line (estado == confirmada)."""
+    """One ingest row per confirmed sale.order.line (estado == confirmada).
+
+    `precio` is the pricelist-resolved unit price already charged
+    (`price_unit`), converted to company currency when the order is USD.
+    Never recomputed from product.list_price.
+    """
     from core import store
     out = []
     for o in ordenes:
         if o.get("estado") != "confirmada":
             continue
         fecha = (o.get("fecha") or "")[:10]
+        currency = o.get("currency") or ""
         for it in o.get("items") or []:
             tmpl = it.get("product_tmpl_id")
             art = store.buscar_por_source("odoo", str(tmpl)) if tmpl is not None else None
+            precio = it.get("precio_company")
+            if precio is None:
+                precio = it.get("precio_unitario")
             out.append({
                 "id": it["id"],
                 "nombre": it.get("producto") or "",
                 "fecha": fecha,
                 "cantidad": it.get("cantidad") or 0,
-                "precio": it.get("precio_unitario"),
+                "qty_delivered": it.get("qty_delivered") or 0,
+                "precio": precio,
+                "precio_original": it.get("precio_unitario"),
+                "currency": currency,
                 "product_tmpl_id": tmpl,
                 "codigo": art["codigo"] if art else None,
                 "estado": o.get("estado") or "",
@@ -296,5 +308,112 @@ def ingest_recepciones(actor: str = "dueño") -> dict:
             continue
         if po.get("estado") in ("cancelada", "recibida"):
             continue
-        purchase_orders_repo.update_status(tenant_id, number, "recibida")
+        pending_rows = [
+            p for p in filas
+            if p.get("po_number") == number and p.get("pendiente")
+        ]
+        done_rows = [
+            p for p in filas
+            if p.get("po_number") == number and not p.get("pendiente")
+        ]
+        if pending_rows:
+            continue
+        if done_rows:
+            purchase_orders_repo.update_status(tenant_id, number, "recibida")
     return result
+
+
+def ingest_entregas(actor: str = "dueño") -> dict:
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_entregas()
+    filas = []
+    for p in pull["entregas"]:
+        row = dict(p)
+        row["nombre"] = p.get("producto") or ""
+        row["codigo"] = _resolve_odoo_codigo(p.get("product_tmpl_id"))
+        filas.append(row)
+    return _ingest_blob("entregas", filas, actor, "Odoo · entregas")
+
+
+def _apply_customer_ar(tenant_id: str, facturas: list[dict]) -> None:
+    """Odoo invoices own AR for linked customers: saldo = sum(residual)."""
+    from core import cuentas
+    from core.db import customer_accounts_repo
+    from . import odoo_fx
+
+    as_of = odoo_fx.hoy_facturas()
+    by_partner: dict[str, list[dict]] = {}
+    for f in facturas:
+        if f.get("move_type") != "out_invoice":
+            continue
+        pid = f.get("partner_id")
+        if pid is None:
+            continue
+        by_partner.setdefault(str(pid), []).append(f)
+
+    for c in cuentas.listar():
+        if c.get("source") != "odoo" or not c.get("source_id"):
+            continue
+        invs = by_partner.get(str(c["source_id"])) or []
+        saldo = round(sum(float(i.get("residual_company") or i.get("residual") or 0) for i in invs), 2)
+        overdue_dates = []
+        for i in invs:
+            if not i.get("overdue"):
+                continue
+            d = i.get("vencimiento") or i.get("invoice_date_due")
+            if d:
+                overdue_dates.append(d)
+        dias = 0
+        if overdue_dates:
+            oldest = min(overdue_dates)
+            from core.fechas import parse_fecha
+            od = parse_fecha(oldest)
+            if od:
+                dias = (as_of - od).days
+        customer_accounts_repo.update_ar_from_odoo(
+            tenant_id, c["id"], saldo=saldo, days_overdue=max(0, dias))
+
+
+def ingest_facturas(actor: str = "dueño") -> dict:
+    from core import pagos as pagos_mod
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_facturas()
+    out_inv = [f for f in pull["facturas"] if f.get("move_type") == "out_invoice"]
+    in_inv = [f for f in pull["facturas"] if f.get("move_type") == "in_invoice"]
+    ar = _ingest_blob("cuenta_corriente", out_inv, actor, "Odoo · facturas")
+    ap = _ingest_blob("compras", in_inv, actor, "Odoo · facturas de compra")
+    _apply_customer_ar(tenant_id, pull["facturas"])
+    pagos_mod.upsert_from_odoo_bills([
+        {
+            "proveedor": f.get("partner") or "",
+            "numero": f.get("numero") or "",
+            "emision": f.get("fecha") or "",
+            "vencimiento": f.get("vencimiento") or "",
+            "monto": f.get("residual_company") if f.get("aging") != "paid" else f.get("total_company") or f.get("total") or 0,
+            "estado": "pagado" if f.get("aging") == "paid" else "pendiente",
+            "payment_state": f.get("payment_state") or "",
+            "aging": f.get("aging") or "",
+            "currency": f.get("currency") or "",
+            "source": "odoo",
+            "source_id": str(f["id"]),
+        }
+        for f in in_inv
+    ])
+    return {
+        "actualizados": (ar.get("actualizados") or 0) + (ap.get("actualizados") or 0),
+        "nuevos_para_revisar": (ar.get("nuevos_para_revisar") or 0) + (ap.get("nuevos_para_revisar") or 0),
+        "omitidos_malformados": (ar.get("omitidos_malformados") or 0) + (ap.get("omitidos_malformados") or 0),
+        "batch_id": ar.get("batch_id") or ap.get("batch_id"),
+        "batch_id_facturas": ar.get("batch_id"),
+        "batch_id_compras": ap.get("batch_id"),
+    }
+
+
+def ingest_pagos(actor: str = "dueño") -> dict:
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_pagos()
+    return _ingest_blob("pagos", pull["pagos"], actor, "Odoo · pagos")

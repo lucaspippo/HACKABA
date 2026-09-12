@@ -41,6 +41,21 @@ def test_clasifica_sin_precio_con_impacto(articulos_raw):
     assert sin_precio.impacto_pesos == 400
 
 
+def test_needs_pricing_es_sin_precio_wholesale_only_no():
+    needs = Articulo(codigo=90, descripcion="Cable", estado="activo", stock=1,
+                     costo_iva=10, pvp=None, pricing_status="needs_pricing",
+                     inmovilizado=10)
+    assert any(i.categoria == Categoria.SIN_PRECIO for i in quality.clasificar(needs))
+    wholesale = Articulo(codigo=91, descripcion="Pallet", estado="activo", stock=2,
+                         costo_iva=400, pvp=8500, pricing_status="wholesale_only",
+                         inmovilizado=800)
+    assert not any(i.categoria == Categoria.SIN_PRECIO for i in quality.clasificar(wholesale))
+    zero_list = Articulo(codigo=92, descripcion="Pallet sin pvp", estado="activo",
+                         stock=2, costo_iva=400, pvp=None,
+                         pricing_status="wholesale_only", inmovilizado=800)
+    assert not any(i.categoria == Categoria.SIN_PRECIO for i in quality.clasificar(zero_list))
+
+
 def test_clasifica_balanza(articulos_raw):
     issues = quality.clasificar(_art(articulos_raw, 4))
     assert any(i.categoria == Categoria.BALANZA for i in issues)

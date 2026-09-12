@@ -219,6 +219,12 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
     ...(rotDias != null
       ? [{ label: t("inicio.metrica_rotacion"), valor: num(rotDias), icon: Clock, color: "text-hielo", sec: "prioridades" }]
       : []),
+    // P30·A1's canonical `recuperable` sum, surfaced on Home too: only the
+    // homogeneous/sumable naturaleza (never riesgo/accionable), so it never
+    // disagrees with the same number on Mapa. No card if there's nothing to act on.
+    ...(prio?.recuperable?.disponible
+      ? [{ label: t("inicio.metrica_recuperable"), valor: pesoCorto(prio.recuperable.total), icon: Zap, color: "text-salvia", sec: "prioridades" }]
+      : []),
   ];
 
   const accesos = [
@@ -339,7 +345,7 @@ export default function Inicio({ data, oportunidades, onNavegar, onPreguntar }) 
 
   const bloqueMetricas = (
       /* Métricas en calma + accesos rápidos (solo acciones reales) */
-      <div className={`grid grid-cols-2 gap-3 ${metricas.length >= 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
+      <div className={`grid grid-cols-2 gap-3 ${metricas.length >= 6 ? "lg:grid-cols-7" : metricas.length >= 5 ? "lg:grid-cols-6" : "lg:grid-cols-5"}`}>
         {metricas.map((m) => {
           const Icon = m.icon;
           return (

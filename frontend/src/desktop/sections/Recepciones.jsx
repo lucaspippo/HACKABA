@@ -72,6 +72,9 @@ export default function Recepciones() {
               const po = r.po_number || r.origen;
               return <CellLink to={qLink("ordenes_compra", po)}>{po || "—"}</CellLink>;
             } },
+          { key: "pendiente", label: t("imported.col_pending"), sortable: true, plata: true, groupable: true,
+            groupLabel: (k) => t(k === "true" ? "imported.yes" : "imported.no"),
+            render: (r) => t(r.pendiente ? "imported.yes" : "imported.no") },
           { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
             groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
             render: (r) => <SourceBadge source={r.source} t={t} /> },
