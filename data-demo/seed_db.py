@@ -126,6 +126,46 @@ def run(tenant_slug: str = "demo", *, name: str | None = None,
     print(f"[seed_db] tenant '{tenant_slug}' ({tid}) seeded", flush=True)
 
 
+def _dominios():
+    """(domain, seed files, tables to empty on re-seed, the module's own read).
+
+    ONLY the domains with a real file in DATA_DIR are listed: those are the
+    ones a changed dataset can reach. The others (organizacion, extraccion,
+    sync, users) have no on-disk seed — they keep their in-code fallback and
+    are seeded below, untracked, exactly as before.
+
+    `cargar` is never a new seeding path: it is the same first read
+    seed_domains() has always called.
+    """
+    from core import (caja, conocimiento, cuentas, esquema, mostrador, notas,
+                      pagos, reposicion, store, traslados, ventas,
+                      ventas_cliente)
+    return [
+        ("inventory_working", ["inventory.json"], ["inventory_working"],
+         store.raw_actual),
+        ("audit_events", ["audit.json"], ["audit_events"], store.audit.list),
+        # account_movements first: it points at customer_accounts.
+        ("customer_accounts", ["cuentas.json"],
+         ["account_movements", "customer_accounts"], cuentas.listar),
+        ("caja_state", ["caja.json"], ["caja_state"], caja.estado),
+        ("supplier_conditions", ["proveedores_condiciones.json"],
+         ["supplier_conditions"], reposicion.condiciones),
+        ("team_notes", ["notas_equipo.json"], ["team_notes"], notas.listar),
+        ("retail_counter_data", ["mostrador.json"], ["retail_counter_data"],
+         mostrador._load),
+        ("internal_transfers", ["traslados_internos.json"],
+         ["internal_transfers"], traslados._load),
+        ("finance_data", ["finanzas.json"], ["finance_data"], pagos._load),
+        ("client_sales_data", ["ventas_por_cliente.json"],
+         ["client_sales_data"], ventas_cliente._load),
+        ("business_knowledge_pieces", ["conocimiento_negocio.json"],
+         ["business_knowledge_pieces"], conocimiento.listar),
+        ("data_sections", ["apartados.json"], ["data_sections"], esquema._load),
+        ("sales_validation", ["ventas_validacion.json"], ["sales_validation"],
+         ventas._val_load),
+    ]
+
+
 def seed_domains() -> None:
     """Triggers every migrated domain module's own first-read seed (real
     on-disk dataset if present, else its in-code fallback) — see the module
@@ -134,6 +174,10 @@ def seed_domains() -> None:
     empty for every tenant, same as the old missing-file behavior) don't
     need a call here.
 
+    Since 0042 this also RE-seeds a domain whose on-disk file changed, on a
+    tenant that regenerates its dataset on boot. See core/db/seed_state.py
+    for the rule and for why the hash is of the file and never of the blob.
+
     Unlike run(), this assumes POLPILOT_TENANT/core.paths.TENANT are ALREADY
     correctly set for the current process — true both when run() calls this
     from a fresh subprocess, and when an already-running server process
@@ -141,56 +185,36 @@ def seed_domains() -> None:
     after core.db.reset.truncate_business_data() (see main.py's
     admin_reset_demo)."""
     import auth
+    from core import paths
+    from core.db import seed_state
     auth.reload_usuarios()  # users table — reload_usuarios() (not usuarios())
     # so a mid-process call after core.db.reset.truncate_business_data()
     # actually re-seeds instead of returning the stale in-process cache.
 
-    from core import cuentas as core_cuentas
-    core_cuentas.listar()  # customer_accounts / account_movements
+    for dominio, archivos, tablas, cargar in _dominios():
+        seed_state.sembrar(dominio, [os.path.join(paths.DATA_DIR, a) for a in archivos],
+                           tablas, cargar)
 
-    from core import store as core_store
-    core_store.raw_actual()  # inventory_working
-    core_store.audit.list()  # audit_events
-
-    from core import caja as core_caja
-    core_caja.estado()  # caja_state
-
+    # No on-disk seed: in-code fallback, nothing to track.
     from core import organizacion as core_organizacion
     core_organizacion.get()  # organization_config
-
-    from core import reposicion as core_reposicion
-    core_reposicion.condiciones()  # supplier_conditions
-
-    from core import notas as core_notas
-    core_notas.listar()  # team_notes
-
-    from core import mostrador as core_mostrador
-    core_mostrador._load()  # retail_counter_data
-
-    from core import traslados as core_traslados
-    core_traslados._load()  # internal_transfers
-
-    from core import sync as core_sync
-    core_sync._baseline()  # inventory_baseline
 
     from core import extraccion as core_extraccion
     core_extraccion._muestras()  # sample_extractions
 
-    from core import pagos as core_pagos
-    core_pagos._load()  # finance_data
+    from core import sync as core_sync
+    core_sync._baseline()  # inventory_baseline
 
-    from core import ventas_cliente as core_ventas_cliente
-    core_ventas_cliente._load()  # client_sales_data
 
-    from core import conocimiento as core_conocimiento
-    core_conocimiento.listar()  # business_knowledge
-
-    from core import esquema as core_esquema
-    core_esquema._load()  # data_sections
-
-    from core import ventas as core_ventas
-    core_ventas._val_load()  # sales_validation
-
+def revisar_seeds() -> None:
+    """What a tenant that does NOT re-seed runs at boot: compares and warns,
+    touching nothing. Without this, a dataset that changed under a productive
+    tenant would be silent — and silence is the failure mode this whole
+    change exists to remove."""
+    from core import paths
+    from core.db import seed_state
+    for dominio, archivos, _tablas, _cargar in _dominios():
+        seed_state.revisar(dominio, [os.path.join(paths.DATA_DIR, a) for a in archivos])
 
 if __name__ == "__main__":
     slug = sys.argv[1] if len(sys.argv) > 1 else "demo"
