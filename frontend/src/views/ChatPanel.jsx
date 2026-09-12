@@ -45,7 +45,8 @@ export default function ChatPanel({
   const session = useSession();
   const hasCamera = useHasCamera();
   const messages = useAuiState((s) => s.thread.messages);
-  const activeThreadTitle = useActiveThreadTitle(undefined);
+  const isEmpty = useAuiState((s) => s.thread.isEmpty);
+  const activeThreadTitle = useActiveThreadTitle("");
   const [, setExecuting] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
@@ -163,9 +164,11 @@ export default function ChatPanel({
       {knowledgeOpen && <KnowledgePanel onClose={() => setKnowledgeOpen(false)} />}
       <header className="flex items-center gap-3 pb-4">
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-xl font-bold leading-none">
-            {activeThreadTitle}
-          </h1>
+          {!isEmpty && activeThreadTitle ? (
+            <h1 className="truncate font-display text-xl font-bold leading-none">
+              {activeThreadTitle}
+            </h1>
+          ) : null}
         </div>
         <IconButton
           label={t("chat.knowledge.open")}
@@ -196,6 +199,7 @@ export default function ChatPanel({
         <ChatThread
           onExecutingChange={setExecuting}
           emptyState={emptyState}
+          raisedComposer={variant === "fullscreen"}
           onAttach={authStore.tiene("cargar") ? () => setPhotoOpen(true) : undefined}
           composerLeading={
             hasCamera && authStore.tiene("cargar") && (

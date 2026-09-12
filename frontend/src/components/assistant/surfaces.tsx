@@ -4,7 +4,10 @@ import type { ComponentProps } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export const paper = "bg-background border border-border/60 dark:bg-popover";
+// Elevated off `papel`: --background IS papel, so a paper composer on the
+// fullscreen chat (and on mobile) used to vanish into the page. Crema + a
+// full-opacity linea and the house's soft lift are the card treatment.
+export const paper = "bg-crema border border-linea sombra-papel dark:bg-popover";
 
 export const floating = "bg-background border border-border/60 dark:bg-popover";
 

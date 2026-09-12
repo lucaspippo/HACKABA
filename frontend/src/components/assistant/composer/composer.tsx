@@ -72,9 +72,12 @@ function attachmentView(attachment: {
 export default function Composer({
   leading,
   onStartCall,
+  raised = false,
 }: {
   leading?: ReactNode;
   onStartCall?: () => void;
+  /** Lift the bar off a papel page (fullscreen / mobile). The dock already sits on a tinted aside. */
+  raised?: boolean;
 }) {
   const t = useT();
   const aui = useAui();
@@ -205,8 +208,20 @@ export default function Composer({
           ))}
       </ComposerMenu>
 
-      <ComposerPrimitive.Root className="w-full">
-        <ComposerBar className="has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-violeta/40">
+      <ComposerPrimitive.Root
+        className={cn(
+          "w-full",
+          // Same tint family as the dock aside, so the bar reads as a control
+          // on the papel page instead of dissolving into it.
+          raised && "rounded-[28px] bg-violeta-suave p-1",
+        )}
+      >
+        <ComposerBar
+          className={cn(
+            "has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-violeta/40",
+            raised && "border-transparent sombra-papel",
+          )}
+        >
           {attachments.length > 0 && (
             <ComposerAttachments>
               {attachments.map((attachment) => (

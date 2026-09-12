@@ -20,12 +20,14 @@ export default function ChatThread({
   composerLeading,
   emptyState,
   onAttach,
+  raisedComposer = false,
 }: {
   onExecutingChange?: ExecutingHandler;
   composerLeading?: ReactNode;
   emptyState?: ReactNode;
   /** Opens the app's document-upload flow; omit to hide the call's attach button. */
   onAttach?: () => void;
+  raisedComposer?: boolean;
 }) {
   const aui = useAui();
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
@@ -139,7 +141,7 @@ export default function ChatThread({
               </div>
             )}
           </ThreadPrimitive.Viewport>
-          <Composer leading={composerLeading} onStartCall={startCall} />
+          <Composer leading={composerLeading} onStartCall={startCall} raised={raisedComposer} />
         </>
       )}
     </ThreadPrimitive.Root>
