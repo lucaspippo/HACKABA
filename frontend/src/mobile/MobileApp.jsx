@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints } from "lucide-react";
 import Brand from "../components/Brand";
@@ -45,6 +46,21 @@ const MCAT = {
 // Nombres "de dueño" que Ángela usa para navegar → vista mobile real.
 const MALIAS = { inicio: "panel", home: "panel", principal: "panel", hoy: "panel" };
 
+// Same alias/permission rules as navegarMobile, but silent (no toast) since
+// this only decides what to render for the current URL. Null if invalid.
+function resolveView(raw, { piso, user, navIds }) {
+  const destino = MALIAS[raw] || raw;
+  if (!destino) return null;
+  if (piso && (destino === "panel" || destino === "mi_dia")) return "mi_dia";
+  if (destino === "perfil") return "perfil";
+  if (["insights", "alertas", "oportunidades"].includes(destino)) {
+    return (user.features.includes("alertas") || user.features.includes("oportunidades")) ? "insights" : null;
+  }
+  if (destino === "angela") return "angela";
+  if (MCAT[destino]) return navIds.includes(destino) ? destino : null;
+  return null;
+}
+
 export default function MobileApp({ data, oportunidades, fase, user, onRecargar }) {
   const t = useT();
   const session = useSession();
@@ -56,7 +72,13 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // P24·D1 — Ángela primero: en el celular la pantalla inicial es el CHAT (la
   // interfaz natural del teléfono); la bottom-nav queda para moverse. Para el de
   // a pie, la pantalla inicial es "Mi día".
-  const [view, setView] = useState(piso ? "mi_dia" : "angela");
+  const defaultView = piso ? "mi_dia" : "angela";
+  // The active view lives in the URL (/:section) instead of a useState — same
+  // reasoning as the desktop app: deep links, back/forward, shareable links.
+  const navigate = useNavigate();
+  const { section: viewParam } = useParams();
+  const view = resolveView(viewParam, { piso, user, navIds });
+  const setView = (v) => navigate(`/${v}`);
   const [consultaAngela, setConsultaAngela] = useState(null);
 
   const gestionarOp = (op) => {
@@ -162,12 +184,26 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     const Icon = slot.icon;
     const activo = view === slot.id;
     return (
-      <button onClick={() => setView(slot.id)} className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5">
+      // Real <a href> so right-click "open in new tab" works; modified
+      // clicks fall through to native browser handling.
+      <Link
+        to={`/${slot.id}`}
+        onClick={(e) => {
+          if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+          e.preventDefault();
+          setView(slot.id);
+        }}
+        className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5"
+      >
         <Icon size={21} className={activo ? "text-violeta" : "text-tinta-suave"} strokeWidth={activo ? 2.4 : 2} />
         <span className={`text-[0.62rem] font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
-      </button>
+      </Link>
     );
   };
+
+  // Declarative redirect (render phase, not an effect) for an invalid or
+  // alias URL segment — same reasoning as DesktopApp's `redirectTo`.
+  if (!view) return <Navigate to={`/${defaultView}`} replace />;
 
   return (
     <div className="flex min-h-[100dvh] justify-center bg-papel">
