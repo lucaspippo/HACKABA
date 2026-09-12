@@ -131,13 +131,33 @@ Events, English keys:
 | `{type:"text", delta}` | **deltas**, not accumulated text — adapter appends |
 | `{type:"tool_call", id, name, input}` | unchanged |
 | `{type:"tool_result", id, result, display?}` | `input` echo dropped; `display` per D8 |
-| `{type:"error", code, message, retryable}` | **new** |
-| `{type:"notice", kind, text}` | **new** — `cap`, `tool_loop_exhausted`, `fake_model` |
+| `{type:"error", code, retryable}` | **new** |
+| `{type:"notice", kind}` | **new** — `cap`, `tool_loop_exhausted`, `fake_model` |
 | `{type:"done", result:{mode, tools_used, actions}}` | `respuesta` dropped (redundant with text parts) |
 
 Request envelope English too: `mensaje`→`message`, `historial`→`history`,
 plus `view` and `app_context` (D6). `metadata.custom` keys likewise:
 `acciones`→`actions`, `opciones`→`options`, `modo`→`mode`.
+
+**The backend owns the discriminator; whoever renders owns the copy.**
+`notice` and `error` carry `kind`/`code` and no text. The frontend renders
+from its own `chat.notice.<kind>` / `chat.error.<code>` keys — it already has
+a catalogue and already knows the language.
+
+Backend i18n is not thereby obsolete: it is required for channels with **no
+renderer** — WhatsApp (`/api/whatsapp` → `responder()`) and the MCP server —
+where the server must produce the final text, in a language resolved
+server-side so it cannot be spoofed. The rule is which channel, not which
+layer.
+
+This was originally got backwards: the first implementation catalogued four
+keys used *only* by the streaming web chat, while `angela.py`'s `responder()`
+— the path WhatsApp actually uses — still held a hardcoded Spanish-only
+string. Keys that serve only the web chat are deleted; the `responder()`
+string is catalogued.
+
+Cost of the strict split: an unknown future `kind` renders nothing unless the
+frontend ships a generic fallback, so Task 8 must ship one.
 
 *Why — four defects this fixes, all verified:*
 

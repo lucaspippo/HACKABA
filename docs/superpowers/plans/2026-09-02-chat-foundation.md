@@ -1072,13 +1072,11 @@ describe("tool calls", () => {
 describe("notices", () => {
   it("renders the cap notice with no text events at all", async () => {
     const results = await runAll([
-      '{"type":"notice","kind":"cap","text":"Llegaste al límite."}\n',
+      '{"type":"notice","kind":"cap"}\n',
       '{"type":"done","result":{"mode":"cap","tools_used":[],"actions":[]}}\n',
     ]);
     const final = results.at(-1)!;
-    expect(final.metadata?.custom?.notices).toEqual([
-      { kind: "cap", text: "Llegaste al límite." },
-    ]);
+    expect(final.metadata?.custom?.notices).toEqual([{ kind: "cap" }]);
   });
 });
 
@@ -1086,14 +1084,14 @@ describe("errors", () => {
   it("throws a ChatStreamError on an error event instead of faking a message", async () => {
     await expect(
       runAll([
-        '{"type":"error","code":"model_failed","message":"No pude responder.","retryable":true}\n',
+        '{"type":"error","code":"model_failed","retryable":true}\n',
       ]),
     ).rejects.toBeInstanceOf(ChatStreamError);
   });
 
   it("keeps the server-supplied code", async () => {
     await expect(
-      runAll(['{"type":"error","code":"rate_limit","message":"esperá","retryable":true}\n']),
+      runAll(['{"type":"error","code":"rate_limit","retryable":true}\n']),
     ).rejects.toMatchObject({ code: "rate_limit" });
   });
 
@@ -1180,11 +1178,11 @@ export type StreamEvent =
   | { type: "text"; delta: string }
   | { type: "tool_call"; id: string; name: string; input?: Record<string, unknown> }
   | { type: "tool_result"; id: string; result?: unknown }
-  | { type: "notice"; kind: NoticeKind; text: string }
-  | { type: "error"; code: string; message: string; retryable?: boolean }
+  | { type: "notice"; kind: NoticeKind }
+  | { type: "error"; code: string; retryable?: boolean }
   | { type: "done"; result?: DoneResult };
 
-export type Notice = { kind: NoticeKind; text: string };
+export type Notice = { kind: NoticeKind };
 
 /** The final envelope. `answer` is legacy-defensive only: v2 sends text as deltas. */
 export type DoneResult = {
@@ -1347,9 +1345,9 @@ export function createChatModelAdapter(
           if (i != null) parts[i] = { ...parts[i], result: ev.result } as ThreadAssistantMessagePart;
         } else if (ev.type === "notice") {
           textIndex = null; // a notice closes the current text part
-          notices.push({ kind: ev.kind, text: ev.text });
+          notices.push({ kind: ev.kind });
         } else if (ev.type === "error") {
-          return new ChatStreamError(toClientCode(ev.code), ev.message);
+          return new ChatStreamError(toClientCode(ev.code));
         } else if (ev.type === "done") {
           done = ev.result ?? {};
         }
@@ -2023,22 +2021,39 @@ import type { Notice } from "../../lib/chat/protocol";
  * model being indistinguishable from a real one (design doc D5/D9).
  */
 function MessageNotices() {
+  const t = useT();
   const notices = (useAuiState((s) => s.message.metadata?.custom?.notices) ?? []) as Notice[];
   if (notices.length === 0) return null;
   return (
     <div className="mt-2 space-y-1.5">
-      {notices.map((n, i) => (
-        <p
-          key={i}
-          className="flex items-start gap-2 rounded-xl border border-oro/40 bg-oro/5 px-2.5 py-1.5 text-[0.78rem] leading-snug text-oro-tinta"
-        >
-          <AlertCircle size={14} className="mt-0.5 shrink-0" />
-          <span>{n.text}</span>
-        </p>
-      ))}
+      {notices.map((n, i) => {
+        // The wire carries only `kind`; the copy is ours. An unrecognised
+        // kind falls back to a generic line rather than rendering blank.
+        const key = `chat.notice.${n.kind}`;
+        const text = t(key);
+        return (
+          <p
+            key={i}
+            className="flex items-start gap-2 rounded-xl border border-oro/40 bg-oro/5 px-2.5 py-1.5 text-[0.78rem] leading-snug text-oro-tinta"
+          >
+            <AlertCircle size={14} className="mt-0.5 shrink-0" />
+            <span>{text === key ? t("chat.notice.generico") : text}</span>
+          </p>
+        );
+      })}
     </div>
   );
 }
+```
+
+Add the notice copy to `es.js` and `en.js` (English equivalents in the same commit):
+
+```js
+  // --- avisos del chat (el backend manda sólo el `kind`) ---
+  "chat.notice.cap": "Llegaste al límite de mensajes de esta sesión.",
+  "chat.notice.fake_model": "Esto lo saqué de tus datos, sin el modelo conectado.",
+  "chat.notice.tool_loop_exhausted": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
+  "chat.notice.generico": "Ángela respondió en modo degradado.",
 ```
 
 Render `<MessageNotices />` inside the assistant bubble, immediately before `<MessageExtras … />`. Then widen the empty-bubble guard so a notice-only message still renders: change
