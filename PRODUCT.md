@@ -113,6 +113,85 @@ The insight LIFECYCLE (`New` / `Confirmed` / `Acted upon` / `Resolved` /
 the planned next step, not yet implemented — see the "Deferred" section of
 `docs/superpowers/specs/2026-09-01-structured-insight-contract-design.md`.
 
+## The Action Principle
+
+**A process that ends in a report is unfinished.** PolPilot sits on top of the
+system of record; it is not another one. The ERP already shows every table the
+business has. What the ERP cannot do is decide, and the one thing this product
+sells is that a decision gets *made and executed* — with the owner's approval —
+without leaving the screen where it was seen.
+
+This principle is stated here at the level of detail `DESIGN.md` gives a
+border radius, because its absence is how the surface drifted: each ERP-shaped
+screen was added for a reasonable local reason, and nothing written said "this
+puts us on Odoo's home ground".
+
+### What it means
+
+- **The unit of the product is a decision, not a record.** A screen earns its
+  place in the navigation by the decision someone closes there — approve,
+  assign, correct, send, discard — and by that decision changing the system
+  (persisted, attributed, audited). A screen that only lets someone *look* is
+  evidence, and evidence lives one click behind the decision that needs it.
+- **A table is evidence, never the destination.** Tables are unbeatable for
+  sweeping many rows to find the one that is wrong; the chat is useless for
+  that. Keep the table — but the door to it is the problem ("5 groups of broken
+  data", "8 lots expiring"), not the menu, and it opens *focused on the row
+  that motivated the visit*, never on row 1 of 430.
+- **Every role lands on its work queue.** `frontend/src/lib/roles.js` gives
+  seven roles a tool view: tasks derived from real signals, the actions to
+  close them, the questions of their trade. The owner is a role too. A landing
+  screen with five reads and zero closable actions (`Inicio`) is a report.
+- **"Approve" must do something.** A button that sets local state and shows a
+  toast is a lie about the product's core promise. The done-state of any
+  action is a fact computed in `core/` from persisted data — never client
+  state, never narrated by the LLM (see the propose → approve → done pattern
+  in `docs/superpowers/specs/2026-09-01-angela-proposal-pattern-design.md`).
+- **The ERP owns the record; we own the decision.** Creating, editing and
+  deleting master data (products, sales, receipts, vendors, locations,
+  purchase orders) in this product competes with the system of record on
+  integrity — the ground where a 20-year-old ERP wins. We read those; we
+  write back *decisions* through the connector, with the audit trail intact.
+
+### How to apply it when a screen is proposed
+
+Before a new section enters `CATALOGO` (`frontend/src/desktop/DesktopApp.jsx`)
+or `MODULOS` (`backend/auth.py`), answer in writing:
+
+1. **What decision closes here?** Name the verb (approve / assign / correct /
+   send / discard) and the table or blob it changes. If the honest answer is
+   "the user looks", it is evidence: reachable from a finding, not from the
+   sidebar.
+2. **Does the ERP already have this screen under this name?** If Odoo's or
+   Tango's standard menu has it (Products, Receipts, Internal Transfers,
+   Locations, Purchase Orders, Vendors, Sales), we are inviting a comparison we
+   lose. Either it becomes evidence behind a finding, or it must do something
+   the ERP cannot — and that something is the screen's headline.
+3. **Which role lands here, and how often?** Mark the answer as a hypothesis
+   unless it comes from a real user. A screen without a role is a report.
+4. **What does the user get back for changing a habit?** Every change we ask
+   for must return something they do not have today, on the same screen, in
+   the same moment. "It looks nicer" is not a return.
+5. **Where is the evidence?** Every number on the new screen must open to the
+   real rows behind it (the Insight Structure above). If the screen *is* the
+   rows, go back to question 1.
+6. **Is it a module?** If a screen can be seen by someone, the owner must be
+   able to take it away in "Quién ve qué". A section that rides on another
+   module's flag (as seven ERP screens once rode on `inventario`) breaks the
+   role promise made in *Product Principles*.
+
+### Named rules
+
+- **Report Rule:** a screen with reads and no persisted, attributed action is
+  evidence. It may exist; it may not be a top-level destination.
+- **Focus Rule:** a table opened from a finding opens filtered and scrolled to
+  the row that motivated the visit. Row 1 is a bug.
+- **Toast Rule:** no success message without a persisted change behind it. A
+  toast is the *receipt* for an action, never the action.
+- **Home-Ground Rule:** an ERP menu name is a reason to hide, not to add.
+- **Owner Rule:** `es_admin` is a role with a work queue, not an exemption
+  from one.
+
 ## Product Principles
 
 - Every number the user sees traces to a deterministic calculation in `core/`; the

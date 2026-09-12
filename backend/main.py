@@ -2429,6 +2429,29 @@ def traslados_internos(u: dict = Depends(require_feature("inventario"))):
                                          lambda: traslados.resumen(lang))
 
 
+class VencimientoGestionRequest(BaseModel):
+    codigo: int
+    lote: str | None = None
+    tipo: str                         # promocion | locales
+    cantidad: float | None = None
+    nota: str | None = None
+
+
+@app.post("/api/vencimientos/gestionar")
+def vencimientos_gestionar(req: VencimientoGestionRequest,
+                           u: dict = Depends(require_feature("deposito"))):
+    """The human's yes on the expiry card: persisted, audited, and the lot
+    leaves the at-risk list. Before this the button set local state."""
+    from core import vencimientos
+    try:
+        return vencimientos.gestionar(req.codigo, req.lote, req.tipo, actor=u["nombre"],
+                                      cantidad=req.cantidad, nota=req.nota)
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
 @app.get("/api/vencimientos")
 def vencimientos_get(dias: int = 30, u: dict = Depends(require_feature("deposito"))):
     """P38·H — vencimiento × ritmo real de venta: qué NO llegás a vender antes
