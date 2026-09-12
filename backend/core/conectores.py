@@ -161,6 +161,80 @@ class ConectorOdoo(IConector):
         ]
         return {"origen": "odoo", "modulo": "product.template", "total": len(catalogo), "productos": catalogo}
 
+    def pull_proveedores(self, **kwargs) -> dict:
+        """Trae los contactos-proveedor (supplier_rank > 0), la contraparte de
+        pull_data() del lado compras. Mismo criterio de sólo-lectura: preview
+        para comparar contra core/proveedores.py (la ficha real de proveedor
+        en PolPilot), no lo reemplaza ni lo sincroniza automáticamente."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "res.partner", "search", [["supplier_rank", ">", 0]], limit=kwargs.get("limite", 500)
+        )
+        partners = self._execute_kw(
+            "res.partner", "read", ids, fields=["name", "vat", "city", "phone", "email"]
+        )
+        proveedores = [
+            {
+                "id": p["id"],
+                "nombre": p.get("name") or "",
+                "cuit": p.get("vat") or "",
+                "localidad": p.get("city") or "",
+                "telefono": p.get("phone") or "",
+                "email": p.get("email") or "",
+            }
+            for p in partners
+        ]
+        return {"origen": "odoo", "modulo": "res.partner", "total": len(proveedores), "proveedores": proveedores}
+
+    def pull_ordenes_compra(self, **kwargs) -> dict:
+        """Trae las órdenes de compra (purchase.order) con sus líneas, la
+        contraparte de pull_productos() del lado compras: mismo preview de
+        sólo lectura, para comparar contra core/ordenes.py (las órdenes que
+        Ángela prepara y el dueño aprueba en PolPilot) — no las importa ni
+        las mezcla con esas."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "purchase.order", "search", [], limit=kwargs.get("limite", 200)
+        )
+        ordenes = self._execute_kw(
+            "purchase.order", "read", ids,
+            fields=["name", "partner_id", "state", "date_order", "amount_total"],
+        )
+        lineas_por_orden: dict[int, list[dict]] = {o["id"]: [] for o in ordenes}
+        if ordenes:
+            linea_ids = self._execute_kw(
+                "purchase.order.line", "search", [["order_id", "in", list(lineas_por_orden)]]
+            )
+            lineas = self._execute_kw(
+                "purchase.order.line", "read", linea_ids,
+                fields=["order_id", "product_id", "name", "product_qty", "price_unit"],
+            )
+            for l in lineas:
+                lineas_por_orden[l["order_id"][0]].append({
+                    "producto": (l.get("product_id") or [None, l.get("name") or ""])[1],
+                    "cantidad": l.get("product_qty") or 0,
+                    "precio_unitario": l.get("price_unit") or 0,
+                })
+        _ESTADOS = {
+            "draft": "borrador", "sent": "enviada", "purchase": "confirmada",
+            "done": "cerrada", "cancel": "cancelada",
+        }
+        compras = [
+            {
+                "id": o["id"],
+                "numero": o.get("name") or "",
+                "proveedor": (o.get("partner_id") or [None, ""])[1],
+                "estado": _ESTADOS.get(o.get("state"), o.get("state") or ""),
+                "fecha": o.get("date_order") or "",
+                "total": o.get("amount_total") or 0,
+                "items": lineas_por_orden.get(o["id"], []),
+            }
+            for o in ordenes
+        ]
+        return {"origen": "odoo", "modulo": "purchase.order", "total": len(compras), "ordenes": compras}
+
     def push_action(self, accion: dict) -> dict:
         return {"ok": False, "motivo": "Conector Odoo: por ahora solo lectura (Contactos)."}
 
