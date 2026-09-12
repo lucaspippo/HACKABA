@@ -1,16 +1,32 @@
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, LineChart, Waypoints, Link2, ChevronDown } from "lucide-react";
+import { FileSpreadsheet, LineChart, Waypoints, Plug, ChevronDown } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { useT } from "../../lib/i18n";
+import IngestPipeline from "./IngestPipeline";
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
 // Hoy: CSV (manual) y BCRA (macro) ya activos, Odoo interactivo (conectás vos
 // tu cuenta), MCP como slot pendiente para cuando Faro/Tango lo expongan. A
 // medida que se sumen conectores nuevos, entran acá — un solo lugar, no uno
 // por sistema desperdigado en otras pantallas.
-const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Link2, mcp: Waypoints };
+const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, odoo: Plug, mcp: Waypoints };
+
+function IngestLinks({ t, onNavigate, batchId, importedTab }) {
+  return (
+    <>
+      {batchId && (
+        <> · <button type="button" onClick={() => onNavigate?.("staging")}
+          className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
+      )}
+      {importedTab && (
+        <> · <button type="button" onClick={() => onNavigate?.("imported", importedTab)}
+          className="font-semibold text-violeta underline">{t("odoo.view_imported")}</button></>
+      )}
+    </>
+  );
+}
 
 export default function Conectores({ onNavigate }) {
   const t = useT();
@@ -25,6 +41,9 @@ export default function Conectores({ onNavigate }) {
       <header>
         <h1 className="font-display text-2xl font-bold">{t("conectores.titulo")}</h1>
         <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("conectores.subtitulo")}</p>
+        <div className="mt-3">
+          <IngestPipeline current="conectores" onNavigate={onNavigate} />
+        </div>
       </header>
 
       <AngelaSays>{t("conectores.angela")}</AngelaSays>
@@ -108,7 +127,7 @@ function PanelOdoo({ estado, onNavigate }) {
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
       <button onClick={() => setAbierto((v) => !v)} className="flex w-full items-center gap-3 text-left">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violeta/10 text-violeta">
-          <Link2 size={17} />
+          <Plug size={17} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-display text-[1.02rem] font-bold leading-tight">{t("odoo.titulo")}</span>
@@ -123,8 +142,11 @@ function PanelOdoo({ estado, onNavigate }) {
             <>
               <p className="text-[0.85rem] text-tinta">
                 {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
+                {" · "}
+                <button type="button" onClick={() => onNavigate?.("imported")}
+                  className="font-semibold text-violeta underline">{t("odoo.view_imported")}</button>
               </p>
-              <div className="flex items-center gap-1 border-b border-linea">
+              <div className="flex flex-wrap items-center gap-1 border-b border-linea">
                 <button onClick={() => setTab("contactos")}
                   className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
                     tab === "contactos" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
@@ -145,11 +167,29 @@ function PanelOdoo({ estado, onNavigate }) {
                     tab === "compras" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
                   {t("odoo.tab_compras")}
                 </button>
+                <button onClick={() => setTab("ventas")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "ventas" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_ventas")}
+                </button>
+                <button onClick={() => setTab("deposito")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "deposito" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_deposito")}
+                </button>
+                <button onClick={() => setTab("recepciones")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "recepciones" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_recepciones")}
+                </button>
               </div>
               {tab === "contactos" && <OdooTabContactos t={t} onNavigate={onNavigate} />}
               {tab === "productos" && <OdooTabProductos t={t} onNavigate={onNavigate} />}
               {tab === "proveedores" && <OdooTabProveedores t={t} onNavigate={onNavigate} />}
               {tab === "compras" && <OdooTabCompras t={t} onNavigate={onNavigate} />}
+              {tab === "ventas" && <OdooTabVentas t={t} onNavigate={onNavigate} />}
+              {tab === "deposito" && <OdooTabDeposito t={t} onNavigate={onNavigate} />}
+              {tab === "recepciones" && <OdooTabRecepciones t={t} onNavigate={onNavigate} />}
               <button onClick={desconectar}
                 className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
                            text-tinta-suave hover:text-tinta">
@@ -237,10 +277,7 @@ function OdooTabContactos({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_contactos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_contactos_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -317,10 +354,7 @@ function OdooTabProductos({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_productos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_productos_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="products" />
         </p>
       )}
       {sync && (
@@ -404,10 +438,7 @@ function OdooTabProveedores({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_proveedores_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_proveedores_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -484,10 +515,7 @@ function OdooTabCompras({ t, onNavigate }) {
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_compras_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_compras_sin_novedades")}
-          {ingesta.batch_id && (
-            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
-              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
-          )}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} />
         </p>
       )}
       {sync && (
@@ -514,6 +542,248 @@ function OdooTabCompras({ t, onNavigate }) {
                   <li key={i}>{it.producto} · {it.cantidad}</li>
                 ))}
               </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OdooTabVentas({ t, onNavigate }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncVentas());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestVentas());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_ventas") : t("odoo.traer_ventas")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_ventas") : t("odoo.ingestar_ventas")}
+        </button>
+      </div>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_ventas_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_ventas_sin_novedades")}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="sales" />
+        </p>
+      )}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_ventas_resultado", { n: sync.total }) : t("odoo.sync_ventas_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.ordenes.map((o) => (
+            <li key={o.id} className="rounded-lg border border-linea/50 bg-papel/60 p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate font-semibold text-tinta">
+                  {o.numero} <span className="font-normal text-tinta-suave">· {o.cliente}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
+                                 font-semibold text-tinta-suave">
+                  {t(`odoo.estado_venta_${o.estado}`)}
+                </span>
+              </div>
+              <ul className="mt-1 space-y-0.5 pl-1 text-tinta-suave">
+                {o.items.map((it, i) => (
+                  <li key={it.id || i}>{it.producto} · {it.cantidad}</li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OdooTabDeposito({ t, onNavigate }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncDeposito());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestDeposito());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_deposito") : t("odoo.traer_deposito")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_deposito") : t("odoo.ingestar_deposito")}
+        </button>
+      </div>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_deposito_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_deposito_sin_novedades")}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="movements" />
+        </p>
+      )}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_deposito_resultado", { n: sync.total }) : t("odoo.sync_deposito_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.quants.map((q) => (
+            <li key={q.id} className="text-tinta">
+              {q.producto}
+              {q.ubicacion && <span className="text-tinta-suave"> · {q.ubicacion}</span>}
+              <span className="text-tinta-suave"> · {q.cantidad}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OdooTabRecepciones({ t, onNavigate }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncRecepciones());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestRecepciones());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_recepciones") : t("odoo.traer_recepciones")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_recepciones") : t("odoo.ingestar_recepciones")}
+        </button>
+      </div>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_recepciones_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_recepciones_sin_novedades")}
+          <IngestLinks t={t} onNavigate={onNavigate} batchId={ingesta.batch_id} importedTab="receipts" />
+        </p>
+      )}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_recepciones_resultado", { n: sync.total }) : t("odoo.sync_recepciones_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.recepciones.map((r) => (
+            <li key={r.id} className="text-tinta">
+              {r.origen} · {r.producto}
+              <span className="text-tinta-suave"> · {r.cantidad}</span>
+              {r.po_number && <span className="text-tinta-suave"> · {r.po_number}</span>}
             </li>
           ))}
         </ul>

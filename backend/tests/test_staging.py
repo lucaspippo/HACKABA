@@ -14,11 +14,16 @@ CSV = (
 
 @pytest.fixture(autouse=True)
 def limpio():
+    from core import esquema
+    from core.db import blob_repo, tenant as _t
     limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
+    esquema.reemplazar_filas("venta", [])
+    blob_repo.save_blob("sales_validation", _t.current_tenant_id(), {"estado": "sin_datos"})
     yield
     limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
+    esquema.reemplazar_filas("venta", [])
 
 
 def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
@@ -30,6 +35,20 @@ def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
     r = staging.crear_batch_odoo("producto", filas_odoo)
     assert r["tipo"] == "producto"
     assert r["total_filas"] == 1
+    tipos = {o["tipo"] for o in r["observaciones"]}
+    assert "precio_a_perdida" not in tipos
+    assert "sin_precio" not in tipos
+
+
+def test_coerce_producto_odoo_emite_costo_y_omite_venta_x_peso():
+    fila = staging.coerce_producto_odoo({
+        "id": 1, "nombre": "X", "codigo": "SKU", "stock": 4, "precio": 10,
+        "costo": 8, "free_qty": 3, "incoming_qty": 1, "outgoing_qty": 0, "activo": True,
+    })
+    assert fila["costo_iva"] == 8
+    assert fila["free_qty"] == 3
+    assert "venta_x_peso" not in fila
+    assert fila["estado"] == "activo"
 
 
 def test_crear_batch_odoo_producto_detecta_duplicado_por_nombre():
@@ -126,6 +145,28 @@ def test_integrar_batch_odoo_orden_compra():
     assert creada["source_status"] == "cerrada"
 
 
+def test_crear_batch_odoo_venta_nueva():
+    r = staging.crear_batch_odoo("venta", [
+        {"id": 200, "nombre": "Laptop", "fecha": "2026-06-15 10:00:00",
+         "cantidad": 2, "precio": 1200, "estado": "confirmada"},
+    ])
+    assert r["tipo"] == "venta"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_venta_auto_confirma_montos():
+    from core import esquema, ventas
+    r = staging.crear_batch_odoo("venta", [
+        {"id": 201, "nombre": "Laptop", "fecha": "2026-06-15",
+         "cantidad": 2, "precio": 100, "codigo": 1, "estado": "confirmada"},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    filas = esquema.filas("venta")
+    assert any(f.get("source_id") == "201" for f in filas)
+    assert ventas.montos_confirmados() is True
+
+
 def test_localizar_batch_odoo_cliente_usa_el_sustantivo_correcto():
     """The duplicate card is re-localized on read by (tipo, obs tipo); without
     a cliente-specific entry it would fall back to the products wording."""
@@ -180,3 +221,37 @@ def test_descartar():
     r = staging.crear_batch("x.csv", CSV)
     staging.descartar(r["id"])
     assert staging.listar() == []
+
+
+def test_map_purchase_status():
+    assert staging.map_purchase_status("draft", False) == "borrador"
+    assert staging.map_purchase_status("confirmada", False) == "aprobada"
+    assert staging.map_purchase_status("purchase", True) == "recibida"
+    assert staging.map_purchase_status("done", False) == "recibida"
+    assert staging.map_purchase_status("cancel", False) == "cancelada"
+
+
+def test_coerce_deposito_odoo_omite_counted_si_no_hay_conteo():
+    fila = staging.coerce_deposito_odoo({
+        "id": 30, "nombre": "X", "codigo": 1, "ubicacion": "WH/Stock",
+        "lote": "L", "vencimiento": "2026-12-01", "cantidad": 5, "in_date": "2026-01-15",
+    })
+    assert "counted_qty" not in fila
+    assert fila["source_id"] == "30"
+    counted = staging.coerce_deposito_odoo({
+        "id": 31, "nombre": "X", "codigo": 1, "ubicacion": "WH2",
+        "lote": "", "vencimiento": "", "cantidad": 2, "in_date": "2025-01-01",
+        "counted_qty": 1,
+    })
+    assert counted["counted_qty"] == 1
+
+
+def test_coerce_recepcion_odoo():
+    fila = staging.coerce_recepcion_odoo({
+        "id": 500, "fecha": "2026-08-06 12:00:00", "nombre": "X", "codigo": 1,
+        "proveedor": "Sur", "cantidad": 15, "deposito": "WH/Stock",
+        "origen": "WH/IN/00012", "po_number": "P00010", "estado": "done",
+    })
+    assert fila["fecha"] == "2026-08-06"
+    assert fila["po_number"] == "P00010"
+    assert fila["source_id"] == "500"

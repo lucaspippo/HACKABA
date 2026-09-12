@@ -88,7 +88,8 @@ TOOL_FEATURE = {
     # la misma feature que la vista que los muestra (el mapa/cerebro, del dueño)
     "consultar_cruces": "mapa",
     "consultar_deposito": "deposito", "consultar_envios": "logistica",
-    "consultar_evolucion": "evolucion", "generar_documento": "documentos",
+    "consultar_evolucion": "evolucion", "consultar_pronostico": "evolucion",
+    "generar_documento": "documentos",
     "normalizaciones_staging": "cargar", "consultar_compras": "cargar",
     # análisis que CRUZAN datos (P7): despiertan con las ventas validadas
     "analisis_rotacion": "inventario", "analisis_estacionalidad": "evolucion",
@@ -482,7 +483,10 @@ EVOLUCIÓN (comparaciones históricas):
 períodos, usá 'consultar_evolucion'. Dá SIEMPRE los dos valores —nominal y real— y
 aclará en una frase simple: "ajustado por inflación para que compares parejo". El dato
 real manda; el nominal engaña. Si no hay ventas históricas cargadas, decilo: se activa
-con ese CSV. Nunca proyectes hacia adelante: esto compara lo que YA pasó.
+con ese CSV. Eso compara lo que YA pasó.
+- Para demanda hacia adelante ("¿cuánto voy a vender?", "pronóstico"), usá
+'consultar_pronostico'. Narrá SOLO esos números: nunca inventes un dato ni recalcules
+el intervalo. Si available es false, decilo.
 
 MÓDULOS DEL EQUIPO (quién ve qué):
 - Habilitar o quitar módulos de un empleado es configuración de NEGOCIO: sólo el
@@ -1109,6 +1113,15 @@ TOOLS = [
         "serie mensual en pesos de hoy. Usala para '¿cómo vengo contra el año pasado?', "
         "'¿crecimos de verdad o es inflación?'. Devuelve nominal Y real: dá siempre los dos. "
         "Si la respuesta trae demo=true, ACLARALO siempre: son datos de demostración, no del negocio.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "consultar_pronostico",
+        "description": "Pronóstico determinístico de demanda por producto para los próximos 3 "
+        "meses calendario (unidades y pesos, con intervalo si hay historia suficiente). "
+        "Usala para '¿cuánto voy a vender?', 'pronóstico', 'demanda del mes que viene'. "
+        "NUNCA inventes ni recalcules un número: narrá el dict tal cual. Si available es "
+        "false, decilo — no completes con una serie inventada.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -1926,6 +1939,12 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         if p.get("serie"):
             p["serie"] = p["serie"][-12:]
         accion = {"type": "navigate", "section": "evolucion"} if p.get("hay_datos") else None
+        return p, accion
+
+    if name == "consultar_pronostico":
+        from core import forecast as forecast_mod
+        p = forecast_mod.forecast_demand(_idioma_actual())
+        accion = {"type": "navigate", "section": "evolucion"} if p.get("available") else None
         return p, accion
 
     if name == "listar_prioridades":
@@ -2861,6 +2880,21 @@ def _fallback(mensaje: str) -> dict:
         demo = " " + T("fb.evo_demo") if p.get("demo") else ""
         return resp(" ".join(partes) + demo + " " + T("fb.evo_serie"),
                     [accion] if accion else [], tools=["consultar_evolucion"])
+
+    if any(k in m for k in ("pronostico", "pronóstico", "forecast", "demanda proxima",
+                            "voy a vender", "mes que viene voy a")):
+        b = bloqueado("evolucion")
+        if b:
+            return b
+        p, accion = _run_tool("consultar_pronostico", {})
+        if not p.get("available"):
+            return resp(p.get("reason") or T("fb.evo_sin_datos"),
+                        [{"type": "navigate", "section": "cargar"}],
+                        tools=["consultar_pronostico"])
+        n = len([i for i in p.get("items") or [] if i.get("available")])
+        return resp(
+            f"Pronóstico a 3 meses para {n} productos (números del motor, no inventados).",
+            [accion] if accion else [], tools=["consultar_pronostico"])
 
     # --- Plata en un producto/categoría ---
     if any(k in m for k in ("plata en", "cuanta plata", "cuánta plata", "manteca", "queso", "leche", "fiambre", "cheddar", "congelad")):

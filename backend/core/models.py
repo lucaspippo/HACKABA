@@ -63,6 +63,9 @@ class Articulo:
     sku: str | None = None
     source: str | None = None
     source_id: str | None = None
+    free_qty: float | None = None
+    incoming_qty: float | None = None
+    outgoing_qty: float | None = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "Articulo":
@@ -82,6 +85,9 @@ class Articulo:
             sku=d.get("sku"),
             source=d.get("source"),
             source_id=d.get("source_id"),
+            free_qty=d.get("free_qty"),
+            incoming_qty=d.get("incoming_qty"),
+            outgoing_qty=d.get("outgoing_qty"),
         )
 
 

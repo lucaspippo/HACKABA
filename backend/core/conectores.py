@@ -66,6 +66,26 @@ class ConectorBCRA(IConector):
         return {"indicadores": ["dolar", "inflacion"]}
 
 
+def _m2o_id(val):
+    if not val:
+        return None
+    return val[0] if isinstance(val, (list, tuple)) else val
+
+
+def _m2o_name(val, fallback: str = "") -> str:
+    if not val:
+        return fallback
+    if isinstance(val, (list, tuple)) and len(val) > 1:
+        return val[1] or fallback
+    return fallback
+
+
+def _date_part(val) -> str:
+    if not val:
+        return ""
+    return str(val)[:10]
+
+
 def probar_conexion_odoo(url: str, database: str, username: str, api_key: str) -> None:
     """Autentica contra Odoo sin guardar nada — usado antes de persistir una
     conexión nueva, para no guardar credenciales que no sirven."""
@@ -142,12 +162,17 @@ class ConectorOdoo(IConector):
         if not self._conexion:
             raise ValueError("No hay conexión con Odoo configurada para este tenant.")
         ids = self._execute_kw(
-            "product.template", "search", [["active", "=", True]], limit=kwargs.get("limite", 500)
+            "product.template", "search",
+            ["|", ["active", "=", True], ["qty_available", "!=", 0]],
+            limit=kwargs.get("limite", 500),
+            context={"active_test": False},
         )
         productos = self._execute_kw(
             "product.template", "read", ids,
-            fields=["name", "default_code", "categ_id", "list_price", "qty_available"],
+            fields=["name", "default_code", "categ_id", "list_price",
+                    "standard_price", "active"],
         )
+        stock_by_tmpl = self._stock_by_template(ids)
         catalogo = [
             {
                 "id": p["id"],
@@ -155,7 +180,12 @@ class ConectorOdoo(IConector):
                 "nombre": p.get("name") or "",
                 "categoria": (p.get("categ_id") or [None, ""])[1],
                 "precio": p.get("list_price") or 0,
-                "stock": p.get("qty_available") or 0,
+                "stock": (stock_by_tmpl.get(p["id"]) or {}).get("qty_available") or 0,
+                "costo": p.get("standard_price") or 0,
+                "free_qty": (stock_by_tmpl.get(p["id"]) or {}).get("free_qty") or 0,
+                "incoming_qty": (stock_by_tmpl.get(p["id"]) or {}).get("incoming_qty") or 0,
+                "outgoing_qty": (stock_by_tmpl.get(p["id"]) or {}).get("outgoing_qty") or 0,
+                "activo": bool(p.get("active", True)),
             }
             for p in productos
         ]
@@ -209,13 +239,23 @@ class ConectorOdoo(IConector):
             )
             lineas = self._execute_kw(
                 "purchase.order.line", "read", linea_ids,
-                fields=["order_id", "product_id", "name", "product_qty", "price_unit"],
+                fields=["order_id", "product_id", "name",
+                        "product_qty", "price_unit", "qty_received"],
+            )
+            tmpl_by_variant = self._template_id_by_variant(
+                [_m2o_id(l.get("product_id")) for l in lineas]
             )
             for l in lineas:
-                lineas_por_orden[l["order_id"][0]].append({
-                    "producto": (l.get("product_id") or [None, l.get("name") or ""])[1],
+                oid = _m2o_id(l.get("order_id"))
+                if oid not in lineas_por_orden:
+                    continue
+                prod = l.get("product_id") or [None, l.get("name") or ""]
+                lineas_por_orden[oid].append({
+                    "producto": prod[1] if isinstance(prod, (list, tuple)) else (l.get("name") or ""),
+                    "product_tmpl_id": tmpl_by_variant.get(_m2o_id(l.get("product_id"))),
                     "cantidad": l.get("product_qty") or 0,
                     "precio_unitario": l.get("price_unit") or 0,
+                    "qty_received": l.get("qty_received") or 0,
                 })
         _ESTADOS = {
             "draft": "borrador", "sent": "enviada", "purchase": "confirmada",
@@ -234,6 +274,194 @@ class ConectorOdoo(IConector):
             for o in ordenes
         ]
         return {"origen": "odoo", "modulo": "purchase.order", "total": len(compras), "ordenes": compras}
+
+    def pull_ordenes_venta(self, **kwargs) -> dict:
+        """Preview of sale.order rows (all workflow states) with lines.
+        Ingest filters to confirmed (`sale`/`done` → confirmada) elsewhere."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "sale.order", "search", [], limit=kwargs.get("limite", 5000)
+        )
+        ordenes = self._execute_kw(
+            "sale.order", "read", ids,
+            fields=["name", "partner_id", "state", "date_order", "amount_total"],
+        )
+        lineas_por_orden: dict[int, list[dict]] = {o["id"]: [] for o in ordenes}
+        if ordenes:
+            linea_ids = self._execute_kw(
+                "sale.order.line", "search", [["order_id", "in", list(lineas_por_orden)]]
+            )
+            lineas = self._execute_kw(
+                "sale.order.line", "read", linea_ids,
+                fields=["order_id", "product_id", "product_template_id", "name",
+                        "product_uom_qty", "price_unit"],
+            )
+            for l in lineas:
+                tmpl = l.get("product_template_id") or [None, ""]
+                prod = l.get("product_id") or [None, l.get("name") or ""]
+                lineas_por_orden[l["order_id"][0]].append({
+                    "id": l["id"],
+                    "producto": prod[1],
+                    "product_tmpl_id": tmpl[0],
+                    "cantidad": l.get("product_uom_qty") or 0,
+                    "precio_unitario": l.get("price_unit") or 0,
+                })
+        _ESTADOS = {
+            "draft": "borrador", "sent": "enviada", "sale": "confirmada",
+            "done": "confirmada", "cancel": "cancelada",
+        }
+        ventas = [
+            {
+                "id": o["id"],
+                "numero": o.get("name") or "",
+                "cliente": (o.get("partner_id") or [None, ""])[1],
+                "estado": _ESTADOS.get(o.get("state"), o.get("state") or ""),
+                "fecha": o.get("date_order") or "",
+                "total": o.get("amount_total") or 0,
+                "items": lineas_por_orden.get(o["id"], []),
+            }
+            for o in ordenes
+        ]
+        return {"origen": "odoo", "modulo": "sale.order", "total": len(ventas), "ordenes": ventas}
+
+    def _read_by_id(self, model: str, ids: list, fields: list[str]) -> dict:
+        ids = [i for i in ids if i]
+        if not ids:
+            return {}
+        rows = self._execute_kw(model, "read", ids, fields=fields)
+        return {r["id"]: r for r in rows}
+
+    def _stock_by_template(self, template_ids: list) -> dict:
+        """Stock qty fields live on product.product in Odoo 17 (free_qty is not
+        on product.template; reading it there raises Invalid field)."""
+        if not template_ids:
+            return {}
+        variant_ids = self._execute_kw(
+            "product.product", "search",
+            [["product_tmpl_id", "in", list(template_ids)]],
+            context={"active_test": False},
+        )
+        variants = self._execute_kw(
+            "product.product", "read", variant_ids,
+            fields=["product_tmpl_id", "qty_available", "free_qty",
+                    "incoming_qty", "outgoing_qty"],
+        ) if variant_ids else []
+        out: dict = {}
+        for v in variants:
+            tid = _m2o_id(v.get("product_tmpl_id"))
+            if tid is None:
+                continue
+            slot = out.setdefault(tid, {
+                "qty_available": 0.0, "free_qty": 0.0,
+                "incoming_qty": 0.0, "outgoing_qty": 0.0,
+            })
+            for key in ("qty_available", "free_qty", "incoming_qty", "outgoing_qty"):
+                slot[key] += v.get(key) or 0
+        return out
+
+    def _template_id_by_variant(self, variant_ids: list) -> dict:
+        """purchase.order.line has product_id only; sale.order.line has product_template_id."""
+        rows = self._read_by_id("product.product", variant_ids, ["product_tmpl_id"])
+        return {vid: _m2o_id(row.get("product_tmpl_id")) for vid, row in rows.items()}
+
+    def pull_deposito(self, **kwargs) -> dict:
+        """Internal stock.quant rows (qty ≠ 0). Locations and lots resolved."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "stock.quant", "search",
+            ["&", ["quantity", "!=", 0], ["location_id.usage", "=", "internal"]],
+            limit=kwargs.get("limite", 2000),
+        )
+        quants = self._execute_kw(
+            "stock.quant", "read", ids,
+            fields=["product_id", "location_id", "quantity", "lot_id", "in_date",
+                    "inventory_quantity", "inventory_quantity_set"],
+        ) if ids else []
+        loc_ids = sorted({_m2o_id(q.get("location_id")) for q in quants if _m2o_id(q.get("location_id"))})
+        lot_ids = sorted({_m2o_id(q.get("lot_id")) for q in quants if _m2o_id(q.get("lot_id"))})
+        var_ids = sorted({_m2o_id(q.get("product_id")) for q in quants if _m2o_id(q.get("product_id"))})
+        locations = self._read_by_id("stock.location", loc_ids, ["complete_name"])
+        lots = self._read_by_id("stock.lot", lot_ids, ["name", "expiration_date"])
+        variants = self._read_by_id("product.product", var_ids, ["product_tmpl_id"])
+        rows = []
+        for q in quants:
+            loc = locations.get(_m2o_id(q.get("location_id"))) or {}
+            lot = lots.get(_m2o_id(q.get("lot_id"))) or {}
+            var = variants.get(_m2o_id(q.get("product_id"))) or {}
+            row = {
+                "id": q["id"],
+                "producto": _m2o_name(q.get("product_id")),
+                "product_tmpl_id": _m2o_id(var.get("product_tmpl_id")),
+                "ubicacion": loc.get("complete_name") or _m2o_name(q.get("location_id")),
+                "lote": lot.get("name") or "",
+                "vencimiento": _date_part(lot.get("expiration_date")),
+                "cantidad": q.get("quantity") or 0,
+                "in_date": _date_part(q.get("in_date")),
+            }
+            if q.get("inventory_quantity_set"):
+                row["counted_qty"] = q.get("inventory_quantity") or 0
+            rows.append(row)
+        return {"origen": "odoo", "modulo": "stock.quant", "total": len(rows), "quants": rows}
+
+    def pull_recepciones(self, **kwargs) -> dict:
+        """Done incoming pickings, one row per stock.move."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        picking_ids = self._execute_kw(
+            "stock.picking", "search",
+            [["picking_type_code", "=", "incoming"], ["state", "=", "done"]],
+            limit=kwargs.get("limite", 500),
+        )
+        pickings = self._execute_kw(
+            "stock.picking", "read", picking_ids,
+            fields=["name", "partner_id", "date_done", "origin",
+                    "location_dest_id", "state"],
+        ) if picking_ids else []
+        pick_by_id = {p["id"]: p for p in pickings}
+        move_ids = self._execute_kw(
+            "stock.move", "search",
+            [["picking_id", "in", picking_ids], ["state", "=", "done"]],
+        ) if picking_ids else []
+        moves = self._execute_kw(
+            "stock.move", "read", move_ids,
+            fields=["picking_id", "product_id", "quantity", "location_dest_id",
+                    "purchase_line_id", "state"],
+        ) if move_ids else []
+        loc_ids = sorted({_m2o_id(m.get("location_dest_id")) or _m2o_id(p.get("location_dest_id"))
+                          for m in moves for p in [pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}]
+                          if _m2o_id(m.get("location_dest_id")) or _m2o_id(p.get("location_dest_id"))})
+        var_ids = sorted({_m2o_id(m.get("product_id")) for m in moves if _m2o_id(m.get("product_id"))})
+        pol_ids = sorted({_m2o_id(m.get("purchase_line_id")) for m in moves if _m2o_id(m.get("purchase_line_id"))})
+        locations = self._read_by_id("stock.location", loc_ids, ["complete_name"])
+        variants = self._read_by_id("product.product", var_ids, ["product_tmpl_id"])
+        polines = self._read_by_id("purchase.order.line", pol_ids, ["order_id"])
+        rows = []
+        for m in moves:
+            picking = pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}
+            loc_id = _m2o_id(m.get("location_dest_id")) or _m2o_id(picking.get("location_dest_id"))
+            loc = locations.get(loc_id) or {}
+            var = variants.get(_m2o_id(m.get("product_id"))) or {}
+            pol = polines.get(_m2o_id(m.get("purchase_line_id"))) or {}
+            po_number = _m2o_name(pol.get("order_id")) or (picking.get("origin") or "")
+            qty = m.get("quantity")
+            if qty is None:
+                qty = m.get("quantity_done") or 0
+            rows.append({
+                "id": m["id"],
+                "fecha": _date_part(picking.get("date_done")),
+                "producto": _m2o_name(m.get("product_id")),
+                "product_tmpl_id": _m2o_id(var.get("product_tmpl_id")),
+                "proveedor": _m2o_name(picking.get("partner_id")),
+                "cantidad": qty or 0,
+                "deposito": loc.get("complete_name") or _m2o_name(picking.get("location_dest_id")),
+                "origen": picking.get("name") or "",
+                "po_number": po_number,
+                "estado": picking.get("state") or "",
+            })
+        return {"origen": "odoo", "modulo": "stock.picking", "total": len(rows),
+                "recepciones": rows}
 
     def push_action(self, accion: dict) -> dict:
         return {"ok": False, "motivo": "Conector Odoo: por ahora solo lectura (Contactos)."}

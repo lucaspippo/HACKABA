@@ -67,28 +67,79 @@ def vencidos() -> list[dict]:
 
 
 def discrepancias() -> list[dict]:
-    """Stock físico (suma de lotes del depósito) vs stock contable (inventario).
-    El clásico: el sistema dice 40 y en la estantería hay 25."""
-    fisico: dict = {}
+    """Stock físico vs stock contable.
+
+    CSV/WMS path: sum(cantidad) vs product.stock.
+    When any depósito row for a product has counted_qty (Odoo inventory in
+    progress), compare summed counted_qty vs summed cantidad instead.
+    """
+    by_code: dict = {}
     for f in _filas():
         c = f.get("codigo")
         if c is None:
             continue
-        fisico[c] = fisico.get(c, 0.0) + float(f.get("cantidad") or 0)
+        bucket = by_code.setdefault(c, {"cantidad": 0.0, "counted": 0.0, "has_counted": False})
+        bucket["cantidad"] += float(f.get("cantidad") or 0)
+        if f.get("counted_qty") is not None:
+            bucket["has_counted"] = True
+            bucket["counted"] += float(f.get("counted_qty") or 0)
     contable = {d.get("codigo"): d for d in store.raw_actual()}
     out = []
-    for c, cant in fisico.items():
+    for c, b in by_code.items():
         d = contable.get(c)
         if not d:
-            continue  # producto no está en el inventario: lo frena el staging, no acá
-        stock = float(d.get("stock") or 0)
-        if abs(stock - cant) > 0.01:
+            continue
+        if b["has_counted"]:
+            stock_contable = b["cantidad"]
+            stock_fisico = b["counted"]
+        else:
+            stock_contable = float(d.get("stock") or 0)
+            stock_fisico = b["cantidad"]
+        if abs(stock_contable - stock_fisico) > 0.01:
             out.append({
                 "codigo": c, "descripcion": d.get("descripcion"),
-                "stock_contable": stock, "stock_fisico": round(cant, 2),
-                "diferencia": round(cant - stock, 2),
+                "stock_contable": round(stock_contable, 2),
+                "stock_fisico": round(stock_fisico, 2),
+                "diferencia": round(stock_fisico - stock_contable, 2),
             })
     return sorted(out, key=lambda x: abs(x["diferencia"]), reverse=True)
+
+
+def aging(as_of=None) -> list[dict]:
+    """Units and inmovilizado by age of in_date vs fechas.hoy() (or as_of).
+    Rows without a parseable in_date are omitted, never invented."""
+    as_of = as_of or hoy()
+    buckets = {
+        "0_90": {"bucket": "0_90", "units": 0.0, "inmovilizado": 0.0},
+        "91_180": {"bucket": "91_180", "units": 0.0, "inmovilizado": 0.0},
+        "181_365": {"bucket": "181_365", "units": 0.0, "inmovilizado": 0.0},
+        "365_plus": {"bucket": "365_plus", "units": 0.0, "inmovilizado": 0.0},
+    }
+    catalogo = {d.get("codigo"): d for d in store.raw_actual()}
+    for f in _filas():
+        d = parse_fecha(f.get("in_date"))
+        if not d:
+            continue
+        days = (as_of - d).days
+        if days < 0:
+            continue
+        if days <= 90:
+            key = "0_90"
+        elif days <= 180:
+            key = "91_180"
+        elif days <= 365:
+            key = "181_365"
+        else:
+            key = "365_plus"
+        qty = float(f.get("cantidad") or 0)
+        art = catalogo.get(f.get("codigo")) or {}
+        costo = float(art.get("costo_iva") or 0)
+        buckets[key]["units"] += qty
+        buckets[key]["inmovilizado"] += qty * costo
+    return [
+        {**b, "units": round(b["units"], 2), "inmovilizado": round(b["inmovilizado"], 2)}
+        for b in buckets.values()
+    ]
 
 
 def discrepancias_conocimiento() -> dict:

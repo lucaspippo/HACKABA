@@ -1104,6 +1104,19 @@ def evolucion_get(u: dict = Depends(require_feature("evolucion"))):
                                          lambda: evolucion.panorama(lang))
 
 
+@app.get("/api/forecast")
+def forecast_get(u: dict = Depends(require_feature("evolucion"))):
+    from core import forecast as forecast_mod
+    return forecast_mod.forecast_demand(_lang(u))
+
+
+@app.get("/api/imported")
+def imported_get(_u: dict = Depends(require_feature("inventario"))):
+    """Raw loaded rows: catalog, sales, receipts, warehouse positions."""
+    from core import imported as imported_mod
+    return imported_mod.overview()
+
+
 # --- Depósito y logística (capa sobre el WMS/TMS: consultas, no picking ni rutas) ---
 
 @app.get("/api/deposito")
@@ -1613,6 +1626,65 @@ def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_ordenes_compra(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-ventas")
+def odoo_sync_ventas(_u: dict = Depends(require_admin)):
+    """Preview of Odoo sale.order rows (all states) with lines."""
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_ordenes_venta()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-ventas")
+def odoo_ingest_ventas(_u: dict = Depends(require_admin)):
+    """Confirmed sale lines: linked rows auto-upsert; new ones go to Staging."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_ventas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-deposito")
+def odoo_sync_deposito(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_deposito()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-deposito")
+def odoo_ingest_deposito(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_deposito(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-recepciones")
+def odoo_sync_recepciones(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_recepciones()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-recepciones")
+def odoo_ingest_recepciones(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_recepciones(actor=_u["username"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

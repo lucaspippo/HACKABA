@@ -109,20 +109,19 @@ def _coerce_logistica(mapeo: dict, fila_dict: dict) -> dict:
 
 
 def coerce_producto_odoo(p: dict) -> dict:
-    # `costo_iva` is deliberately OMITTED: Odoo's product.template read
-    # (core/conectores.py's pull_productos) never supplies a cost, only
-    # `list_price` (-> pvp). Emitting the key at all — even as None — would
-    # let store.upsert_desde_conector's "if campo in fila" update clause
-    # overwrite a dueño-entered cost with None on every re-sync. On INSERT
-    # (first-time link, no prior dueño data to lose), the missing key just
-    # falls back to None there too, so nothing is lost either way.
+    # Odoo owns cost (`standard_price` → `costo_iva`) on linked products.
+    # `venta_x_peso` is omitted: it is a PolPilot-native field the dueño
+    # fills in by hand; emitting it would blank a dueño edit on re-sync.
     return {
         "codigo": None,
         "descripcion": str(p.get("nombre") or "").strip(),
-        "estado": "activo",
+        "estado": "activo" if p.get("activo", True) else "anulado",
         "stock": p.get("stock") or 0.0,
         "pvp": p.get("precio"),
-        "venta_x_peso": False,
+        "costo_iva": p.get("costo"),
+        "free_qty": p.get("free_qty") or 0.0,
+        "incoming_qty": p.get("incoming_qty") or 0.0,
+        "outgoing_qty": p.get("outgoing_qty") or 0.0,
         "sku": p.get("codigo") or None,
         "source": "odoo",
         "source_id": str(p["id"]),
@@ -192,24 +191,92 @@ def _analizar_clientes(filas: list[dict], lang: str | None = None) -> list[dict]
     }]
 
 
-_ESTADO_ORDEN_COMPRA_ODOO = {
-    "borrador": "borrador", "enviada": "borrador",
-    "confirmada": "aprobada", "cerrada": "recibida", "cancelada": "cancelada",
-}
+def map_purchase_status(odoo_state: str, qty_received_any: bool) -> str:
+    """Odoo PO state (+ any qty received) → PolPilot purchase-order status."""
+    raw = (odoo_state or "").lower()
+    if raw in ("draft", "sent", "borrador", "enviada"):
+        return "borrador"
+    if raw in ("cancel", "cancelada"):
+        return "cancelada"
+    if raw in ("done", "cerrada"):
+        return "recibida"
+    if raw in ("purchase", "confirmada") and qty_received_any:
+        return "recibida"
+    if raw in ("purchase", "confirmada"):
+        return "aprobada"
+    return "borrador"
 
 
 def coerce_orden_compra_odoo(o: dict) -> dict:
+    items = []
+    for it in o.get("items") or []:
+        item = dict(it)
+        tmpl = it.get("product_tmpl_id")
+        if tmpl is not None and item.get("codigo") is None:
+            art = store.buscar_por_source("odoo", str(tmpl))
+            if art:
+                item["codigo"] = art["codigo"]
+        items.append(item)
+    qty_any = any(float(it.get("qty_received") or 0) > 0 for it in items)
     estado_odoo = o.get("estado") or "borrador"
     return {
         "numero": o.get("numero") or "",
         "proveedor": o.get("proveedor") or "",
         "fecha": o.get("fecha") or "",
         "total": o.get("total") or 0,
-        "items": o.get("items") or [],
-        "estado": _ESTADO_ORDEN_COMPRA_ODOO.get(estado_odoo, "borrador"),
+        "items": items,
+        "estado": map_purchase_status(estado_odoo, qty_any),
         "source": "odoo",
         "source_id": str(o["id"]),
         "source_status": estado_odoo,
+    }
+
+
+def coerce_venta_odoo(p: dict) -> dict:
+    fecha = str(p.get("fecha") or "").strip()
+    return {
+        "fecha": fecha[:10] if fecha else "",
+        "producto": str(p.get("nombre") or p.get("producto") or "").strip(),
+        "codigo": p.get("codigo"),
+        "cantidad": p.get("cantidad") or 0.0,
+        "precio": p.get("precio"),
+        "source": "odoo",
+        "source_id": str(p["id"]),
+        "source_status": p.get("estado") or "",
+    }
+
+
+def coerce_deposito_odoo(q: dict) -> dict:
+    fila = {
+        "codigo": q.get("codigo"),
+        "producto": str(q.get("nombre") or q.get("producto") or "").strip(),
+        "ubicacion": q.get("ubicacion") or "",
+        "lote": q.get("lote") or "",
+        "vencimiento": q.get("vencimiento") or "",
+        "cantidad": q.get("cantidad") or 0.0,
+        "in_date": q.get("in_date") or "",
+        "source": "odoo",
+        "source_id": str(q["id"]),
+    }
+    if "counted_qty" in q and q.get("counted_qty") is not None:
+        fila["counted_qty"] = q["counted_qty"]
+    return fila
+
+
+def coerce_recepcion_odoo(p: dict) -> dict:
+    fecha = str(p.get("fecha") or "").strip()
+    return {
+        "fecha": fecha[:10] if fecha else "",
+        "codigo": p.get("codigo"),
+        "producto": str(p.get("nombre") or p.get("producto") or "").strip(),
+        "proveedor": p.get("proveedor") or "",
+        "cantidad": p.get("cantidad") or 0.0,
+        "deposito": p.get("deposito") or "",
+        "origen": p.get("origen") or "",
+        "po_number": p.get("po_number") or "",
+        "source": "odoo",
+        "source_id": str(p["id"]),
+        "source_status": p.get("estado") or "",
     }
 
 
@@ -361,6 +428,22 @@ def _analizar_ventas(filas: list[dict], lang: str | None = None) -> list[dict]:
             "resuelta": False, "resolucion": None,
         })
     return obs
+
+
+def _analizar_recepciones(filas: list[dict], lang: str | None = None) -> list[dict]:
+    val = esquema.validar_referencias_producto(filas)
+    if not val["huerfanas"]:
+        return []
+    return [{
+        "id": "producto_inexistente", "tipo": "producto_inexistente",
+        "titulo": _t("core.staging.obs_producto_inexistente_ventas", lang),
+        "descripcion": f"{len(val['huerfanas'])} recepciones referencian un producto que no existe "
+                       f"en tu inventario.",
+        "items": len(val["huerfanas"]), "indices": val["huerfanas"], "impacto_pesos": 0,
+        "opciones": [{"label": "Descartar esas filas", "accion": "unificar", "params": {}},
+                     {"label": "Integrarlas igual", "accion": "mantener", "params": {}}],
+        "resuelta": False, "resolucion": None,
+    }]
 
 
 # Qué campo del CSV termina en qué clave de la fila coercionada, por tipo de dato
@@ -643,6 +726,31 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
         return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
                 "mensaje": f"{len(a_integrar)} órdenes de compra nuevas."}
 
+    if tipo == "venta" and b.get("fuente") == "odoo":
+        from . import ventas as ventas_mod
+        esquema.upsert_filas("venta", a_integrar)
+        v = ventas_mod.iniciar_validacion(lang)
+        if v.get("estado") == "pendiente":
+            ventas_mod.confirmar_validacion(confirmar=True, actor=actor)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} ventas nuevas."}
+
+    if tipo == "deposito" and b.get("fuente") == "odoo":
+        esquema.upsert_filas("deposito", a_integrar)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} filas de depósito nuevas."}
+
+    if tipo == "recepciones" and b.get("fuente") == "odoo":
+        esquema.upsert_filas("recepciones", a_integrar)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} recepciones nuevas."}
+
     if tipo != "producto":
         # Generic CSV/apartado path (ventas, depósito, logística, …): creates
         # the apartado and wires up its relations. Odoo-sourced batches never
@@ -738,14 +846,15 @@ _COERCERS_ODOO = {
     "proveedor": coerce_proveedor_odoo,
     "cliente": coerce_cliente_odoo,
     "orden_compra": coerce_orden_compra_odoo,
+    "venta": coerce_venta_odoo,
+    "deposito": coerce_deposito_odoo,
+    "recepciones": coerce_recepcion_odoo,
 }
 
-# Which field makes a coerced row "usable", per tipo — an Odoo row missing it
-# (e.g. a contact with no name) is dropped instead of creating an empty
-# record; same criterion as the CSV filtering in _coerce_y_analizar
-# (the "filas = [f for f in filas if f[...]]" lines).
 _REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
-                    "cliente": "nombre", "orden_compra": "numero"}
+                    "cliente": "nombre", "orden_compra": "numero",
+                    "venta": "producto", "deposito": "producto",
+                    "recepciones": "producto"}
 
 
 def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
@@ -768,6 +877,12 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
         observaciones = _analizar_clientes(filas, lang)
     elif tipo == "orden_compra":
         observaciones = _analizar_ordenes_compra(filas, lang)
+    elif tipo == "venta":
+        observaciones = _analizar_ventas(filas, lang)
+    elif tipo == "deposito":
+        observaciones = _analizar_deposito(filas, lang)
+    elif tipo == "recepciones":
+        observaciones = _analizar_recepciones(filas, lang)
     else:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
     batch = {
