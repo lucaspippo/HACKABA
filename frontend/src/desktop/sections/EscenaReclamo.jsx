@@ -382,6 +382,11 @@ function EtiquetaPildora({ x, y, texto, apagada }) {
 const COLOR_EXP = {
   rubro: "#6f7490", local: "#a99f8c", cliente: "#2e9c6a",
   producto: "#2f8fa8", ubicacion: "#8a8378", remito: "#7a63b8",
+  // el conocimiento no tenia color y caia al gris de descarte: las lineas a
+  // las tarjetas de regla salian grises al lado de tarjetas amarillas, como si
+  // conectaran otra cosa. Es el amarillo de la regla, bajado para que tenga
+  // contraste contra el papel.
+  conocimiento: "#b99427",
 };
 
 // LAS FORMAS DE LA EXPANSION.
