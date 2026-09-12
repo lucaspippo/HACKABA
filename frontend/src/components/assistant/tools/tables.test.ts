@@ -3,27 +3,27 @@ import { sortRows } from "./tables";
 
 describe("sortRows", () => {
   const rows = [
-    { nombre: "Beta", saldo: 100 },
-    { nombre: "Alfa", saldo: 300 },
-    { nombre: "Gama", saldo: 200 },
+    { name: "Beta", balance: 100 },
+    { name: "Alpha", balance: 300 },
+    { name: "Gamma", balance: 200 },
   ];
 
   it("sorts numerically descending by default direction", () => {
-    expect(sortRows(rows, "saldo", -1).map((r) => r.saldo)).toEqual([300, 200, 100]);
+    expect(sortRows(rows, "balance", -1).map((r) => r.balance)).toEqual([300, 200, 100]);
   });
 
   it("sorts numerically ascending", () => {
-    expect(sortRows(rows, "saldo", 1).map((r) => r.saldo)).toEqual([100, 200, 300]);
+    expect(sortRows(rows, "balance", 1).map((r) => r.balance)).toEqual([100, 200, 300]);
   });
 
   it("sorts strings alphabetically, honoring direction", () => {
-    expect(sortRows(rows, "nombre", 1).map((r) => r.nombre)).toEqual(["Alfa", "Beta", "Gama"]);
-    expect(sortRows(rows, "nombre", -1).map((r) => r.nombre)).toEqual(["Gama", "Beta", "Alfa"]);
+    expect(sortRows(rows, "name", 1).map((r) => r.name)).toEqual(["Alpha", "Beta", "Gamma"]);
+    expect(sortRows(rows, "name", -1).map((r) => r.name)).toEqual(["Gamma", "Beta", "Alpha"]);
   });
 
   it("does not mutate the input array", () => {
     const copy = [...rows];
-    sortRows(rows, "saldo", 1);
+    sortRows(rows, "balance", 1);
     expect(rows).toEqual(copy);
   });
 });

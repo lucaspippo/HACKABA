@@ -18,15 +18,17 @@ import { t } from "../../../lib/i18n";
  * the wire payload into a model `result` and a full-resolution UI `display`.
  */
 
-type Punto = { x: string; y: number };
-type SerieResumen = {
+// Field/type names below mirror consultar_serie's JSON response
+// (backend/core/consultas.py) verbatim — not identifiers of ours to translate.
+type Point = { x: string; y: number };
+type SeriesSummary = {
   nombre: string;
   puntos?: number;
-  primero?: Punto;
-  ultimo?: Punto;
+  primero?: Point;
+  ultimo?: Point;
   max?: number;
   total?: number;
-  top?: Punto[];
+  top?: Point[];
 };
 type Meta = {
   unidad?: string;
@@ -36,66 +38,66 @@ type Meta = {
   base_ipc?: string;
   temporal?: boolean;
 };
-type SerieResult = {
+type SeriesResult = {
   ok?: boolean;
   motivo?: string;
   alternativa?: string;
   meta?: Meta;
-  series?: SerieResumen[];
+  series?: SeriesSummary[];
   fijado?: boolean;
 };
 
-export function fmtValor(v: number, unidad?: string): string {
-  if (unidad === "$") return peso(v);
-  if (unidad === "%") return `${num(v)}%`;
-  return num(v);
+export function formatValue(value: number, unit?: string): string {
+  if (unit === "$") return peso(value);
+  if (unit === "%") return `${num(value)}%`;
+  return num(value);
 }
 
-function chartFormat(unidad?: string): "moneda" | "porcentaje" | "numero" {
-  if (unidad === "$") return "moneda";
-  if (unidad === "%") return "porcentaje";
+function chartFormat(unit?: string): "moneda" | "porcentaje" | "numero" {
+  if (unit === "$") return "moneda";
+  if (unit === "%") return "porcentaje";
   return "numero";
 }
 
-function TendenciaSerie({ s, unidad }: { s: SerieResumen; unidad?: string }) {
-  if (!s.primero || !s.ultimo) return null;
-  const delta = s.ultimo.y - s.primero.y;
-  const tono = delta > 0 ? "text-salvia" : delta < 0 ? "text-rojo" : "text-tinta-suave";
+function SeriesTrend({ series, unit }: { series: SeriesSummary; unit?: string }) {
+  if (!series.primero || !series.ultimo) return null;
+  const delta = series.ultimo.y - series.primero.y;
+  const tone = delta > 0 ? "text-salvia" : delta < 0 ? "text-rojo" : "text-tinta-suave";
   return (
     <div className="rounded-xl border border-linea bg-papel/50 px-3 py-2">
-      <p className="text-[0.78rem] font-semibold text-tinta">{s.nombre}</p>
+      <p className="text-[0.78rem] font-semibold text-tinta">{series.nombre}</p>
       <p className="mt-1 flex items-baseline gap-1.5 text-[0.95rem]">
-        <span className="tabular-nums text-tinta-suave">{fmtValor(s.primero.y, unidad)}</span>
+        <span className="tabular-nums text-tinta-suave">{formatValue(series.primero.y, unit)}</span>
         <span className="text-tinta-suave">→</span>
-        <span className={`plata tabular-nums font-medium ${tono}`}>{fmtValor(s.ultimo.y, unidad)}</span>
+        <span className={`plata tabular-nums font-medium ${tone}`}>{formatValue(series.ultimo.y, unit)}</span>
       </p>
       <p className="mt-0.5 text-[0.72rem] text-tinta-suave">
-        {t("toolui.serie.max")} {fmtValor(s.max || 0, unidad)} · {t("toolui.serie.total")}{" "}
-        {fmtValor(s.total || 0, unidad)}
+        {t("toolui.serie.max")} {formatValue(series.max || 0, unit)} · {t("toolui.serie.total")}{" "}
+        {formatValue(series.total || 0, unit)}
       </p>
     </div>
   );
 }
 
-function BarritasSerie({ s, unidad }: { s: SerieResumen; unidad?: string }) {
-  if (!Array.isArray(s.top) || s.top.length === 0) return null;
+function SeriesBars({ series, unit }: { series: SeriesSummary; unit?: string }) {
+  if (!Array.isArray(series.top) || series.top.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-[0.78rem] font-semibold text-tinta">{s.nombre}</p>
-      <MiniChart points={s.top} format={chartFormat(unidad)} />
+      <p className="mb-1 text-[0.78rem] font-semibold text-tinta">{series.nombre}</p>
+      <MiniChart points={series.top} format={chartFormat(unit)} />
     </div>
   );
 }
 
-export function SerieTool({ result }: ToolRenderProps) {
-  const r = result as SerieResult;
-  if (!r) return null;
+export function SeriesView({ result }: ToolRenderProps) {
+  const data = result as SeriesResult;
+  if (!data) return null;
 
-  if (r.ok === false) {
+  if (data.ok === false) {
     return (
       <div className="mt-1 text-[0.82rem] text-rojo-hondo">
-        <p>{r.motivo}</p>
-        {r.alternativa && <p className="mt-0.5 text-tinta-suave">{r.alternativa}</p>}
+        <p>{data.motivo}</p>
+        {data.alternativa && <p className="mt-0.5 text-tinta-suave">{data.alternativa}</p>}
       </div>
     );
   }
@@ -104,18 +106,18 @@ export function SerieTool({ result }: ToolRenderProps) {
   const err = toolErrorMessage(result);
   if (err) return <ToolErrorText message={err} />;
 
-  const meta = r.meta || {};
-  const series = r.series || [];
+  const meta = data.meta || {};
+  const series = data.series || [];
   if (series.length === 0) return null;
-  const unidadEsSimbolo = meta.unidad === "$" || meta.unidad === "%";
+  const unitIsSymbol = meta.unidad === "$" || meta.unidad === "%";
 
   return (
     <div className="mt-1.5 space-y-2">
-      {(meta.ventana || (meta.unidad && !unidadEsSimbolo) || (meta.deflactado && meta.base_ipc)) && (
+      {(meta.ventana || (meta.unidad && !unitIsSymbol) || (meta.deflactado && meta.base_ipc)) && (
         <p className="text-[0.72rem] text-tinta-suave">
           {[
             meta.ventana,
-            !unidadEsSimbolo ? meta.unidad : null,
+            !unitIsSymbol ? meta.unidad : null,
             meta.deflactado && meta.base_ipc ? t("toolui.serie.deflactado", { base: meta.base_ipc }) : null,
           ]
             .filter(Boolean)
@@ -124,18 +126,18 @@ export function SerieTool({ result }: ToolRenderProps) {
       )}
       {meta.temporal ? (
         <div className="grid gap-2 sm:grid-cols-2">
-          {series.map((s, i) => (
-            <TendenciaSerie key={i} s={s} unidad={meta.unidad} />
+          {series.map((item, i) => (
+            <SeriesTrend key={i} series={item} unit={meta.unidad} />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
-          {series.map((s, i) => (
-            <BarritasSerie key={i} s={s} unidad={meta.unidad} />
+          {series.map((item, i) => (
+            <SeriesBars key={i} series={item} unit={meta.unidad} />
           ))}
         </div>
       )}
-      {r.fijado && (
+      {data.fijado && (
         <p className="flex items-center gap-1 text-[0.76rem] text-salvia">
           <Pin size={11} /> {t("toolui.serie.fijado")}
         </p>
@@ -144,7 +146,7 @@ export function SerieTool({ result }: ToolRenderProps) {
   );
 }
 
-export const consultarSeriePresenter: ToolPresenter = {
+export const seriesPresenter: ToolPresenter = {
   labels: toolLabels("consultar_serie"),
-  render: SerieTool,
+  render: SeriesView,
 };
