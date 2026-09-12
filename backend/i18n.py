@@ -1754,6 +1754,15 @@ CATALOGO: dict[str, dict[str, str]] = {
 
     # --- la escena del reclamo (core/escena.py) ---------------------------
     "escena.titulo": {"es": "Reclamo a {proveedor}", "en": "Claim to {proveedor}"},
+    "angela.corte_por_largo": {
+        "es": "Me quedé sin espacio para contestar esto entero, así que frené "
+              "acá para no dejarte algo a medias. Si era una lista larga, "
+              "pasámela en dos o tres partes y las voy guardando de a una — "
+              "así te confirmo cada una.",
+        "en": "I ran out of room to answer this in full, so I stopped here "
+              "rather than leave you something half-done. If it was a long "
+              "list, send it in two or three parts and I will save them one by "
+              "one, confirming each."},
     "escena.expansion_titulo": {"es": "Todo lo que toca este producto",
                                 "en": "Everything this product touches"},
     "escena.expansion_prov": {"es": "Lo que le enseñaron sobre {proveedor}",

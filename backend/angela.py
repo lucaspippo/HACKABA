@@ -2955,6 +2955,31 @@ def stream_response(
                             len(available_tools))
             usage = _usage_report(resp, system_tokens, tools_tokens) or usage
 
+            # SE ACABO EL PRESUPUESTO DE SALIDA. Nunca mudo, y nunca dando la
+            # sensacion de que termino.
+            #
+            # Medido contra el servicio: un parrafo con seis reglas del negocio
+            # gasto los 1024 tokens ARMANDO las llamadas a herramienta y quedo
+            # cortado a la mitad. `stop_reason` volvio "max_tokens", que no es
+            # "tool_use", asi que ninguna se ejecuto — y como tampoco hubo
+            # texto, el usuario vio CATORCE SEGUNDOS Y NADA. Creyo que enseño
+            # seis reglas y no se guardo ninguna.
+            #
+            # Los bloques truncados NO se ejecutan a proposito: un tool_use
+            # cortado tiene argumentos incompletos y escribir con eso es peor
+            # que no escribir. Lo que se hace es DECIRLO.
+            if resp.stop_reason == "max_tokens":
+                hubo_texto = any(getattr(b, "type", "") == "text"
+                                 for b in resp.content)
+                aviso = i18n.t("angela.corte_por_largo", _idioma_actual())
+                sep = chr(10) + chr(10) if hubo_texto else ""
+                yield {"type": "text", "delta": sep + aviso}
+                yield {"type": "notice", "kind": "respuesta_cortada"}
+                yield {"type": "done", "result": {
+                    "mode": "claude", "tools_used": tools_used,
+                    "actions": actions, "options": [], "usage": usage}}
+                return
+
             if resp.stop_reason == "tool_use":
                 messages.append({"role": "assistant", "content": resp.content})
                 tool_results = []
