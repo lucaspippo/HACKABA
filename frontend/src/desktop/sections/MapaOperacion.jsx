@@ -622,97 +622,6 @@ function MedidorDeNodos({ onCambio }) {
 // tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
 //
 // `foco` es el id de la tarjeta enfocada, o null para el mapa entero.
-// DONDE VIVE, Y NO ES UN DETALLE. Va COMO HIJA de <ReactFlow>, no como
-// hermana adentro del <ReactFlowProvider>. Medido en el navegador: puesta como
-// hermana, `useReactFlow()` devuelve un instrumento desconectado —`zoomIn`,
-// `fitView` y todo lo demas no hacen absolutamente nada, sin error ninguno,
-// mientras la rueda del mouse sigue funcionando—. Adentro funciona, que es
-// donde vivia el `Reencuadre` que habia antes y donde vive `MedidorDeNodos`.
-//
-// Por eso la barra de controles NO usa el hook: no puede, porque tiene que
-// dibujarse encima del lienzo y no adentro del flow. La camara publica sus
-// acciones en `acciones` y la barra las llama desde afuera.
-function Camara({ contenedor, completo, riel, foco, acciones }) {
-  const rf = useReactFlow();
-  const refFoco = useRef(foco);
-  refFoco.current = foco;
-
-  // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada se
-  // ve grande y sin contexto, que es justo lo contrario de lo que se quiere:
-  // lo que hay que leer es esa parte del mapa y de qué se conecta.
-  const encuadrar = useCallback((duracion = 620) => {
-    const id = refFoco.current;
-    if (!id) {
-      rf.fitView({ padding: 0.06, duration: duracion });
-      return;
-    }
-    const vecinas = new Set([id]);
-    for (const e of rf.getEdges()) {
-      if (e.source === id) vecinas.add(e.target);
-      else if (e.target === id) vecinas.add(e.source);
-    }
-    rf.fitView({
-      nodes: [...vecinas].map((x) => ({ id: x })),
-      // con vecinas hace falta menos aire; una tarjeta sola pide más para no
-      // quedar ocupando la pantalla entera
-      padding: vecinas.size > 1 ? 0.22 : 0.42,
-      // el techo evita que una tarjeta chica se agrande hasta verse pixelada
-      maxZoom: 1.3,
-      duration: duracion,
-    });
-  }, [rf]);
-
-  // EL TAMAÑO DEL CONTENEDOR. El padding del panel entra sin transición, así
-  // que el observer ve el tamaño final de una; los 80 ms son para no encuadrar
-  // en cada paso de un arrastre del borde de la ventana.
-  useEffect(() => {
-    const el = contenedor.current;
-    if (!el || typeof ResizeObserver === "undefined") return undefined;
-    let t = null;
-    const ro = new ResizeObserver(() => {
-      clearTimeout(t);
-      t = setTimeout(() => encuadrar(220), 80);
-    });
-    ro.observe(el);
-    return () => { ro.disconnect(); clearTimeout(t); };
-  }, [contenedor, encuadrar]);
-
-  // Entrar o salir de pantalla completa, y plegar el riel, cambian el ancho
-  // ÚTIL sin que el contenedor observado cambie de tamaño en el mismo tick: el
-  // riel se anima 200 ms, así que el observer ve el paso intermedio o no ve
-  // nada. Se encuadra explícito cuando termina.
-  useEffect(() => {
-    const t = setTimeout(() => encuadrar(220), 260);
-    return () => clearTimeout(t);
-  }, [completo, riel, encuadrar]);
-
-  // Y el acercamiento propiamente dicho, cuando cambia la tarjeta enfocada.
-  // Con duración larga a propósito: el MOVIMIENTO es lo que hace entender que
-  // te acercaste a una parte de algo más grande. Un salto no cuenta esa
-  // historia, sólo cambia lo que hay en pantalla.
-  //
-  // La PRIMERA vez no: al montar, `foco` ya es null y encuadrar acá sería
-  // pelearse con el `fitView` inicial de <ReactFlow> —dos encuadres en el
-  // primer frame se ven como un parpadeo al entrar a la pantalla.
-  const primera = useRef(true);
-  useEffect(() => {
-    if (primera.current) { primera.current = false; return; }
-    encuadrar(620);
-  }, [foco, encuadrar]);
-
-  // Lo que la barra de arriba puede pedir.
-  useEffect(() => {
-    if (!acciones) return undefined;
-    acciones.current = {
-      acercar: () => rf.zoomIn({ duration: 180 }),
-      alejar: () => rf.zoomOut({ duration: 180 }),
-      verTodo: () => rf.fitView({ padding: 0.06, duration: 520 }),
-    };
-    return () => { acciones.current = null; };
-  }, [rf, acciones]);
-  return null;
-}
-
 // LOS CONTROLES, ARRIBA A LA DERECHA.
 //
 // Estaban abajo a la derecha porque arriba corre la barra de rótulos de capa
@@ -724,8 +633,7 @@ function Camara({ contenedor, completo, riel, foco, acciones }) {
 // Van adentro del bloque del lienzo, así que aparecen igual en pantalla
 // completa: expandido es justamente donde más falta hace poder volver a ver
 // todo.
-function Controles({ completo, onCompleto, onCentrar, acciones, t }) {
-  const pedir = (que) => () => acciones.current?.[que]?.();
+function Controles({ completo, onCompleto, onCentrar, onAcercar, onAlejar, t }) {
   const boton = "grid h-8 w-8 place-items-center text-tinta-suave transition-colors hover:text-tinta";
   return (
     <div className="absolute right-3 top-[60px] z-20 flex items-center gap-1
@@ -739,11 +647,11 @@ function Controles({ completo, onCompleto, onCentrar, acciones, t }) {
         {completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
       </button>
       <span className="h-5 w-px bg-linea" />
-      <button onClick={pedir("alejar")}
+      <button onClick={onAlejar}
               aria-label={t("mapaop.alejar")} className={boton}>
         <Minus className="size-4" />
       </button>
-      <button onClick={pedir("acercar")}
+      <button onClick={onAcercar}
               aria-label={t("mapaop.acercar")} className={boton}>
         <Plus className="size-4" />
       </button>
@@ -751,7 +659,7 @@ function Controles({ completo, onCompleto, onCentrar, acciones, t }) {
           (por eso avisa al padre) y encuadra el mapa entero. Si sólo limpiara
           el foco, con el foco ya en null —alguien que hizo zoom a mano— no
           pasaría nada. */}
-      <button onClick={() => { onCentrar(); pedir("verTodo")(); }}
+      <button onClick={onCentrar}
               aria-label={t("mapaop.centrar")} className={boton}>
         <Maximize className="size-4" />
       </button>
@@ -777,13 +685,24 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // QUE TARJETA ESTA ENFOCADA (null = el mapa entero). Tocar una tarjeta abria
   // el panel y dejaba la tarjeta donde estaba: habia que buscarla con la vista
   // para entender de que hablaba el panel. Ahora el lienzo se acerca a ella.
-  // Es la unica fuente de verdad del encuadre: la Camara la mira y ella sola
-  // decide, asi que el observer de tamanio no puede deshacer un acercamiento.
+  // Es la unica fuente de verdad del encuadre: lo mira `encuadrar` y el
+  // observer de tamanio no puede deshacer un acercamiento.
   const [nodoFoco, setNodoFoco] = useState(null);
-  // El puente entre la camara (que vive adentro de <ReactFlow>, unico lugar
-  // donde el hook funciona) y la barra de controles (que tiene que dibujarse
-  // encima del lienzo, o sea afuera).
-  const accionesCamara = useRef(null);
+  // LA INSTANCIA DE REACT FLOW, POR `onInit` Y NO POR `useReactFlow()`.
+  //
+  // Medido en el navegador contra el deploy: con el hook, `zoomIn`, `zoomOut`
+  // y `fitView` no hacen absolutamente NADA —sin un solo error en consola—
+  // mientras la rueda del mouse sigue zoomeando y las lecturas del store
+  // (getNodes) siguen funcionando. O sea que el `panZoom` que esas tres
+  // necesitan no esta en el store que ve el hook. Probado con el componente
+  // como hermano de <ReactFlow> y como hijo: los dos igual de mudos, y el
+  // segundo es donde vivia el `Reencuadre` anterior.
+  //
+  // `onInit` entrega la instancia YA inicializada, sin depender de donde este
+  // montado quien la pide. Es la forma documentada y no tiene ese modo de
+  // falla. De paso, la camara puede vivir acá, en el padre, que es donde ya
+  // estan `nodoFoco`, `edges` y el ref del contenedor.
+  const rfRef = useRef(null);
   const lienzo = useRef(null);
   // Sólo re-dibuja las aristas si las MEDIDAS cambiaron de verdad: el medidor
   // corre en cada render del lienzo y un array nuevo cada vez sería un bucle.
@@ -923,6 +842,93 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
       .catch(() => setAbierto({ id, etiqueta, filas: [] }));
   }, []);
 
+  // --- LA CÁMARA -------------------------------------------------------
+  //
+  // Hay TRES cosas que quieren mover el encuadre y si cada una lo hace por su
+  // cuenta se pelean:
+  //
+  //   · el contenedor cambia de tamaño (abrir el panel le come 420 px, plegar
+  //     el riel se los devuelve, pantalla completa lo cambia todo);
+  //   · alguien toca una tarjeta y hay que acercarse a ella;
+  //   · alguien toca «centrar» o el fondo y hay que volver a ver todo.
+  //
+  // El caso que lo hacía obvio: tocar una tarjeta abre el panel, el panel
+  // achica el lienzo, el ResizeObserver ve el cambio y hacía `fitView` de TODO
+  // — o sea que deshacía el acercamiento 80 ms después de hacerlo. Por eso el
+  // observer no reencuadra «todo»: llama a `encuadrar`, que mira si hay una
+  // tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
+  const refFoco = useRef(null);
+  refFoco.current = nodoFoco;
+  const refAristas = useRef(edges);
+  refAristas.current = edges;
+
+  const encuadrar = useCallback((duracion = 620) => {
+    const rf = rfRef.current;
+    if (!rf) return;
+    const id = refFoco.current;
+    if (!id) { rf.fitView({ padding: 0.06, duration: duracion }); return; }
+    // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada se
+    // ve grande y sin contexto, que es lo contrario de lo que se quiere: lo
+    // que hay que leer es esa parte del mapa y de qué se conecta.
+    const vecinas = new Set([id]);
+    for (const e of refAristas.current || []) {
+      if (e.source === id) vecinas.add(e.target);
+      else if (e.target === id) vecinas.add(e.source);
+    }
+    rf.fitView({
+      nodes: [...vecinas].map((x) => ({ id: x })),
+      // con vecinas hace falta menos aire; una tarjeta sola pide más para no
+      // ocupar la pantalla entera
+      padding: vecinas.size > 1 ? 0.22 : 0.42,
+      // el techo evita que una tarjeta chica se agrande hasta verse pixelada
+      maxZoom: 1.3,
+      duration: duracion,
+    });
+  }, []);
+
+  // CENTRAR vuelve a ver todo DESDE DONDE SEA. No alcanza con soltar la
+  // tarjeta enfocada: si el foco ya era null —alguien que hizo zoom con la
+  // rueda— el estado no cambia y el efecto no se dispara, así que no pasaría
+  // nada. Encuadra explícito.
+  const encuadrarTodo = useCallback(() => {
+    rfRef.current?.fitView({ padding: 0.06, duration: 520 });
+  }, []);
+
+  // El tamaño del contenedor. Los 80 ms son para no encuadrar en cada paso de
+  // un arrastre del borde de la ventana.
+  useEffect(() => {
+    const el = lienzo.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    let t = null;
+    const ro = new ResizeObserver(() => {
+      clearTimeout(t);
+      t = setTimeout(() => encuadrar(220), 80);
+    });
+    ro.observe(el);
+    return () => { ro.disconnect(); clearTimeout(t); };
+  }, [encuadrar]);
+
+  // Pantalla completa y plegar el riel cambian el ancho ÚTIL sin que el
+  // contenedor observado cambie de tamaño en el mismo tick: el riel se anima
+  // 200 ms, así que el observer ve el paso intermedio o no ve nada.
+  useEffect(() => {
+    const t = setTimeout(() => encuadrar(220), 260);
+    return () => clearTimeout(t);
+  }, [completo, riel, encuadrar]);
+
+  // Y el acercamiento propiamente dicho. Duración larga a propósito: el
+  // MOVIMIENTO es lo que hace entender que te acercaste a una parte de algo
+  // más grande; un salto sólo cambia lo que hay en pantalla.
+  //
+  // La PRIMERA vez no: al montar, `nodoFoco` ya es null y encuadrar acá sería
+  // pelearse con el `fitView` inicial de <ReactFlow> — dos encuadres en el
+  // primer frame se ven como un parpadeo al entrar.
+  const primerEncuadre = useRef(true);
+  useEffect(() => {
+    if (primerEncuadre.current) { primerEncuadre.current = false; return; }
+    encuadrar(620);
+  }, [nodoFoco, encuadrar]);
+
   // Arriving from a Home card: the finding is pre-chosen. Its path lights and
   // its panel opens as soon as data lands, so the first second on the map is
   // the answer, not a search.
@@ -1039,6 +1045,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
           minZoom={0.25} maxZoom={1.5}
           nodesConnectable={false} edgesFocusable={false} zoomOnDoubleClick={false}
           proOptions={{ hideAttribution: true }}
+          onInit={(inst) => { rfRef.current = inst; }}
           onNodeClick={(e, n) => {
             // A channel chip opens ITS detail, not the whole block's.
             const chip = e.target?.closest?.("[data-chip]")?.dataset?.chip;
@@ -1054,13 +1061,13 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
           onPaneClick={() => { setAbierto(null); setNodoFoco(null); }}
         >
           <Background gap={24} size={1} color="#eceae5" />
-          <Camara contenedor={lienzo} completo={completo} riel={riel}
-                  foco={nodoFoco} acciones={accionesCamara} />
           <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
         <Controles completo={completo} onCompleto={setCompleto}
-                   onCentrar={() => setNodoFoco(null)}
-                   acciones={accionesCamara} t={t} />
+                   onAcercar={() => rfRef.current?.zoomIn({ duration: 180 })}
+                   onAlejar={() => rfRef.current?.zoomOut({ duration: 180 })}
+                   onCentrar={() => { setNodoFoco(null); encuadrarTodo(); }}
+                   t={t} />
         </ReactFlowProvider>
       </div>
 
