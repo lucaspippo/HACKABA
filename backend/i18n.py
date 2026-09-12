@@ -3369,6 +3369,15 @@ CATALOGO: dict[str, dict[str, str]] = {
                                            "en": "Updated warehouse positions from a connector"},
     "audit.acc.upsert_recepciones_conector": {"es": "Actualizó recepciones desde un conector",
                                               "en": "Updated receipts from a connector"},
+    "audit.acc.vincular_articulos_odoo_muestra": {
+        "es": "Vinculó artículos del catálogo con la muestra de Odoo",
+        "en": "Linked catalog items to the Odoo sample"},
+    "audit.acc.vincular_proveedores_odoo_muestra": {
+        "es": "Vinculó proveedores con la muestra de Odoo",
+        "en": "Linked suppliers to the Odoo sample"},
+    "audit.acc.desvincular_odoo_muestra": {
+        "es": "Desvinculó la muestra de Odoo",
+        "en": "Unlinked the Odoo sample"},
     "audit.acc.reportar_faltante": {"es": "Reportó un faltante en el depósito",
                                     "en": "Reported a shortage in the warehouse"},
     "audit.acc.marcar_conteo": {"es": "Cargó un conteo de stock",

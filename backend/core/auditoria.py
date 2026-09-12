@@ -105,6 +105,13 @@ ACCIONES: dict[str, dict] = {
     "upsert_ventas_conector":      {"clase": "datos", "gate": "propia"},
     "upsert_deposito_conector":    {"clase": "datos", "gate": "propia"},
     "upsert_recepciones_conector": {"clase": "datos", "gate": "propia"},
+    # Connecting/disconnecting the DEMO's Odoo sample (core/odoo_demo.py).
+    # These only stamp provenance (source/source_id/sku) on rows that already
+    # exist — no value changes hands — but they are still catalog writes, so
+    # they are audited and declared like every other connector sync.
+    "vincular_articulos_odoo_muestra":   {"clase": "datos", "gate": "propia"},
+    "vincular_proveedores_odoo_muestra": {"clase": "datos", "gate": "propia"},
+    "desvincular_odoo_muestra":          {"clase": "datos", "gate": "propia"},
     "reportar_faltante":  {"clase": "stock", "gate": "propia"},
     "marcar_conteo":      {"clase": "stock", "gate": "propia"},
     "confirmar_entrega":  {"clase": "stock", "gate": "propia"},
