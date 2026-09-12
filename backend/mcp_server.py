@@ -28,6 +28,8 @@ for how to point a client at `/mcp`.
 """
 from __future__ import annotations
 
+import asyncio
+
 from mcp import types
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
@@ -152,7 +154,13 @@ async def call_tool(name: str, arguments: dict):
                         features=user.get("features"), idioma=user.get("idioma"))
 
     args = _sanitize_args(name, arguments)
-    result, _accion = angela._run_tool(name, args)
+    # Off the event loop: _run_tool is synchronous, CPU-bound `core/` work and
+    # uvicorn runs a single worker here, so calling it inline stalls every
+    # concurrent request — main.py's own handlers avoid this by being plain
+    # `def`, which FastAPI hands to the anyio threadpool. asyncio.to_thread
+    # copies the current context, so the contextvars session _set_sesion just
+    # installed still applies inside the thread.
+    result, _accion = await asyncio.to_thread(angela._run_tool, name, args)
     result = angela._con_pesos(result)
     if isinstance(result, list):
         result = {"items": result}
