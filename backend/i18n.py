@@ -3361,6 +3361,15 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Este producto no tiene ventas en el año: no hay ritmo para proyectar cuándo se acaba.",
         "en": "This product has no sales in the year, so there's no rate to project a stockout.",
     },
+    "core.confidence.reason_high": {
+        "es": "Basado en {points} datos, sin supuestos adicionales.",
+        "en": "Based on {points} data points, no additional assumptions."},
+    "core.confidence.reason_medium": {
+        "es": "Basado en {points} datos y {assumptions} supuesto(s).",
+        "en": "Based on {points} data points and {assumptions} assumption(s)."},
+    "core.confidence.reason_low": {
+        "es": "Datos limitados: {points} datos y {assumptions} supuesto(s).",
+        "en": "Limited data: {points} data points and {assumptions} assumption(s)."},
 }
 
 
