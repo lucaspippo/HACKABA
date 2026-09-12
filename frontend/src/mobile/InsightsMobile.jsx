@@ -7,8 +7,9 @@ import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
 import { useSession } from "../lib/auth";
 import { pesoCorto } from "../lib/format";
-import { useT } from "../lib/i18n";
+import { useLang, useT } from "../lib/i18n";
 import { accionDe, estiloAccion } from "../lib/prioridadAccion";
+import { buildPrioridadPrompt } from "../lib/prioridadPrompt";
 
 // Mobile Prioridades: same ranked inbox as desktop, compact rows + overlay drill —
 // same drill props too (confidence, propuesta approval, pattern feedback,
@@ -100,6 +101,7 @@ function Fila({ item, selected, onOpen }) {
 
 export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const t = useT();
+  const lang = useLang();
   const langKey = useSession()?.usuario?.idioma || "es";
   const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
   // Only the id, never the row object: after reload() replaces `data`, a
@@ -266,6 +268,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
 
       {abierta && (
         <DrillNegocio
+          layout="accion"
           tono={abierta.tono}
           titulo={abierta.titulo}
           monto={abierta.monto}
@@ -291,14 +294,12 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           onCerrar={() => setAbiertaId(null)}
           acciones={
             <>
-              {abierta.chat && (
-                <button
-                  onClick={() => { onPreguntar?.(abierta.chat); setAbiertaId(null); }}
+              <button
+                  onClick={() => { onPreguntar?.(buildPrioridadPrompt(abierta, t, lang)); setAbiertaId(null); }}
                   className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema"
                 >
-                  <AngelaMark size={15} /> {t("insights.accionar_angela")}
+                  <AngelaMark size={15} /> {t("prioridades.analizar_angela")}
                 </button>
-              )}
               {abierta.navegar && (
                 <button
                   onClick={() => { onNavegar?.(abierta.navegar); setAbiertaId(null); }}

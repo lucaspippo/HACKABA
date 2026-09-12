@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Plus, Check, Radar, CalendarClock } from "lucide-react";
+import { ArrowRight, Plus, Check, Radar, CalendarClock, CircleDollarSign } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { ACENTO, DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
@@ -9,8 +9,9 @@ import { equipoStore } from "../lib/equipoStore";
 import { equipoReal } from "../lib/equipoReal";
 import { useSession } from "../lib/auth";
 import { pesoCorto } from "../lib/format";
-import { useT, tRol } from "../lib/i18n";
+import { useT, tRol, useLang } from "../lib/i18n";
 import { accionDe, estiloAccion } from "../lib/prioridadAccion";
+import { buildPrioridadPrompt } from "../lib/prioridadPrompt";
 
 const OVERLAY_BELOW = 760;
 
@@ -61,29 +62,56 @@ function DeadlineChip({ urgency }) {
   );
 }
 
+const ICON_TONE = { rojo: "text-rojo", oro: "text-oro-tinta", salvia: "text-salvia", hielo: "text-hielo" };
+const BAR_TONE = { rojo: "bg-rojo", oro: "bg-oro", salvia: "bg-salvia", hielo: "bg-hielo" };
+
+function isDueNow(item) {
+  const urgency = item.insight?.deadline?.urgency;
+  return urgency === "overdue" || urgency === "today";
+}
+
+function splitByUrgency(items) {
+  const now = [];
+  const queue = [];
+  for (const item of items) {
+    (isDueNow(item) ? now : queue).push(item);
+  }
+  return { now, queue };
+}
+
+function ListHeading({ children, tone = "tinta" }) {
+  const toneCls = tone === "rojo" ? "text-rojo" : tone === "oro" ? "text-oro-tinta" : "text-tinta-suave";
+  return (
+    <h2 className={`sticky top-0 border-y border-linea bg-papel px-4 py-2.5 text-xs font-semibold uppercase tracking-wide ${toneCls}`}>
+      {children}
+    </h2>
+  );
+}
+
 function WorkRow({ item, selected, onSelect }) {
   const t = useT();
   const a = ACENTO[item.tono] || ACENTO.salvia;
+  const acc = estiloAccion(item);
+  const Icon = acc.icon;
   const cifra = item.monto != null && item.monto > 0
     ? pesoCorto(item.monto)
     : (item.cifra_texto || null);
   const urgency = item.insight?.deadline?.urgency;
   const late = urgency === "overdue" || urgency === "today";
-  // ONE line: severity dot · title · amount. The type is already the filter
-  // row above (FiltrosAccion) and the chip on the panel header, so a badge
-  // per row said it a third time; the subtitle is the panel's first line.
-  // 17 items used to show 6 without scrolling — that is a feed, not a queue.
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-current={selected || undefined}
       title={item.resumen || undefined}
-      className={`flex w-full items-center gap-2.5 border-b border-linea px-4 py-2 text-left last:border-0 ${
+      className={`relative flex w-full items-center gap-3 border-b border-linea px-4 py-2.5 text-left last:border-0 ${
         selected ? "bg-papel-hondo/70" : "hover:bg-papel-hondo/40"
       } ${item.action_taken ? "opacity-60" : ""}`}
     >
-      <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${DOT[item.tono] || DOT.salvia}`} />
+      {selected && (
+        <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-0.5 ${BAR_TONE[item.tono] || BAR_TONE.salvia}`} />
+      )}
+      <Icon size={15} className={`shrink-0 ${ICON_TONE[item.tono] || ICON_TONE.salvia}`} aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-tinta">
         {item.titulo}
       </span>
@@ -101,10 +129,9 @@ function WorkRow({ item, selected, onSelect }) {
   );
 }
 
-const DOT = { rojo: "bg-rojo", oro: "bg-oro", salvia: "bg-salvia", hielo: "bg-hielo" };
-
 export default function Prioridades({ onNavegar, onPreguntar }) {
   const t = useT();
+  const lang = useLang();
   const langKey = useSession()?.usuario?.idioma || "es";
   const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
   const [error, setError] = useState(null);
@@ -310,12 +337,10 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
           <Plus size={14} /> {t("oportunidades.adoptar")} <HotkeyBadge>1</HotkeyBadge>
         </button>
       ))}
-      {item.accion_chat && (
-        <button data-quick-action="2" onClick={() => { onPreguntar?.(item.accion_chat); closeAfter?.(); }}
-          className="inline-flex items-center gap-1.5 rounded-full border border-violeta/40 px-4 py-2 text-sm font-semibold text-violeta transition-colors hover:border-violeta">
-          <AngelaMark size={15} /> {t("oportunidades.accionar_angela")} <HotkeyBadge>2</HotkeyBadge>
-        </button>
-      )}
+      <button data-quick-action="2" onClick={() => { onPreguntar?.(buildPrioridadPrompt(item, t, lang)); closeAfter?.(); }}
+        className="inline-flex items-center gap-1.5 rounded-full border border-violeta/40 px-4 py-2 text-sm font-semibold text-violeta transition-colors hover:border-violeta">
+        <AngelaMark size={15} /> {t("prioridades.analizar_angela")} <HotkeyBadge>2</HotkeyBadge>
+      </button>
       {item.navegar && (
         <button data-quick-action="3" onClick={() => { onNavegar?.(item.navegar); closeAfter?.(); }}
           className="px-2 py-2 text-sm font-semibold text-tinta-suave underline decoration-linea underline-offset-4 hover:text-tinta hover:decoration-tinta">
@@ -383,40 +408,39 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             <Radar size={22} className="text-hielo" />
             <div>
               <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-              <p className="mt-1 text-sm text-tinta-suave">
+              <p className="mt-1.5 text-sm text-tinta-suave">
                 {/* `badge`, not act.length: `act` keeps executed cards visible
                     (greyed out, stamped "Hecho") while the badge counts only
                     open work — the header must agree with the sidebar count. */}
                 {act.length > 0
                   ? t("prioridades.sub_count", { n: data?.badge ?? act.length })
                   : t("prioridades.sub")}
-                {data?.recuperable?.disponible && (() => {
-                  // The rows below add up to MORE than this figure on purpose:
-                  // only what is `recuperable` is summed (risk and avoided loss
-                  // are shown, never added — core/oportunidades_neg.recuperable).
-                  // Say so next to the number, or anyone who adds the list sees
-                  // a total that does not close.
-                  const k = data.recuperable.componentes?.length ?? 0;
-                  const n = k + (data.recuperable.excluidos?.length ?? 0);
-                  return (
-                    <span className="ml-2 font-semibold text-salvia"
-                          title={t("prioridades.recoverable_sub", { k, n })}>
-                      <span className="plata">
-                        · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
-                      </span>
-                      <span className="ml-1 font-normal text-tinta-suave">({k}/{n})</span>
-                    </span>
-                  );
-                })()}
               </p>
             </div>
           </div>
-          {todos.length > 0 && (
-            <p className="hidden shrink-0 items-center gap-1 pt-1 text-xs text-tinta-suave lg:flex">
-              <kbd className="rounded-md border border-linea px-1.5 py-0.5 font-semibold">↑↓</kbd> {t("prioridades.hint_mover")}
-              <kbd className="ml-2 rounded-md border border-linea px-1.5 py-0.5 font-semibold">1-3</kbd> {t("prioridades.hint_accion")}
-            </p>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+            {data?.recuperable?.disponible && (() => {
+              // The rows below add up to MORE than this figure on purpose:
+              // only what is `recuperable` is summed (risk and avoided loss
+              // are shown, never added — core/oportunidades_neg.recuperable).
+              const k = data.recuperable.componentes?.length ?? 0;
+              const n = k + (data.recuperable.excluidos?.length ?? 0);
+              return (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-salvia/10 px-2.5 py-1 text-xs font-semibold text-salvia"
+                      title={t("prioridades.recoverable_sub", { k, n })}>
+                  <CircleDollarSign size={13} aria-hidden="true" />
+                  <span className="plata">{t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}</span>
+                  <span className="font-normal text-tinta-suave">({k}/{n})</span>
+                </span>
+              );
+            })()}
+            {todos.length > 0 && (
+              <p className="hidden items-center gap-1 text-xs text-tinta-suave lg:flex">
+                <kbd className="rounded-md border border-linea px-1.5 py-0.5 font-semibold">↑↓</kbd> {t("prioridades.hint_mover")}
+                <kbd className="ml-2 rounded-md border border-linea px-1.5 py-0.5 font-semibold">1-3</kbd> {t("prioridades.hint_accion")}
+              </p>
+            )}
+          </div>
         </div>
         {todos.length > 0 && (
           <div className="mt-3.5">
@@ -460,16 +484,34 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
 
       {!cargando && !error && !vacio && (
         <div className="flex min-h-0 flex-1">
-          <div className={`${overlay ? "min-w-0 flex-1" : "w-[min(38%,28rem)] min-w-[280px] border-r border-linea"} overflow-y-auto bg-crema`}>
-            {actFil.map((item) => (
-              <WorkRow key={item.id} item={item} selected={selectedId === item.id}
-                onSelect={() => setSelectedId(item.id)} />
-            ))}
+          <div className={`${overlay ? "min-w-0 flex-1" : "w-[min(36%,26rem)] min-w-[280px] border-r border-linea"} overflow-y-auto bg-crema`}>
+            {(() => {
+              const { now, queue } = splitByUrgency(actFil);
+              const showNow = now.length > 0 && queue.length > 0;
+              return (
+                <>
+                  {showNow && (
+                    <ListHeading tone={now.some((i) => i.insight?.deadline?.urgency === "overdue") ? "rojo" : "oro"}>
+                      {t("prioridades.now")}
+                    </ListHeading>
+                  )}
+                  {now.map((item) => (
+                    <WorkRow key={item.id} item={item} selected={selectedId === item.id}
+                      onSelect={() => setSelectedId(item.id)} />
+                  ))}
+                  {showNow && queue.length > 0 && (
+                    <ListHeading>{t("prioridades.queue")}</ListHeading>
+                  )}
+                  {queue.map((item) => (
+                    <WorkRow key={item.id} item={item} selected={selectedId === item.id}
+                      onSelect={() => setSelectedId(item.id)} />
+                  ))}
+                </>
+              );
+            })()}
             {watchFil.length > 0 && (
               <>
-                <h2 className="sticky top-0 border-y border-linea bg-papel px-4 py-2 text-xs font-semibold uppercase tracking-wide text-oro-tinta">
-                  {t("prioridades.watch")}
-                </h2>
+                <ListHeading tone="oro">{t("prioridades.watch")}</ListHeading>
                 {watchFil.map((item) => (
                   <WorkRow key={item.id} item={item} selected={selectedId === item.id}
                     onSelect={() => setSelectedId(item.id)} />

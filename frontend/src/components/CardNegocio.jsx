@@ -1,5 +1,6 @@
 import {
-  ArrowRight, CalendarClock, ChevronDown, ChevronRight, Link2, TrendingDown,
+  ArrowRight, BarChart3, BookOpen, CalendarClock, ChevronDown, ChevronRight,
+  Compass, Lightbulb, Link2, ScanSearch, ShieldAlert, TrendingDown,
   TrendingUp, UserRound, X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -85,7 +86,7 @@ export function FindingFeedback({ onFeedback, busy }) {
   const t = useT();
   const [confirming, setConfirming] = useState(false);
   return (
-    <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
+    <div className="mt-8 rounded-xl border border-linea bg-papel-hondo/40 p-4">
       <p className="text-sm font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {FEEDBACK_ACTIONS.map((f) => {
@@ -245,6 +246,66 @@ function DrillSection({ title, aside, children }) {
   );
 }
 
+// Landmark for the work-queue brief: icon + heading, then more air than
+// DrillSection so each cognitive chunk (move / reading / proof) rests
+// as its own block instead of a run-on document.
+function IconSection({ icon: Icon, title, aside, children }) {
+  return (
+    <section className="mt-8 first:mt-0">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h3 className={`inline-flex items-center gap-1.5 ${SECTION_LABEL}`}>
+          {Icon && <Icon size={13} aria-hidden="true" />}
+          {title}
+        </h3>
+        {aside}
+      </div>
+      <div className="mt-2.5">{children}</div>
+    </section>
+  );
+}
+
+function shownValue(item, lang, t) {
+  const formatted = formatValue(item.value, item.unit, lang);
+  if (!formatted) return null;
+  const unitKey = UNIT_KEY[item.unit];
+  if (item.unit === "pct") return `${formatted}%`;
+  if (item.unit === "×") return `×${formatted}`;
+  if (unitKey) return `${formatted} ${t(unitKey)}`;
+  return formatted;
+}
+
+// Primary metrics as a quiet strip — numbers first, labels second — so the
+// owner scans the proof without re-reading a stacked list of the same facts.
+function MetricStrip({ items }) {
+  const t = useT();
+  const lang = useLang();
+  if (!items.length) return null;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {items.map((item, i) => {
+        const shown = shownValue(item, lang, t);
+        const dev = item.deviation;
+        const DevIcon = dev?.direction === "down" ? TrendingDown : TrendingUp;
+        return (
+          <div key={item.id ?? i} className="min-w-0 rounded-xl bg-papel-hondo/50 px-3 py-2.5">
+            {shown && (
+              <p className={`text-lg font-semibold leading-none text-tinta ${item.unit === "ars" ? "plata" : ""}`}>
+                {shown}
+              </p>
+            )}
+            <p className="mt-1.5 text-xs leading-snug text-tinta-suave">{item.label}</p>
+            {dev && (
+              <p className="mt-1 inline-flex items-center gap-0.5 text-xs font-semibold text-tinta-suave">
+                <DevIcon size={11} aria-hidden="true" />{dev.pct}%
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Assumptions, alternatives and falsifiers are all {label} objects; tolerate
 // a bare string so one stale builder cannot blank a whole section.
 const labelOf = (x) => (typeof x === "string" ? x : x?.label || "");
@@ -400,7 +461,29 @@ function Evidence({ items, onVerInvolucrado, metodoUnico = false }) {
   );
 }
 
-// Alternatives and falsifiers answer the same question — "what would change
+// Supporting evidence + the shared method note, kept behind one tap so the
+// brief opens on the load-bearing numbers and names.
+function AccionSupporting({ rest, all, lead, onVerInvolucrado }) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="space-y-3">
+      {expanded && rest.map((e, i) => (
+        <EvidenceItem key={e.id ?? `s${i}`} item={e} onVerInvolucrado={onVerInvolucrado} sinMetodo />
+      ))}
+      <MethodDisclosure methods={(expanded ? all : lead).map((e) => e.method)} />
+      {rest.length > 0 && (
+        <button type="button" onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 text-sm font-semibold text-tinta-suave hover:text-tinta">
+          <ChevronDown size={13} className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? t("cardneg.drill_less") : t("cardneg.drill_more", { n: rest.length })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Alternatives and falsifiers answer the same question — "what would change"
 // this?" — so they share one collapsed block instead of two headings the
 // owner has to read past on the way to the action.
 function Caveats({ alternatives = [], falsifiers = [] }) {
@@ -574,50 +657,179 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
     </DrillSection>
   );
 
-  // The work-queue arrangement. No cards: hierarchy comes from type size,
-  // hairline separators and native <details>, so the panel keeps reading as
-  // one document and not as another stack of tiles next to the map's.
+  // The work-queue brief. Same facts as clasico, grouped so the owner can
+  // rest between chunks: identity → the move → the reading → the proof →
+  // provenance. Hierarchy still comes from type, air and one hairline —
+  // the soft wells are only for the decision and the metric scan.
+  const moveLabel = recommendation?.label || titulo;
+  const [primaryEvidence, supportingEvidence] = useMemo(() => [
+    evidence.filter((e) => e.weight === "primary"),
+    evidence.filter((e) => e.weight !== "primary"),
+  ], [evidence]);
+  const leadEvidence = primaryEvidence.length ? primaryEvidence : supportingEvidence;
+  const restEvidence = primaryEvidence.length ? supportingEvidence : [];
+  const metricItems = leadEvidence.filter((e) => e.value != null && e.value !== "");
+  const sameAsHeader = (e) => monto != null && e.unit === "ars" && Number(e.value) === Number(monto);
+  const stripItems = metricItems.length > 1
+    ? metricItems
+    : metricItems.filter((e) => !sameAsHeader(e));
+  const involvedBlocks = leadEvidence.filter((e) => (e.records || []).length > 0);
+  const leadCharts = leadEvidence.filter((e) => e.chart);
+  const late = deadline?.urgency === "overdue" || deadline?.urgency === "today";
+  const DEADLINE_CHIP = {
+    overdue: "bg-rojo/10 text-rojo",
+    today: "bg-oro/15 text-oro-tinta",
+  };
+
   const contenidoAccion = (
     <>
-        {cabecera}
-        {pattern?.label && (
-          <p className="mt-4 text-base leading-snug text-tinta">{pattern.label}</p>
+        <header>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {chip && (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${chipCls || a.chip}`}>
+                {ChipIcon && <ChipIcon size={12} />} {chip}
+              </span>
+            )}
+            {deadline?.urgency && DEADLINE_CHIP[deadline.urgency] && (
+              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${DEADLINE_CHIP[deadline.urgency]}`}>
+                <CalendarClock size={11} aria-hidden="true" />
+                {t(deadline.urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")}
+              </span>
+            )}
+            <span className="ml-auto inline-flex flex-wrap items-center gap-1.5">
+              {dataBadge}
+              <ConfidenceBadge confidence={confidence?.hypothesis} axis="hypothesis" />
+            </span>
+            {!panel && onCerrar && (
+              <button onClick={onCerrar} aria-label={t("cardneg.close")}
+                className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+            )}
+          </div>
+          <h2 className="mt-4 font-display text-2xl font-bold leading-tight">{titulo}</h2>
+          {(monto != null || cifraTexto) && (
+            <p className={`plata mt-3 text-3xl font-medium ${a.cifra}`}>
+              {monto != null ? peso(monto) : cifraTexto}
+              <span className="ml-2 align-middle font-sans text-xs font-normal text-tinta-suave">
+                {montoLabel || t("cardneg.drill_at_stake")}
+              </span>
+            </p>
+          )}
+          {pattern?.label && (
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-tinta-suave">{pattern.label}</p>
+          )}
+          {pattern?.since && <p className="mt-1 text-xs text-tinta-suave">{pattern.since}</p>}
+          {macro?.inflacion != null && (
+            <p className="mt-3 rounded-xl border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-sm text-hielo">
+              {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
+            </p>
+          )}
+          {(owner || deadline?.date) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-tinta-suave">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-papel-hondo/60 px-2.5 py-1">
+                <UserRound size={12} aria-hidden="true" />
+                {owner ? t("cardneg.drill_owner", { name: owner.suggested }) : t("cardneg.drill_no_owner")}
+                {owner?.role && <span className="text-tinta-suave/80">· {owner.role}</span>}
+              </span>
+              {deadline?.date && (
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
+                  late ? "bg-rojo/10 font-semibold text-rojo-hondo" : "bg-papel-hondo/60"
+                }`}>
+                  <CalendarClock size={12} aria-hidden="true" />
+                  {t("cardneg.drill_due", { date: fecha(deadline.date) })}
+                  {deadline.basis && <span className="font-normal text-tinta-suave/80">· {deadline.basis}</span>}
+                </span>
+              )}
+            </div>
+          )}
+        </header>
+
+        {(risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken || moveLabel) && (
+          <IconSection icon={Compass} title={t("cardneg.drill_recommend")}>
+            <div className="rounded-2xl border border-linea bg-papel-hondo/35 px-4 py-3.5">
+              {recommendation?.label && recommendation.label !== titulo && (
+                <p className="text-base font-semibold leading-snug text-tinta">{recommendation.label}</p>
+              )}
+              {(recommendation?.detail || (!recommendation?.label && moveLabel)) && (
+                <p className={`text-sm leading-relaxed ${recommendation?.label && recommendation.label !== titulo ? "mt-1.5 text-tinta-suave" : "text-base font-semibold leading-snug text-tinta"}`}>
+                  {recommendation?.detail || moveLabel}
+                </p>
+              )}
+              {risk?.label && (
+                <p className={`mt-3 inline-flex items-start gap-2 rounded-xl px-3 py-2 text-sm leading-snug ${
+                  risk.level === "high"
+                    ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
+                    : "bg-crema text-tinta"
+                }`}>
+                  <ShieldAlert size={14} className={`mt-0.5 shrink-0 ${risk.level === "high" ? "text-rojo" : "text-tinta-suave"}`} aria-hidden="true" />
+                  <span>
+                    {risk.label}
+                    {showExposure && (
+                      <span className="plata ml-1.5 font-semibold">{pesoCorto(risk.exposure)}</span>
+                    )}
+                  </span>
+                </p>
+              )}
+              <AngelaProposal
+                proposal={proposal}
+                onApprove={onAprobarPropuesta}
+                working={propuestaTrabajando}
+                actionTaken={actionTaken}
+              />
+            </div>
+          </IconSection>
         )}
-        {pattern?.since && <p className="mt-1 text-xs text-tinta-suave">{pattern.since}</p>}
-        {macro?.inflacion != null && (
-          <p className="mt-2 rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-sm text-hielo">
-            {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
-          </p>
+
+        {hypothesis?.label && (
+          <IconSection icon={Lightbulb} title={t("cardneg.drill_read")}>
+            <p className="max-w-2xl text-sm leading-relaxed text-tinta">{hypothesis.label}</p>
+            <ConfidenceReason confidence={confidence?.data} />
+            <ConfidenceReason confidence={confidence?.hypothesis} />
+          </IconSection>
         )}
-        {bloqueAccion}
+
         {evidence.length > 0 && (
-          <DrillSection title={t("cardneg.drill_evidence")} aside={dataBadge}>
-            <Evidence items={evidence} onVerInvolucrado={onVerInvolucrado} metodoUnico />
-          </DrillSection>
+          <IconSection icon={BarChart3} title={t("cardneg.drill_evidence")} aside={dataBadge}>
+            <div className="space-y-5">
+              <MetricStrip items={stripItems} />
+              {involvedBlocks.map((e, i) => (
+                <div key={e.id ?? `inv${i}`}>
+                  <p className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-tinta-suave">
+                    <ScanSearch size={12} aria-hidden="true" />
+                    {e.label || t("cardneg.drill_involved")}
+                  </p>
+                  <div className="overflow-hidden rounded-xl border border-linea">
+                    {e.records.map((r, ri) => (
+                      <InvolucradoRow key={r.id ?? ri} iv={r} onClick={onVerInvolucrado} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {leadCharts.map((e, i) => (
+                <EvidenceChart key={e.id ?? `ch${i}`} chart={e.chart} />
+              ))}
+              <AccionSupporting
+                rest={restEvidence}
+                all={evidence}
+                lead={leadEvidence}
+                onVerInvolucrado={onVerInvolucrado}
+              />
+            </div>
+          </IconSection>
         )}
-        {(hypothesis?.label || assumptions.length > 0 || alternatives.length > 0 || falsifiers.length > 0 || origins.length > 1) && (
-          <details className="group mt-5 border-t border-linea pt-3">
-            <summary className={`inline-flex cursor-pointer list-none items-center gap-1 ${SECTION_LABEL} hover:text-tinta [&::-webkit-details-marker]:hidden`}>
+
+        {(assumptions.length > 0 || alternatives.length > 0 || falsifiers.length > 0 || origins.length > 1) && (
+          <details className="group mt-8 border-t border-linea pt-4">
+            <summary className={`inline-flex cursor-pointer list-none items-center gap-1.5 ${SECTION_LABEL} hover:text-tinta [&::-webkit-details-marker]:hidden`}>
               <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
               {t("cardneg.drill_por_que")}
-              <span className="ml-2 inline-flex flex-wrap items-center gap-1.5 normal-case tracking-normal">
-                <ConfidenceBadge confidence={confidence?.hypothesis} axis="hypothesis" />
-              </span>
             </summary>
-            <div className="mt-2 pl-[15px]">
-              {hypothesis?.label && (
-                <>
-                  <p className="text-sm leading-snug text-tinta">{hypothesis.label}</p>
-                  <ConfidenceReason confidence={confidence?.data} />
-                  <ConfidenceReason confidence={confidence?.hypothesis} />
-                </>
-              )}
+            <div className="mt-3 max-w-2xl space-y-4">
               {assumptions.length > 0 && (
-                <div className="mt-3">
+                <div>
                   <p className={SECTION_LABEL}>{t("cardneg.drill_assumptions")}</p>
-                  <ul className="mt-1.5 space-y-1.5">
+                  <ul className="mt-2 space-y-2">
                     {assumptions.map((s, i) => (
-                      <li key={i} className="text-sm leading-snug text-tinta-suave">
+                      <li key={i} className="text-sm leading-relaxed text-tinta-suave">
                         {labelOf(s)}
                         {s?.if_wrong && <span className="mt-0.5 block text-tinta-suave/80">{s.if_wrong}</span>}
                       </li>
@@ -630,15 +842,15 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             </div>
           </details>
         )}
-        <OwnerLine owner={owner} deadline={deadline} />
+
         {fuentes.length > 0 && (
-          <DrillSection title={t("cardneg.drill_fuentes")}>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <IconSection icon={BookOpen} title={t("cardneg.drill_fuentes")}>
+            <div className="flex flex-wrap gap-1.5">
               {fuentes.map((f, i) => (
                 <FuentePill key={i} label={f} onClick={onVerFuentes} />
               ))}
             </div>
-          </DrillSection>
+          </IconSection>
         )}
         {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>
@@ -746,10 +958,13 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
       <div className="flex flex-wrap items-center gap-2">{acciones}</div>
     </div>
   );
+  const briefPad = layout === "accion"
+    ? (panel ? "px-8 py-8 pb-12" : "px-5 py-6 pb-10")
+    : "p-6";
   if (panel) {
     return (
       <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        <div className={`flex-1 overflow-y-auto ${briefPad}`}>{contenido}</div>
         {pie}
       </div>
     );
@@ -758,8 +973,10 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={titulo} tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta outline-none">
-        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        className={`flex max-h-[88vh] w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta outline-none ${
+          layout === "accion" ? "max-w-2xl" : "max-w-xl"
+        }`}>
+        <div className={`flex-1 overflow-y-auto ${briefPad}`}>{contenido}</div>
         {pie}
       </div>
     </div>
