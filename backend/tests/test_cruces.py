@@ -75,19 +75,25 @@ def test_el_camino_del_cerebro_cruza_tipos_distintos():
 
 
 def test_las_alertas_de_una_sola_fuente_no_entran_al_cerebro():
-    """Quiebre, margen bajo, sobrecompra y estrella caída son avisos de UNA
-    fuente: siguen en Oportunidades (no se pierde nada) pero no son cruces."""
+    """Stock-out, low margin and fallen-star are single-source warnings: they
+    stay in Oportunidades (nothing is lost) but they are not crosses.
+
+    `sobrecompra` used to be on that list and no longer is — it reads the
+    supplier offer against real rotation against lot shelf-life, so it crosses
+    three domains for real. See CARDS_QUE_CRUZAN in core/grafo.py."""
     out = _en_demo(
         "import json; from core import grafo, oportunidades_neg;"
         "g = grafo.completo('es');"
         "print(json.dumps({'cerebro': [c['id'] for c in g['caminos']],"
         " 'oportunidades': [c['id'] for c in oportunidades_neg.cards('es')]},"
         " ensure_ascii=False))")
-    for alerta in ("quiebre_inminente", "margen_bajo", "sobrecompra", "estrella_caida"):
+    for alerta in ("quiebre_inminente", "margen_bajo", "estrella_caida"):
         assert alerta not in out["cerebro"], alerta
         assert alerta in out["oportunidades"], alerta   # no se perdió: sigue donde estaba
-    # los dos que SÍ cruzan siguen en el cerebro
-    assert "cliente_frio" in out["cerebro"] and "ventana_compra" in out["cerebro"]
+    # the ones that DO cross stay in the brain, and also stay in Oportunidades
+    for cruza in ("cliente_frio", "ventana_compra", "sobrecompra"):
+        assert cruza in out["cerebro"], cruza
+        assert cruza in out["oportunidades"], cruza
     assert len(out["oportunidades"]) == 10
 
 

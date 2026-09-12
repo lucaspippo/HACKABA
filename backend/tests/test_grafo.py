@@ -129,4 +129,5 @@ def test_un_hallazgo_sin_entidades_no_deja_camino_vacio():
 def test_completo_no_filtra_los_indices_internos():
     r = grafo.completo("es")
     assert "_indice" not in r and "_por_codigo" not in r
-    assert set(r) == {"disponible", "nodos", "aristas", "caminos", "meta"}
+    assert set(r) == {"disponible", "nodos", "aristas", "caminos",
+                      "equipo", "sin_notas", "meta"}
