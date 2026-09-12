@@ -1606,6 +1606,17 @@ def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/ingest-ordenes-compra")
+def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
+    """Ingesta real: las órdenes de compra de Odoo ya vinculadas se
+    actualizan directo; las nuevas quedan en un batch de Staging."""
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_ordenes_compra(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
 # EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
 # sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/
