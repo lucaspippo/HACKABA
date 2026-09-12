@@ -385,32 +385,44 @@ const COLOR_EXP = {
 };
 
 function Expansion({ datos, desde, visible }) {
-  if (!datos?.nodos?.length || !desde) return null;
+  const grupos = datos?.grupos || [];
+  if (!grupos.length || !desde) return null;
+  let orden = 0;
   return (
-    <g opacity={visible ? 1 : 0}
-       style={{ transition: "opacity 420ms ease-out", pointerEvents: "none" }}>
-      {datos.nodos.map((n, i) => {
-        const color = COLOR_EXP[n.tipo] || "#8b8fa8";
-        const ancho = Math.max(96, n.nombre.length * 5.3 + 18);
-        const izq = n.x - ancho / 2;
+    <g style={{ pointerEvents: "none" }}>
+      {grupos.map((gr) => {
+        const alto = gr.nodos.length * 38;
         return (
-          <g key={n.id}
-             style={{
-               // cada uno entra apenas despues del anterior: no es un
-               // recorrido, es que no aparezcan los once de un golpe seco
-               transition: `opacity 300ms ease-out ${80 + i * 45}ms`,
-               opacity: visible ? 1 : 0,
-             }}>
-            <path d={`M ${desde.x} ${desde.y} L ${n.x} ${n.y}`} fill="none"
-                  stroke="rgba(33,32,29,.22)" strokeWidth="1.4" />
-            <rect x={izq} y={n.y - 15} width={ancho} height="30" rx="15"
-                  fill={FONDO} stroke={color} strokeWidth="1.6" />
-            <circle cx={izq + 15} cy={n.y} r="5" fill={color} />
-            <text x={izq + 28} y={n.y + 4} fill={TINTA} fontSize="11">
-              {n.nombre.length > 30 ? n.nombre.slice(0, 29) + "…" : n.nombre}
+          <g key={gr.rel}>
+            {/* una sola linea por RACIMO, no una por nodo: once lineas
+                saliendo del mismo punto son una estrella ilegible */}
+            <path d={`M ${desde.x} ${desde.y} C ${desde.x + 160} ${desde.y}, `
+                   + `${gr.x - 170} ${gr.y + alto / 2}, ${gr.x - 96} ${gr.y + alto / 2}`}
+                  fill="none" stroke="rgba(33,32,29,.20)" strokeWidth="1.5"
+                  style={{ opacity: visible ? 1 : 0, transition: "opacity 320ms" }} />
+            <text x={gr.x} y={gr.y + 4} textAnchor="middle"
+                  fill="rgba(33,32,29,.52)" fontSize="12"
+                  style={{ opacity: visible ? 1 : 0, transition: "opacity 300ms" }}>
+              {gr.rel}
             </text>
-            <text x={n.x} y={n.y - 21} textAnchor="middle"
-                  fill="rgba(33,32,29,.5)" fontSize="9.5">{n.rel}</text>
+            {gr.nodos.map((n) => {
+              const color = COLOR_EXP[n.tipo] || "#8b8fa8";
+              const ancho = Math.max(112, n.nombre.length * 5.75 + 46);
+              const izq = n.x - ancho / 2;
+              const retraso = 90 + orden++ * 55;
+              return (
+                <g key={n.id}
+                   style={{ opacity: visible ? 1 : 0,
+                            transition: `opacity 300ms ease-out ${visible ? retraso : 0}ms` }}>
+                  <rect x={izq} y={n.y - 15} width={ancho} height="30" rx="15"
+                        fill={FONDO} stroke={color} strokeWidth="1.6" />
+                  <circle cx={izq + 16} cy={n.y} r="5" fill={color} />
+                  <text x={izq + 30} y={n.y + 4} fill={TINTA} fontSize="11.5">
+                    {n.nombre}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         );
       })}
@@ -463,7 +475,7 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
   // No se anima el viewBox (no es animable por CSS): el viewBox queda fijo y se
   // transforma el grupo de adentro, que si transiciona suave.
   const exp = escena.expansion || null;
-  const puedeAbrir = !!exp?.nodos?.length && paso >= (escena.aristas || []).length;
+  const puedeAbrir = !!exp?.grupos?.length && paso >= (escena.aristas || []).length;
   const vb = exp?.lienzo_abierto;
   let encuadre = "";
   if (abierto && vb) {

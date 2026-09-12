@@ -32,6 +32,7 @@ sobre una línea.
 from __future__ import annotations
 
 import datetime
+import re
 
 import i18n
 
@@ -290,6 +291,7 @@ def reclamo(lang: str = "es") -> dict:
 # para tapar lo que ya estaba.
 NODO_EXPANDIBLE = "producto"
 TOPE_EXPANSION = 14          # si algun dia hubiera mas, se corta acá
+TOPE_POR_GRUPO = 4           # un racimo mas alto que esto ya no se lee de un vistazo
 
 # Como se leen las relaciones del grafo, en palabras.
 _REL_LEIBLE = {
@@ -298,9 +300,39 @@ _REL_LEIBLE = {
     "provee": "lo provee", "vende": "se vende en",
 }
 
-# El orden en que se reparten alrededor: agrupados por tipo, para que el ojo
-# lea familias y no una lista.
-_ORDEN_TIPOS = ("rubro", "local", "cliente", "producto", "ubicacion")
+# Los GRUPOS: una relacion, un racimo.
+#
+# EN DOS COLUMNAS A LA DERECHA, no en abanico alrededor del producto. El
+# producto esta en (706,142), o sea pegado al borde superior derecho del
+# lienzo: cualquier racimo puesto "alrededor" cae encima del post-it de la nota
+# o de la tarjeta de la regla, y correrlo mas lejos lo empuja mas adentro del
+# caso. Probado con cuatro configuraciones de angulo y radio: ninguna daba cero.
+#
+# A la derecha hay lugar vacio de sobra —el caso termina en x≈965— y el lienzo
+# se agranda al abrir igual. Ademas se lee mejor: cinco bloques en columna se
+# recorren de arriba abajo, un abanico obliga a girar la cabeza.
+_COLUMNAS = (
+    # (x, [relaciones de esa columna, de arriba a abajo])
+    (1090, ("se vende junto con", "se vende en")),
+    (1420, ("lo compra", "es de", "guardado en")),
+)
+_Y_INICIAL = -60          # arranca arriba del producto
+_SEPARACION_GRUPO = 46    # aire entre un racimo y el siguiente
+_ALTO_CHIP = 38
+
+
+def _nombre_corto(nombre: str) -> str:
+    """El nombre sin el gramaje ni el pack.
+
+    «MANTECA SANTA CLARA 200G (X30U)» -> «MANTECA SANTA CLARA». Un nombre
+    cortado con puntos suspensivos se lee como un error, no como una
+    abreviatura, asi que en vez de truncar se saca lo que no identifica al
+    producto: el envase. Si aun asi no entra, entra igual — la chip crece.
+    """
+    n = re.sub(r"\s*\([^)]*\)\s*$", "", nombre or "").strip()
+    n = re.sub(r"\s+X\d+\s*$", "", n, flags=re.I)
+    n = re.sub(r"\s+\d+([.,]\d+)?\s*(KG|G|GR|ML|L|CC|U)\s*$", "", n, flags=re.I)
+    return n.strip() or (nombre or "")
 
 
 def expansion(lang: str = "es") -> dict:
@@ -310,7 +342,15 @@ def expansion(lang: str = "es") -> dict:
     toca en vivo delante de un jurado, y una llamada de red en ese momento es
     un riesgo que no compra nada. Vienen precargadas y el click solo las
     muestra.
+
+    AGRUPADAS POR RELACION, no repartidas en abanico. Once nodos sueltos
+    alrededor de uno son once cosas para leer y ninguna se lee; agrupadas son
+    CINCO: «se vende junto con estos cuatro», «se vende en estas tres». La
+    etiqueta va una vez por racimo en vez de una por nodo, que ademas era de
+    donde salian la mitad de los solapamientos.
     """
+    import math
+
     from . import grafo as _grafo
 
     nota = next((n for n in notas.listar(tipo="incidencia_entrega")
@@ -329,9 +369,8 @@ def expansion(lang: str = "es") -> dict:
     if pid not in nodos_g:
         return {}
 
-    # lo que YA se ve en la escena no se repite
-    ya = {"proveedor", "nota", "remito"}
-    vecinos = []
+    ya = {"proveedor", "nota", "remito"}     # lo que ya se ve en la escena
+    por_rel = {}
     for a in g["aristas"]:
         otro = (a["target"] if a["source"] == pid
                 else a["source"] if a["target"] == pid else None)
@@ -340,47 +379,45 @@ def expansion(lang: str = "es") -> dict:
         n = nodos_g[otro]
         if n["tipo"] in ya:
             continue
-        vecinos.append({"id": otro, "tipo": n["tipo"],
-                        "nombre": n.get("nombre") or otro,
-                        "rel": _REL_LEIBLE.get(a["rel"], a["rel"])})
+        rel = _REL_LEIBLE.get(a["rel"], a["rel"])
+        por_rel.setdefault(rel, []).append(
+            {"id": otro, "tipo": n["tipo"], "nombre": _nombre_corto(n.get("nombre") or otro)})
 
-    vecinos.sort(key=lambda v: (_ORDEN_TIPOS.index(v["tipo"])
-                                if v["tipo"] in _ORDEN_TIPOS else 99, v["nombre"]))
-    vecinos = vecinos[:TOPE_EXPANSION]
-    if not vecinos:
+    grupos, total = [], 0
+    for x, rels in _COLUMNAS:
+        y = _Y_INICIAL
+        for rel in rels:
+            miembros = por_rel.get(rel) or []
+            if not miembros:
+                continue
+            miembros.sort(key=lambda m: m["nombre"])
+            miembros = miembros[:TOPE_POR_GRUPO]
+            total += len(miembros)
+            for i, m in enumerate(miembros):
+                m["x"], m["y"] = x, y + 36 + i * _ALTO_CHIP
+            grupos.append({"rel": rel, "x": x, "y": y, "nodos": miembros})
+            y += 36 + len(miembros) * _ALTO_CHIP + _SEPARACION_GRUPO
+
+    if not grupos:
         return {}
 
-    # --- las posiciones, decididas (igual que el resto de este modulo) -------
-    # Un abanico arriba y a la derecha del producto: hacia abajo-izquierda esta
-    # el resto de la escena y no se toca. Dos radios para que no queden todas
-    # sobre la misma circunferencia, que se lee como un reloj.
-    import math
-    cx, cy = 706, 142
-    n = len(vecinos)
-    colocados = []
-    for i, v in enumerate(vecinos):
-        # SOLO hacia arriba y a la derecha, de -150° a 0°. Abajo esta la
-        # tarjeta de la regla (880,250) y el envio (726,452): bajar de la
-        # horizontal ponia nodos encima de las dos. Lo verifica
-        # scripts/revisar_escena.py, que tambien mira la expansion.
-        ang = math.radians(-150 + (150 * i / max(1, n - 1)))
-        r = 200 if i % 2 == 0 else 300
-        colocados.append({**v,
-                          "x": round(cx + r * math.cos(ang)),
-                          "y": round(cy + r * math.sin(ang))})
-
-    xs = [c["x"] for c in colocados] + [0, ANCHO]
-    ys = [c["y"] for c in colocados] + [0, ALTO]
-    margen = 90
-    vb = [min(xs) - margen, min(ys) - margen,
-          max(xs) - min(xs) + margen * 2, max(ys) - min(ys) + margen * 2]
+    # El encuadre, ajustado a los extremos REALES. Con un margen generoso a
+    # ambos lados el lienzo se iba a 1940 de ancho y la escena quedaba al 51%:
+    # el caso —que es lo que hay que seguir leyendo— se volvia ilegible. Se mide
+    # el ancho de cada chip y se deja poco aire.
+    planos = [m for gr in grupos for m in gr["nodos"]]
+    medio_chip = lambda n: max(112.0, len(n) * 5.75 + 46) / 2
+    x0 = min([0] + [m["x"] - medio_chip(m["nombre"]) for m in planos])
+    x1 = max([ANCHO] + [m["x"] + medio_chip(m["nombre"]) for m in planos])
+    y0 = min([0] + [gr["y"] - 14 for gr in grupos])
+    y1 = max([ALTO] + [m["y"] + 19 for m in planos])
+    m_ = 46
+    vb = [x0 - m_, y0 - m_, (x1 - x0) + m_ * 2, (y1 - y0) + m_ * 2]
 
     return {
         "desde": "producto",
         "titulo": _t("escena.expansion_titulo", lang, producto=producto_nombre),
-        "nodos": colocados,
-        # El lienzo se agranda al abrir: ese alejarse ES el mensaje —lo que
-        # estabas mirando era un recorte.
+        "grupos": grupos,
         "lienzo_abierto": vb,
     }
 

@@ -42,6 +42,11 @@ PAD_PILDORA = 18
 ALTO_PILDORA = 22
 
 
+def ANCHO_CHIP(nombre: str) -> float:
+    """Lo que mide una chip de la expansion: el disco + el texto + aire."""
+    return max(112.0, len(nombre) * 5.75 + 46)
+
+
 def punto_medio(a, b, k):
     """La misma formula que `curva()` en el frontend."""
     mx, my = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
@@ -82,26 +87,37 @@ def main() -> None:
         w = len(a["etiqueta"]) * ANCHO_CHAR + PAD_PILDORA
         cajas.append((f"etiqueta:«{a['etiqueta']}»", rect(cx, cy, w, ALTO_PILDORA)))
 
-    # Los nodos de la EXPANSION tambien tienen que caber: se dibujan encima de
-    # la misma escena cuando se toca el producto.
+    # LA EXPANSION ENTERA: los chips Y las etiquetas de cada racimo.
+    #
+    # La version anterior solo metia los nodos y por eso daba 0 choques con la
+    # pantalla visiblemente pisada: lo que se solapaba eran las ETIQUETAS de
+    # las relaciones contra los chips de al lado. Una etiqueta que no se chequea
+    # es una etiqueta que se va a pisar.
     exp = esc.get("expansion") or {}
-    for n in exp.get("nodos", []):
-        w = max(120, len(n["nombre"]) * 5.6 + 20)
-        cajas.append((f"expansion:{n['nombre'][:26]}", rect(n["x"], n["y"], w, 46)))
+    for gr in exp.get("grupos", []):
+        cajas.append((f"rel:«{gr['rel']}»",
+                      rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
+        for m in gr["nodos"]:
+            # el racimo va en el nombre: dos chips del MISMO racimo se apilan a
+            # proposito y no son un choque.
+            cajas.append((f"chip:{gr['rel']}:{m['nombre'][:24]}",
+                          rect(m["x"], m["y"], ANCHO_CHIP(m["nombre"]), 30)))
 
     choques = []
     for i, (n1, r1) in enumerate(cajas):
         for n2, r2 in cajas[i + 1:]:
             # dos nodos pegados no importan: lo que se lee mal es una ETIQUETA
             # encima de cualquier cosa.
-            etiquetas = n1.startswith("etiqueta") or n2.startswith("etiqueta")
-            expansion = n1.startswith("expansion") or n2.startswith("expansion")
-            if not etiquetas and not expansion:
+            de_exp = lambda x: x.startswith("chip:") or x.startswith("rel:")
+            hay_texto = (n1.startswith("etiqueta") or n2.startswith("etiqueta")
+                         or de_exp(n1) or de_exp(n2))
+            if not hay_texto:
                 continue
-            # dos nodos de la expansion pegados entre si: es un abanico, se
-            # tocan de a ratos y no molesta. Lo que no puede pasar es que uno
-            # caiga sobre la escena que ya estaba.
-            if n1.startswith("expansion") and n2.startswith("expansion"):
+            # dos chips del MISMO racimo se apilan a proposito: estan pegadas
+            # una debajo de la otra y eso se lee bien. Lo que no puede pasar es
+            # que se pisen entre racimos, con una etiqueta, o con la escena.
+            if (n1.startswith("chip:") and n2.startswith("chip:")
+                    and n1.split(":")[1] == n2.split(":")[1]):
                 continue
             if chocan(r1, r2):
                 choques.append((n1, n2))
