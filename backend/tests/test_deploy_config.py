@@ -24,12 +24,23 @@ def _read(name: str) -> str:
         return fh.read()
 
 
-def test_the_image_bakes_in_no_tenant_and_no_demo_switches():
+# The image is built once and must be usable by ANY tenant, so the only
+# POLPILOT_* names allowed in it are properties of the image layout. Stated as
+# an allowlist rather than a list of forbidden names on purpose: a denylist of
+# POLPILOT_TENANT and POLPILOT_DEMO_* left POLPILOT_DEFAULT_LANG (the demo
+# pins "en") and POLPILOT_DATA_DIR — both just as tenant-specific — free to be
+# reintroduced into the image with nothing failing.
+_IMAGE_WIDE_VARS = {"POLPILOT_CANONICAL_DIR", "POLPILOT_STATIC_DIR"}
+
+
+def test_the_image_bakes_in_nothing_tenant_specific():
     dockerfile = _read("Dockerfile")
-    assert "POLPILOT_TENANT" not in dockerfile
-    assert not re.search(r"POLPILOT_DEMO_\w+", dockerfile), (
-        "demo-only configuration must live in render.yaml's envVars, never in "
-        "the image — a productive service built from this image would inherit it"
+    found = set(re.findall(r"POLPILOT_\w+", dockerfile))
+    assert found <= _IMAGE_WIDE_VARS, (
+        f"tenant-specific configuration in the image: {sorted(found - _IMAGE_WIDE_VARS)}. "
+        "It must live in render.yaml's envVars — a productive service built "
+        "from this image would otherwise inherit the demo's. Comments count: "
+        "do not name these variables in the Dockerfile even to explain them."
     )
 
 
