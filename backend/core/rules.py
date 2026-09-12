@@ -7,6 +7,13 @@ from __future__ import annotations
 ACTION_TYPES = {"apply_discount", "mark_receipt_partial", "notify",
                 "require_human_confirmation"}
 
+# Entity types _resolve_entity actually knows how to resolve. AMBITOS (imported
+# from conocimiento) also allows "categoria" and "empleado" scopes, but this
+# plan builds no resolver for those yet — _prepare rejects them explicitly
+# rather than letting the request fall through to _resolve_entity's generic
+# "unknown entity_type" error.
+ENTITY_TYPES = {"cliente", "proveedor", "producto"}
+
 _ENTITY_PLACEHOLDER = "$entity"
 
 _OPERATORS = {
@@ -102,6 +109,10 @@ def _prepare(*, description: str, condition: dict, action, node: str, scope: str
             raise RulesInvalid("a non-global rule needs a concrete entity")
         if not entity_type:
             raise RulesInvalid("a non-global rule needs entity_type")
+        if entity_type not in ENTITY_TYPES:
+            raise RulesInvalid(
+                f"unsupported entity_type {entity_type!r} "
+                f"(supported: {', '.join(sorted(ENTITY_TYPES))})")
         if not _condition_has_entity_placeholder(condition):
             raise RulesInvalid("condition must reference '$entity' for a non-global rule")
         entity_id = _resolve_entity(entity_type, entity_name)
@@ -178,6 +189,13 @@ def pause(rule_id: str) -> dict | None:
 def activate(rule_id: str) -> dict | None:
     from core.db import business_rules_repo
     from core.db import tenant as _tenant
+    rule = business_rules_repo.get(_tenant.current_tenant_id(), rule_id)
+    if rule is None:
+        return None
+    if rule["scope"] != "global" and rule["entity_id"] is None:
+        raise RulesInvalid(
+            f"rule {rule_id!r} was never bound to a concrete entity "
+            "and must be resolved before it can be activated")
     return business_rules_repo.set_status(_tenant.current_tenant_id(), rule_id, "active")
 
 

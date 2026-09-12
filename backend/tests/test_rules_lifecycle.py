@@ -97,6 +97,28 @@ def test_pause_and_activate(db_tenant, monkeypatch):
     assert rules.activate(rule["id"])["status"] == "active"
 
 
+def test_unsupported_entity_type_is_rejected_with_a_clear_message(db_tenant, monkeypatch):
+    _use_tenant(db_tenant, monkeypatch)
+    with pytest.raises(rules.RulesInvalid, match="cliente, producto, proveedor"):
+        rules.create(description="x", condition=CLIENT_CONDITION, action=DISCOUNT_ACTION,
+                    node="equipo", scope="empleado", entity_name="Someone",
+                    entity_type="empleado", origin=ORIGIN)
+
+
+def test_activate_refuses_a_rule_whose_entity_never_resolved(db_tenant, monkeypatch):
+    _use_tenant(db_tenant, monkeypatch)
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [
+        {"id": "c1", "nombre": "Client X North"}, {"id": "c2", "nombre": "Client X South"}])
+    rule = rules.create(description="5% off for Client X", condition=CLIENT_CONDITION,
+                        action=DISCOUNT_ACTION, node="ventas", scope="cliente",
+                        entity_name="Client X", entity_type="cliente", origin=ORIGIN)
+    assert rule["status"] == "pending"
+    with pytest.raises(rules.RulesInvalid):
+        rules.activate(rule["id"])
+    assert rules.get(rule["id"])["status"] == "pending"
+
+
 def test_archive_is_audited(db_tenant, monkeypatch):
     _use_tenant(db_tenant, monkeypatch)
     rule = rules.create(description="x", condition={"field": "amount", "operator": "gt", "value": 1},
