@@ -153,6 +153,18 @@ class ChatRequest(BaseModel):
     # (the role cannot be spoofed from the request). See /api/angela.
     rol: str | None = None
     nombre: str | None = None
+    # Which surface this turn came from — for transcript tagging only (see
+    # core/angela_transcripts.py); never changes how the turn is answered.
+    # Not free-form: an unrecognized value is just treated as "chat", the
+    # same as not sending it at all.
+    channel: str | None = None
+
+
+_ANGELA_CHANNELS = {"chat", "voz"}
+
+
+def _channel(req: "ChatRequest") -> str:
+    return req.channel if req.channel in _ANGELA_CHANNELS else "chat"
 
 
 class LoginRequest(BaseModel):
@@ -2325,6 +2337,15 @@ def chat(req: ChatRequest, request: Request):
                                         "ms": _ms})
         except Exception:  # noqa: BLE001
             pass
+        # The RAW transcript — full text, not the summary above — so it can
+        # be looked back at. See core/angela_transcripts.py.
+        try:
+            from core import angela_transcripts
+            angela_transcripts.record_turn(
+                u["username"], req.message, r.get("answer") or "",
+                tools_used=r.get("tools_used"), channel=_channel(req))
+        except Exception:  # noqa: BLE001
+            pass
         return r
     # (A) Sin token en el DEMO público: se rechaza limpio, SIN llamar a Claude.
     # La UI siempre manda token (autologin), así que esto solo frena el abuso
@@ -2380,11 +2401,17 @@ def chat_stream(req: ChatRequest, request: Request):
             import time as _time
             _t0 = _time.monotonic()
             result = None
+            # The `done` event carries no text (D5: redundant with the text
+            # parts already emitted) — the transcript needs it assembled
+            # here, from the same deltas the client already received.
+            answer_chunks = []
             for ev in angela.stream_response(
                 req.message, history, role=u.get("rol"),
                 name=u.get("username"), features=u.get("features"),
             ):
-                if ev.get("type") == "done":
+                if ev.get("type") == "text":
+                    answer_chunks.append(ev.get("delta") or "")
+                elif ev.get("type") == "done":
                     result = ev.get("result") or {}
                 yield line(ev)
             _ms = round((_time.monotonic() - _t0) * 1000)
@@ -2395,6 +2422,13 @@ def chat_stream(req: ChatRequest, request: Request):
                 store.audit.record(actor=u["username"], accion="consulta_angela",
                                    despues={"tools": (result.get("tools_used") or [])[:4],
                                             "ms": _ms})
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                from core import angela_transcripts
+                angela_transcripts.record_turn(
+                    u["username"], req.message, "".join(answer_chunks),
+                    tools_used=result.get("tools_used"), channel=_channel(req))
             except Exception:  # noqa: BLE001
                 pass
 
@@ -2409,6 +2443,28 @@ def chat_stream(req: ChatRequest, request: Request):
             yield line(ev)
 
     return StreamingResponse(generate_guest(), media_type="application/x-ndjson")
+
+
+# --- Ángela's raw transcript, for audit ---------------------------------------
+# Same gate as /api/auditoria: only someone with the feature sees the FULL
+# history (their own, or anyone's — it's an audit tool, not "my history").
+# See core/angela_transcripts.py.
+
+@app.get("/api/angela/conversaciones")
+def angela_conversations(actor: str | None = None, channel: str | None = None,
+                         limit: int = 100, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    return {"conversations": angela_transcripts.list_conversations(
+        actor=actor, channel=channel, limit=max(1, min(limit, 500)))}
+
+
+@app.get("/api/angela/conversaciones/{conversation_id}")
+def angela_conversation(conversation_id: str, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    conv = angela_transcripts.get_transcript(conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversación inexistente")
+    return conv
 
 
 @app.get("/api/oportunidades")
