@@ -56,8 +56,8 @@ def test_nadie_con_cobertura_holgada_entra_a_la_lista():
 
 
 def test_la_cobertura_es_la_misma_que_la_de_rotacion():
-    """Dos derivaciones distintas del mismo número serían dos verdades."""
-    from core import analisis, store
+    """Cover days are projected_stock / daily rate — same helper as Prioridades."""
+    from core import analisis, stock, store
     r = _r()
     if not r["disponible"]:
         return
@@ -66,7 +66,7 @@ def test_la_cobertura_es_la_misma_que_la_de_rotacion():
     for i in r["items"][:10]:
         a = arts[i["codigo"]]
         ritmo = u12.get(i["codigo"], 0.0) / 365.0
-        esperado = (a.get("stock") or 0) / ritmo
+        esperado = stock.days_of_cover(a, ritmo)
         assert abs(i["cobertura_dias"] - round(esperado, 1)) < 0.11
 
 

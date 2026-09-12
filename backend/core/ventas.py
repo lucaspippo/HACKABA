@@ -25,7 +25,7 @@ import json
 import os
 
 from . import paths
-from . import esquema, evolucion, normalizacion, rotacion, store
+from . import esquema, evolucion, normalizacion, rotacion, stock, store
 from .fechas import parse_fecha
 from . import fechas
 
@@ -208,7 +208,7 @@ def panorama(lang: str | None = None) -> dict:
         m = rotacion.metricas_articulo(a.get("stock") or 0, a.get("costo_iva") or 0,
                                        vendidas, dias)
         if m["demanda_diaria"] > 0:
-            dias_cobertura = (a.get("stock") or 0) / m["demanda_diaria"]
+            dias_cobertura = stock.days_of_cover(a, m["demanda_diaria"])
             if dias_cobertura < rotacion.DIAS_REPOSICION_DEFAULT:
                 quiebre.append({"codigo": a.get("codigo"), "descripcion": a.get("descripcion"),
                                 "stock": a.get("stock"), "dias_cobertura": round(dias_cobertura, 1),
