@@ -61,3 +61,33 @@ def test_integrar_ventas_crea_apartado():
     assert res["tipo"] == "venta"
     assert res["nuevos"] == 1
     assert "venta" in esquema.apartados_activos()
+
+
+def test_upsert_filas_inserts_then_updates_by_source_id():
+    esquema.upsert_filas("venta", [
+        {"fecha": "2026-01-01", "producto": "A", "codigo": 1, "cantidad": 2,
+         "precio": 10, "source": "odoo", "source_id": "L1"},
+    ])
+    assert len(esquema.filas("venta")) == 1
+    esquema.upsert_filas("venta", [
+        {"fecha": "2026-01-02", "producto": "A", "codigo": 1, "cantidad": 5,
+         "precio": 10, "source": "odoo", "source_id": "L1"},
+    ])
+    filas = esquema.filas("venta")
+    assert len(filas) == 1
+    assert filas[0]["cantidad"] == 5
+    assert filas[0]["fecha"] == "2026-01-02"
+
+
+def test_delete_odoo_missing_keeps_csv_rows():
+    esquema.reemplazar_filas("venta", [
+        {"fecha": "2026-01-01", "producto": "CSV", "cantidad": 1, "precio": 1},
+        {"fecha": "2026-01-01", "producto": "Odoo", "cantidad": 1, "precio": 1,
+         "source": "odoo", "source_id": "L1"},
+        {"fecha": "2026-01-01", "producto": "Gone", "cantidad": 1, "precio": 1,
+         "source": "odoo", "source_id": "L2"},
+    ])
+    n = esquema.delete_odoo_missing("venta", {"L1"})
+    assert n == 1
+    ids = {f.get("source_id") for f in esquema.filas("venta")}
+    assert ids == {None, "L1"}
