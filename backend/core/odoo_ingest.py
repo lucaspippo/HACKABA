@@ -62,3 +62,31 @@ def ingest_proveedores(actor: str = "dueño") -> dict:
         batch_id = r["id"]
 
     return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}
+
+
+def ingest_clientes(actor: str = "dueño") -> dict:
+    from core import cuentas
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_data()
+
+    vinculados = {c["source_id"] for c in cuentas.listar() if c.get("source") == "odoo"}
+    nuevas, actualizadas_filas = [], []
+    for c in pull["clientes"]:
+        if str(c["id"]) in vinculados:
+            actualizadas_filas.append(staging.coerce_cliente_odoo(c))
+        else:
+            nuevas.append(c)
+
+    if actualizadas_filas:
+        from core.db import customer_accounts_repo
+        for f in actualizadas_filas:
+            customer_accounts_repo.upsert_account(tenant_id, f)
+
+    batch_id = None
+    if nuevas:
+        r = staging.crear_batch_odoo("cliente", nuevas, nombre="Odoo · contactos")
+        batch_id = r["id"]
+
+    return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas), "batch_id": batch_id}
