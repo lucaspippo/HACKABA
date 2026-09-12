@@ -237,3 +237,25 @@ def visible_to(user: dict, rules_list: list[dict] | None = None) -> list[dict]:
         elif conocimiento.NODO_FEATURE.get(r["node"]) in feats:
             out.append(r)
     return out
+
+
+def evaluate(facts: dict) -> list[dict]:
+    matches = []
+    for rule in list_rules(status="active"):
+        if _matches(rule["condition"], facts):
+            matches.append({"rule_id": rule["id"], "description": rule["description"],
+                            "actions": rule["action"]})
+    return matches
+
+
+def verify(rule_id: str) -> dict:
+    rule = get(rule_id)
+    if not rule:
+        raise RulesInvalid(f"no such rule: {rule_id!r}")
+    results = []
+    for case in rule["test_cases"]:
+        actual = rule["action"] if _matches(rule["condition"], case["facts"]) else []
+        expected = case.get("expected_action")
+        ok = True if expected is None else actual == expected
+        results.append({"case": case, "expected": expected, "actual": actual, "ok": ok})
+    return {"ok": all(r["ok"] for r in results), "results": results}
