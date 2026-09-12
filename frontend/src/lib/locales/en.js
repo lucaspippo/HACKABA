@@ -3,6 +3,8 @@
 export const EN = {
   // --- common / accessibility (accessible names for icon-only buttons) ---
   "common.cerrar": "Close",
+  "common.si": "yes",
+  "common.no": "no",
   "common.editar": "Edit",
   "common.eliminar": "Delete",
   "common.enviar": "Send",
@@ -3095,4 +3097,48 @@ export const EN = {
   "chat.error.server.detalle": "The request was cut off. Try again in a moment.",
   "chat.error.stream.titulo": "The reply was cut off",
   "chat.error.stream.detalle": "The reply stopped partway through. Try again.",
+
+  // --- Phase 3: chat tool presenters (design doc D1/D10) ---
+  "toolui.caja.abierta": "Open",
+  "toolui.caja.cerrada": "Closed",
+  "toolui.caja.total": "Total in the till",
+  "toolui.caja.ingresos": "Income",
+  "toolui.caja.egresos": "Expenses",
+  "toolui.caja.saldo_inicial": "Opening balance",
+
+  "toolui.negocio.inmovilizado": "Total tied-up capital",
+  "toolui.negocio.articulos": "Active items",
+  "toolui.negocio.stock_cero": "Zero stock",
+  "toolui.negocio.stock_negativo": "Negative stock",
+  "toolui.negocio.alertas_fantasmas": "Ghosts",
+  "toolui.negocio.alertas_negativos": "Negatives",
+  "toolui.negocio.alertas_sin_pvp": "No price",
+  "toolui.negocio.alertas_balanza": "Scale mismatch",
+  "toolui.negocio.alertas_costo_viejo": "Stale cost",
+
+  "toolui.cuentas.no_encontrado": "I couldn't find «{cliente}» in accounts receivable.",
+  "toolui.cuentas.col_cliente": "Customer",
+  "toolui.cuentas.col_saldo": "Balance",
+  "toolui.cuentas.col_dias": "Days unpaid",
+  "toolui.cuentas.disponible": "Available",
+  "toolui.cuentas.total_adeudado": "Total owed",
+  "toolui.cuentas.clientes_con_deuda": "Customers with debt",
+  "toolui.cuentas.total_morosos": "Total overdue",
+  "toolui.cuentas.cantidad_morosos": "Overdue customers",
+
+  "toolui.items.col_desc": "Product",
+  "toolui.items.col_stock": "Stock",
+  "toolui.items.col_costo": "Cost",
+  "toolui.items.col_inmovilizado": "Tied-up capital",
+  "toolui.items.total": "Listed total",
+
+  "toolui.tabla.mas": "+{n} more",
+
+  "toolui.prioridades.act": "To act on",
+  "toolui.prioridades.watch": "To watch",
+
+  "toolui.serie.max": "max",
+  "toolui.serie.total": "total",
+  "toolui.serie.deflactado": "at {base} prices",
+  "toolui.serie.fijado": "Pinned it for you",
 };

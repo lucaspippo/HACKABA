@@ -5,13 +5,16 @@
  * ToolPresenter, then add one line here. Do NOT add a branch to ChatThread
  * (design doc D1) — it must stay free of per-tool logic.
  *
- * An empty entry set is CORRECT and complete: every tool renders through the
- * shape-based Fallback until a presenter overrides it. Phase 3 fills this in
- * with the series, table and KPI-tile presenters.
+ * A tool with no entry here is CORRECT and complete: it renders through the
+ * shape-based Fallback until a presenter overrides it.
  */
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import type { ToolName } from "../../../lib/chat/toolArgs.generated";
 import type { ToolPresenter } from "./types";
+import { cashDrawerPresenter, businessSummaryPresenter } from "./kpi";
+import { accountsReceivablePresenter, itemGroupPresenter, topTiedUpCapitalPresenter } from "./tables";
+import { prioritiesPresenter } from "./priorities";
+import { seriesPresenter } from "./series";
 
 /**
  * Typed as Partial<Record<ToolName, ...>> on purpose: a key that is not a real
@@ -20,7 +23,13 @@ import type { ToolPresenter } from "./types";
  * Fallback — a bug nobody notices.
  */
 export const TOOL_PRESENTERS: Partial<Record<ToolName, ToolPresenter>> = {
-  // Phase 3: consultar_serie, cuentas_corrientes, estado_caja, ...
+  consultar_serie: seriesPresenter,
+  cuentas_corrientes: accountsReceivablePresenter,
+  listar_grupo: itemGroupPresenter,
+  top_inmovilizado: topTiedUpCapitalPresenter,
+  listar_prioridades: prioritiesPresenter,
+  estado_caja: cashDrawerPresenter,
+  resumen_negocio: businessSummaryPresenter,
 };
 
 export function presenterFor(name: string): ToolPresenter | undefined {
