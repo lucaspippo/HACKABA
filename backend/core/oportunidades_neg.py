@@ -630,6 +630,21 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
                              for c, ps, p, _a, _r in cands[1:6]],
             "supuestos": [_t("core.opn.qi_s1", lang)] +
                          ([] if lead_propio else [_t("core.opn.qi_s2", lang, lead=lead)]),
+            # The exact numbers already narrated in `porque` (qi_q1b/ventana),
+            # repeated as short stat labels next to the chart so they're
+            # scannable without parsing a sentence — see the chart, which is
+            # historical monthly sales and can't also host these forward-
+            # looking day-counts as a reference line on the same x-axis.
+            "metrics": [
+                {"label": _t("core.opn.qi_m_coverage", lang),
+                 "value": _t("core.opn.qi_m_days", lang, n=int(cob))},
+                {"label": _t("core.opn.qi_m_lead", lang),
+                 "value": _t("core.opn.qi_m_days", lang, n=lead)},
+                {"label": _t("core.opn.qi_m_window", lang),
+                 "value": (_t("core.opn.qi_m_days", lang, n=dias_para_negociar) if dias_para_negociar > 0
+                           else _t("core.opn.qi_m_today", lang) if dias_para_negociar == 0
+                           else _t("core.opn.qi_m_late", lang, n=-dias_para_negociar))},
+            ],
         },
     }
     if piezas_k:

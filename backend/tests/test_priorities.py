@@ -206,7 +206,9 @@ def test_demo_inbox_has_no_duplicate_twins():
     assert "quiebre" not in ids
     assert "pico" not in ids
     assert "solicitud_pendiente" not in ids
-    assert d["badge"] == len(d["act"])
+    # badge counts only open work now — cards with an executed proposal
+    # stay in `act` (so the team can see they were handled) but don't nag.
+    assert d["badge"] == sum(1 for c in d["act"] if not c.get("action_taken"))
     for w in d["watch"]:
         assert w["id"] not in {i["id"] for i in d["act"]}
     # leak-today (mora) ranks above dormant stock even if dormido is huge
@@ -272,3 +274,96 @@ def test_compose_attaches_confidence_to_every_item(monkeypatch):
         conf = it["drill"].get("confidence")
         assert conf and conf["level"] in ("high", "medium", "low")
         assert conf["reason"]
+
+
+def test_compose_marks_cards_whose_proposal_already_ran(monkeypatch):
+    from core import proposal_state
+    monkeypatch.setattr(
+        proposal_state, "_find_order",
+        lambda origen, codigo: {
+            "numero": "OC-2026-0901", "estado": "borrador",
+            "aprobada_por": "Aldo", "preparada": "2026-07-07T09:14:02",
+        } if origen == "quiebre_inminente" else None)
+
+    con = _item("quiebre_inminente", propuesta={"tipo": "orden_compra", "codigo": 7})
+    sin = _item("despertar_dormido")
+    for it in priorities.with_action_taken([con, sin]):
+        if it["id"] == "quiebre_inminente":
+            assert it["action_taken"]["label"] == "OC-2026-0901"
+            assert it["action_taken"]["actor"] == "Aldo"
+        else:
+            assert it["action_taken"] is None
+
+
+def test_cards_without_a_proposal_are_never_marked():
+    out = priorities.with_action_taken([_item("caja_inusual")])
+    assert out[0]["action_taken"] is None
+
+
+def test_executed_cards_sort_after_open_ones():
+    done = _item("quiebre_inminente", monto=999_999)   # would otherwise rank first
+    done["action_taken"] = {"label": "OC-2026-0901"}
+    open_ = _item("despertar_dormido", monto=1)
+    open_["action_taken"] = None
+    act, _watch = priorities.split_and_rank([done, open_])
+    assert [i["id"] for i in act] == ["despertar_dormido", "quiebre_inminente"]
+
+
+def test_inbox_sees_an_order_created_after_the_first_call(monkeypatch):
+    """Regression: `action_taken` must NOT be derived inside `_compose`.
+
+    `_compose` is memoized by core/analisis_cache.py for the LIFETIME OF THE
+    PROCESS, so deriving there froze the first request's answer ("no order
+    yet") into a global cache: the user approved the proposal, the UI
+    refetched, hit the cache and still rendered the card as pending until the
+    process restarted. Only a SECOND `inbox()` call after a real order exists
+    exercises that — asserting on `with_action_taken` directly never would.
+    """
+    from core import ordenes
+    from core.db import purchase_orders_repo  # noqa: F401 — table must exist
+    from tests.conftest import limpiar_tabla_tenant
+
+    limpiar_tabla_tenant("purchase_orders")
+
+    propuesta = {"tipo": "orden_compra", "codigo": 4242, "producto": "Harina",
+                 "proveedor": "Molinos SA", "cantidad": 50}
+    monkeypatch.setattr(opn, "cards", lambda lang=None: [{
+        "id": "quiebre_inminente",
+        "titulo": "Se queda sin Harina en 4 días",
+        "resumen": "Cobertura 7 días, reposición 3 días",
+        "monto": 1_000_000,
+        "naturaleza": "accionable",
+        "tipo": "comprar",
+        "fuentes": [],
+        "propuesta": propuesta,
+        "drill": {"porque": [], "grafico": None, "involucrados": [],
+                  "supuestos": []},
+    }])
+
+    features = ("inventario", "oportunidades", "alertas")
+    before = priorities.inbox("es", features=features)
+    card_before = next(c for c in before["act"] if c["id"] == "quiebre_inminente")
+    assert card_before["action_taken"] is None
+    badge_before = before["badge"]
+
+    ordenes.preparar(producto=propuesta["producto"],
+                     codigo=card_before["propuesta"]["codigo"],
+                     cantidad=propuesta["cantidad"],
+                     proveedor=propuesta["proveedor"], actor="emilio",
+                     motivo=card_before["titulo"], origen="quiebre_inminente")
+
+    after = priorities.inbox("es", features=features)
+    card_after = next(c for c in after["act"] if c["id"] == "quiebre_inminente")
+    assert card_after["action_taken"], "the approved order must reach the card"
+    assert card_after["action_taken"]["label"].startswith("OC-")
+    assert card_after["action_taken"]["actor"] == "emilio"
+    assert after["badge"] == badge_before - 1
+
+
+def test_badge_counts_only_open_act_cards():
+    done = _item("quiebre_inminente")
+    done["action_taken"] = {"label": "OC-2026-0901"}
+    open_ = _item("despertar_dormido")
+    open_["action_taken"] = None
+    act, watch = priorities.split_and_rank([done, open_])
+    assert priorities.badge_of({"act": act, "watch": watch}) == 1
