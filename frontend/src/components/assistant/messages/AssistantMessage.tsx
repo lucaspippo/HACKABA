@@ -1,4 +1,4 @@
-import { ActionBarPrimitive, MessagePrimitive, useAuiState } from "@assistant-ui/react";
+import { MessagePrimitive, useAuiState } from "@assistant-ui/react";
 import { useRef } from "react";
 import AngelaMark from "../../AngelaMark";
 import ErrorState from "../ErrorState";
@@ -12,7 +12,7 @@ import MessageNotices from "./MessageNotices";
 import MessageExtras from "./MessageExtras";
 import type { ExecutingHandler } from "./MessageExtras";
 import { TOOL_COMPONENTS } from "./toolComponents";
-import ReadAloudButton from "./ReadAloudButton";
+import ReadAloudControl from "./read-aloud";
 
 export default function AssistantMessage({ onExecutingChange }: { onExecutingChange?: ExecutingHandler }) {
   const t = useT();
@@ -53,9 +53,7 @@ export default function AssistantMessage({ onExecutingChange }: { onExecutingCha
           </div>
         )}
         {!isRunning && spokenText && (
-          <ActionBarPrimitive.Root className="mt-1 flex items-center gap-0.5">
-            <ReadAloudButton />
-          </ActionBarPrimitive.Root>
+          <ReadAloudControl text={spokenText} />
         )}
         <ReplyAnnouncer text={spokenText} isRunning={isRunning} label={t("chat.reply_ready")} />
         <MessagePrimitive.Error>

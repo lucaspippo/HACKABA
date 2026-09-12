@@ -3119,6 +3119,10 @@ export const ES = {
 
   "chat.readaloud.play": "Escuchar la respuesta",
   "chat.readaloud.stop": "Parar de leer",
+  "chat.readaloud.pause": "Pausar",
+  "chat.readaloud.progress": "Avance de la lectura",
+  "chat.readaloud.speed": "Velocidad: {rate}x",
+  "chat.readaloud.close": "Cerrar la lectura",
   "chat.reply_ready": "Ángela respondió:",
 
   // --- Phase 3: presentadores de tools en el chat (design doc D1/D10) ---
