@@ -4,15 +4,14 @@ P19·D — Orquestación visible: el plan con confirmación y checkmarks.
 Los pasos son las acciones reales que ya existen (saneamiento con backup,
 recálculo, cola ERP). Cubre: el plan se arma con números reales, la ejecución
 corre en secuencia y devuelve el resultado paso a paso con antes/después, un
-paso que falla DETIENE y reporta (nada de fallar en silencio), y la paridad
-del router simulado (plan → OK → ejecutado).
+paso que falla DETIENE y reporta (nada de fallar en silencio).
 """
 from __future__ import annotations
 
 import pytest
 
 import angela
-from core import store, saneamiento, memoria
+from core import store, saneamiento
 from tests.conftest import limpiar_tabla_tenant
 
 
@@ -82,22 +81,3 @@ def test_plan_sin_pendientes_honesto():
     assert plan["ok"] is False  # no inventa pasos vacíos
     r, accion = angela._run_tool("ejecutar_plan", {})
     assert r["ok"] is False and r["pasos"] == []
-
-
-def test_fallback_plan_completo_es():
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
-    r = angela._fallback("corregí todos los errores de stock")
-    assert "proponer_plan" in r["tools_used"]
-    assert "1)" in r["answer"] and "backup" in r["answer"].lower()
-    assert r["options"]  # Dale / Mejor no
-    r2 = angela._fallback("dale, ejecutá el plan")
-    assert "ejecutar_plan" in r2["tools_used"]
-    assert any(a["type"] == "plan_progreso" for a in r2["actions"])
-    assert saneamiento.proponer("fantasma")["cantidad"] == 0
-
-
-def test_fallback_plan_en():
-    angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
-    r = angela._fallback("fix all my stock errors")
-    assert "proponer_plan" in r["tools_used"]
-    assert "backup" in r["answer"].lower()

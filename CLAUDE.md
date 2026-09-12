@@ -94,9 +94,9 @@ well-meaning change would otherwise undo.
 
 **Status (2026-09-05):** Phase 1 (foundation) and Phase 3's presenter
 registry have landed, plus a markdown/accessibility pass and a rebuilt
-composer (D11). **Phase 1.5 has not** — `_fallback` is still ~940 lines in
-`angela.py`, so a keyword-matched reply can still pass for a real one.
-Phase 2 (run context, suggestions, `useAskAngela`) has not started.
+composer (D11). **Phase 1.5 landed** — `_fallback` is gone; a missing model
+is an error, never a keyword-matched reply. Phase 2 (run context,
+suggestions, `useAskAngela`) has not started.
 Where the code still contradicts a rule below, the rule wins and the code
 is what changes. Update this status line as phases land.
 

@@ -34,3 +34,15 @@ describe("plainText", () => {
     expect(plainText("3 * 4")).toBe("3 * 4");
   });
 });
+
+describe("knowledge citations", () => {
+  it("drops the marker so a screen reader does not read it", () => {
+    expect(plainText("Le tolerás 45 días [·](#memoria-k01) porque es vieja.")).toBe(
+      "Le tolerás 45 días porque es vieja.",
+    );
+  });
+
+  it("still keeps the text of an ordinary link", () => {
+    expect(plainText("Mirá [el informe](https://x.com).")).toBe("Mirá el informe.");
+  });
+});

@@ -16,8 +16,8 @@ import {
   ComposerToolbar,
   ComposerVoice,
   ComposerVoiceButton,
-} from "@/components/composer";
-import type { ComposerAttachment } from "@/components/composer";
+} from "../composer";
+import type { ComposerAttachment } from "../composer";
 import { useT } from "../../../lib/i18n";
 import { authStore } from "../../../lib/auth";
 import { equipoReal } from "../../../lib/equipoReal";
@@ -113,7 +113,8 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
   }, [threadId, text]);
 
   const runCommand = (command: SlashCommand) => {
-    aui.composer.setText("");
+    aui.composer.setText(command.templateKey ? t(command.templateKey) : "");
+    if (command.templateKey) return;
     if (command.action === "new_thread") aui.threads.switchToNewThread();
     else if (command.prompt) aui.thread.append(command.prompt);
   };

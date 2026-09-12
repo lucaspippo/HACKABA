@@ -150,20 +150,18 @@ def test_csv_limpio_no_genera_ruido():
     assert r["normalizaciones"] is None  # nada que informar, nada guardado de más
 
 
-# --- Ángela (router): consultar y revertir con ok ---
+# --- Ángela: consultar y revertir with the owner's ok ---
 
 def test_angela_consulta_y_revierte_con_confirmacion():
     import angela
     angela._set_sesion(features=None)
     staging.crear_batch("sucio.csv", CSV_SUCIO)
-    r = angela._fallback("¿qué normalizaste del archivo?")
-    assert "Normalicé sola" in r["answer"]
-
-    r = angela._fallback("revertí la normalización")
-    assert r["options"]  # propone, no aplica
+    r, _ = angela._run_tool("normalizaciones_staging", {"accion": "consultar"})
+    assert "resumen" in r
     b = staging.listar()[-1]
-    assert b["normalizaciones"] is not None  # sigue intacta
+    assert b["normalizaciones"] is not None
 
-    r = angela._fallback("confirmá: revertí la normalización")
-    assert "deshice" in r["answer"]
+    r, accion = angela._run_tool("normalizaciones_staging", {"accion": "revertir"})
+    assert r.get("ok")
     assert staging.listar()[-1]["normalizaciones"] is None
+    assert accion and accion["type"] == "navigate"

@@ -11,7 +11,6 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-import angela
 import auth
 import i18n
 import main
@@ -128,75 +127,6 @@ def test_t_clave_inexistente_devuelve_la_clave():
 
 def test_t_con_parametros():
     assert "es, en" in i18n.t("perfil.idioma_invalido", "en", validos="es, en")
-
-
-# --- E9a: el router simulado (_fallback) habla el idioma de la conversación --------
-
-@pytest.fixture()
-def angela_lang():
-    """Setea el idioma/las features de la conversación como lo haría responder()."""
-    prev_lang, prev_feats = angela._idioma_actual(), angela._features_actuales()
-
-    def _set(lang, features=None):
-        angela._set_sesion(features=features, idioma=lang)
-
-    yield _set
-    angela._set_sesion(features=prev_feats, idioma=prev_lang)
-
-
-def test_fallback_cuentas_responde_en_ingles(angela_lang):
-    angela_lang("en")
-    r = angela._fallback("who owes me money?")
-    assert r["mode"] == "simulado"
-    # con o sin morosos — o sin cuentas REALES (P45·T3: el guard responde que
-    # falta el dato) — la respuesta sale del catálogo EN
-    assert ("overdue" in r["answer"] or "keeping up" in r["answer"]
-            or "factory seed" in r["answer"])
-    assert "mora" not in r["answer"]
-
-
-def test_fallback_caja_responde_en_ingles(angela_lang):
-    angela_lang("en")
-    r = angela._fallback("how much cash do I have in the register?")
-    assert "register" in r["answer"]
-    # Las tools NO cambian de nombre con el idioma. Actualizado en P9·C7 (M11):
-    # "caja" nunca existió en TOOLS — el nombre real es estado_caja.
-    assert "estado_caja" in r["tools_used"]
-    assert "En caja" not in r["answer"]
-
-
-def test_fallback_default_responde_en_ingles(angela_lang):
-    angela_lang("en")
-    r = angela._fallback("hello there")
-    assert "Where do we start?" in r["answer"]
-    assert "ANTHROPIC_API_KEY" in r["answer"]  # el aviso de modo datos sigue
-    # y el monto va con agrupación en-US (coma), nunca 1.234.567
-    assert "$" in r["answer"]
-
-
-def test_fallback_es_queda_byte_igual(angela_lang):
-    angela_lang("es")
-    r = angela._fallback("hello there")
-    assert "¿Por dónde arrancamos?" in r["answer"]
-    assert "(Modo datos: para charla libre total falta cargar ANTHROPIC_API_KEY.)" in r["answer"]
-
-
-def test_fallback_opciones_label_en_enviar_es(angela_lang):
-    # El label lo lee el humano (EN); el enviar se re-inyecta al router,
-    # cuyo matching es por keywords en español → queda en ES.
-    angela_lang("en")
-    r = angela._fallback("make me a chart of the money per product")
-    assert r["options"], "el widget sin sección debe ofrecer opciones"
-    labels = [o["label"] for o in r["options"]]
-    assert "On Home" in labels and "In Inventory" in labels
-    assert all("poné un gráfico" in o["enviar"] for o in r["options"])
-
-
-def test_fallback_bloqueo_por_feature_en_ingles(angela_lang):
-    angela_lang("en", features={"deposito", "logistica", "perfil", "angela"})
-    r = angela._fallback("who owes me money?")
-    assert "isn't part of" in r["answer"]     # fb.bloqueado en EN
-    assert "cuentas" not in r["tools_used"]
 
 
 # --- E9b: los textos que PRODUCE core/ salen en el idioma del usuario --------------
@@ -349,3 +279,12 @@ def test_403_de_require_feature_habla_el_idioma_del_usuario(tokens):
     r = c.get("/api/deposito", params={"token": t["paula"]})
     assert r.status_code == 403
     assert r.json()["detail"] == "Tu rol no tiene acceso al módulo «deposito»."
+
+
+def test_t_renders_a_param_named_like_its_own_signature():
+    """app_events records view_pref_set with key=<the preference>. While `t`
+    took `key` as a normal parameter, `t(event, lang, **params)` raised
+    TypeError, and the 500 landed on the user's NEXT Angela message rather
+    than on the click that caused it."""
+    out = i18n.t("core.app_events.view_pref_set", "es", who="Aldo", key="sin_torta")
+    assert "sin_torta" in out and "Aldo" in out

@@ -1,18 +1,17 @@
-"""Stream protocol v2: text arrives as deltas, and failures and degraded
-modes are expressible as their own events instead of masquerading as answers.
+"""Stream protocol v2: text arrives as deltas, and failures are expressible
+as their own events instead of masquerading as answers.
 
 Regression cover for three verified defects in v1:
   - hitting the message cap emitted a `done` with no `text`, so the frontend
     rendered an empty bubble and the explanation was never shown;
   - a failure after a tool call emitted a second `text` event, so the
-    abandoned partial answer and the fallback answer were glued together;
+    abandoned partial answer and a canned fallback were glued together;
   - every `text` event re-sent the whole accumulated string (O(n^2) bytes).
 """
 import json
 
 import angela
 import config
-import pytest
 
 
 def _no_provider(monkeypatch):
@@ -32,45 +31,19 @@ def _events(monkeypatch, **kwargs):
     return list(angela.stream_response("¿cuánta plata tengo parada?", **kwargs))
 
 
-def test_text_events_carry_deltas_not_accumulated_text(monkeypatch):
-    """Concatenating every delta must reproduce the answer exactly once.
-
-    The weak version of this check (`joined.count(deltas[0]) == 1 or
-    len(deltas) == 1`) passes trivially whenever the first delta happens to
-    be a short/common substring — it doesn't actually prove deltas are
-    disjoint fragments. The property that matters is stronger: no delta may
-    equal (or be a prefix/suffix repeat of) the running concatenation of the
-    deltas before it — i.e. the stream never re-sends a growing snapshot of
-    the accumulated text, which is exactly the v1 O(n^2) accumulation bug.
-    """
+def test_no_api_key_emits_error_not_a_fake_answer(monkeypatch):
+    """A missing model is a config error. It must not invent a reply."""
     _no_provider(monkeypatch)
     events = _events(monkeypatch)
-    deltas = [e["delta"] for e in events if e["type"] == "text"]
-    assert deltas, "expected at least one text event"
-    for e in events:
-        if e["type"] == "text":
-            assert "text" not in e, "v2 text events carry `delta`, not `text`"
-    joined = "".join(deltas)
-    # A delta stream must not repeat its own prefix (the v1 accumulation bug):
-    # no delta after the first may itself contain the accumulation-so-far,
-    # which is what an accumulated (rather than incremental) stream would do.
-    accumulated_so_far = deltas[0]
-    for delta in deltas[1:]:
-        assert accumulated_so_far not in delta, (
-            "a later delta re-sent the prior accumulated text: "
-            "deltas must be disjoint fragments, not growing snapshots"
-        )
-        accumulated_so_far += delta
-    assert accumulated_so_far == joined
-
-
-def test_no_api_key_emits_a_notice_not_a_silent_answer(monkeypatch):
-    _no_provider(monkeypatch)
-    events = _events(monkeypatch)
-    kinds = [e["kind"] for e in events if e["type"] == "notice"]
-    assert "fake_model" in kinds, (
-        "a reply produced without the model must say so explicitly"
+    assert not any(e["type"] == "text" for e in events), (
+        "without a model the stream must not emit a canned answer"
     )
+    assert not any(e["type"] == "notice" for e in events), (
+        "fake_model notices are gone; this is an error, not a labelled fake"
+    )
+    errors = [e for e in events if e["type"] == "error"]
+    assert errors and errors[0]["code"] == "model_unavailable"
+    assert errors[0].get("retryable") is False
 
 
 def test_done_result_has_english_keys_and_no_answer(monkeypatch):
@@ -81,6 +54,7 @@ def test_done_result_has_english_keys_and_no_answer(monkeypatch):
     assert set(result) >= {"mode", "tools_used", "actions"}
     assert "answer" not in result, "the text already arrived as deltas"
     assert "respuesta" not in result
+    assert result["mode"] == "error"
 
 
 def test_model_failure_emits_an_error_event(monkeypatch):
@@ -100,6 +74,15 @@ def test_model_failure_emits_an_error_event(monkeypatch):
     assert "model exploded" not in json.dumps(events), (
         "raw exception text must not reach the client"
     )
+
+
+def test_responder_without_model_is_an_error(monkeypatch):
+    _no_provider(monkeypatch)
+    r = angela.responder("¿quién me debe plata?")
+    assert r["mode"] == "error"
+    assert r["error"] == "model_unavailable"
+    assert r["answer"] == ""
+    assert r["tools_used"] == []
 
 
 def test_every_event_is_json_serialisable(monkeypatch):

@@ -129,19 +129,17 @@ def test_indec_caido_no_inventa_deflactor(monkeypatch):
     assert all(x["real"] is None for x in p["serie"])  # nominal sí, real jamás inventado
 
 
-# --- Ángela: paridad y honestidad ---
+# --- Ángela: tool exists and is honest without data ---
 
-def test_angela_tool_existe_y_router_sin_datos():
+def test_angela_tool_existe_y_sin_datos():
     assert "consultar_evolucion" in {t["name"] for t in angela.TOOLS}
-    r = angela._fallback("¿cómo vengo contra el año pasado?")
-    assert "consultar_evolucion" in r["tools_used"]
-    assert "ventas históricas" in r["answer"]  # sin datos: lo dice, no inventa
+    r, _ = angela._run_tool("consultar_evolucion", {})
+    assert not r.get("hay_datos")
 
 
-def test_angela_router_con_demo(monkeypatch):
+def test_angela_con_demo(monkeypatch):
     monkeypatch.setenv("POLPILOT_DEMO_EVOLUCION", "1")
     monkeypatch.setattr(macro, "ipc_serie",
                         lambda: {"disponible": True, "indices": INDICES})
-    r = angela._fallback("¿cómo vengo contra el año pasado?")
-    assert "real" in r["answer"] and "ajustado por inflación" in r["answer"]
-    assert "demostración" in r["answer"]  # la demo nunca pasa por real
+    r, _ = angela._run_tool("consultar_evolucion", {})
+    assert r.get("hay_datos")

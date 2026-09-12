@@ -247,6 +247,35 @@ def _validar(tipo: str, ambito: str, nodo: str, efecto: str, estado: str) -> Non
                 f"{nombre} desconocido: {valor!r} (catálogo: {', '.join(sorted(catalogo))})")
 
 
+def validate_proposal(*, texto: str, tipo: str, ambito: str, nodo: str,
+                      efecto: str, entidad: str | None = None) -> dict:
+    """Checks a proposal against the same catalog `crear` enforces and returns
+    the normalized fields, WITHOUT persisting anything. Ángela proposes with
+    this so a bad `nodo` fails while she can still say so, and the piece is
+    only written when the user confirms (see main.py's /confirmar)."""
+    if not (texto or "").strip():
+        raise ConocimientoInvalido("el texto no puede estar vacío")
+    _validar(tipo, ambito, nodo, efecto, "activo")
+    entidad = (entidad or "").strip() or None
+    if ambito != "global" and not entidad:
+        raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
+    return {"texto": texto.strip(), "tipo": tipo, "ambito": ambito,
+            "nodo": nodo, "efecto": efecto, "entidad": entidad}
+
+
+def find_duplicate(*, texto: str, nodo: str, entidad: str | None = None) -> dict | None:
+    """An existing piece saying the same thing about the same place, or None.
+    Confirming is idempotent through this: the tool-call part stays in the
+    thread after a reload, so the same chip can be clicked twice, and the
+    model re-proposes a rule it already proposed a few turns back."""
+    target = _norm(texto)
+    for p in _todas():
+        if (_norm(p.get("texto")) == target and p.get("nodo") == nodo
+                and _norm(p.get("entidad")) == _norm(entidad)):
+            return p
+    return None
+
+
 def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
           entidad: str | None = None, texto_en: str | None = None,
           efecto_profundo: bool = False, origen: dict | None = None,
