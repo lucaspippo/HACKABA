@@ -33,6 +33,16 @@ def test_margen_es_consciente_de_unidad():
     assert pricing.margen_pct({"venta_x_peso": True, "pvp": None, "costo_iva": 100}) is None
 
 
+def test_margen_sobre_venta_es_pvp_menos_costo_sobre_pvp():
+    # Markup on cost stays 50%; margin on the sale is (12000-8000)/12000 = 33.33%.
+    assert pricing.margen_sobre_venta_pct(BALANZA) == 33.33
+    assert pricing.margen_sobre_venta_pct(UNIDAD) == 33.33
+    assert pricing.margen_pesos(BALANZA) == 4000.0
+    assert pricing.margen_sobre_venta_pct({"pvp": None, "costo_iva": 100}) is None
+    assert pricing.margen_sobre_venta_pct({"pvp": 100, "costo_iva": None}) is None
+    assert pricing.margen_pesos({"pvp": None, "costo_iva": 100}) is None
+
+
 def test_perdida_compara_en_la_misma_unidad():
     perd_kg = {**BALANZA, "costo_iva": 15000.0, "pvp": 12000.0}
     assert pricing.es_a_perdida(perd_kg) is True      # $15.000/kg de costo vs $12.000/kg

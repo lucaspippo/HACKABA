@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PackageSearch, Pencil, Trash2, X } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
@@ -8,11 +8,22 @@ import { fecha, num } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
 import { useT } from "../../lib/i18n";
 
-export default function Movimientos({ onNavegar }) {
+export default function Movimientos({ onNavegar, highlight }) {
   const t = useT();
   const [modal, setModal] = useState(null);
   const [exportando, setExportando] = useState(false);
-  const fetcher = useCallback((p) => api.movimientos(p), []);
+  const [soloDiscrepancias, setSoloDiscrepancias] = useState(false);
+
+  useEffect(() => {
+    if (highlight === "discrepancias" || highlight === "discrepancia") {
+      setSoloDiscrepancias(true);
+    }
+  }, [highlight]);
+
+  const fetcher = useCallback(
+    (p) => api.movimientos({ ...p, discrepancia: soloDiscrepancias ? 1 : undefined }),
+    [soloDiscrepancias],
+  );
   const page = usePagedList(fetcher);
 
   const eliminar = async (id) => {
@@ -27,7 +38,7 @@ export default function Movimientos({ onNavegar }) {
 
   const exportar = async () => {
     setExportando(true);
-    try { await api.movimientosExport(page.query()); }
+    try { await api.movimientosExport({ ...page.query(), discrepancia: soloDiscrepancias ? 1 : undefined }); }
     catch { toast(t("crud.export_error"), "error"); }
     finally { setExportando(false); }
   };
@@ -47,9 +58,14 @@ export default function Movimientos({ onNavegar }) {
           </div>
         </div>
         {onNavegar && (
-          <button type="button" onClick={() => onNavegar("deposito")} className="text-[0.84rem] font-semibold text-hielo">
-            {t("lotes.ver_vencimientos")}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={() => onNavegar("conciliacion")} className="text-[0.84rem] font-semibold text-hielo">
+              {t("conc.titulo")}
+            </button>
+            <button type="button" onClick={() => onNavegar("deposito")} className="text-[0.84rem] font-semibold text-hielo">
+              {t("lotes.ver_vencimientos")}
+            </button>
+          </div>
         )}
       </header>
 
@@ -70,6 +86,12 @@ export default function Movimientos({ onNavegar }) {
             render: (l) => (l.in_date ? fecha(l.in_date) : "—") },
           { key: "counted_qty", label: t("imported.col_counted"), sortable: true, align: "right", plata: true,
             render: (l) => (l.counted_qty == null ? "—" : num(l.counted_qty)) },
+          { key: "diferencia", label: t("movimientos.col_dif"), sortable: true, align: "right", plata: true,
+            render: (l) => (l.diferencia == null || l.diferencia === 0 ? "—" : (
+              <span className={l.diferencia < 0 ? "text-rojo" : "text-salvia"}>
+                {l.diferencia > 0 ? "+" : ""}{num(l.diferencia)}
+              </span>
+            )) },
           { key: "source", label: t("imported.col_source"), sortable: true,
             render: (l) => <SourceBadge source={l.source} t={t} /> },
         ]}
@@ -87,7 +109,17 @@ export default function Movimientos({ onNavegar }) {
         onLoadMore={page.loadMore}
         hasMore={page.hasMore}
         cargandoMas={page.loadingMore}
-        filtros={<SourceChips value={page.source} onChange={page.setSource} t={t} />}
+        filtros={(
+          <>
+            <button type="button" onClick={() => setSoloDiscrepancias((v) => !v)}
+              className={`rounded-full px-3 py-1 text-[0.82rem] font-semibold ${
+                soloDiscrepancias ? "bg-oro text-crema" : "border border-linea text-tinta-suave"}`}>
+              {t("movimientos.filtro_discrepancias")}
+            </button>
+            <span className="mx-1 h-4 w-px bg-linea" />
+            <SourceChips value={page.source} onChange={page.setSource} t={t} />
+          </>
+        )}
         acciones={(l) => (
           <div className="flex items-center justify-end gap-2">
             <button type="button" onClick={() => setModal(l)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>

@@ -321,6 +321,8 @@ def articulos_con_estado() -> list[dict]:
             "unidad_pricing": pricing.unidad(d),
             "label_precio": pricing.label_precio(d),
             "margen_pct": pricing.margen_pct(d),
+            "margen_venta_pct": pricing.margen_sobre_venta_pct(d),
+            "margen_pesos": pricing.margen_pesos(d),
             # P38·G — un pesable son tres cosas: kilos, PIEZAS y el precio de
             # una pieza. La tabla de stock las muestra juntas donde aplica.
             "peso_por_unidad": pricing.peso_por_unidad(d),
@@ -340,6 +342,7 @@ def articulos_con_estado() -> list[dict]:
 
 _PRODUCT_SEARCH = ("descripcion", "codigo", "sku", "source", "tipo", "proveedor")
 _PRODUCT_CSV = ("codigo", "sku", "descripcion", "stock", "costo_iva", "pvp",
+                "margen_venta_pct", "margen_pesos",
                 "estado", "estado_calidad", "source")
 
 

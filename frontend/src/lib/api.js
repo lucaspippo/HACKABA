@@ -154,6 +154,8 @@ export const api = {
   receiptEliminar: (id) => post(`/api/receipts/${encodeURIComponent(id)}/eliminar`, {}),
   movimientos: (p = {}) => get("/api/movimientos" + qs(p)),
   movimientosExport: (p = {}) => downloadCsv("/api/movimientos/export.csv" + qs(p), "movimientos.csv"),
+  conciliacion: () => get("/api/conciliacion"),
+  conciliacionAceptar: (id) => post(`/api/conciliacion/${encodeURIComponent(id)}/aceptar`, {}),
   // P38·C — márgenes por grupo y por producto (mayorista + mostrador)
   margenes: () => get("/api/margenes"),
   margenes_detalle: (grupo) => get(`/api/margenes?grupo=${encodeURIComponent(grupo)}`),
