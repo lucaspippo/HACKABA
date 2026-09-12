@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Plus, Check, Radar } from "lucide-react";
+import { ArrowRight, Plus, Check, Radar, CalendarClock } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { ACENTO, DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
@@ -42,6 +42,25 @@ function HotkeyBadge({ children }) {
   );
 }
 
+// A chip only for the two urgency levels the owner actually needs to act on
+// today — "this_week" and "later" would show on nearly every card, which is
+// noise, not news.
+const DEADLINE_CHIP_CLS = {
+  overdue: "bg-rojo/10 text-rojo",
+  today: "bg-oro/15 text-oro-tinta",
+};
+
+function DeadlineChip({ urgency }) {
+  const t = useT();
+  const cls = DEADLINE_CHIP_CLS[urgency];
+  if (!cls) return null;
+  return (
+    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${cls}`}>
+      <CalendarClock size={10} /> {t(urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")}
+    </span>
+  );
+}
+
 function WorkRow({ item, selected, onSelect }) {
   const t = useT();
   const a = ACENTO[item.tono] || ACENTO.salvia;
@@ -68,6 +87,7 @@ function WorkRow({ item, selected, onSelect }) {
             <Check size={10} /> {t("prioridades.done")} · {item.action_taken.label}
           </span>
         )}
+        <DeadlineChip urgency={item.insight?.deadline?.urgency} />
         <span className="mt-1 block font-display text-[0.98rem] font-bold leading-tight">{item.titulo}</span>
         {item.resumen && (
           <span className="mt-0.5 block line-clamp-1 text-[0.82rem] leading-snug text-tinta-suave">{item.resumen}</span>
@@ -311,14 +331,9 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       monto: item.monto,
       montoLabel: item.monto_label,
       cifraTexto: item.cifra_texto,
-      porque: item.drill?.porque || [],
+      insight: item.insight,
       macro: item.macro,
-      grafico: item.drill?.grafico,
-      involucrados: item.drill?.involucrados || [],
-      supuestos: item.drill?.supuestos || [],
-      confidence: item.drill?.confidence,
       origins: item.origen || [],
-      metrics: item.drill?.metrics || [],
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,

@@ -624,6 +624,8 @@ export const ES = {
   "prioridades.accion_deposito": "Depósito",
   "prioridades.accion_ver": "Mirar",
   "prioridades.done": "Hecho",
+  "prioridades.overdue": "Vencido",
+  "prioridades.due_today": "Vence hoy",
   // P35·E6 — mapa simple (mobile, read-only)
   "mapasimple.volver": "Volver a Hoy",
   "mapasimple.cruces": "{n} cruces",
