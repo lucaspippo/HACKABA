@@ -70,6 +70,7 @@ proveedor activo es el gateway, así que las dos formas pueden convivir.
 |---|---|---|
 | `POLPILOT_DEMO_TODAY` | `2026-07-07` | **los cruces dejan de emitir.** El dataset tiene una historia sembrada que termina ahí y los cruces se calculan contra "hoy": con la fecha real todo queda fuera de ventana. La pantalla no se rompe — **se queda vacía**, que es peor, porque parece que el producto no encontró nada. |
 | `POLPILOT_DEFAULT_LANG` | `es` | el chrome arranca en inglés, y además el precalentado llena **primero** el idioma default: con `en`, la pantalla que vas a mostrar es la última en quedar caliente. |
+| `POLPILOT_PRECALENTAR_IDIOMAS` | *(sin setear)* | Sin setear, el arranque precalienta **sólo el idioma del tenant**. Medido contra este servicio: `es` 105 s + `en` 75 s = 180 s, y durante esos 180 s la primera pregunta del demo tardó **2 m 15 s** en vez de ~3 s, porque el hilo de precalc compite por el medio núcleo del plan. El idioma que no se precalienta no queda roto: se computa a demanda. Poné `todos` para volver al comportamiento anterior. |
 | `POLPILOT_DEMO_AUTOLOGIN` | `1` | aparece la pantalla de login y el link público deja de entrar directo. |
 | `POLPILOT_DEMO_ROLE_SWITCH` | `1` | se pierde el selector "Ver como". |
 | `POLPILOT_DEMO_MSG_CAP` | `35` | sin tope por sesión: no rompe, gasta. Ojo al revés: si probás mucho con la misma sesión antes del pitch, recargá para que se mintee un token nuevo, o Ángela contesta el mensaje de límite. |

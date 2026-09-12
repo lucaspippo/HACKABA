@@ -11,7 +11,8 @@ y CPU al pedo, con YC entrando por la URL pública. Ahora:
   endpoints: cualquier mutación —confirmar un comprobante, aplicar una
   corrección, integrar staging, validar ventas, restaurar una versión—
   invalida sola, venga por donde venga.
-- precalentar(): corre al arrancar el server (lifespan) en ambos idiomas:
+- precalentar(): corre al arrancar el server (lifespan), en el idioma del
+  tenant (ver _idiomas):
   la primera entrada en cámara ya es instantánea.
 
 Solo memoria de proceso, sin archivo: los análisis son funciones puras de
@@ -59,16 +60,34 @@ def limpiar() -> None:
     datos_cambiaron()
 
 
+# Que idiomas precalentar. Por default, SOLO el del tenant.
+#
+# POR QUE. El precalentado corre en un hilo daemon, asi que no bloquea el
+# arranque — pero si compite por CPU, y el plan del servicio tiene medio nucleo.
+# Medido contra el deploy: 'es' 105 s y 'en' 75 s, 180 s en total, y durante
+# esos 180 s la primera pregunta del demo tardo 2 m 15 s en vez de ~18 s.
+#
+# Los 75 s del segundo idioma se gastan enteros en pantallas que en un pitch en
+# español nadie va a abrir. El idioma que no se precalienta NO queda roto: se
+# computa a demanda la primera vez que alguien lo pide, igual que antes de que
+# existiera el precalc.
+#
+# Para volver al comportamiento anterior: POLPILOT_PRECALENTAR_IDIOMAS=todos.
 def _idiomas() -> tuple[str, ...]:
-    """El idioma del tenant primero; el otro despues."""
+    """El idioma del tenant. Con `todos`, tambien los demas, ese despues."""
+    import os
+
     from . import paths
     principal = getattr(paths, "DEFAULT_LANG", "es")
+    modo = (os.getenv("POLPILOT_PRECALENTAR_IDIOMAS") or "default").strip().lower()
+    if modo != "todos":
+        return (principal,)
     resto = tuple(l for l in getattr(paths, "IDIOMAS", ("es", "en")) if l != principal)
     return (principal, *resto)
 
 
 def precalentar() -> None:
-    """Precálculo al arrancar (lifespan): ambos análisis, ambos idiomas.
+    """Precálculo al arrancar (lifespan): ambos análisis, el idioma del tenant.
     Un tenant sin ventas validadas devuelve el guard barato al instante,
     así que en el piloto esto no cuesta nada."""
     from . import evolucion as _evolucion
