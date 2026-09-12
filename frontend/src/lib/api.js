@@ -267,6 +267,8 @@ export const api = {
   // The last RECORDED eval run — how often the engine is right, with the size
   // of each set next to the score. Reads a file the runner wrote; opening the
   // panel never re-measures.
+  // La escena del reclamo: ocho nodos ya colocados por el backend.
+  escenaReclamo: () => get("/api/escena/reclamo"),
   evals: () => get("/api/evals"),
   // THE OPERATION MAP — the physical chain (origin → warehouse → destination)
   // plus the context layer no ERP captures. Additive: neither the sources

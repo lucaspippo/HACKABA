@@ -1738,6 +1738,42 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.cru.f_conocimiento": {"es": "las reglas que enseñó el equipo",
                                 "en": "the rules the team taught"},
 
+    # --- la escena del reclamo (core/escena.py) ---------------------------
+    "escena.titulo": {"es": "Reclamo a {proveedor}", "en": "Claim to {proveedor}"},
+    "escena.separador": {"es": "el mismo problema, con otro proveedor",
+                         "en": "the same problem, with another supplier"},
+    "escena.y": {"es": " y ", "en": " and "},
+    "escena.req_foto_lote": {"es": "foto del lote", "en": "photo of the lot"},
+    "escena.req_foto_producto": {"es": "foto del producto", "en": "photo of the goods"},
+    "escena.req_numero_remito": {"es": "número de remito", "en": "delivery-note number"},
+    "escena.req_numero_lote": {"es": "número de lote", "en": "lot number"},
+    "escena.canal_email": {"es": "mail", "en": "email"},
+    "escena.canal_whatsapp": {"es": "WhatsApp", "en": "WhatsApp"},
+    "escena.canal_voz": {"es": "audio", "en": "voice"},
+    "escena.canal_foto": {"es": "foto", "en": "photo"},
+    "escena.canal_chat": {"es": "chat", "en": "chat"},
+    "escena.canal_reporte": {"es": "reporte", "en": "report"},
+    "escena.rel_dijo": {"es": "lo dijo por {canal}", "en": "said it over {canal}"},
+    "escena.rel_menciona": {"es": "habla de", "en": "is about"},
+    "escena.rel_provee": {"es": "se lo provee", "en": "supplies it"},
+    "escena.rel_ordena": {"es": "es de esta orden", "en": "from this order"},
+    # corta a propósito: el detalle (qué pide, por dónde, en cuántos días) vive
+    # ADENTRO de la tarjeta de la regla. Repetirlo acá lo decía dos veces y
+    # producía una píldora de 340 px que se montaba sobre los nodos.
+    "escena.rel_exige": {"es": "exige", "en": "requires"},
+    # LA LÍNEA DEL PLAZO. Sale de restar dos fechas reales, no de un texto fijo.
+    "escena.plazo": {"es": "La entrega fue el {entrega}. Quedan {quedan} días para reclamar.",
+                     "en": "Delivery was on {entrega}. {quedan} days left to claim."},
+    "escena.plazo_hoy": {"es": "La entrega fue el {entrega}. El plazo vence hoy.",
+                         "en": "Delivery was on {entrega}. The window closes today."},
+    "escena.plazo_vencido": {"es": "La entrega fue el {entrega}. El plazo venció hace {dias} días.",
+                             "en": "Delivery was on {entrega}. The window closed {dias} days ago."},
+    "escena.plazo_sin_fecha": {"es": "No tengo la fecha de entrega para calcular el plazo.",
+                               "en": "I do not have the delivery date to work out the window."},
+    "escena.fuente_notas": {"es": "notas del equipo", "en": "team notes"},
+    "escena.fuente_ordenes": {"es": "órdenes de compra", "en": "purchase orders"},
+    "escena.fuente_deposito": {"es": "depósito", "en": "warehouse"},
+
     # 8 · el reclamo de una devolución
     "core.cru.reclamo_t": {
         "es": "Reclamo a {proveedor}: falta {n} cosa para mandarlo",

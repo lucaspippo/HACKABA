@@ -77,6 +77,13 @@ def precalentar() -> None:
         # guion. Que las pague el arranque es la diferencia entre entrar y
         # esperar quince segundos con el proyector encendido.
         try:
+            # la escena del reclamo: es la primera pantalla del demo y la
+            # transición desde el mapa tiene que ser instantánea
+            from . import escena as _escena
+            get_o_computar("escena_reclamo", lang, lambda l=lang: _escena.reclamo(l))
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from . import mapa_operacion as _mapa
             get_o_computar("mapa_operacion", lang, lambda l=lang: _mapa.mapa(l))
         except Exception:  # noqa: BLE001 — el precalc nunca rompe el arranque

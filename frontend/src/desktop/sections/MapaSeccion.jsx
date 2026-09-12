@@ -23,6 +23,7 @@ import ErrorBoundary from "../../components/ErrorBoundary";
 import MapaNegocio from "./MapaNegocio";
 import CerebroNegocio from "./CerebroNegocio";
 import MapaOperacion from "./MapaOperacion";
+import CerebroPantalla from "./CerebroPantalla";
 import { useT } from "../../lib/i18n";
 
 // The choice survives leaving and returning to the section (not a reload):
@@ -36,6 +37,11 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
                                       highlight = null }) {
   const t = useT();
   const [vista, setVista] = useState(_vistaElegida);
+  // LA PANTALLA INTERMEDIA DEJÓ DE EXISTIR. «Lo que sé de tu negocio» abría una
+  // vista con siete bloques compitiendo y el lienzo abajo del fold; ahora abre
+  // DIRECTO el cerebro a pantalla completa, con Ángela al costado. Cerrar
+  // vuelve acá, al mapa de la operación. Sin escala intermedia.
+  const [pantalla, setPantalla] = useState(false);
 
   const ir = (id) => {
     if (id === vista) return;
@@ -50,7 +56,7 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
     return (
       <div className="space-y-3">
         <div className="flex justify-end">
-          <button onClick={() => ir("fuentes")}
+          <button onClick={() => setPantalla(true)}
                   className="flex min-h-[44px] items-center gap-2.5 rounded-full border
                              border-violeta/30 bg-violeta-suave/50 px-4 text-left
                              transition-colors hover:bg-violeta-suave">
@@ -70,6 +76,15 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
           <MapaOperacion onPreguntar={onPreguntar} onNavegar={onNavegar}
                          focoInicial={highlight} />
         </ErrorBoundary>
+        {pantalla && (
+          <ErrorBoundary key="vista:pantalla" seccion="mapa"
+                         onInicio={() => setPantalla(false)}>
+            <CerebroPantalla
+              onCerrar={() => setPantalla(false)}
+              onVerTodo={() => { setPantalla(false); ir("cerebro"); }}
+              onMas={() => { setPantalla(false); ir("cerebro"); }} />
+          </ErrorBoundary>
+        )}
       </div>
     );
   }
