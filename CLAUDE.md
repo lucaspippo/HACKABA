@@ -137,9 +137,34 @@ Hard rules:
 ## Tests
 
 ```bash
-cd backend && python -m pytest
+cd backend && ../.venv/Scripts/python.exe -m pytest
 ```
-Single test: `pytest tests/test_<name>.py -k <pattern>`.
+Single test: `../.venv/Scripts/python.exe -m pytest tests/test_<name>.py -k <pattern>`.
+
+**Use the venv's interpreter, not bare `python`.** On a dev box where bare
+`python` is an older interpreter without this project's dependencies, the
+failure is confusing rather than obvious: `python-dotenv` is missing, so
+`backend/.env` is never loaded at all — `core/db/engine.py` and
+`tests/dbsetup.py` both swallow that `ImportError` deliberately
+(`dbsetup.py` says so outright) — and dozens of tests then fail on
+configuration that is in fact present in `.env`. Measured here on
+2026-09-04: bare `python` was 3.12's predecessor with no dotenv, `.venv` was
+3.12.10 with everything.
+
+**Two secrets must be non-empty or ~80 tests fail.** `ODOO_ENCRYPTION_KEY`
+and `WHATSAPP_ENCRYPTION_KEY` ship in `.env.example` as empty placeholders,
+and `core/db/odoo_connections_repo.py` (plus the WhatsApp equivalent) does
+`os.environ.get(...)` then `if not key: raise` — an **empty string is
+falsy**, so a present-but-blank value fails exactly like a missing one. Fill
+both, per environment:
+
+```bash
+../.venv/Scripts/python.exe -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
+
+They only ever en/decrypt values in that environment's own database, so a
+local throwaway key is fine — CI commits its own in `ci.yml` for that reason.
+With both set, the suite is green (1501 passed, 39 skipped as of 2026-09-04).
 
 The suite runs against the `piloto` tenant over `data-demo/` (see
 `tests/conftest.py`). **Careful:** tests write into the data dir — after
