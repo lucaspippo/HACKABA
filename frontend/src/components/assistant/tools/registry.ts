@@ -12,6 +12,10 @@
 import type { ToolCallMessagePartComponent } from "@assistant-ui/react";
 import type { ToolName } from "../../../lib/chat/toolArgs.generated";
 import type { ToolPresenter } from "./types";
+import { estadoCajaPresenter, resumenNegocioPresenter } from "./kpi";
+import { cuentasCorrientesPresenter, listarGrupoPresenter, topInmovilizadoPresenter } from "./tables";
+import { listarPrioridadesPresenter } from "./priorities";
+import { consultarSeriePresenter } from "./series";
 
 /**
  * Typed as Partial<Record<ToolName, ...>> on purpose: a key that is not a real
@@ -20,7 +24,13 @@ import type { ToolPresenter } from "./types";
  * Fallback — a bug nobody notices.
  */
 export const TOOL_PRESENTERS: Partial<Record<ToolName, ToolPresenter>> = {
-  // Phase 3: consultar_serie, cuentas_corrientes, estado_caja, ...
+  consultar_serie: consultarSeriePresenter,
+  cuentas_corrientes: cuentasCorrientesPresenter,
+  listar_grupo: listarGrupoPresenter,
+  top_inmovilizado: topInmovilizadoPresenter,
+  listar_prioridades: listarPrioridadesPresenter,
+  estado_caja: estadoCajaPresenter,
+  resumen_negocio: resumenNegocioPresenter,
 };
 
 export function presenterFor(name: string): ToolPresenter | undefined {
