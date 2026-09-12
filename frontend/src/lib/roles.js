@@ -23,6 +23,7 @@
 export const CATALOGO = [
   {
     id: "administracion",
+    busca: true,
     match: /administraci/i,
     acciones: [
       // Va por el flujo REAL de documentos (Ángela lo arma y deja la tarjeta de
@@ -39,6 +40,7 @@ export const CATALOGO = [
   },
   {
     id: "compras",
+    busca: true,
     match: /compras/i,
     acciones: [
       { id: "preparar_oc", icon: "ClipboardList", need: ["oportunidades"], kind: "navegar",
@@ -64,6 +66,7 @@ export const CATALOGO = [
   // los cinco comparten las del depósito, y por eso no sale del `id`.
   {
     id: "deposito_encargado",
+    busca: true,
     avisa: true,
     cargaLk: "rol.carga_cargar",
     match: /encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito/i,
@@ -197,6 +200,7 @@ export const CATALOGO = [
   },
   {
     id: "preventa",
+    busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
     match: /preventista|vendedor/i,
@@ -214,6 +218,7 @@ export const CATALOGO = [
   },
   {
     id: "mostrador",
+    busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
     match: /mostrador/i,
@@ -236,6 +241,7 @@ export const CATALOGO = [
   },
   {
     id: "sucursal",
+    busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
     match: /sucursal/i,
@@ -309,6 +315,16 @@ export function muestrasDe(user) {
 }
 
 /** Las preguntas pre-cargadas de su oficio (sólo las que su rol puede responder). */
+/** ¿A esta persona le sirve la lupa? Los seis que quedan afuera —recepción,
+ *  conteos, armado, ayudante y los dos choferes— llegan al dato por ESCANEO o
+ *  desde su tarea, que es más rápido y no se equivoca de producto. Nahuel es el
+ *  caso interesante: parece que debería buscar, y no — tiene la caja en la mano.
+ *  Sin oficio en el catálogo (el dueño) la lupa se muestra. */
+export function buscaEnMobile(user) {
+  const r = rolDe(user);
+  return r ? !!r.busca : true;
+}
+
 /** ¿Este oficio deja avisos desde el piso? Decide si la barra lleva el botón
  *  de carga al centro. Las oficinas (administración, compras) y el dueño no:
  *  escriben en vez de avisar, y así está declarado en la semilla — el flag de

@@ -106,6 +106,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "cliente inexistente",
         "en": "no such customer",
     },
+    "api.producto_inexistente": {
+        "es": "ese código no está en el catálogo",
+        "en": "that code is not in the catalogue",
+    },
     "api.empleado_inexistente": {
         "es": "empleado inexistente",
         "en": "no such employee",

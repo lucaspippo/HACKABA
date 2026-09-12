@@ -131,6 +131,9 @@ export const api = {
     get(`/api/grupo/${nombre}${limit ? `?limit=${limit}` : ""}`),
   buscar: (q) => get(`/api/buscar?q=${encodeURIComponent(q)}`),
   buscarGlobal: (q) => get(`/api/buscar-global?q=${encodeURIComponent(q)}`),
+  // La ficha de UN producto. En el teléfono no se llega por una lista de 430
+  // filas: se llega por una búsqueda, un escaneo o una tarea.
+  fichaProducto: (codigo) => get(`/api/ficha/producto/${codigo}`),
   oportunidades: () => get("/api/oportunidades"),
   prioridades: () => get("/api/prioridades"),
   // Closing the loop on a continuous-learning finding (core/patrones.py):
