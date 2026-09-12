@@ -69,27 +69,27 @@ def test_missing_conversation_is_404(emilio_token):
     assert r.status_code == 404
 
 
-def test_voice_channel_is_tagged_and_kept_separate(aldo_token, monkeypatch):
+def test_voice_channel_is_tagged_and_kept_separate(emilio_token, monkeypatch):
     _no_provider(monkeypatch)
     r = client.post("/api/angela", json={"message": "faltan ocho cajas",
-                                          "token": aldo_token, "channel": "voz"})
+                                          "token": emilio_token, "channel": "voz"})
     assert r.status_code == 200
 
-    voice_only = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
-                            params={"actor": "aldo", "channel": "voz"}).json()["conversations"]
+    voice_only = client.get("/api/angela/conversaciones", headers=_h(emilio_token),
+                            params={"actor": "emilio", "channel": "voz"}).json()["conversations"]
     assert voice_only
     assert all(c["channel"] == "voz" for c in voice_only)
 
 
-def test_unrecognized_channel_falls_back_to_chat(aldo_token, monkeypatch):
+def test_unrecognized_channel_falls_back_to_chat(emilio_token, monkeypatch):
     _no_provider(monkeypatch)
     r = client.post("/api/angela", json={"message": "algo raro",
-                                          "token": aldo_token, "channel": "not-a-channel"})
+                                          "token": emilio_token, "channel": "not-a-channel"})
     assert r.status_code == 200
 
-    convs = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
-                       params={"actor": "aldo", "channel": "chat"}).json()["conversations"]
+    convs = client.get("/api/angela/conversaciones", headers=_h(emilio_token),
+                       params={"actor": "emilio", "channel": "chat"}).json()["conversations"]
     assert any(m["content"] == "algo raro"
               for c in convs
               for m in client.get(f"/api/angela/conversaciones/{c['id']}",
-                                  headers=_h(aldo_token)).json()["messages"])
+                                  headers=_h(emilio_token)).json()["messages"])
