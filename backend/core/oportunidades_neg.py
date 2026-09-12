@@ -27,7 +27,7 @@ import datetime
 import json
 import os
 
-from . import paths, conocimiento
+from . import paths, conocimiento, stock
 
 CONDICIONES_JSON = os.path.join(paths.DATA_DIR, "proveedores_condiciones.json")
 
@@ -152,14 +152,14 @@ def _ctx(lang) -> dict:
 
 
 def _cobertura(a: dict, ctx: dict) -> tuple[float | None, float]:
-    """(cobertura en días, ritmo diario en unidades) del artículo, misma
-    derivación que analisis.rotacion: stock / (unidades 12m / 365)."""
+    """(cover days, daily units). Same daily rate as analisis.rotacion
+    (12m units / 365), but qty is projected_stock so incoming/reserved
+    match Reponer and forecast stockout."""
     u12 = ctx["u12m_codigo"].get(a.get("codigo"), 0.0)
     if u12 <= 0:
         return None, 0.0
     ritmo = u12 / 365.0
-    stock = a.get("stock") or 0
-    return (stock / ritmo if stock > 0 else 0.0), ritmo
+    return stock.days_of_cover(a, ritmo), ritmo
 
 
 # --- 1 · cobrar a los morosos ---------------------------------------------------
@@ -286,7 +286,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
             continue  # sin venta real o rotación lenta: no es compra segura
         # Lo que te va a faltar para llegar de la lista nueva a la siguiente:
         # eso lo comprás igual — la única decisión es a qué precio.
-        stock_al_llegar = max(0.0, (a.get("stock") or 0) - ritmo * dias_hasta)
+        stock_al_llegar = max(0.0, stock.projected_stock(a) - ritmo * dias_hasta)
         faltante_u = max(0.0, ritmo * frec - stock_al_llegar)
         if faltante_u <= 0:
             continue  # su reposición NO cae antes de la lista siguiente
@@ -552,7 +552,7 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     unidad = _t("core.opn.qi_u_kg" if pricing.es_por_peso(art) else "core.opn.qi_u_unidades", lang)
     # Lo que hay que pedir: reponer hasta un mes de venta, contando lo que se
     # va a consumir mientras el camión viene en camino.
-    stock_al_llegar = max(0.0, (art.get("stock") or 0) - ritmo * lead)
+    stock_al_llegar = max(0.0, stock.projected_stock(art) - ritmo * lead)
     sugerido = max(0.0, ritmo * 30.44 - stock_al_llegar)
     # Lo que se pide por unidad es entero (nadie pide 1.006,9 botellas); lo que
     # se pide por peso lleva su decimal.
@@ -646,9 +646,9 @@ def _card_pre_pico(lang, ctx) -> dict | None:
         if cob is None:
             continue
         rp = ritmo * idx
-        stock_u += a.get("stock") or 0
+        stock_u += stock.projected_stock(a)
         ritmo_pico_u += rp
-        compra += max(0.0, rp * 31 - (a.get("stock") or 0)) * a["costo_iva"]
+        compra += max(0.0, rp * 31 - stock.projected_stock(a)) * a["costo_iva"]
     if compra <= 0 or ritmo_pico_u <= 0:
         return None
     cob_pico = int(stock_u / ritmo_pico_u)

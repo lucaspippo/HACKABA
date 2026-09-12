@@ -75,6 +75,21 @@ def test_forecast_may_spike_beats_trend_only_baseline():
     assert may["qty_low"] is not None and may["qty_high"] is not None
 
 
+def test_forecast_incoming_clears_stockout():
+    art = store.raw_actual()[0]
+    codigo = art["codigo"]
+    raw = store.raw_actual()
+    raw[0]["stock"] = 10
+    raw[0]["incoming_qty"] = 10_000
+    raw[0]["outgoing_qty"] = 0
+    store.guardar(raw)
+
+    _seed_months(codigo, art["descripcion"], _twenty_four_months())
+    r = forecast.forecast_demand()
+    item = next(i for i in r["items"] if i["product_code"] == codigo)
+    assert item["stockout_risk"] is False
+
+
 def test_forecast_young_sku_has_no_interval():
     art = store.raw_actual()[0]
     codigo = art["codigo"]

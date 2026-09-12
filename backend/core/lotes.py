@@ -10,12 +10,16 @@ from __future__ import annotations
 
 import uuid
 
-from . import esquema
+from . import esquema, paging, section_records
 from .audit import AuditLog
 
 _audit = AuditLog(esquema.DATA_DIR)
 _TIPO = "deposito"
-_CAMPOS = ("codigo", "producto", "ubicacion", "lote", "vencimiento", "cantidad")
+_CAMPOS = ("codigo", "producto", "ubicacion", "lote", "vencimiento", "cantidad",
+           "in_date", "counted_qty", "source", "source_id")
+SEARCH = ("producto", "ubicacion", "lote", "codigo", "source")
+CSV_COLUMNS = ("producto", "codigo", "ubicacion", "lote", "vencimiento",
+               "cantidad", "in_date", "counted_qty", "source")
 
 
 def _con_ids(filas: list[dict]) -> tuple[list[dict], bool]:
@@ -43,6 +47,8 @@ def crear(datos: dict, actor: str) -> dict:
         raise ValueError("ubicacion_requerida")
     filas = listar()
     fila = {"id": uuid.uuid4().hex[:10], **{c: datos.get(c) for c in _CAMPOS}}
+    if not fila.get("source"):
+        fila["source"] = "manual"
     filas.append(fila)
     esquema.reemplazar_filas(_TIPO, filas)
     _audit.record(actor, "crear_lote", None, fila)
@@ -69,3 +75,22 @@ def eliminar(id_: str, actor: str) -> None:
     borrado = next(f for f in filas if f["id"] == id_)
     esquema.reemplazar_filas(_TIPO, quedan)
     _audit.record(actor, "eliminar_lote", borrado, None)
+
+
+def list_page(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
+              offset: int = 0, limit: int = paging.DEFAULT_LIMIT,
+              source: str | None = None) -> dict:
+    listar()  # persist ids on seed rows before paging
+    return section_records.list_page(
+        _TIPO, search_in=SEARCH, q=q, sort=sort, direction=direction,
+        offset=offset, limit=limit, source=source,
+    )
+
+
+def export_csv(*, q: str = "", sort: str | None = "producto", direction: str = "asc",
+               source: str | None = None) -> str:
+    listar()
+    return section_records.export_csv(
+        _TIPO, CSV_COLUMNS, search_in=SEARCH, q=q, sort=sort, direction=direction,
+        source=source,
+    )

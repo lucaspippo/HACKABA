@@ -56,8 +56,8 @@ def test_nadie_con_cobertura_holgada_entra_a_la_lista():
 
 
 def test_la_cobertura_es_la_misma_que_la_de_rotacion():
-    """Dos derivaciones distintas del mismo número serían dos verdades."""
-    from core import analisis, store
+    """Cover days are projected_stock / daily rate — same helper as Prioridades."""
+    from core import analisis, stock, store
     r = _r()
     if not r["disponible"]:
         return
@@ -66,7 +66,7 @@ def test_la_cobertura_es_la_misma_que_la_de_rotacion():
     for i in r["items"][:10]:
         a = arts[i["codigo"]]
         ritmo = u12.get(i["codigo"], 0.0) / 365.0
-        esperado = (a.get("stock") or 0) / ritmo
+        esperado = stock.days_of_cover(a, ritmo)
         assert abs(i["cobertura_dias"] - round(esperado, 1)) < 0.11
 
 
@@ -85,6 +85,17 @@ def test_un_plazo_supuesto_viaja_marcado():
         return
     for i in r["items"]:
         assert isinstance(i["lead_propio"], bool)
+
+
+def test_items_exponen_pipeline_y_stockout():
+    r = _r()
+    if not r["disponible"]:
+        return
+    assert "stockout_mes" in r
+    for i in r["items"]:
+        assert "incoming_qty" in i and "outgoing_qty" in i
+        assert "stock" in i and "projected_stock" in i
+        assert isinstance(i["stockout_risk"], bool)
 
 
 def test_sin_ventas_no_inventa_un_ranking():

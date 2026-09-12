@@ -83,6 +83,14 @@ def test_delta_export_marca_la_unidad(_store_limpio):
     assert "$/kg" in r["nota"]                    # la nota lo advierte en criollo
 
 
+def test_articulos_con_estado_expone_pipeline(_store_limpio):
+    items = store.articulos_con_estado()
+    assert items
+    assert "incoming_qty" in items[0]
+    assert "outgoing_qty" in items[0]
+    assert "source" in items[0]
+
+
 def test_articulos_con_estado_expone_unidad(_store_limpio):
     items = store.articulos_con_estado()
     balanzas = [i for i in items if i["unidad_pricing"] == "kg"]

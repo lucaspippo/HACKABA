@@ -1128,6 +1128,7 @@ def deposito_get(dias: int = 15, _u: dict = Depends(require_feature("deposito"))
         "vencidos": deposito.vencidos(),
         "discrepancias": disc_k["visibles"],
         "discrepancias_suprimidas": disc_k["suprimidas"],  # Piece 12 — "vela acá"
+        "aging": deposito.aging(),
     }
 
 
@@ -2190,6 +2191,8 @@ class LoteRequest(BaseModel):
     lote: str = ""
     vencimiento: str | None = None
     cantidad: float = 0
+    in_date: str | None = None
+    counted_qty: float | None = None
 
 
 @app.get("/api/lotes")
@@ -2224,6 +2227,188 @@ def lotes_eliminar(id: str, u: dict = Depends(require_feature("inventario"))):
     except KeyError:
         raise HTTPException(status_code=404, detail="Not Found")
     return {"ok": True}
+
+
+def _csv_file(body: str, filename: str) -> Response:
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+class SaleRequest(BaseModel):
+    fecha: str = ""
+    producto: str
+    codigo: int | None = None
+    cantidad: float = 0
+    precio: float | None = None
+    source: str | None = None
+    source_id: str | None = None
+    source_status: str | None = None
+
+
+@app.get("/api/sales")
+def sales_list(q: str = "", sort: str | None = "fecha", dir: str = "desc",
+               offset: int = 0, limit: int = 50, source: str | None = None,
+               date_from: str | None = None, date_to: str | None = None,
+               _u: dict = Depends(require_feature("inventario"))):
+    from core import sales as sales_mod
+    return sales_mod.list_page(q=q, sort=sort, direction=dir, offset=offset,
+                               limit=limit, source=source, date_from=date_from,
+                               date_to=date_to)
+
+
+@app.get("/api/sales/export.csv")
+def sales_export(q: str = "", sort: str | None = "fecha", dir: str = "desc",
+                 source: str | None = None, date_from: str | None = None,
+                 date_to: str | None = None,
+                 _u: dict = Depends(require_feature("inventario"))):
+    from core import sales as sales_mod
+    return _csv_file(sales_mod.export_csv(
+        q=q, sort=sort, direction=dir, source=source,
+        date_from=date_from, date_to=date_to), "ventas.csv")
+
+
+@app.post("/api/sales")
+def sales_create(req: SaleRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import sales as sales_mod
+    try:
+        return sales_mod.create(req.model_dump(), u.get("nombre") or u.get("username"))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/sales/{id}/actualizar")
+def sales_update(id: str, req: SaleRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import sales as sales_mod
+    try:
+        cambios = {k: v for k, v in req.model_dump().items() if v is not None}
+        return sales_mod.update(id, cambios, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.post("/api/sales/{id}/eliminar")
+def sales_delete(id: str, u: dict = Depends(require_feature("inventario"))):
+    from core import sales as sales_mod
+    try:
+        sales_mod.delete(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+class ReceiptRequest(BaseModel):
+    fecha: str = ""
+    producto: str
+    codigo: int | None = None
+    proveedor: str = ""
+    cantidad: float = 0
+    deposito: str = ""
+    origen: str = ""
+    po_number: str = ""
+    source: str | None = None
+    source_id: str | None = None
+    source_status: str | None = None
+
+
+@app.get("/api/receipts")
+def receipts_list(q: str = "", sort: str | None = "fecha", dir: str = "desc",
+                  offset: int = 0, limit: int = 50, source: str | None = None,
+                  date_from: str | None = None, date_to: str | None = None,
+                  _u: dict = Depends(require_feature("inventario"))):
+    from core import receipts as receipts_mod
+    return receipts_mod.list_page(q=q, sort=sort, direction=dir, offset=offset,
+                                  limit=limit, source=source, date_from=date_from,
+                                  date_to=date_to)
+
+
+@app.get("/api/receipts/export.csv")
+def receipts_export(q: str = "", sort: str | None = "fecha", dir: str = "desc",
+                    source: str | None = None, date_from: str | None = None,
+                    date_to: str | None = None,
+                    _u: dict = Depends(require_feature("inventario"))):
+    from core import receipts as receipts_mod
+    return _csv_file(receipts_mod.export_csv(
+        q=q, sort=sort, direction=dir, source=source,
+        date_from=date_from, date_to=date_to), "recepciones.csv")
+
+
+@app.post("/api/receipts")
+def receipts_create(req: ReceiptRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import receipts as receipts_mod
+    try:
+        return receipts_mod.create(req.model_dump(), u.get("nombre") or u.get("username"))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/receipts/{id}/actualizar")
+def receipts_update(id: str, req: ReceiptRequest,
+                    u: dict = Depends(require_feature("inventario"))):
+    from core import receipts as receipts_mod
+    try:
+        cambios = {k: v for k, v in req.model_dump().items() if v is not None}
+        return receipts_mod.update(id, cambios, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.post("/api/receipts/{id}/eliminar")
+def receipts_delete(id: str, u: dict = Depends(require_feature("inventario"))):
+    from core import receipts as receipts_mod
+    try:
+        receipts_mod.delete(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+@app.get("/api/productos")
+def productos_list(q: str = "", sort: str | None = "descripcion", dir: str = "asc",
+                   offset: int = 0, limit: int = 50, source: str | None = None,
+                   filtro: str | None = None, err: str | None = None,
+                   _u: dict = Depends(require_feature("inventario"))):
+    return store.list_page(q=q, sort=sort, direction=dir, offset=offset, limit=limit,
+                           source=source, filtro=filtro, err=err)
+
+
+@app.get("/api/productos/export.csv")
+def productos_export(q: str = "", sort: str | None = "descripcion", dir: str = "asc",
+                     source: str | None = None, filtro: str | None = None,
+                     err: str | None = None,
+                     _u: dict = Depends(require_feature("inventario"))):
+    return _csv_file(store.export_csv(
+        q=q, sort=sort, direction=dir, source=source, filtro=filtro, err=err),
+        "productos.csv")
+
+
+@app.post("/api/articulos/{codigo}/eliminar")
+def articulos_eliminar(codigo: int, u: dict = Depends(require_feature("inventario"))):
+    try:
+        store.eliminar_articulo(codigo, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+@app.get("/api/movimientos")
+def movimientos_list(q: str = "", sort: str | None = "producto", dir: str = "asc",
+                     offset: int = 0, limit: int = 50, source: str | None = None,
+                     _u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    return lotes.list_page(q=q, sort=sort, direction=dir, offset=offset,
+                           limit=limit, source=source)
+
+
+@app.get("/api/movimientos/export.csv")
+def movimientos_export(q: str = "", sort: str | None = "producto", dir: str = "asc",
+                       source: str | None = None,
+                       _u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    return _csv_file(lotes.export_csv(q=q, sort=sort, direction=dir, source=source),
+                     "movimientos.csv")
 
 
 class ArticuloRequest(BaseModel):

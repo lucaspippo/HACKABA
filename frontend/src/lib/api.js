@@ -33,6 +33,31 @@ async function get(path) {
   return res.json();
 }
 
+function qs(params = {}) {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v != null && v !== "" && v !== "all") u.set(k, String(v));
+  }
+  const s = u.toString();
+  return s ? `?${s}` : "";
+}
+
+async function downloadCsv(path, fallbackName) {
+  const res = await fetch(path, { headers: _headers() });
+  if (!res.ok) throw _error(path, res);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const disp = res.headers.get("content-disposition") || "";
+  const m = disp.match(/filename="?([^"]+)"?/i);
+  a.href = url;
+  a.download = m?.[1] || fallbackName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 async function post(path, body) {
   const res = await fetch(path, {
     method: "POST",
@@ -114,6 +139,21 @@ export const api = {
   loteEliminar: (id) => post(`/api/lotes/${encodeURIComponent(id)}/eliminar`, {}),
   articuloCrear: (p) => post("/api/articulos", p),
   articuloActualizar: (codigo, p) => post(`/api/articulos/${codigo}/actualizar`, p),
+  articuloEliminar: (codigo) => post(`/api/articulos/${codigo}/eliminar`, {}),
+  productos: (p = {}) => get("/api/productos" + qs(p)),
+  productosExport: (p = {}) => downloadCsv("/api/productos/export.csv" + qs(p), "productos.csv"),
+  sales: (p = {}) => get("/api/sales" + qs(p)),
+  salesExport: (p = {}) => downloadCsv("/api/sales/export.csv" + qs(p), "ventas.csv"),
+  saleCrear: (p) => post("/api/sales", p),
+  saleActualizar: (id, p) => post(`/api/sales/${encodeURIComponent(id)}/actualizar`, p),
+  saleEliminar: (id) => post(`/api/sales/${encodeURIComponent(id)}/eliminar`, {}),
+  receipts: (p = {}) => get("/api/receipts" + qs(p)),
+  receiptsExport: (p = {}) => downloadCsv("/api/receipts/export.csv" + qs(p), "recepciones.csv"),
+  receiptCrear: (p) => post("/api/receipts", p),
+  receiptActualizar: (id, p) => post(`/api/receipts/${encodeURIComponent(id)}/actualizar`, p),
+  receiptEliminar: (id) => post(`/api/receipts/${encodeURIComponent(id)}/eliminar`, {}),
+  movimientos: (p = {}) => get("/api/movimientos" + qs(p)),
+  movimientosExport: (p = {}) => downloadCsv("/api/movimientos/export.csv" + qs(p), "movimientos.csv"),
   // P38·C — márgenes por grupo y por producto (mayorista + mostrador)
   margenes: () => get("/api/margenes"),
   margenes_detalle: (grupo) => get(`/api/margenes?grupo=${encodeURIComponent(grupo)}`),
