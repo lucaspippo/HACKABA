@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Brain, Check, Pause, Play, Search, Trash2, X } from "lucide-react";
+import { Brain, Check, Pause, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { SettingsPanel } from "./settings-panel";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
+
+// Mirrors core/conocimiento.py's TIPOS/AMBITOS/NODOS/EFECTOS catalogs.
+const TIPOS = ["regla", "excepcion", "protocolo", "contexto"] as const;
+const AMBITOS = ["cliente", "proveedor", "categoria", "empleado", "global"] as const;
+const NODOS_CATALOGO = [
+  "ventas", "inventario", "deposito", "proveedores",
+  "clientes", "caja", "equipo", "contexto",
+] as const;
+const EFECTOS = [
+  "ajusta_umbral", "suprime_alerta", "genera_alerta",
+  "contexto_para_angela", "requiere_aprobacion",
+] as const;
 
 type Piece = {
   id: string;
@@ -14,6 +26,8 @@ type Piece = {
   entidad?: string | null;
   estado: string;
   tipo: string;
+  ambito?: string;
+  efecto?: string;
   quien?: string | null;
   cuando?: string | null;
 };
@@ -42,8 +56,12 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [node, setNode] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
+  const [formOpen, setFormOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const isAdmin = Boolean(useSession()?.usuario?.es_admin);
+  const session = useSession();
+  const isAdmin = Boolean(session?.usuario?.es_admin);
+  const username = session?.usuario?.username;
 
   useEffect(() => {
     let live = true;
@@ -100,6 +118,27 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (piece: Piece) => {
+    setEditing(piece);
+    setFormOpen(true);
+  };
+
+  const submitForm = async (fields: PieceFormFields) => {
+    if (editing) {
+      const updated = await api.conocimientoEditar(editing.id, fields);
+      setPieces((prev) => prev.map((p) => (p.id === editing.id ? updated.pieza : p)));
+    } else {
+      const created = await api.conocimientoCrear(fields);
+      setPieces((prev) => [...prev, created.pieza]);
+    }
+    setFormOpen(false);
+  };
+
   return (
     <div
       role="dialog"
@@ -144,6 +183,14 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
             className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
           />
         </div>
+
+        <button
+          type="button"
+          onClick={openCreate}
+          className="mb-2.5 flex items-center gap-1 rounded-full bg-tinta px-2.5 py-1 text-xs text-crema outline-none transition-colors hover:bg-tinta/90 focus-visible:ring-2 focus-visible:ring-violeta/40"
+        >
+          <Plus size={12} /> {t("chat.knowledge.create")}
+        </button>
 
         {nodes.length > 1 && (
           <div className="mb-2.5 flex flex-wrap gap-1">
@@ -233,6 +280,11 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     </PieceAction>
                   </>
                 )}
+                {(isAdmin || piece.quien === username) && piece.estado !== "pendiente" && (
+                  <PieceAction label={t("chat.knowledge.edit")} onClick={() => openEdit(piece)}>
+                    <Pencil size={12} />
+                  </PieceAction>
+                )}
                 {isAdmin && piece.estado === "activo" && (
                   <PieceAction
                     label={t("chat.knowledge.pause")}
@@ -291,6 +343,14 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
           onToggle={toggleSetting}
         />
       </div>
+
+      {formOpen && (
+        <PieceForm
+          piece={editing}
+          onCancel={() => setFormOpen(false)}
+          onSubmit={submitForm}
+        />
+      )}
     </div>
   );
 }
@@ -313,5 +373,178 @@ function PieceAction({
     >
       {children}
     </button>
+  );
+}
+
+type PieceFormFields = {
+  texto: string;
+  texto_en?: string;
+  tipo: string;
+  ambito: string;
+  nodo?: string;
+  efecto: string;
+  entidad?: string;
+};
+
+function PieceForm({
+  piece,
+  onCancel,
+  onSubmit,
+}: {
+  piece: Piece | null;
+  onCancel: () => void;
+  onSubmit: (fields: PieceFormFields) => Promise<void>;
+}) {
+  const t = useT();
+  const [texto, setTexto] = useState(piece?.texto ?? "");
+  const [tipo, setTipo] = useState(piece?.tipo ?? TIPOS[0]);
+  const [ambito, setAmbito] = useState(piece?.ambito ?? "global");
+  const [nodo, setNodo] = useState(piece?.nodo ?? NODOS_CATALOGO[0]);
+  const [efecto, setEfecto] = useState(piece?.efecto ?? EFECTOS[0]);
+  const [entidad, setEntidad] = useState(piece?.entidad ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      await onSubmit({
+        texto,
+        tipo,
+        ambito,
+        efecto,
+        entidad: entidad || undefined,
+        ...(piece ? {} : { nodo }),
+      });
+    } catch {
+      setError(t("chat.knowledge.error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-label={t(piece ? "chat.knowledge.edit" : "chat.knowledge.create")}
+      className="absolute inset-0 z-30 flex flex-col bg-papel"
+    >
+      <div className="flex items-center gap-2 border-b border-linea px-3 py-2.5">
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-tinta">
+          {t(piece ? "chat.knowledge.edit" : "chat.knowledge.create")}
+        </h3>
+        <button
+          type="button"
+          aria-label={t("chat.knowledge.close")}
+          onClick={onCancel}
+          className="grid size-7 shrink-0 place-items-center rounded-full text-tinta-suave outline-none transition-colors hover:bg-papel-hondo hover:text-tinta focus-visible:ring-2 focus-visible:ring-violeta/40"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-3 py-3">
+        <label className="mb-2 block text-xs text-tinta-suave">
+          {t("chat.knowledge.form.texto")}
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            required
+            rows={3}
+            className="mt-1 w-full rounded-xl border border-linea bg-crema p-2 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+          />
+        </label>
+
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.tipo")}
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {TIPOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.ambito")}
+            <select
+              value={ambito}
+              onChange={(e) => setAmbito(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {AMBITOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+
+          {!piece && (
+            <label className="text-xs text-tinta-suave">
+              {t("chat.knowledge.form.nodo")}
+              <select
+                value={nodo}
+                onChange={(e) => setNodo(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+              >
+                {NODOS_CATALOGO.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.efecto")}
+            <select
+              value={efecto}
+              onChange={(e) => setEfecto(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {EFECTOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {ambito !== "global" && (
+          <label className="mb-2 block text-xs text-tinta-suave">
+            {t("chat.knowledge.form.entidad")}
+            <input
+              type="text"
+              value={entidad}
+              onChange={(e) => setEntidad(e.target.value)}
+              required
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-2 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            />
+          </label>
+        )}
+
+        {error && <p className="mb-2 text-xs text-rojo">{error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full px-3 py-1.5 text-xs text-tinta-suave hover:text-tinta"
+          >
+            {t("chat.knowledge.form.cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-full bg-tinta px-3 py-1.5 text-xs text-crema disabled:opacity-60"
+          >
+            {t("chat.knowledge.form.save")}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

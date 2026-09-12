@@ -201,6 +201,8 @@ export const api = {
   knowledgeDelete: (pid) => del(`/api/conocimiento/${encodeURIComponent(pid)}`),
   knowledgeSetState: (pid, state) => post(`/api/conocimiento/${encodeURIComponent(pid)}/estado`, { estado: state }),
   knowledgeConfirm: (proposal) => post("/api/conocimiento/confirm", proposal),
+  conocimientoCrear: (pieza) => post("/api/conocimiento", pieza),
+  conocimientoEditar: (pid, campos) => post(`/api/conocimiento/${encodeURIComponent(pid)}/editar`, campos),
   analisis: () => get("/api/analisis"),
   // Bloque D — qué reponer primero, ordenado por la plata que cuesta no hacerlo
   reponer: () => get("/api/reponer"),
