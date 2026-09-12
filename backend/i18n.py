@@ -1704,7 +1704,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.sobre_prop_d": {"es": "Orden de {sug} de {producto} a {proveedor}, en vez de las {oferta} que te empujan.",
                                "en": "Order {sug} of {producto} from {proveedor}, instead of the {oferta} they're pushing."},
 
-    # --- core/patrones.py — aprendizaje continuo: patrones que nadie pidió calcular --
+    # --- core/patrones.py — continuous learning: patterns nobody asked to have calculated --
     "core.pat.combo_t": {
         "es": "{a} y {b} viajan juntos casi siempre",
         "en": "{a} and {b} almost always travel together"},
@@ -3376,20 +3376,20 @@ def mes_nombre(numero: int, lang: str | None = None) -> str:
     return MESES.get(lang, MESES["es"])[numero - 1]
 
 
-# Nombres de día de semana (0=lunes..6=domingo, el mismo índice que
-# datetime.date.weekday()) — para hallazgos que señalan UN día puntual
-# (core/patrones.py: el faltante de caja que se repite un día fijo).
-DIAS_SEMANA = {
+# Weekday names (0=Monday..6=Sunday, same index as datetime.date.weekday())
+# — for findings that call out ONE specific day (core/patrones.py: the cash
+# shortfall pattern that repeats on a fixed weekday).
+WEEKDAYS = {
     "es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
     "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
 }
 
 
-def dia_semana_nombre(weekday: int, lang: str | None = None) -> str:
-    """Nombre del día 0=lunes..6=domingo (`datetime.date.weekday()`) en el
-    idioma pedido (default el del tenant)."""
+def weekday_name(weekday: int, lang: str | None = None) -> str:
+    """Name of weekday 0=Monday..6=Sunday (`datetime.date.weekday()`) in the
+    requested language (defaults to the tenant's)."""
     lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
-    return DIAS_SEMANA.get(lang, DIAS_SEMANA["es"])[weekday]
+    return WEEKDAYS.get(lang, WEEKDAYS["es"])[weekday]
 
 
 # Rubros del dataset (los 8 `tipo` finitos). El valor crudo español es la clave
