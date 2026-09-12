@@ -235,7 +235,9 @@ export default function ChatPanel({
   );
 
   return (
-    <div className="flex h-full flex-col">
+    // The dock sits flush against the aside's border, so it pads itself;
+    // fullscreen is already inset by its own centred column.
+    <div className={`flex h-full flex-col ${variant === "dock" ? "px-3 pb-3" : ""}`}>
       <header className="flex items-center gap-3 pb-3 pt-1">
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl font-bold leading-none">
