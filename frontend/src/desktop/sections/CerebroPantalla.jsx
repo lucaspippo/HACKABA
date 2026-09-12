@@ -30,7 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { construirNube } from "./cerebroNube";
 import { X, Maximize2, Mic, Square } from "lucide-react";
-import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { cerebroBus } from "../../lib/cerebroBus";
 import { useT } from "../../lib/i18n";
 import ChatPanel from "../../views/ChatPanel";
@@ -282,9 +282,12 @@ function Microfono({ onPregunta, texto }) {
 // =============================================================================
 export default function CerebroPantalla({ onCerrar }) {
   const t = useT();
-  const [escena, setEscena] = useState(null);
-  const [grafo, setGrafo] = useState(null);
-  const [mapaTools, setMapaTools] = useState(null);
+  const escenaQ = useApiQuery("escenaReclamo");
+  const grafoQ = useApiQuery("grafo", [[]]);
+  const toolsQ = useApiQuery("cerebroToolsNodos");
+  const escena = escenaQ.data ?? null;
+  const grafo = grafoQ.data ?? null;
+  const mapaTools = toolsQ.data?.nodos_por_tool || null;
   // null = reposo (el cerebro entero) · "zoom" = viajando · "escena" = el caso
   const [fase, setFase] = useState(null);
   const [encendidos, setEncendidos] = useState(null);
@@ -293,14 +296,6 @@ export default function CerebroPantalla({ onCerrar }) {
   const lienzoRef = useRef(null);
   const [caja, setCaja] = useState({ w: 0, h: 0 });
   const usadas = useRef([]);
-
-  useEffect(() => {
-    api.escenaReclamo().then(setEscena).catch(() => {});
-    api.grafo().then(setGrafo).catch(() => {});
-    api.cerebroToolsNodos()
-      .then((r) => setMapaTools(r?.nodos_por_tool || null))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const el = lienzoRef.current;

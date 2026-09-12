@@ -6,6 +6,7 @@ import { FilterChip, FilterDivider, FilterRail, FacetSelect } from "../../compon
 import DateRangePicker from "../../components/DateRangePicker";
 import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
+import { useApiMutation } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { fecha, num } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
@@ -16,6 +17,7 @@ export default function Movimientos({ onNavegar, highlight }) {
   const [modal, setModal] = useState(null);
   const [exportando, setExportando] = useState(false);
   const [soloDiscrepancias, setSoloDiscrepancias] = useState(false);
+  const deleteLot = useApiMutation("loteEliminar");
 
   useEffect(() => {
     if (highlight === "discrepancias" || highlight === "discrepancia") {
@@ -31,7 +33,7 @@ export default function Movimientos({ onNavegar, highlight }) {
 
   const eliminar = async (id) => {
     try {
-      await api.loteEliminar(id);
+      await deleteLot.mutateAsync(id);
       toast(t("movimientos.eliminado"));
       page.reload();
     } catch {
@@ -175,17 +177,18 @@ const CAMPOS = [
 
 function ModalMovimiento({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const createLot = useApiMutation("loteCrear");
+  const updateLot = useApiMutation("loteActualizar");
   const [form, setForm] = useState({
     producto: inicial?.producto || "", ubicacion: inicial?.ubicacion || "",
     lote: inicial?.lote || "", vencimiento: inicial?.vencimiento || "",
     cantidad: inicial?.cantidad ?? "", in_date: inicial?.in_date || "",
     counted_qty: inicial?.counted_qty ?? "",
   });
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const saving = createLot.isPending || updateLot.isPending;
 
   const guardar = async () => {
-    setGuardando(true);
     setError(null);
     const payload = {
       ...form,
@@ -193,14 +196,12 @@ function ModalMovimiento({ inicial, onClose, onGuardado }) {
       counted_qty: form.counted_qty === "" ? null : Number(form.counted_qty),
     };
     try {
-      if (inicial) await api.loteActualizar(inicial.id, payload);
-      else await api.loteCrear(payload);
+      if (inicial) await updateLot.mutateAsync([inicial.id, payload]);
+      else await createLot.mutateAsync([payload]);
       toast(t(inicial ? "movimientos.actualizado" : "movimientos.creado"));
       onGuardado();
     } catch (e) {
       setError(e.criollo || t("movimientos.error"));
-    } finally {
-      setGuardando(false);
     }
   };
 
@@ -224,7 +225,7 @@ function ModalMovimiento({ inicial, onClose, onGuardado }) {
           <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
-          <button type="button" onClick={guardar} disabled={!form.producto.trim() || !form.ubicacion.trim() || guardando}
+          <button type="button" onClick={guardar} disabled={!form.producto.trim() || !form.ubicacion.trim() || saving}
             className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>

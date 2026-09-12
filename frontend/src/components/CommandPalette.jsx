@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, MessageCircle, CornerDownLeft, Package, Users, Truck,
          ShoppingCart, PackageCheck, Loader2 } from "lucide-react";
-import { api } from "../lib/api";
+import { keepPreviousData } from "@tanstack/react-query";
+import { useApiQuery } from "../lib/query";
 import { useT } from "../lib/i18n";
 
 // One icon per kind of thing, so the row says WHAT it is before it is read.
@@ -18,33 +19,31 @@ export default function CommandPalette({ open, onClose, secciones, catalogo, vis
   const t = useT();
   const [q, setQ] = useState("");
   const [activo, setActivo] = useState(0);
-  const [datos, setDatos] = useState([]);
-  const [pregunta, setPregunta] = useState(false);
-  const [buscando, setBuscando] = useState(false);
+  const [debounced, setDebounced] = useState("");
   const inputRef = useRef(null);
+  const texto = q.trim();
 
   useEffect(() => {
-    if (open) { setQ(""); setActivo(0); setDatos([]); setPregunta(false);
+    if (open) { setQ(""); setActivo(0); setDebounced("");
                 requestAnimationFrame(() => inputRef.current?.focus()); }
   }, [open]);
 
   // The data half. Debounced because this types a letter at a time, and
-  // ignoring a stale answer matters more than the debounce: without the
-  // `vivo` flag a slow "le" can land after a fast "leche" and show the wrong
-  // rows under the right query.
+  // ignoring a stale answer matters more than the debounce: the query key
+  // is the settled text, so a slow "le" cannot land over a later "leche".
   useEffect(() => {
-    const texto = q.trim();
-    if (!open || texto.length < 2) { setDatos([]); setPregunta(false); setBuscando(false); return undefined; }
-    let vivo = true;
-    setBuscando(true);
-    const id = setTimeout(() => {
-      api.buscarGlobal(texto)
-        .then((r) => { if (!vivo) return; setDatos(r.items || []); setPregunta(!!r.parece_pregunta); })
-        .catch(() => { if (vivo) { setDatos([]); setPregunta(false); } })
-        .finally(() => { if (vivo) setBuscando(false); });
-    }, 180);
-    return () => { vivo = false; clearTimeout(id); };
-  }, [q, open]);
+    if (!open || texto.length < 2) { setDebounced(""); return undefined; }
+    const id = setTimeout(() => setDebounced(texto), 180);
+    return () => clearTimeout(id);
+  }, [texto, open]);
+
+  const searchQ = useApiQuery("buscarGlobal", [debounced], {
+    enabled: open && debounced.length >= 2,
+    placeholderData: keepPreviousData,
+  });
+  const datos = (!open || texto.length < 2) ? [] : (searchQ.data?.items || []);
+  const pregunta = open && texto.length >= 2 && !!searchQ.data?.parece_pregunta;
+  const buscando = open && texto.length >= 2 && (debounced !== texto || searchQ.isFetching);
 
   const resultados = useMemo(() => {
     const qn = q.trim().toLowerCase();

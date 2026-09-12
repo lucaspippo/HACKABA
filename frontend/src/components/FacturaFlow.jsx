@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, Image as ImageIcon, UploadCloud, FileText, X, Check, ArrowRight, RotateCcw } from "lucide-react";
 import AngelaMark from "./AngelaMark";
 import PanelDecision from "./PanelDecision";
 import { api } from "../lib/api";
+import { useApiQuery, useApiMutation } from "../lib/query";
 import { angelaBus } from "../lib/angelaBus";
 import { peso, fecha as fmtFecha, renderPartes } from "../lib/format";
 import { useT } from "../lib/i18n";
@@ -24,25 +25,24 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
   const [lectura, setLectura] = useState(null);   // respuesta de /api/factura/leer
   const [ext, setExt] = useState(null);           // extracción EDITABLE
   const [resultado, setResultado] = useState(null);
-  const [muestras, setMuestras] = useState(null); // null=no demo / lista
   const [verMuestras, setVerMuestras] = useState(false);
-  // P38·G — el catálogo de pesables, para que la cantidad de un fiambre no sea
-  // sólo un número: "36 → ≈5 hormas de 6,7 kg". El chofer y el depósito piensan
-  // en piezas; la factura llega en kilos. Se muestran las dos.
-  const [pesables, setPesables] = useState({});
   const fileRef = useRef(null);
   const camRef = useRef(null);
+  const muestrasQ = useApiQuery("muestras");
+  const articulosQ = useApiQuery("articulos");
+  const leerMut = useApiMutation("facturaLeer");
+  const confirmarMut = useApiMutation("facturaConfirmar");
+  // Sample receipts exist ONLY in the demo tenant (404 on piloto).
+  const muestras = muestrasQ.isError ? null : (muestrasQ.data?.muestras ?? null);
+  const pesables = useMemo(() => {
+    const m = {};
+    for (const p of articulosQ.data?.items || []) {
+      if (p.unidad_pricing === "kg" && p.peso_por_unidad) m[p.codigo] = p.peso_por_unidad;
+    }
+    return m;
+  }, [articulosQ.data]);
 
   useEffect(() => {
-    // Los comprobantes de muestra existen SOLO en el tenant demo (404 en piloto).
-    api.muestras().then((r) => setMuestras(r.muestras)).catch(() => setMuestras(null));
-    api.articulos().then((r) => {
-      const m = {};
-      for (const p of r.items || []) {
-        if (p.unidad_pricing === "kg" && p.peso_por_unidad) m[p.codigo] = p.peso_por_unidad;
-      }
-      setPesables(m);
-    }).catch(() => {});
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,7 +60,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
         r.onerror = rej;
         r.readAsDataURL(blob);
       });
-      const lec = await api.facturaLeer(b64, mediaType);
+      const lec = await leerMut.mutateAsync([b64, mediaType]);
       if (lec.rechazo || lec.error) {
         setLectura(lec);
         setPaso("rechazo");
@@ -88,7 +88,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
   const confirmar = async () => {
     setPaso("guardando");
     try {
-      const r = await api.facturaConfirmar(ext);
+      const r = await confirmarMut.mutateAsync([ext]);
       setResultado(r);
       setPaso("resultado");
       if (r.ok) {
@@ -384,11 +384,12 @@ function CampoEdit({ label, valor, onChange, ancho = "" }) {
 function Reclamo({ r, t }) {
   const [estado, setEstado] = useState("propuesto"); // propuesto|enviando|hecho|error
   const [msg, setMsg] = useState(null);
+  const reclamarMut = useApiMutation("remitoReclamar");
 
   const reclamar = async () => {
     setEstado("enviando");
     try {
-      await api.remitoReclamar(r.proveedor, r.items, r.oc);
+      await reclamarMut.mutateAsync([r.proveedor, r.items, r.oc]);
       // El texto se compone ACÁ y no se usa el del backend: el idioma del
       // perfil y el del chrome pueden estar desfasados (P31·4) y quedaba un
       // cartel en español sobre una UI en inglés.

@@ -23,7 +23,7 @@ import { Search, Crosshair, Maximize2, Minimize2, Expand, X, ArrowRight, Sparkle
          FlaskConical, Play, Presentation, UserMinus, ChevronDown } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import PanelEvals from "./PanelEvals";
-import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { pesoCorto, num, fecha as fmtFecha } from "../../lib/format";
 import { useT, useLang } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
@@ -501,29 +501,20 @@ function rangoMatch(nombreNorm, q) {
 
 const MAX_RESULTADOS = 8;
 
-// --- carga (mismo patrón P32: cache de sesión por idioma) --------------------
-let _cacheGrafo = { lang: null, datos: null };
+// --- load (P32: session cache per language, now the query cache) -------------
 function useGrafo(langKey, sinNotas = []) {
-  const [d, setD] = useState(_cacheGrafo.lang === langKey ? _cacheGrafo.datos : null);
-  const [error, setError] = useState(null);
-  // `sinNotas` es el contrafáctico. Va como clave del efecto para que quitar
-  // una evidencia vuelva a pedir el grafo — y NO toca el cache de módulo: lo
-  // que se guarda entre visitas es el negocio real, nunca una lectura
-  // hipotética que después parecería la verdad.
-  const claveSin = sinNotas.join(",");
+  // `sinNotas` is the counterfactual. It is part of the query key so dropping
+  // an evidence asks the graph again. The unfiltered graph is what stays
+  // cached between visits — never a hypothetical reading.
+  const q = useApiQuery("grafo", [sinNotas]);
+  const prevLang = useRef(langKey);
+  const refetch = q.refetch;
   useEffect(() => {
-    let vivo = true;
-    if (_cacheGrafo.lang !== langKey && !claveSin) setD(null);
-    api.grafo(claveSin ? claveSin.split(",") : [])
-      .then((r) => {
-        if (!vivo) return;
-        if (!claveSin) _cacheGrafo = { lang: langKey, datos: r };
-        setD(r);
-      })
-      .catch((e) => vivo && setError(e));
-    return () => { vivo = false; };
-  }, [langKey, claveSin]);
-  return { datos: d, error };
+    if (prevLang.current === langKey) return;
+    prevLang.current = langKey;
+    refetch();
+  }, [langKey, refetch]);
+  return { datos: q.data ?? null, error: q.error };
 }
 
 const fmtValor = (m, t) => {

@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { Eye, Undo2, Smartphone } from "lucide-react";
 import Avatar from "./Avatar";
 import BadgeNuevo from "./BadgeNuevo";
-import { api } from "../lib/api";
+import { runMutation, useApiQuery } from "../lib/query";
 import { authStore, useSession } from "../lib/auth";
 import { equipoReal } from "../lib/equipoReal";
 import { toast } from "../lib/toastStore";
@@ -17,7 +16,7 @@ import { useIsDesktop } from "../lib/useViewport";
 
 export async function cambiarA(username, t) {
   try {
-    const s = await api.verComo(username);
+    const s = await runMutation("verComo", username);
     authStore.adoptar(s);
     toast(t("vercomo.ahora", { nombre: s.usuario.nombre }));
   } catch {
@@ -41,12 +40,8 @@ export function VerComoSelector() {
   const session = useSession();
   const { roleSwitch } = useEmpresa();
   const isDesktop = useIsDesktop();
-  const [equipo, setEquipo] = useState([]);
-
-  useEffect(() => {
-    if (!roleSwitch) return;
-    equipoReal().then(setEquipo).catch(() => {});
-  }, [roleSwitch]);
+  const equipoQ = useApiQuery("equipoNombres", [], { enabled: roleSwitch });
+  const equipo = equipoQ.data?.equipo || [];
 
   // P39·1.1 — la nómina es UNA sola: acá están TODOS, los mismos que en "Lo que
   // pasó con tu equipo" y en "Quién ve qué" (antes desktop filtraba por

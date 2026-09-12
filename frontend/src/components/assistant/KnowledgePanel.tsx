@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Brain, Check, Pause, Pencil, Play, Plus, Search, Settings, Trash2, X } from "lucide-react";
 import { SettingsPanel } from "./settings-panel";
-import { api } from "../../lib/api";
+import { useApiQuery, useApiMutation } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
@@ -37,6 +37,12 @@ type Piece = {
 };
 
 type Tab = "active" | "review" | "archived";
+type PiezasPayload = { piezas?: Piece[] };
+type PrefsPayload = { vista?: Record<string, boolean> };
+
+function runMut<T = unknown>(mut: { mutateAsync: (vars: never) => Promise<unknown> }, vars: unknown) {
+  return mut.mutateAsync(vars as never) as Promise<T>;
+}
 const ARCHIVED_ESTADOS = new Set(["archivada", "superada"]);
 
 const FRESHNESS_TONE: Record<string, string> = {
@@ -79,7 +85,6 @@ export default function KnowledgePanel({
   const [query, setQuery] = useState(focusQuery ?? "");
   const [node, setNode] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
   const [formOpen, setFormOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -88,23 +93,32 @@ export default function KnowledgePanel({
   const session = useSession();
   const isAdmin = Boolean(session?.usuario?.es_admin);
   const username = session?.usuario?.username;
+  const activasQ = useApiQuery("conocimiento", [{ incluir_archivadas: true }]);
+  const pendQ = useApiQuery("conocimientoPendientes");
+  const prefsQ = useApiQuery("preferencias");
+  const aprobar = useApiMutation("conocimientoAprobar");
+  const rechazar = useApiMutation("conocimientoRechazar");
+  const reconfirmar = useApiMutation("conocimientoReconfirmar");
+  const archivar = useApiMutation("conocimientoArchivar");
+  const setStateMut = useApiMutation("knowledgeSetState");
+  const deleteMut = useApiMutation("knowledgeDelete");
+  const editar = useApiMutation("conocimientoEditar");
+  const crear = useApiMutation("conocimientoCrear");
+  const prefSet = useApiMutation("preferenciaSet");
+  const loading = (activasQ.isPending && !activasQ.data)
+    || (pendQ.isPending && !pendQ.data)
+    || (prefsQ.isPending && !prefsQ.data);
 
   useEffect(() => {
-    let live = true;
-    Promise.all([
-      api.conocimiento({ incluir_archivadas: true }).catch(() => ({ piezas: [] })),
-      api.conocimientoPendientes().catch(() => ({ piezas: [] })),
-      api.preferencias().catch(() => ({ vista: {} })),
-    ]).then(([activas, pendientes, prefs]) => {
-      if (!live) return;
-      setPieces([...(pendientes.piezas ?? []), ...(activas.piezas ?? [])]);
-      setSettings((prefs.vista ?? {}) as Record<string, boolean>);
-      setLoading(false);
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
+    if (activasQ.isPending && pendQ.isPending && !activasQ.data && !pendQ.data) return;
+    const pendientes = (pendQ.data ?? {}) as PiezasPayload;
+    const activas = (activasQ.data ?? {}) as PiezasPayload;
+    setPieces([...(pendientes.piezas ?? []), ...(activas.piezas ?? [])]);
+  }, [activasQ.data, pendQ.data, activasQ.isPending, pendQ.isPending]);
+
+  useEffect(() => {
+    if (prefsQ.data) setSettings(((prefsQ.data as PrefsPayload).vista ?? {}));
+  }, [prefsQ.data]);
 
   useEffect(() => {
     if (focusQuery) return;
@@ -168,7 +182,7 @@ export default function KnowledgePanel({
     const next = !(settings[key] ?? true);
     setSettings((prev) => ({ ...prev, [key]: next }));
     try {
-      await api.preferenciaSet(key, next);
+      await runMut(prefSet, [key, next]);
     } catch {
       setSettings((prev) => ({ ...prev, [key]: !next }));
       toast(t("chat.settings.error"), "error");
@@ -187,10 +201,10 @@ export default function KnowledgePanel({
 
   const submitForm = async (fields: PieceFormFields) => {
     if (editing) {
-      const updated = await api.conocimientoEditar(editing.id, fields);
+      const updated = await runMut<{ pieza: Piece }>(editar, [editing.id, fields]);
       setPieces((prev) => prev.map((p) => (p.id === editing.id ? updated.pieza : p)));
     } else {
-      const created = await api.conocimientoCrear(fields);
+      const created = await runMut<{ pieza: Piece }>(crear, [fields]);
       setPieces((prev) => [...prev, created.pieza]);
     }
     setFormOpen(false);
@@ -384,7 +398,7 @@ export default function KnowledgePanel({
                     <PieceAction
                       label={t("chat.knowledge.approve")}
                       onClick={() =>
-                        act(piece.id, () => api.conocimientoAprobar(piece.id), {
+                        act(piece.id, () => runMut(aprobar, [piece.id]), {
                           ...piece,
                           estado: "activo",
                         })
@@ -395,7 +409,7 @@ export default function KnowledgePanel({
                     <PieceAction
                       label={t("chat.knowledge.reject")}
                       onClick={() =>
-                        act(piece.id, () => api.conocimientoRechazar(piece.id), null)
+                        act(piece.id, () => runMut(rechazar, [piece.id]), null)
                       }
                     >
                       <X size={12} />
@@ -413,7 +427,7 @@ export default function KnowledgePanel({
                     <PieceAction
                       label={t("chat.knowledge.reconfirm")}
                       onClick={() =>
-                        act(piece.id, () => api.conocimientoReconfirmar(piece.id), {
+                        act(piece.id, () => runMut(reconfirmar, [piece.id]), {
                           ...piece,
                           estado: "activo",
                         })
@@ -424,7 +438,7 @@ export default function KnowledgePanel({
                     <PieceAction
                       label={t("chat.knowledge.archive")}
                       onClick={() =>
-                        act(piece.id, () => api.conocimientoArchivar(piece.id), {
+                        act(piece.id, () => runMut(archivar, [piece.id]), {
                           ...piece,
                           estado: "archivada",
                         })
@@ -438,7 +452,7 @@ export default function KnowledgePanel({
                   <PieceAction
                     label={t("chat.knowledge.pause")}
                     onClick={() =>
-                      act(piece.id, () => api.knowledgeSetState(piece.id, "pausado"), {
+                      act(piece.id, () => runMut(setStateMut, [piece.id, "pausado"]), {
                         ...piece,
                         estado: "pausado",
                       })
@@ -451,7 +465,7 @@ export default function KnowledgePanel({
                   <PieceAction
                     label={t("chat.knowledge.resume")}
                     onClick={() =>
-                      act(piece.id, () => api.knowledgeSetState(piece.id, "activo"), {
+                      act(piece.id, () => runMut(setStateMut, [piece.id, "activo"]), {
                         ...piece,
                         estado: "activo",
                       })
@@ -463,7 +477,7 @@ export default function KnowledgePanel({
                 {isAdmin && piece.estado !== "pendiente" && !ARCHIVED_ESTADOS.has(piece.estado) && (
                   <PieceAction
                     label={t("chat.knowledge.delete")}
-                    onClick={() => act(piece.id, () => api.knowledgeDelete(piece.id), null)}
+                    onClick={() => act(piece.id, () => runMut(deleteMut, [piece.id]), null)}
                   >
                     <Trash2 size={12} />
                   </PieceAction>

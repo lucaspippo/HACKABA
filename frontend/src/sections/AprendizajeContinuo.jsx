@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Lightbulb, Truck, ShieldCheck, CalendarClock, Users2, ArrowRight, Check } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { CardNegocio, DrillNegocio } from "../components/CardNegocio";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { useT } from "../lib/i18n";
 
@@ -104,33 +104,34 @@ function illustrativeExample(example, t) {
 
 export default function AprendizajeContinuo({ onPreguntar }) {
   const t = useT();
-  const [live, setLive] = useState(null); // { [id]: item } for patterns actually firing right now
+  const { data: inbox, isError: inboxError } = useApiQuery("prioridades");
+  const { data: histData, isError: histError } = useApiQuery("patronHistorial");
+  const feedbackMut = useApiMutation("patronFeedback");
   const [selected, setSelected] = useState(null);
   const [handledIds, setHandledIds] = useState(() => new Set()); // fed back on, this session
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [history, setHistory] = useState(null);
 
+  const live = useMemo(() => {
+    if (inboxError) return {};
+    if (!inbox) return null;
+    const all = [...(inbox?.act || []), ...(inbox?.watch || [])];
+    const byId = {};
+    for (const example of EXAMPLES) {
+      const found = all.find((it) => it.id === example.id);
+      if (found) byId[example.id] = found;
+    }
+    return byId;
+  }, [inbox, inboxError]);
+
   useEffect(() => {
-    let cancelled = false;
-    api.prioridades()
-      .then((inbox) => {
-        if (cancelled) return;
-        const all = [...(inbox?.act || []), ...(inbox?.watch || [])];
-        const byId = {};
-        for (const example of EXAMPLES) {
-          const found = all.find((it) => it.id === example.id);
-          if (found) byId[example.id] = found;
-        }
-        setLive(byId);
-      })
-      .catch(() => setLive({})); // no live data: the illustrative examples still show
-    api.patronHistorial().then((r) => setHistory(r.historial || [])).catch(() => setHistory([]));
-    return () => { cancelled = true; };
-  }, []);
+    if (histError) { setHistory([]); return; }
+    if (histData) setHistory(histData.historial || []);
+  }, [histData, histError]);
 
   const giveFeedback = (cardId, action) => {
     setFeedbackBusy(true);
-    api.patronFeedback(cardId, action)
+    feedbackMut.mutateAsync([cardId, action])
       .then((row) => {
         setHandledIds((prev) => new Set(prev).add(cardId));
         setHistory((prev) => [row, ...(prev || [])]);

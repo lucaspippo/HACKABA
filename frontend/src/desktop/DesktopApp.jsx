@@ -40,7 +40,7 @@ import {
   Scale,
   Lightbulb,
 } from "lucide-react";
-import { api } from "../lib/api";
+import { useApiQuery } from "../lib/query";
 import { useAngelaPanelWidth } from "../lib/useAngelaPanelWidth";
 import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
@@ -355,7 +355,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const [consultaAngela, setConsultaAngela] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [faseVisible, setFaseVisible] = useState(true);
-  const [stagingCount, setStagingCount] = useState(0);
+  const stagingQ = useApiQuery("staging");
+  const stagingCount = stagingQ.data?.batches?.length ?? 0;
   // P28·C2 — el insight del nodo clickeado en el mapa: vive ARRIBA del chat,
   // en el panel de Ángela (la conversación entre el mapa y Ángela).
   const [mapaInsight, setMapaInsight] = useState(null);
@@ -363,22 +364,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     if (section !== "mapa") setMapaInsight(null);
   }, [section]);
 
-  useEffect(() => {
-    api
-      .stagingListar()
-      .then((d) => setStagingCount(d.batches.length))
-      .catch(() => {});
-  }, []);
-
   // Badges del sidebar: SOLO donde el número es trabajo despachable.
   // Prioridades counts the same `act` list the page shows.
-  const [nPrioridades, setNPrioridades] = useState(0);
-  useEffect(() => {
-    api
-      .prioridades()
-      .then((d) => setNPrioridades(d.badge || 0))
-      .catch(() => {});
-  }, []);
+  const prioQ = useApiQuery("prioridades");
+  const nPrioridades = prioQ.data?.badge || 0;
   // P38·A — una sola definición de "Datos a corregir" (lib/alertas): el badge
   // cuenta EXACTAMENTE lo que muestran la tabla de stock y la sección.
   const nCorregir = contarACorregir(data);
@@ -392,18 +381,15 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // P37 — Identidad del tenant ENTERA del backend (empresa + logo por tenant).
   // El frontend NO hardcodea ningún cliente: hasta que health resuelve, `marca`
   // es null (skeleton) → nunca se pinta el nombre/logo del piloto por un default.
-  const [marca, setMarca] = useState(null);
-  useEffect(() => {
-    api
-      .health()
-      .then((h) =>
-        setMarca({
-          empresa: h.meta?.empresa || null,
-          logo: h.meta?.logo || null,
-        }),
-      )
-      .catch(() => setMarca({ empresa: null, logo: null }));
-  }, []);
+  const healthQ = useApiQuery("health");
+  const marca = healthQ.isError
+    ? { empresa: null, logo: null }
+    : healthQ.data
+      ? {
+          empresa: healthQ.data.meta?.empresa || null,
+          logo: healthQ.data.meta?.logo || null,
+        }
+      : null;
   const empresa = marca?.empresa || null;
   const clienteLogo = marca?.logo || null;
   const marcaResuelta = !!marca;
@@ -452,10 +438,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     setHighlightRobusto(hl);
   };
   const irAPendientes = () => {
-    api
-      .stagingListar()
-      .then((d) => setStagingCount(d.batches.length))
-      .catch(() => {});
+    stagingQ.refetch();
     navegar("staging");
   };
   // El acordeón sigue a la sección activa, venga de donde venga el click
@@ -890,7 +873,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     )}
                     {section === "staging" && (
                       <StagingArea
-                        onCambio={setStagingCount}
                         onRecargar={onRecargar}
                         onNavigate={navegar}
                       />

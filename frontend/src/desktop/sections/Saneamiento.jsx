@@ -4,6 +4,7 @@ import AngelaMark from "../../components/AngelaMark";
 import PanelDecision from "../../components/PanelDecision";
 import { CATEGORIAS_CON_PROPUESTA } from "../../lib/decisiones";
 import { api } from "../../lib/api";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import { resaltarPorId } from "../../lib/navGuiada";
 import { equipoStore } from "../../lib/equipoStore";
 import { responsableVerificacion } from "../../lib/equipoReal";
@@ -38,27 +39,21 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
   const t = useT();
   // Quality errors on data that is ALREADY live. New rows waiting for OK
   // live on the staging step of the ingest pipeline.
-  const [enRevision, setEnRevision] = useState(0);
-  useEffect(() => {
-    api.stagingListar().then((d) => setEnRevision(d.batches.length)).catch(() => {});
-  }, []);
-  const [libro, setLibro] = useState(null);
-  const [anomalias, setAnomalias] = useState([]);
-  const [preview, setPreview] = useState(null); // {categoria, ...proponer}
+  const { data: stagingData } = useApiQuery("staging");
+  const enRevision = stagingData?.batches?.length ?? 0;
+  const { data: libro } = useApiQuery("calidad");
+  const { data: anomalyData } = useApiQuery("anomalias");
+  const anomalias = anomalyData?.anomalias ?? [];
+  const { data: deltaData } = useApiQuery("syncDelta", ["generico"]);
+  const deltaCount = deltaData?.registros ?? 0;
+  const [previewCat, setPreviewCat] = useState(null);
+  const { data: preview } = useApiQuery("saneamientoProponer", [previewCat], { enabled: !!previewCat });
+  const applyFix = useApiMutation("saneamientoAplicar");
+  const revertFix = useApiMutation("saneamientoRevertir");
   const [resultado, setResultado] = useState(null); // {...aplicar}
   const [delegadoA, setDelegadoA] = useState(null); // responsable real de verificar
   const [trabajando, setTrabajando] = useState(false);
-  const [deltaCount, setDeltaCount] = useState(0);
   const [deltaCerrado, setDeltaCerrado] = useState(false);
-
-  const cargar = () => {
-    api.calidad().then(setLibro).catch(() => {});
-    api.anomalias().then((d) => setAnomalias(d.anomalias)).catch(() => {});
-    api.syncDelta("generico").then((d) => setDeltaCount(d.registros)).catch(() => {});
-  };
-  useEffect(() => {
-    cargar();
-  }, []);
 
   const exportarDelta = async (formato) => {
     const d = await api.syncDelta(formato);
@@ -90,17 +85,16 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
     return resaltarPorId(`san-${highlight}`, 300);
   }, [highlight, libro]);
 
-  const abrirPreview = async (cat) => {
+  const abrirPreview = (cat) => {
     setResultado(null);
-    const p = await api.saneamientoProponer(cat);
-    setPreview(p);
+    setPreviewCat(cat);
   };
 
   const aplicar = async (cat) => {
     setTrabajando(true);
-    const r = await api.saneamientoAplicar(cat, user?.nombre || "dueño");
+    const r = await applyFix.mutateAsync([cat, user?.nombre || "dueño"]);
     setResultado(r);
-    setPreview(null);
+    setPreviewCat(null);
     // Ángela delega sola: genera una tarea de verificación para el responsable
     // REAL del tenant (P9·C2, M3).
     const resp = RESPONSABLE[cat];
@@ -111,15 +105,13 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
         setDelegadoA(quien);
       }
     }
-    await cargar();
     setTrabajando(false);
   };
 
   const revertir = async (vid) => {
     setTrabajando(true);
-    await api.saneamientoRevertir(vid, user?.nombre || "dueño");
+    await revertFix.mutateAsync([vid, user?.nombre || "dueño"]);
     setResultado(null);
-    await cargar();
     setTrabajando(false);
   };
 
@@ -262,7 +254,7 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
                     <PanelDecision
                       className="mt-4"
                       impacto={preview.impacto_pesos}
-                      extra={<button onClick={() => setPreview(null)} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>}
+                      extra={<button onClick={() => setPreviewCat(null)} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>}
                       acciones={
                         <>
                           <button
@@ -272,7 +264,7 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
                           >
                             <Check size={15} /> {trabajando ? t("saneamiento.corrigiendo") : t("saneamiento.dale_corregilo")}
                           </button>
-                          <button onClick={() => setPreview(null)} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
+                          <button onClick={() => setPreviewCat(null)} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
                             {t("saneamiento.ahora_no")}
                           </button>
                           <span className="ml-auto text-xs text-tinta-suave">{t("saneamiento.backup_nota")}</span>

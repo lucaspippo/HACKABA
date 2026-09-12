@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MapPin, ChevronRight, Loader2, Clock, Sparkles } from "lucide-react";
-import { api } from "../lib/api";
 import { peso, num } from "../lib/format";
-import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
+import { useT } from "../lib/i18n";
 
 // C2 · LA PARADA ENRIQUECIDA — quién está parado frente a quién.
 //
@@ -30,23 +30,11 @@ function Bloque({ titulo, children, tono = "" }) {
 
 export default function Parada({ transporte, onVolver }) {
   const t = useT();
-  const lang = useLang();
-  const [paradas, setParadas] = useState(null);
+  const { data: stopsData, isLoading: stopsLoading } = useApiQuery("paradasProximas", [transporte]);
   const [i, setI] = useState(0);
-  const [det, setDet] = useState(null);
-
-  useEffect(() => {
-    api.paradasProximas(transporte)
-      .then((d) => setParadas(d.paradas || []))
-      .catch(() => setParadas([]));
-  }, [transporte]);
-
+  const paradas = stopsLoading ? null : (stopsData?.paradas || []);
   const actual = paradas?.[i];
-  useEffect(() => {
-    if (!actual) return;
-    setDet(null);
-    api.parada(actual.cliente).then(setDet).catch(() => setDet({}));
-  }, [actual?.cliente, lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data: det } = useApiQuery("parada", [actual?.cliente], { enabled: !!actual?.cliente });
 
   if (!paradas) return <div className="py-10 text-center text-sm text-tinta-suave">
     <Loader2 size={18} className="mx-auto animate-spin" /></div>;

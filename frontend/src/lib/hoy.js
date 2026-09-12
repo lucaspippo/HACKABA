@@ -2,10 +2,10 @@
 // Date-range presets must use this, not the browser clock, or July demo data
 // disappears the moment someone opens the app in August.
 
-import { apiUrl } from "./apiUrl";
+import { queryClient } from "./query/client";
+import { queries } from "./query/queries";
 
 let _hoy = null;
-let _promise = null;
 
 function localIso(d = new Date()) {
   const y = d.getFullYear();
@@ -19,16 +19,12 @@ export function isoHoy() {
 }
 
 export function ensureHoy() {
-  if (_hoy) return Promise.resolve(_hoy);
-  if (_promise) return _promise;
-  _promise = fetch(apiUrl("/api/health"))
-    .then((r) => r.json())
+  return queryClient.ensureQueryData(queries.health())
     .then((h) => {
       if (h?.hoy) _hoy = h.hoy;
       return isoHoy();
     })
     .catch(() => isoHoy());
-  return _promise;
 }
 
 export function parseIso(iso) {

@@ -1,33 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PackageSearch, Plus, X, Pencil, Trash2 } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
-import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { num, fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 
 export default function Lotes({ onNavegar }) {
   const t = useT();
-  const [items, setItems] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("lotes");
+  const loteEliminar = useApiMutation("loteEliminar");
+  const items = data?.lotes;
   const [modal, setModal] = useState(null);
   const [q, setQ] = useState("");
 
-  const cargar = () => api.lotes().then((d) => setItems(d.lotes)).catch(setError);
-  useEffect(() => { cargar(); }, []);
-
   const eliminar = async (id) => {
     try {
-      await api.loteEliminar(id);
+      await loteEliminar.mutateAsync(id);
       toast(t("lotes.eliminado"));
-      cargar();
     } catch {
       toast(t("lotes.error"), "error");
     }
   };
 
-  if (!items) return <div className="pt-2"><Cargando error={error} /></div>;
+  if (items == null) return <div className="pt-2"><Cargando error={error} /></div>;
 
   const qn = q.trim().toLowerCase();
   const filtrados = qn
@@ -86,7 +83,7 @@ export default function Lotes({ onNavegar }) {
         <ModalLote
           inicial={modal === "nuevo" ? null : modal}
           onClose={() => setModal(null)}
-          onGuardado={() => { setModal(null); cargar(); }}
+          onGuardado={() => { setModal(null); }}
         />
       )}
     </div>
@@ -103,6 +100,8 @@ const CAMPOS = [
 
 function ModalLote({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const loteCrear = useApiMutation("loteCrear");
+  const loteActualizar = useApiMutation("loteActualizar");
   const [form, setForm] = useState({
     producto: inicial?.producto || "", ubicacion: inicial?.ubicacion || "",
     lote: inicial?.lote || "", vencimiento: inicial?.vencimiento || "",
@@ -116,8 +115,8 @@ function ModalLote({ inicial, onClose, onGuardado }) {
     setError(null);
     const payload = { ...form, cantidad: Number(form.cantidad) || 0 };
     try {
-      if (inicial) await api.loteActualizar(inicial.id, payload);
-      else await api.loteCrear(payload);
+      if (inicial) await loteActualizar.mutateAsync([inicial.id, payload]);
+      else await loteCrear.mutateAsync(payload);
       toast(t(inicial ? "lotes.actualizado" : "lotes.creado"));
       onGuardado();
     } catch (e) {

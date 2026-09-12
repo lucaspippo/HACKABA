@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, ReferenceLine, LabelList, CartesianGrid } from "recharts";
 import { TrendingUp, ArrowRight, AlertTriangle, Sparkles } from "lucide-react";
 import { gridProps, ejeX, ejeY, tooltipProps, STROKE_DATA, GRIS_TENUE, tealSecuencial } from "../../components/charts/tema";
 import AngelaMark from "../../components/AngelaMark";
 import Widget from "../../components/Widget";
 import { useVista, vistaStore } from "../../lib/vistaStore";
-import { api } from "../../lib/api";
 import Cargando from "../../components/Cargando";
 import { pesoCorto, peso, num } from "../../lib/format";
 import { GRAFICO } from "../../lib/paleta";
 import { useT } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 
 // Evolución: comparar peras con peras. La serie nominal miente en Argentina;
 // acá todo se muestra también en pesos de hoy (deflactado por IPC INDEC).
@@ -46,29 +46,20 @@ function CardComparacion({ titulo, comp }) {
 export default function Evolucion({ data, onNavegar, onPreguntar }) {
   const t = useT();
   const vista = useVista();
-  const [d, setD] = useState(null);
-  const [error, setError] = useState(null);
+  const { data: d, error } = useApiQuery("evolucion");
+  const { data: analisis } = useApiQuery("analisis");
+  const { data: forecast } = useApiQuery("forecast");
   const [meses, setMeses] = useState(12);
-  const [analisis, setAnalisis] = useState(null);
-  const [forecast, setForecast] = useState(null);
   const [verNominal, setVerNominal] = useState(true);
   // "Resumen" (KPIs + interanual/YTD + tendencia) es lo que se mira todos
   // los días; estacionalidad/composición quedan a una pestaña, no borradas.
   const [tab, setTab] = useState("resumen");
 
-  // `data` cambia de identidad en cada recarga global (una lista de precios
-  // aplicada/revertida, un saneo): los KPIs se re-piden y el número CAMBIA a la
-  // vista, sin salir de la sección (P22·A).
-  useEffect(() => {
-    api.evolucion().then(setD).catch(setError);
-    api.analisis().then(setAnalisis).catch(() => {});
-    api.forecast().then(setForecast).catch(() => {});
-  }, [data]);
   const picos = analisis?.estacionalidad?.proximos_picos || [];
   const kpis = analisis?.kpis || {};
   const nQuiebre = (forecast?.items || []).filter((it) => it.available && it.stockout_risk).length;
 
-  if (!d) return <div className="pt-2"><Cargando error={error} /></div>;
+  if (d == null) return <div className="pt-2"><Cargando error={error} /></div>;
 
   // --- Modo dormido: el estado honesto que ya usa el producto ---
   if (!d.hay_datos) {

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { apiUrl } from "./apiUrl";
+import { queryClient } from "./query/client";
 
 // Sesión del usuario logueado. Persiste en localStorage. Reactiva.
 const KEY = "polpilot.session.v1";
@@ -38,6 +39,7 @@ export const authStore = {
     session = await res.json(); // { token, usuario }
     localStorage.setItem(KEY, JSON.stringify(session));
     sessionStorage.removeItem("polpilot.logout.manual");
+    queryClient.clear();
     emit();
     return session;
   },
@@ -48,6 +50,7 @@ export const authStore = {
     session = null;
     localStorage.removeItem(KEY);
     if (manual) sessionStorage.setItem("polpilot.logout.manual", "1");
+    queryClient.clear();
     emit();
   },
   // "View as / Ver como" del demo (P9·E): adopta la sesión LEGÍTIMA que emitió
@@ -56,6 +59,7 @@ export const authStore = {
     if (!nueva?.token || !nueva?.usuario) return;
     session = nueva;
     localStorage.setItem(KEY, JSON.stringify(session));
+    queryClient.clear();
     emit();
   },
   // Refresca el usuario desde el backend (features nuevas tras una aprobación).

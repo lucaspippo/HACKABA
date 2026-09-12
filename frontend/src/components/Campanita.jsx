@@ -1,37 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
-import { api } from "../lib/api";
 import { authStore } from "../lib/auth";
 import { useT } from "../lib/i18n";
+import { useApiMutation, useApiQuery } from "../lib/query";
 
 // Shared poll for the desktop bell and the mobile Más sheet. Soft 30s
 // refresh; a module-change notice also refreshes the session so the nav
 // shows (or hides) the section immediately.
 export function useNotificaciones(token) {
-  const [items, setItems] = useState([]);
-  const [noLeidas, setNoLeidas] = useState(0);
+  const q = useApiQuery("notificaciones", [token], {
+    enabled: !!token,
+    refetchInterval: 30_000,
+  });
+  const marcar = useApiMutation("notificacionLeida");
 
-  const cargar = () => {
-    if (!token) return;
-    api.notificaciones(token).then((d) => {
-      setItems(d.notificaciones || []);
-      setNoLeidas(d.no_leidas || 0);
-      if ((d.notificaciones || []).some((n) => !n.leida && (n.tipo === "solicitud_resuelta" || n.tipo === "modulo_cambiado"))) {
-        authStore.refresh();
-      }
-    }).catch(() => {});
-  };
+  const items = q.data?.notificaciones || [];
+  const noLeidas = q.data?.no_leidas || 0;
 
   useEffect(() => {
-    cargar();
-    const id = setInterval(cargar, 30000);
-    return () => clearInterval(id);
-  }, [token]);
+    if (items.some((n) => !n.leida && (n.tipo === "solicitud_resuelta" || n.tipo === "modulo_cambiado"))) {
+      authStore.refresh();
+    }
+  }, [items]);
+
+  const cargar = () => { q.refetch(); };
 
   const marcarLeida = async (n) => {
     if (!n.leida) {
-      try { await api.notificacionLeida(n.id, token); } catch { /* retry on reload */ }
-      cargar();
+      try { await marcar.mutateAsync([n.id, token]); } catch { /* retry on reload */ }
     }
   };
 

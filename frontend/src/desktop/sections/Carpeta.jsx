@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileText, Check, TriangleAlert, Download, ChevronRight, Truck } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { peso } from "../../lib/format";
 import { useT } from "../../lib/i18n";
@@ -38,39 +39,26 @@ const ESTADO_CLS = {
 
 export default function Carpeta({ onPreguntar }) {
   const t = useT();
-  const [pedidos, setPedidos] = useState(null);
+  const { data: pedidosData, isPending: pedidosPending, isError: pedidosError } = useApiQuery("carpetaPedidos");
+  const pedidos = pedidosError ? [] : pedidosData?.pedidos;
   const [sel, setSel] = useState(null);
-  const [carpeta, setCarpeta] = useState(null);
   const [docId, setDocId] = useState(null);
-  const [doc, setDoc] = useState(null);
+  const { data: carpeta, isError: carpetaError } = useApiQuery("carpeta", [sel], { enabled: !!sel });
+  const { data: doc, isError: docError } = useApiQuery("carpetaDocumento", [sel, docId], { enabled: !!sel && !!docId });
 
   useEffect(() => {
-    api.carpetaPedidos()
-      .then((r) => {
-        setPedidos(r.pedidos || []);
-        if (r.pedidos?.length) setSel(r.pedidos[0].numero);
-      })
-      .catch(() => setPedidos([]));
-  }, []);
+    if (sel == null && pedidos?.length) setSel(pedidos[0].numero);
+  }, [pedidos, sel]);
 
   useEffect(() => {
-    if (!sel) return;
-    setCarpeta(null); setDoc(null); setDocId(null);
-    api.carpeta(sel).then((c) => {
-      setCarpeta(c);
-      if (c.documentos?.length) setDocId(c.documentos[0].id);
-    }).catch(() => setCarpeta(false));
+    setDocId(null);
   }, [sel]);
 
   useEffect(() => {
-    if (!sel || !docId) return;
-    let vivo = true;
-    api.carpetaDocumento(sel, docId)
-      .then((d) => vivo && setDoc(d)).catch(() => vivo && setDoc(false));
-    return () => { vivo = false; };
-  }, [sel, docId]);
+    if (!docId && carpeta?.documentos?.length) setDocId(carpeta.documentos[0].id);
+  }, [carpeta, docId]);
 
-  if (pedidos === null) return <div className="h-64 animate-pulse rounded-[var(--radius-card)] bg-papel-hondo/50" />;
+  if (pedidosPending || pedidos === undefined) return <div className="h-64 animate-pulse rounded-[var(--radius-card)] bg-papel-hondo/50" />;
   if (!pedidos.length) return <p className="text-sm text-tinta-suave">{t("carpeta.sin_pedidos")}</p>;
 
   return (
@@ -98,7 +86,7 @@ export default function Carpeta({ onPreguntar }) {
         </aside>
 
         <div className="min-w-0 space-y-4">
-          {carpeta && carpeta !== false && (
+          {carpeta && !carpetaError && (
             <>
               <ControlCruzado cc={carpeta.control_cruzado} />
               <div className="flex flex-wrap gap-2">
@@ -118,7 +106,7 @@ export default function Carpeta({ onPreguntar }) {
               </div>
             </>
           )}
-          {doc && doc !== false && <Documento doc={doc} onPreguntar={onPreguntar} />}
+          {doc && !docError && <Documento doc={doc} onPreguntar={onPreguntar} />}
         </div>
       </div>
     </div>

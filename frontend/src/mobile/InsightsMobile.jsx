@@ -3,19 +3,16 @@ import { ArrowRight, Radar, Check, CalendarClock } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
-import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
-import { useSession } from "../lib/auth";
 import { pesoCorto } from "../lib/format";
 import { useLang, useT } from "../lib/i18n";
 import { accionDe, estiloAccion } from "../lib/prioridadAccion";
 import { buildPrioridadPrompt } from "../lib/prioridadPrompt";
+import { useApiMutation, useApiQuery } from "../lib/query";
 
 // Mobile Prioridades: same ranked inbox as desktop, compact rows + overlay drill —
 // same drill props too (confidence, propuesta approval, pattern feedback,
 // involucrado drill-through), not a read-only summary of the desktop version.
-
-let _cachePrio = { lang: null, data: null };
 
 // Mirrors Prioridades.jsx's INVOLVED_NAV — where an involucrado's `kind`
 // sends the reader when tapped.
@@ -102,38 +99,17 @@ function Fila({ item, selected, onOpen }) {
 export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const t = useT();
   const lang = useLang();
-  const langKey = useSession()?.usuario?.idioma || "es";
-  const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
-  // Only the id, never the row object: after reload() replaces `data`, a
+  const { data, isLoading: cargando } = useApiQuery("prioridades");
+  const prepareOrder = useApiMutation("ordenCompraPreparar");
+  const patternFeedback = useApiMutation("patronFeedback");
+  // Only the id, never the row object: after a mutation invalidates `data`, a
   // stored snapshot would keep rendering pre-approval state (no `actionTaken`)
   // for as long as the drill stays open. Desktop's Prioridades.jsx does the
   // same — id in state, row derived from the freshest data each render.
   const [abiertaId, setAbiertaId] = useState(null);
   const [filtro, setFiltro] = useState(null);
-  const [proposalWorking, setProposalWorking] = useState(false);
-  const [feedbackBusy, setFeedbackBusy] = useState(false);
-
-  useEffect(() => {
-    let vivo = true;
-    api.prioridades()
-      .then((d) => {
-        _cachePrio = { lang: langKey, data: d };
-        if (vivo) setData(d);
-      })
-      .catch(() => { if (vivo) setData({ act: [], watch: [], hay_ventas: false }); });
-    return () => { vivo = false; };
-  }, [langKey]);
-
-  const reload = () => {
-    api.prioridades()
-      .then((d) => {
-        _cachePrio = { lang: langKey, data: d };
-        setData(d);
-      })
-      .catch(() => setData({ act: [], watch: [], hay_ventas: false }));
-  };
-
-  const cargando = data === null;
+  const proposalWorking = prepareOrder.isPending;
+  const feedbackBusy = patternFeedback.isPending;
   const actRaw = data?.act || [];
   const watchRaw = data?.watch || [];
   const todos = [...actRaw, ...watchRaw];
@@ -166,30 +142,24 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const approveProposal = async (c) => {
     const p = c.propuesta;
     if (!p) return;
-    setProposalWorking(true);
     try {
-      const r = await api.ordenCompraPreparar({
+      const r = await prepareOrder.mutateAsync([{
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
-      });
+      }]);
       toast(r.mensaje);
-      reload();
     } catch {
       toast(t("oportunidades.prop_error"));
     }
-    setProposalWorking(false);
   };
 
   const giveFeedback = (item, action) => {
-    setFeedbackBusy(true);
-    api.patronFeedback(item.id, action)
+    patternFeedback.mutateAsync([item.id, action])
       .then(() => {
         toast(t("aprendizaje.feedback_ok"));
         setAbiertaId(null);
-        reload();
       })
-      .catch(() => toast(t("aprendizaje.feedback_error"), "error"))
-      .finally(() => setFeedbackBusy(false));
+      .catch(() => toast(t("aprendizaje.feedback_error"), "error"));
   };
 
   const viewInvolvedRecord = (iv) => {

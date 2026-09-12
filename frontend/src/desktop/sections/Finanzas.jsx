@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
 import { Lock, Snowflake, TrendingUp, Banknote, CreditCard, FileText, ArrowRight } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
-import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 
 // `datos` (de /api/fase) dice qué hay REALMENTE cargado en este tenant (B3):
 // con cuentas presentes, ni el intro ni los placeholders piden ese Excel.
@@ -14,8 +13,7 @@ export default function Finanzas({ data, onPreguntar, datos, onNavegar }) {
   const { resumen, alertas } = data;
   const potencial = alertas.sin_pvp.impacto_pesos;
   const hayCuentas = !!datos?.cuentas;
-  const [pagos, setPagos] = useState(null);
-  useEffect(() => { api.pagos().then(setPagos).catch(() => {}); }, []);
+  const { data: pagos } = useApiQuery("pagos");
   const liq = pagos?.resumen?.hay_datos ? pagos.resumen : null;
 
   return (

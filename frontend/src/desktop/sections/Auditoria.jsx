@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ShieldCheck, Search, ChevronDown, Undo2, Lock, HandCoins, Boxes, Database,
   KeyRound, UserCircle, MessageCircle, Wrench, CircleUser, Bot, X, Link2,
 } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
-import { api } from "../../lib/api";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import { peso, num } from "../../lib/format";
 import { fechaRelativa } from "../../components/ActividadFeed";
 import { toast } from "../../lib/toastStore";
@@ -41,27 +41,35 @@ const ORDEN_CLASES = ["plata", "stock", "datos", "permisos", "perfil", "consulta
 export default function Auditoria() {
   const t = useT();
   const lang = useLang();
-  const [d, setD] = useState(null);          // null = cargando, false = error
-  const [aut, setAut] = useState(null);
   const [clase, setClase] = useState(null);
   const [actor, setActor] = useState("");
   const [q, setQ] = useState("");
   const [sujeto, setSujeto] = useState(null); // hilo abierto
-  const [hilo, setHilo] = useState(null);     // { sujeto, eventos } | null
+  const filters = useMemo(() => ({ clase, actor, q }), [clase, actor, q]);
+  const auditQ = useApiQuery("auditoria", [filters]);
+  const autQ = useApiQuery("autonomia");
+  const hiloQ = useApiQuery("auditoriaHilo", [sujeto], { enabled: !!sujeto });
+  const d = auditQ.isError ? false : (auditQ.isPending ? null : auditQ.data);
+  const aut = autQ.isError ? false : autQ.data;
+  const hilo = sujeto ? hiloQ.data : null;
+  const langRef = useRef(lang);
 
-  const recargar = () =>
-    api.auditoria({ clase, actor, q }).then(setD).catch(() => setD(false));
-
-  // El registro se repide al cambiar el filtro; el idioma también, porque los
-  // textos vienen traducidos del backend (mismo criterio que el resto del P31).
-  useEffect(() => { setD(null); recargar(); }, [clase, actor, q, lang]);
-  useEffect(() => { api.autonomia().then(setAut).catch(() => setAut(false)); }, [lang]);
-  // El hilo abierto también: si no, al cambiar de idioma la pantalla queda
-  // mitad en uno y mitad en el otro (P31 — el bug bilingüe que ya cazamos una vez).
+  // El registro se repide al cambiar de idioma: los textos vienen traducidos
+  // del backend (mismo criterio que el resto del P31).
   useEffect(() => {
-    if (!sujeto) { setHilo(null); return; }
-    api.auditoriaHilo(sujeto).then(setHilo).catch(() => { setSujeto(null); toast(t("audit.error")); });
-  }, [sujeto, lang]);
+    if (langRef.current === lang) return;
+    langRef.current = lang;
+    auditQ.refetch();
+    autQ.refetch();
+    if (sujeto) hiloQ.refetch();
+  }, [lang, auditQ.refetch, autQ.refetch, hiloQ.refetch, sujeto]);
+
+  useEffect(() => {
+    if (hiloQ.isError && sujeto) {
+      setSujeto(null);
+      toast(t("audit.error"));
+    }
+  }, [hiloQ.isError, sujeto, t]);
 
   const r = d?.resumen;
   const filtrando = !!(clase || actor || q);
@@ -100,7 +108,7 @@ export default function Auditoria() {
         {/* QUÉ PUEDE HACER ÁNGELA SOLA — la perilla, con los candados a la vista. */}
         {aut && (
           <div className="border-t border-linea pt-4">
-            <PanelAutonomia aut={aut} onCambio={(x) => { setAut(x); recargar(); }} />
+            <PanelAutonomia aut={aut} onCambio={() => auditQ.refetch()} />
           </div>
         )}
 
@@ -361,14 +369,15 @@ function Hilo({ hilo, hoyISO, t, onCerrar }) {
 // El candado no es un default conservador que mañana movemos: es la promesa.
 function PanelAutonomia({ aut, onCambio }) {
   const t = useT();
+  const setAutonomy = useApiMutation("autonomiaSet");
   const [abierto, setAbierto] = useState(false);
   const [guardando, setGuardando] = useState(null);
 
   const cambiar = async (clase, nivel) => {
     setGuardando(clase);
     try {
-      await api.autonomiaSet(clase, nivel);
-      onCambio(await api.autonomia());
+      await setAutonomy.mutateAsync([clase, nivel]);
+      onCambio();
       toast(t("audit.aut_guardado"));
     } catch {
       toast(t("audit.error"));

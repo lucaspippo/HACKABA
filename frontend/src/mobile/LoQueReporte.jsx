@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Loader2, Eye, CircleDot, Sparkles } from "lucide-react";
-import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
-import { useT, useLang } from "../lib/i18n";
+import { useT } from "../lib/i18n";
+import { useApiMutation, useApiQuery } from "../lib/query";
 
 // P·círculo — LO QUE PASÓ CON LO QUE DIJE.
 //
@@ -52,12 +52,10 @@ function titulo(r, t) {
 
 export default function LoQueReporte({ onCambio }) {
   const t = useT();
-  const lang = useLang();
-  const [d, setD] = useState(null);
+  const { data: d } = useApiQuery("pisoMios");
+  const resolveReport = useApiMutation("pisoResolver");
+  const markSeen = useApiMutation("pisoVisto");
   const [cerrando, setCerrando] = useState(null);
-
-  const cargar = () => api.piso.mios().then(setD).catch(() => setD({}));
-  useEffect(() => { cargar(); /* eslint-disable-next-line */ }, [lang]);
 
   if (!d) return null;
   const mandados = d.me_mandaron || [];
@@ -68,9 +66,8 @@ export default function LoQueReporte({ onCambio }) {
   const cerrar = async (r) => {
     setCerrando(r.id);
     try {
-      await api.piso.resolver(r.id);
+      await resolveReport.mutateAsync([r.id]);
       toast(t("circulo.cerrado_ok"));
-      await cargar();
       onCambio?.();
     } catch {
       toast(t("circulo.cerrado_error"), "error");
@@ -80,7 +77,7 @@ export default function LoQueReporte({ onCambio }) {
 
   const abrir = async (r) => {
     if (r.visto) return;
-    try { await api.piso.visto(r.id); await cargar(); } catch { /* el acuse no molesta */ }
+    try { await markSeen.mutateAsync([r.id]); } catch { /* el acuse no molesta */ }
   };
 
   return (

@@ -94,6 +94,8 @@ export const api = {
   // P·onboarding — la guía del que recién entró (recortada a sus features).
   onboarding: () => get("/api/onboarding"),
   objetivos: () => get("/api/objetivos"),
+  objetivosMedidos: (token) =>
+    get(`/api/objetivos-medidos?token=${encodeURIComponent(token)}`),
   objetivoCrear: (nombre, responsable, fecha, id) =>
     post("/api/objetivos", { nombre, responsable, fecha, id }),
   objetivoEstado: (oid, estado) => post(`/api/objetivos/${oid}/estado`, { estado }),
@@ -400,10 +402,13 @@ export const api = {
     return res.json();
   },
   perfil: (usuario) => get(`/api/perfil/${encodeURIComponent(usuario)}`),
+  perfiles: (token) => get(`/api/perfiles?token=${encodeURIComponent(token)}`),
   perfilDescripcion: (usuario, token, texto) =>
     post(`/api/perfil/${encodeURIComponent(usuario)}/descripcion`, { token, texto }),
   perfilFoto: (usuario, token, imagen) =>
     post(`/api/perfil/${encodeURIComponent(usuario)}/foto`, { token, imagen }),
+  perfilIdioma: (usuario, token, idioma) =>
+    post(`/api/perfil/${encodeURIComponent(usuario)}/idioma`, { token, idioma }),
   solicitar: (token, modulos, motivo = "") => post("/api/solicitudes", { token, modulos, motivo }),
   solicitudes: (token, estado) =>
     get(`/api/solicitudes?token=${encodeURIComponent(token)}${estado ? `&estado=${estado}` : ""}`),

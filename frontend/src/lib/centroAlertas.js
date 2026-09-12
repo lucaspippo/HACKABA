@@ -1,28 +1,30 @@
 // Centro de alertas (P16/P17): UNA fuente para las señales y su conteo.
 // La pantalla Alertas renderiza cada señal con su copy/CTA; el badge del
 // sidebar solo las CUENTA — mismas condiciones, imposible que diverjan.
-import { api } from "./api";
 import { authStore } from "./auth";
+import { queryClient } from "./query/client";
+import { queries } from "./query/queries";
 
 export async function cargarSenales() {
-  const pedir = (cond, fn) => (cond ? fn().catch(() => null) : Promise.resolve(null));
+  const pedir = (cond, opts) => (cond
+    ? queryClient.ensureQueryData(opts).catch(() => null)
+    : Promise.resolve(null));
   const sesion = authStore.getSnapshot();
   const [evolucion, ventas, cuentas, analisis, deposito, pagos, inventario, caja, solicitudes,
          traslados, vencimientos] = await Promise.all([
-    api.evolucion().catch(() => null),
-    pedir(authStore.tiene("inventario"), api.ventas),
-    pedir(authStore.tiene("cuentas"), api.cuentas),
-    pedir(authStore.tiene("oportunidades"), api.analisis),
-    pedir(authStore.tiene("deposito"), () => api.deposito()),
-    pedir(authStore.tiene("finanzas"), api.pagos),
+    queryClient.ensureQueryData(queries.evolucion()).catch(() => null),
+    pedir(authStore.tiene("inventario"), queries.ventas()),
+    pedir(authStore.tiene("cuentas"), queries.cuentas()),
+    pedir(authStore.tiene("oportunidades"), queries.analisis()),
+    pedir(authStore.tiene("deposito"), queries.deposito()),
+    pedir(authStore.tiene("finanzas"), queries.pagos()),
     // P25·B2 — las señales nuevas piden sus datos (mismo patrón, mismo gate)
-    pedir(authStore.tiene("inventario"), api.inventario),
-    pedir(authStore.tiene("caja"), api.cajaEstado),
-    pedir(!!sesion?.usuario?.es_admin,
-          () => api.solicitudes(sesion.token, "pendiente")),
+    pedir(authStore.tiene("inventario"), queries.inventario()),
+    pedir(authStore.tiene("caja"), queries.caja()),
+    pedir(!!sesion?.usuario?.es_admin, queries.solicitudes(sesion.token, "pendiente")),
     // P38·F/H — los dos cruces nuevos, con el mismo gate por módulo
-    pedir(authStore.tiene("inventario"), api.traslados),
-    pedir(authStore.tiene("deposito"), () => api.vencimientos(30)),
+    pedir(authStore.tiene("inventario"), queries.traslados()),
+    pedir(authStore.tiene("deposito"), queries.vencimientos(30)),
   ]);
   return { evolucion, ventas, cuentas, analisis, deposito, pagos, inventario, caja,
            solicitudes, traslados, vencimientos };

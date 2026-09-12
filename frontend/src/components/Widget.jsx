@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, ReferenceLine, LabelList, CartesianGrid } from "recharts";
 import { X, Sparkles } from "lucide-react";
 import { gridProps, ejeX, ejeY, tooltipProps, STROKE_DATA, GRIS_TENUE } from "./charts/tema";
-import { api } from "../lib/api";
+import { useApiQuery } from "../lib/query";
 import { peso, pesoCorto, num } from "../lib/format";
 import { useT, useLang } from "../lib/i18n";
 import { GRAFICO, SERIES } from "../lib/paleta";
@@ -52,19 +51,20 @@ export default function Widget({ widget, data, onQuitar }) {
   const t = useT();
   const lang = useLang();
   const esAsync = FUENTES_ASYNC.has(widget.datos_fuente);
-  const [ext, setExt] = useState(null);
-  useEffect(() => {
-    if (widget.datos_fuente === "evolucion_serie") api.evolucion().then(setExt).catch(() => {});
-    else if (widget.datos_fuente === "estacionalidad_meses") api.analisis().then(setExt).catch(() => {});
-    // P19·C — el dato se RECALCULA en cada carga desde la misma derivación de
-    // rotación del backend (nunca un número congelado en el widget).
-    else if (widget.datos_fuente === "plata_parada_dias")
-      api.widgetPlataParada(widget.dias || 120).then(setExt).catch(() => {});
-    // P21 — widget generativo: la consulta validada viaja con el widget y el
-    // server la re-ejecuta en cada entrada (lectura pura, nunca un número viejo).
-    else if (widget.datos_fuente === "consulta")
-      api.consultaSerie(widget.consulta || {}).then(setExt).catch(() => {});
-  }, [widget.datos_fuente, widget.dias]);
+  const fuente = widget.datos_fuente;
+  const evoQ = useApiQuery("evolucion", [], { enabled: fuente === "evolucion_serie" });
+  const analisisQ = useApiQuery("analisis", [], { enabled: fuente === "estacionalidad_meses" });
+  // P19·C — the figure is RECOMPUTED on every load from the same backend
+  // rotation derivation (never a number frozen on the widget).
+  const paradaQ = useApiQuery("widgetPlataParada", [widget.dias || 120], { enabled: fuente === "plata_parada_dias" });
+  // P21 — generative widget: the validated query travels with the widget and
+  // the server re-runs it on every entry (pure read, never a stale number).
+  const consultaQ = useApiQuery("consultaSerie", [widget.consulta || {}], { enabled: fuente === "consulta" });
+  const ext = fuente === "evolucion_serie" ? evoQ.data
+    : fuente === "estacionalidad_meses" ? analisisQ.data
+    : fuente === "plata_parada_dias" ? paradaQ.data
+    : fuente === "consulta" ? consultaQ.data
+    : null;
   const { esPlata, filas } = serie(widget.datos_fuente, data);
   const fmt = (v) => (esPlata ? pesoCorto(v) : num(v));
 

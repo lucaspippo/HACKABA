@@ -27,7 +27,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Square, X, Check, AlertTriangle } from "lucide-react";
 import AngelaMark from "./AngelaMark";
-import { api } from "../lib/api";
+import { useApiQuery, useApiMutation } from "../lib/query";
 import { useT } from "../lib/i18n";
 import { VoiceCallScreen } from "./voice/VoiceCallScreen";
 import { createWebSpeechVoiceAdapter, isWebSpeechVoiceSupported } from "../lib/voice/webSpeechVoiceAdapter";
@@ -45,14 +45,16 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const [elegido, setElegido] = useState(null);
   const [cantidad, setCantidad] = useState("");
   const [error, setError] = useState(null);
-  const [muestras, setMuestras] = useState([]);
   const rec = useRef(null);
   // La llamada conversacional (rama `consulta`): mientras esté activa,
   // VoiceCallScreen se hace cargo por completo — ver render() más abajo.
   const [call, setCall] = useState(null);   // { adapter, transcript } | null
+  const muestrasQ = useApiQuery("vozMuestras");
+  const escucharMut = useApiMutation("vozEscuchar");
+  const confirmarMut = useApiMutation("vozConfirmar");
+  const muestras = muestrasQ.data?.muestras || [];
 
   useEffect(() => {
-    api.vozMuestras().then((r) => setMuestras(r.muestras || [])).catch(() => {});
     return () => { try { rec.current?.stop(); } catch { /* ya estaba parado */ } };
   }, []);
 
@@ -60,7 +62,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
     setPaso("pensando");
     setError(null);
     try {
-      const r = await api.vozEscuchar(frase);
+      const r = await escucharMut.mutateAsync([frase]);
       if (!r.ok) { setError(r.motivo); setPaso("listo"); return; }
       if (r.intencion === "consulta") { startCall(frase); return; }
       setProp(r);
@@ -132,11 +134,11 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const confirmar = async () => {
     setPaso("pensando");
     try {
-      await api.vozConfirmar(prop.intencion, {
+      await confirmarMut.mutateAsync([prop.intencion, {
         ...prop.datos,
         codigo: elegido,
         cantidad: cantidad === "" ? null : Number(cantidad),
-      }, prop.transcripcion);
+      }, prop.transcripcion]);
       setPaso("hecho");
       onListo?.();
     } catch {

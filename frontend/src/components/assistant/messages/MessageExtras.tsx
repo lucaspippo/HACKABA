@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import PlanChecklist from "../PlanChecklist";
 import DocCard from "../DocCard";
 import { MemoryChips, type MemoryChange } from "../memory-chips";
-import { api } from "../../../lib/api";
+import { useApiMutation } from "../../../lib/query";
 import { toast } from "../../../lib/toastStore";
 import { useT } from "../../../lib/i18n";
 import { proposalsFromContent } from "./proposals";
@@ -45,6 +45,8 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
   const content = useAuiState((s) => s.message.content) ?? EMPTY_ARRAY;
   const proposals = useMemo(() => proposalsFromContent(content), [content]);
   const [decided, setDecided] = useState(() => new Map<string, ChipDecision>());
+  const rulesMut = useApiMutation("rulesConfirm");
+  const knowledgeMut = useApiMutation("knowledgeConfirm");
   const chips = proposals
     .filter((p) => decided.get(p.id) !== "dismissed")
     .map((p) => ({
@@ -63,12 +65,12 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
     if (!found) return;
     try {
       if (found.kind === "rule") {
-        const r = await api.rulesConfirm(found.rule);
+        const r = await rulesMut.mutateAsync([found.rule] as never) as { state: unknown };
         setDecided((prev) => new Map(prev).set(found.id, keptState(r.state)));
         return;
       }
       const proposal = isNarrativeChoice ? found.narrativeAlternative ?? found.knowledge : found.knowledge;
-      const r = await api.knowledgeConfirm(proposal);
+      const r = await knowledgeMut.mutateAsync([proposal] as never) as { state: unknown };
       setDecided((prev) => new Map(prev).set(found.id, keptState(r.state)));
     } catch {
       toast(t("chat.memory.save_error"), "error");

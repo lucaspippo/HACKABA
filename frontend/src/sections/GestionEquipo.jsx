@@ -6,8 +6,7 @@ import ObjetivosPanel from "./ObjetivosPanel";
 import Avatar from "../components/Avatar";
 import BadgeNuevo, { antiguedadTexto } from "../components/BadgeNuevo";
 import { VerComoSelector, cambiarA } from "../components/VerComo";
-import { api } from "../lib/api";
-import { apiUrl } from "../lib/apiUrl";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { useSession } from "../lib/auth";
 import { equipoStore, useEquipo, ESTADO_LABEL } from "../lib/equipoStore";
@@ -37,23 +36,22 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
   const t = useT();
   // P32·1 — null = cargando (nada aún), [] = confirmado vacío: el mensaje
   // "no hay solicitudes" no puede aparecer antes de que llegue la respuesta.
-  const [items, setItems] = useState(null);
+  const { data: solData, isPending: solPending, refetch } = useApiQuery(
+    "solicitudes", [token, "pendiente"], { enabled: !!token },
+  );
+  const resolverMut = useApiMutation("solicitudResolver");
+  const items = solPending ? null : (solData?.solicitudes || []);
   const [motivos, setMotivos] = useState({});
-
-  const cargar = () => {
-    api.solicitudes(token, "pendiente").then((d) => setItems(d.solicitudes)).catch(() => {});
-  };
-  useEffect(cargar, [token]);
 
   const resolver = async (s, aprobar) => {
     try {
-      await api.solicitudResolver(s.id, token, aprobar, motivos[s.id] || "");
+      await resolverMut.mutateAsync([s.id, token, aprobar, motivos[s.id] || ""]);
       // Aprobar = tildar esa celda en «Quién ve qué». El toast lo dice para que
       // el dueño sepa dónde quedó (y no lo tenga que ir a buscar).
       toast(aprobar
         ? t("equipo.toast_aprobada_matriz", { nombre: s.nombre, label: s.label })
         : t("equipo.toast_rechazada", { nombre: s.nombre }));
-      cargar();
+      refetch();
       onCambio?.();
     } catch {
       toast(t("equipo.toast_error_resolver"), "error");
@@ -139,19 +137,16 @@ function Solicitudes({ token, onCambio, onVerMatriz, vacioVisible = false }) {
 // La matriz: cada empleado × cada módulo. El dueño habilita/deshabilita directo.
 function MatrizModulos({ token }) {
   const t = useT();
-  const [matriz, setMatriz] = useState([]);
-  const [modulos, setModulos] = useState({});
-
-  const cargar = () => {
-    api.adminMatriz(token).then((d) => { setMatriz(d.matriz); setModulos(d.modulos); }).catch(() => {});
-  };
-  useEffect(cargar, [token]);
+  const { data, refetch } = useApiQuery("adminMatriz", [token], { enabled: !!token });
+  const featureMut = useApiMutation("adminFeature");
+  const matriz = data?.matriz || [];
+  const modulos = data?.modulos || {};
 
   const toggle = async (username, modulo, actual) => {
     try {
-      const r = await api.adminFeature(token, username, modulo, !actual);
+      const r = await featureMut.mutateAsync([token, username, modulo, !actual]);
       toast(t(r.habilitado ? "equipo.toast_habilitaste" : "equipo.toast_sacaste", { modulo: modulos[modulo] || modulo, usuario: username }));
-      cargar();
+      refetch();
     } catch {
       toast(t("equipo.toast_error_modulo"), "error");
     }
@@ -371,6 +366,7 @@ function FichaPersona({ p, ficha }) {
 // Card de perfil con edición de la descripción POR EL DUEÑO (gestión completa).
 function PerfilCard({ p, token, onGuardado, ficha }) {
   const t = useT();
+  const descMut = useApiMutation("perfilDescripcion");
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(p.descripcion || "");
   const [guardando, setGuardando] = useState(false);
@@ -379,7 +375,7 @@ function PerfilCard({ p, token, onGuardado, ficha }) {
   const guardar = async () => {
     setGuardando(true);
     try {
-      await api.perfilDescripcion(p.username, token, texto);
+      await descMut.mutateAsync([p.username, token, texto]);
       toast(t("equipo.toast_desc_guardada", { nombre: p.nombre }));
       setEditando(false);
       onGuardado?.();
@@ -542,10 +538,13 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(perfil?.descripcion || "");
   const [guardando, setGuardando] = useState(false);
+  const descMut = useApiMutation("perfilDescripcion");
+  const avisarMut = useApiMutation("notificacionAvisar");
+  const recordatorioMut = useApiMutation("recordatorioCrear");
   const guardarDesc = async () => {
     setGuardando(true);
     try {
-      await api.perfilDescripcion(a.username, token, texto);
+      await descMut.mutateAsync([a.username, token, texto]);
       toast(t("equipo.toast_desc_guardada", { nombre: a.nombre }));
       setEditando(false);
       onGuardado?.();
@@ -563,7 +562,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
   const Vacio = ({ tx }) => <p className="text-sm text-tinta-suave">{tx}</p>;
   const mandarAviso = () => {
     if (!aviso.trim()) return;
-    api.notificacionAvisar(a.username, t("equipo.aviso_titulo"), aviso.trim())
+    avisarMut.mutateAsync([a.username, t("equipo.aviso_titulo"), aviso.trim()])
       .then(() => { toast(t("equipo.toast_enviado", { nombre: a.nombre })); setAviso(""); })
       .catch(() => toast(t("equipo.toast_enviar_error"), "error"));
   };
@@ -576,7 +575,7 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
     equipoStore.addObjetivo(texto, a.nombre, t("oportunidades.este_mes"));
     setObjetivo("");
     try {
-      await api.recordatorioCrear(texto, a.username);
+      await recordatorioMut.mutateAsync([texto, a.username]);
       toast(t("equipo.toast_tarea_asignada", { quien: a.nombre }));
     } catch {
       // el objetivo quedó en el tablero, pero la tarea no llegó: se dice.
@@ -754,12 +753,10 @@ function DetallePersona({ a, perfil, objetivos, solicitud, onVerComo, onVerPerfi
 // inventada, cero conversaciones expuestas. WhatsApp = futuro declarado.
 export function ActividadEquipo({ token, perfiles, equipo, solicitudes, onVerPerfil, onGuardado }) {
   const t = useT();
-  const [datos, setDatos] = useState(null);
+  const { data: actData, isError: actError } = useApiQuery("equipoActividad");
+  const datos = actError ? { actividad: [], resumen: null, objetivos: [] } : actData;
   const [abierto, setAbierto] = useState(null);
   const [orden, setOrden] = useState("actividad");  // actividad | nombre
-  useEffect(() => {
-    api.equipoActividad().then(setDatos).catch(() => setDatos({ actividad: [], resumen: null, objetivos: [] }));
-  }, [token]);
   if (!datos) return (
     <div className="space-y-2.5">
       {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-[var(--radius-card)] border border-linea/60 bg-papel-hondo/50" />)}
@@ -864,15 +861,26 @@ export default function GestionEquipo({ data, user, highlight }) {
   const session = useSession();
   const esAdmin = !!user?.es_admin;
   const [tab, setTab] = useState("equipo");
-  const [perfiles, setPerfiles] = useState([]);
-  const [pendientes, setPendientes] = useState(0);
-  const [error, setError] = useState(null);
   const [enviados, setEnviados] = useState({});
   const [cancelados, setCancelados] = useState({});
   // P29·B1 — los insumos de la FICHA por persona (mismas fuentes que las tabs)
   const equipo = useEquipo();
-  const [actividad, setActividad] = useState([]);
-  const [solicitudesList, setSolicitudesList] = useState([]);
+  const adminReady = !!session?.token && esAdmin;
+  const { data: perfilesData, isError: perfilesError, refetch: refetchPerfiles } = useApiQuery(
+    "perfiles", [session?.token], { enabled: adminReady },
+  );
+  const { data: solicitudesData, refetch: refetchSolicitudes } = useApiQuery(
+    "solicitudes", [session?.token, "pendiente"], { enabled: adminReady },
+  );
+  const { data: actividadData, refetch: refetchActividad } = useApiQuery(
+    "equipoActividad", [], { enabled: adminReady },
+  );
+  const avisarMut = useApiMutation("notificacionAvisar");
+  const perfiles = perfilesData?.perfiles || [];
+  const solicitudesList = solicitudesData?.solicitudes || [];
+  const pendientes = solicitudesList.length;
+  const error = perfilesError ? t("equipo.error_perfiles") : null;
+  const actividad = actividadData?.actividad || [];
 
   // Si Ángela navega con highlight (solicitudes/matriz), abrimos esa pestaña.
   useEffect(() => {
@@ -880,17 +888,10 @@ export default function GestionEquipo({ data, user, highlight }) {
   }, [highlight]);
 
   const cargarPerfiles = () => {
-    if (!session?.token || !esAdmin) return;
-    fetch(apiUrl(`/api/perfiles?token=${encodeURIComponent(session.token)}`))
-      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((d) => setPerfiles(d.perfiles))
-      .catch(() => setError(t("equipo.error_perfiles")));
-    api.solicitudes(session.token, "pendiente")
-      .then((d) => { setPendientes(d.solicitudes.length); setSolicitudesList(d.solicitudes); })
-      .catch(() => {});
-    api.equipoActividad().then((d) => setActividad(d.actividad || [])).catch(() => {});
+    refetchPerfiles();
+    refetchSolicitudes();
+    refetchActividad();
   };
-  useEffect(cargarPerfiles, [session, esAdmin]);
 
   // La ficha de cada persona: objetivos con avance, actividad real, pendientes.
   const fichaDe = (p) => ({
@@ -905,7 +906,7 @@ export default function GestionEquipo({ data, user, highlight }) {
   const aprobar = async (p) => {
     try {
       // Va por el sistema de notificaciones REAL: le llega a SU campanita.
-      await api.notificacionAvisar(p.username, t("equipo.aviso_titulo"), p.mensaje);
+      await avisarMut.mutateAsync([p.username, t("equipo.aviso_titulo"), p.mensaje]);
       equipoStore.addRecordatorio(p.tarea, p.responsable);
       setEnviados((s) => ({ ...s, [p.id]: true }));
       toast(t("equipo.toast_enviado", { nombre: p.responsable }));

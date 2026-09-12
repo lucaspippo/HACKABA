@@ -42,8 +42,8 @@ function load() {
 // usuario. Import perezoso de api para no crear ciclos (api importa auth).
 async function _alServer(clave, valor) {
   try {
-    const { api } = await import("./api");
-    await api.preferenciaSet(clave, valor);
+    const { runMutation } = await import("./query");
+    await runMutation("preferenciaSet", clave, valor);
   } catch (e) {
     // Honesto en consola; la UI ya aplicó el cambio local y el server
     // se reconcilia en la próxima hidratación.

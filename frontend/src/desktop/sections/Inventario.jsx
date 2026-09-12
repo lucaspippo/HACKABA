@@ -6,9 +6,9 @@ import { useVista, vistaStore } from "../../lib/vistaStore";
 import { useFoco, focoStore } from "../../lib/focoStore";
 import { contarACorregir } from "../../lib/alertas";
 import { peso, num } from "../../lib/format";
-import { api } from "../../lib/api";
 import { authStore } from "../../lib/auth";
 import { useT } from "../../lib/i18n";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import Panorama from "./InventarioPanorama";
 import Margenes from "./Margenes";
 import Reponer from "./Reponer";
@@ -38,17 +38,14 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
   const t = useT();
   const [sub, setSub] = useState("panorama");
   const [detalle, setDetalle] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [viz, setViz] = useState(null);
+  const { data: vizData, isError: vizError } = useApiQuery("inventarioViz");
+  const viz = vizError ? {} : vizData;
   const vista = useVista();
   const foco = useFoco();
   const nCorregir = contarACorregir(data);
 
   const tabs = [...SUBTABS, ...(vista.pestanas || []).map((p) => ({ id: p.id, label: p.nombre, custom: p }))];
   const irABalanzas = () => onNavegar?.("productos", "balanza");
-  useEffect(() => {
-    api.inventarioViz().then(setViz).catch(() => setViz({}));
-  }, [reloadKey]);
 
   useEffect(() => {
     if (!highlight) return;
@@ -101,7 +98,6 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       {sub === "foco" && <FocoView foco={foco} onSelect={setDetalle} onPreguntar={onPreguntar} onSalir={() => { focoStore.clear(); setSub("panorama"); }} />}
       {sub === "panorama" && (
         <Panorama
-          key={reloadKey}
           data={data}
           onSelect={setDetalle}
           onNavegar={onNavegar}
@@ -129,7 +125,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
 
       {detalle && (
         <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar}
-          onGuardado={() => { setDetalle(null); setReloadKey((k) => k + 1); }}
+          onGuardado={() => { setDetalle(null); }}
           onNavegar={onNavegar} />
       )}
     </div>
@@ -171,8 +167,8 @@ function PisoNav({ t, onNavegar, nCorregir }) {
 
 function BalanzaPropuesta({ onVer }) {
   const t = useT();
-  const [n, setN] = useState(null);
-  useEffect(() => { api.balanzas().then((d) => setN(d.total)).catch(() => {}); }, []);
+  const { data } = useApiQuery("balanzas");
+  const n = data?.total;
   if (!n) return null;
   return (
     <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.06] p-5">
@@ -198,12 +194,12 @@ function BalanzaPropuesta({ onVer }) {
 
 function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
   const t = useT();
-  const [items, setItems] = useState(null);
-  useEffect(() => { api.articulos().then((d) => setItems(d.items)).catch(() => {}); }, []);
+  const { data } = useApiQuery("articulos");
+  const items = data?.items;
   if (!foco?.codigos?.length) {
     return <p className="text-sm text-tinta-suave">{t("inventario.foco_vacio")} <button onClick={onSalir} className="font-semibold text-tinta">{t("inventario.foco_volver")}</button>.</p>;
   }
-  if (!items) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
+  if (items == null) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
   const set = new Set(foco.codigos);
   const filt = items.filter((p) => set.has(p.codigo));
   return (
@@ -246,9 +242,9 @@ function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
 
 function PestanaCustom({ pestana, onSelect }) {
   const t = useT();
-  const [items, setItems] = useState(null);
-  useEffect(() => { api.articulos().then((d) => setItems(d.items)).catch(() => {}); }, []);
-  if (!items) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
+  const { data } = useApiQuery("articulos");
+  const items = data?.items;
+  if (items == null) return <p className="text-sm text-tinta-suave">{t("inventario.cargando")}</p>;
   const filt = pestana.filtro === "balanza"
     ? items.filter((p) => p.estado_calidad === "balanza")
     : items.filter((p) => p.estado_calidad === pestana.filtro);
@@ -284,13 +280,8 @@ function PestanaCustom({ pestana, onSelect }) {
 function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
   const t = useT();
   const [editando, setEditando] = useState(false);
-  const [burn, setBurn] = useState(null);
+  const { data: burn } = useApiQuery("inventarioBurn", [p.codigo], { enabled: !!p?.codigo });
   const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
-
-  useEffect(() => {
-    if (!p?.codigo) return;
-    api.inventarioBurn(p.codigo).then(setBurn).catch(() => setBurn(null));
-  }, [p?.codigo]);
 
   if (editando) {
     return <ModalArticulo inicial={p} onClose={() => setEditando(false)} onGuardado={onGuardado} />;
@@ -382,6 +373,8 @@ const CAMPOS_ARTICULO = [
 
 function ModalArticulo({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const articuloCrear = useApiMutation("articuloCrear");
+  const articuloActualizar = useApiMutation("articuloActualizar");
   const [form, setForm] = useState({
     codigo: inicial?.codigo ?? "", descripcion: inicial?.descripcion || "",
     tipo: inicial?.tipo || "", proveedor: inicial?.proveedor || "",
@@ -403,9 +396,9 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
     try {
       if (inicial) {
         const { codigo, ...cambios } = payload;
-        await api.articuloActualizar(inicial.codigo, cambios);
+        await articuloActualizar.mutateAsync([inicial.codigo, cambios]);
       } else {
-        await api.articuloCrear(payload);
+        await articuloCrear.mutateAsync(payload);
       }
       toast(t(inicial ? "inventario.producto_actualizado" : "inventario.producto_creado"));
       onGuardado();

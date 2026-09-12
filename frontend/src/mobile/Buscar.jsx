@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { Search, ScanLine, ArrowUp, Package, User, Truck, FileText, MapPin,
          Loader2 } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
-import { api } from "../lib/api";
 import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
 
 // LA BÚSQUEDA EN MOBILE. Tres decisiones, y las tres se apartan del desktop.
 //
@@ -30,26 +31,26 @@ export default function Buscar({ onProducto, onCliente, onPreguntar, soloDesktop
   const t = useT();
   const lang = useLang();
   const [q, setQ] = useState("");
-  const [r, setR] = useState(null);
-  const [cargando, setCargando] = useState(false);
+  const [debouncedQ, setDebouncedQ] = useState("");
   const caja = useRef(null);
+  const texto = q.trim();
 
   useEffect(() => { caja.current?.focus(); }, []);
 
   useEffect(() => {
-    const texto = q.trim();
-    if (texto.length < 2) { setR(null); return; }
-    setCargando(true);
+    if (texto.length < 2) { setDebouncedQ(""); return; }
     // Un respiro antes de pegarle al servidor: escribir "monte chico" son once
     // teclas y once búsquedas no las necesita nadie.
-    const id = setTimeout(() => {
-      api.buscarGlobal(texto)
-        .then((d) => setR(d))
-        .catch(() => setR({ items: [], parece_pregunta: false }))
-        .finally(() => setCargando(false));
-    }, 220);
-    return () => { clearTimeout(id); setCargando(false); };
-  }, [q, lang]);
+    const id = setTimeout(() => setDebouncedQ(texto), 220);
+    return () => clearTimeout(id);
+  }, [texto, lang]);
+
+  const { data: r, isFetching, refetch } = useApiQuery("buscarGlobal", [debouncedQ], {
+    enabled: debouncedQ.length >= 2,
+    placeholderData: keepPreviousData,
+  });
+  useEffect(() => { if (debouncedQ.length >= 2) refetch(); }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cargando = texto.length >= 2 && (debouncedQ !== texto || isFetching);
 
   // Cada resultado abre lo que en el teléfono tiene sentido abrir. Lo que sólo
   // vive en la computadora se dice, no se abre una pantalla a medias.
@@ -59,7 +60,8 @@ export default function Buscar({ onProducto, onCliente, onPreguntar, soloDesktop
     return soloDesktop?.();
   };
 
-  const filas = r?.items || [];
+  const results = debouncedQ.length >= 2 ? r : null;
+  const filas = results?.items || [];
   const angela = q.trim().length >= 2 && (
     <button key="angela" onClick={() => onPreguntar?.(q.trim())}
       className="flex min-h-14 w-full items-center gap-3 rounded-[var(--radius-card)] border border-violeta/30 bg-violeta/[0.06] px-4 py-3 text-left active:scale-[0.99]">
@@ -91,7 +93,7 @@ export default function Buscar({ onProducto, onCliente, onPreguntar, soloDesktop
 
   // El orden de la LISTA es el del backend; el orden en PANTALLA lo invierte
   // `flex-col-reverse`, así el primero queda abajo, al alcance del pulgar.
-  const lista = r?.parece_pregunta ? [angela, ...resultados] : [...resultados, angela];
+  const lista = results?.parece_pregunta ? [angela, ...resultados] : [...resultados, angela];
 
   return (
     <div className="flex min-h-[calc(100dvh-13rem)] flex-col">

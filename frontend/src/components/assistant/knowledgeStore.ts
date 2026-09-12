@@ -1,5 +1,8 @@
-import { useSyncExternalStore } from "react";
-import { api } from "../../lib/api";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { keys } from "../../lib/query/keys";
+import { queries } from "../../lib/query/queries";
+import { queryClient } from "../../lib/query/client";
 
 export type KnowledgePiece = {
   id: string;
@@ -11,39 +14,9 @@ export type KnowledgePiece = {
   cuando?: string | null;
 };
 
-let pieces: Record<string, KnowledgePiece> = {};
-let ready = false;
-let loading: Promise<void> | null = null;
-const listeners = new Set<() => void>();
-
-function emit() {
-  for (const l of listeners) l();
-}
-
-function load() {
-  if (loading) return loading;
-  loading = Promise.all([
-    api.conocimiento().catch(() => ({ piezas: [] })),
-    api.conocimientoPendientes().catch(() => ({ piezas: [] })),
-  ])
-    .then(([active, pending]) => {
-      const next: Record<string, KnowledgePiece> = {};
-      for (const p of [...(active.piezas ?? []), ...(pending.piezas ?? [])]) next[p.id] = p;
-      pieces = next;
-      ready = true;
-      emit();
-    })
-    .catch(() => {
-      ready = true;
-      emit();
-    });
-  return loading;
-}
-
 /** Reloads without blanking chips that are already on screen. */
 export function invalidateKnowledge() {
-  loading = null;
-  load();
+  return queryClient.invalidateQueries({ queryKey: keys.conocimiento() });
 }
 
 /** Display name for a knowledge node; unknown ids stay as stored. */
@@ -53,12 +26,6 @@ export function knowledgeNodeLabel(nodo: string, translate: (key: string) => str
   return label === key ? nodo : label;
 }
 
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  load();
-  return () => listeners.delete(listener);
-}
-
 /**
  * The cited piece, or null while it loads and if it does not exist. Ángela
  * cites by id; a rule someone deleted, or one outside this reader's scope,
@@ -66,17 +33,25 @@ function subscribe(listener: () => void) {
  * only on the first fetch — a missing id after that is a real absence.
  */
 export function useKnowledgeLookup(id: string): { piece: KnowledgePiece | null; ready: boolean } {
-  const all = useSyncExternalStore(
-    subscribe,
-    () => pieces,
-    () => pieces,
-  );
-  useSyncExternalStore(
-    subscribe,
-    () => ready,
-    () => ready,
-  );
-  return { piece: all[id] ?? null, ready };
+  const active = useQuery({
+    ...queries.conocimiento(),
+    throwOnError: false,
+  });
+  const pending = useQuery({
+    ...queries.conocimientoPendientes(),
+    throwOnError: false,
+  });
+  const pieces = useMemo(() => {
+    const next: Record<string, KnowledgePiece> = {};
+    for (const p of [...(active.data?.piezas ?? []), ...(pending.data?.piezas ?? [])]) {
+      next[p.id] = p;
+    }
+    return next;
+  }, [active.data, pending.data]);
+  return {
+    piece: pieces[id] ?? null,
+    ready: active.isFetched && pending.isFetched,
+  };
 }
 
 export function useKnowledgePiece(id: string): KnowledgePiece | null {

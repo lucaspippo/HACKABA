@@ -1,14 +1,11 @@
 // El equipo REAL del tenant, desde el backend (P9·C2, M3): para asignar
 // responsables de verdad — sin nombres hardcodeados cross-tenant.
-import { api } from "./api";
-
-let _cache = null;
+import { queryClient } from "./query/client";
+import { queries } from "./query/queries";
 
 export async function equipoReal() {
-  if (_cache) return _cache;
-  const r = await api.equipoNombres();
-  _cache = r.equipo || [];
-  return _cache;
+  const r = await queryClient.ensureQueryData(queries.equipoNombres());
+  return r.equipo || [];
 }
 
 /** A quién delegarle una verificación operativa: alguien de administración si

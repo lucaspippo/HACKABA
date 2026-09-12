@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { HandCoins, Send, X, Check, FileText, AlertTriangle } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import PanelDecision from "../../components/PanelDecision";
-import { api } from "../../lib/api";
 import Cargando from "../../components/Cargando";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 
 // Los KEYS del score vienen del backend; el label vive en el diccionario (lk).
 const SCORE = {
@@ -21,16 +21,11 @@ const SCORE = {
 // data-nav-id; esto agrega la mitad que faltaba (abrir el modal).
 export default function CuentasCorrientes({ onPreguntar, highlight }) {
   const t = useT();
-  const [clientes, setClientes] = useState(null);
-  const [alertas, setAlertas] = useState({ cantidad: 0, impacto_pesos: 0 });
-  const [totales, setTotales] = useState({});
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("cuentas");
+  const clientes = data?.clientes;
+  const alertas = data?.alertas ?? { cantidad: 0, impacto_pesos: 0 };
+  const totales = data?.totales || {};
   const [sel, setSel] = useState(null);
-
-  useEffect(() => {
-    api.cuentas().then((d) => { setClientes(d.clientes); setAlertas(d.alertas);
-                                setTotales(d.totales || {}); }).catch(setError);
-  }, []);
 
   useEffect(() => {
     if (!highlight?.startsWith("cliente-") || !clientes) return;
@@ -101,7 +96,9 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
 
 function DetalleCliente({ c, onClose, onPreguntar }) {
   const t = useT();
-  const [recordatorio, setRecordatorio] = useState(null);
+  const [wantReminder, setWantReminder] = useState(false);
+  const { data: reminder } = useApiQuery("cuentaRecordatorio", [c.id], { enabled: wantReminder });
+  const recordatorio = wantReminder ? reminder : null;
   // P18·C: WhatsApp no está conectado — acá NO se finge un envío. La acción
   // real es COPIAR el mensaje para mandarlo por donde el dueño hable con el
   // cliente. Cuando el canal exista, este botón pasa a enviar de verdad.
@@ -115,10 +112,7 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
     }
   };
 
-  const proponerRecordatorio = async () => {
-    const r = await api.cuentaRecordatorio(c.id);  // vía api → lleva el token en el header
-    setRecordatorio(r);
-  };
+  const proponerRecordatorio = () => { setWantReminder(true); };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onClose}>
@@ -165,7 +159,7 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
             acciones={copiado ? null : (
               <>
                 <button onClick={copiarMensaje} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-1.5 text-sm font-semibold text-crema"><Send size={14} /> {t("cuentas.copiar_mensaje")}</button>
-                <button onClick={() => setRecordatorio(null)} className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">{t("cuentas.cancelar")}</button>
+                <button onClick={() => setWantReminder(false)} className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">{t("cuentas.cancelar")}</button>
               </>
             )}
           >

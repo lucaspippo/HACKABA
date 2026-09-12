@@ -132,8 +132,8 @@ export const equipoStore = {
     // Persistencia server-side de lo creado A MANO acá (adoptar/tablero): el
     // resto del equipo lo ve. Si vino con id, el server ya lo tiene.
     if (!id) {
-      import("./api").then(({ api }) =>
-        api.objetivoCrear(nombre, responsable, fecha, oid).catch(() => {})
+      import("./query").then(({ runMutation }) =>
+        runMutation("objetivoCrear", nombre, responsable, fecha, oid).catch(() => {})
       );
     }
   },
@@ -150,8 +150,8 @@ export const equipoStore = {
     });
     // El estado también se persiste server-side (404 si es un seed local: ok).
     if (nuevoEstado) {
-      import("./api").then(({ api }) =>
-        api.objetivoEstado(id, nuevoEstado).catch(() => {})
+      import("./query").then(({ runMutation }) =>
+        runMutation("objetivoEstado", id, nuevoEstado).catch(() => {})
       );
     }
   },
@@ -161,8 +161,9 @@ export const equipoStore = {
    *  gana) — el avance que marca el empleado le llega al dueño y viceversa. */
   async sincronizar() {
     try {
-      const { api } = await import("./api");
-      const r = await api.objetivos();
+      const { queryClient } = await import("./query/client");
+      const { queries } = await import("./query/queries");
+      const r = await queryClient.ensureQueryData(queries.objetivos());
       const delServer = new Map((r.objetivos || []).map((o) => [o.id, o]));
       const locales = new Set(state.objetivos.map((o) => o.id));
       const nuevos = (r.objetivos || []).filter((o) => !locales.has(o.id));
