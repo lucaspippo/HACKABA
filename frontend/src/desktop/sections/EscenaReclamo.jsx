@@ -155,25 +155,53 @@ function Producto({ n, encendido }) {
 // parecía que el sistema entrega un informe — que es justo lo que PolPilot
 // dice que no hace (PRODUCT.md, The Action Principle).
 function Envio({ n, encendido }) {
-  const w = 196, h = 84;
+  // EL ANCHO SALE DEL TEXTO, no al reves. Estaba fijo en 196 y «con foto del
+  // lote y numero de remito» se salia de la caja verde: el texto arranca en
+  // x+62 (despues del logo) y a 11.5px esa linea mide ~198px contra 134
+  // disponibles. Ahora la linea larga se parte en dos y la caja crece lo justo.
+  const izq = 62;                       // donde arranca el texto, despues del logo
+  const lineas = partirEn(`con ${n.adjuntos}`, 30);
+  const anchoTexto = Math.max(
+    "Reclamo enviado".length * 7.6,
+    ...lineas.map((l) => l.length * 5.6),
+    `a ${n.destinatario}`.length * 5.4,
+  );
+  const w = Math.max(200, Math.round(izq + anchoTexto + 16));
+  const h = 74 + lineas.length * 15;
   const x = n.x - w / 2, y = n.y - h / 2;
+  const y0 = n.y - (lineas.length === 1 ? 6 : 13);
   return (
     <g opacity={encendido ? 1 : 0.22}>
       <rect x={x} y={y} width={w} height={h} rx="14" fill="#eaf6ef" />
       <rect x={x} y={y} width={w} height={h} rx="14" fill="none"
             stroke="#2e9c6a" strokeWidth="2" />
       <InsigniaCanal x={x + 34} y={n.y} canal={n.canal} r={19} />
-      <text x={x + 62} y={n.y - 8} fill="#1d6b47" fontSize="14" fontWeight="700">
+      <text x={x + izq} y={y + 26} fill="#1d6b47" fontSize="14" fontWeight="700">
         Reclamo enviado
       </text>
-      <text x={x + 62} y={n.y + 10} fill="rgba(33,32,29,.72)" fontSize="11.5">
-        con {n.adjuntos}
-      </text>
-      <text x={x + 62} y={n.y + 26} fill="rgba(33,32,29,.5)" fontSize="11">
+      {lineas.map((l, i) => (
+        <text key={i} x={x + izq} y={y0 + 14 + i * 15}
+              fill="rgba(33,32,29,.72)" fontSize="11.5">{l}</text>
+      ))}
+      <text x={x + izq} y={y + h - 12} fill="rgba(33,32,29,.5)" fontSize="11">
         a {n.destinatario}
       </text>
     </g>
   );
+}
+
+// Parte un texto en lineas de a lo sumo `max` caracteres, sin cortar palabras.
+function partirEn(txt, max) {
+  const palabras = (txt || "").trim().split(/\s+/);
+  const lineas = [];
+  let actual = "";
+  for (const p of palabras) {
+    if (!actual) { actual = p; continue; }
+    if ((actual + " " + p).length <= max) actual += " " + p;
+    else { lineas.push(actual); actual = p; }
+  }
+  if (actual) lineas.push(actual);
+  return lineas.length ? lineas : [""];
 }
 
 function Proveedor({ n, encendido }) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight, Lightbulb, MapPin, Clock } from "lucide-react";
 import TarjetaAtencion from "./TarjetaAtencion";
 import AccionesRapidas from "./AccionesRapidas";
+import InicioPiso from "./InicioPiso";
 import LoQueSigue from "./LoQueSigue";
 import { FeedActividad } from "../components/ActividadFeed";
 import { armarDecisiones } from "../lib/decisiones";
@@ -9,7 +10,7 @@ import { useEquipo } from "../lib/equipoStore";
 import { useSession, authStore } from "../lib/auth";
 import { api } from "../lib/api";
 import { peso, pesoCorto } from "../lib/format";
-import { useT, useLang } from "../lib/i18n";
+import { useT, useLang, tRol } from "../lib/i18n";
 
 // P35·E4 — TODAY (home mobile): un RESUMEN del día que entra en un scroll corto,
 // no una lista de tarjetas grandes. Responde una pregunta: "¿qué hago hoy?".
@@ -150,8 +151,48 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
     })),
   ].slice(0, 4);
 
+  // --- LA PRIMERA VISTA (InicioPiso) ------------------------------------
+  // Va acá ADEMÁS de en MiDia, y no es duplicación: `MobileApp` manda al
+  // dueño a `panel` (esta pantalla) y sólo a la gente de piso a `mi_dia`.
+  // O sea que el home mobile del usuario del demo es ESTE, y la pantalla
+  // nueva no se veía nunca. Las dos la muestran, cada una con sus datos.
+  const [paradas, setParadas] = useState(null);
+  useEffect(() => {
+    api.paradasProximas().then((d) => setParadas(d.paradas || [])).catch(() => setParadas([]));
+  }, [session?.token]);
+
+  // De donde salen las tres filas, en orden de prioridad. Con el dueño del
+  // demo `decisiones` viene VACÍA —no tiene nada pendiente de decidir— y la
+  // tarjeta desaparecía, dejando la banda de progreso sin nada debajo. Los
+  // hallazgos del día son igual de reales y siempre hay: se cae a ellos.
+  const fuenteTareas = decisiones.length ? decisiones
+    : importantes.length ? importantes
+    : cruces;
+  const filasInicio = fuenteTareas.slice(0, 3).map((d, i) => ({
+    id: d.id, titulo: d.titulo, detalle: d.detalle || d.resumen || "",
+    estado: i === 0 ? "curso" : "proxima",
+    pct: i === 0 ? 65 : i === 1 ? 30 : 8,
+  }));
+  // El progreso del día: lo cerrado contra lo que había. `hechoN` ya cuenta lo
+  // que Ángela y el equipo resolvieron — no es un número decorativo.
+  const hechoHoy = (ini?.actividad?.feed || []).length;
+  const totalHoy = hechoHoy + filasInicio.length;
+  const pct = totalHoy === 0 ? 100 : Math.round((hechoHoy / totalHoy) * 100);
+
   return (
     <div className="space-y-6 pb-2">
+      <InicioPiso
+        nombre={session?.usuario?.nombre || user?.nombre || ""}
+        lugar={ini?.negocio?.nombre || tRol(session?.usuario?.rol || "")}
+        pct={pct}
+        tareas={filasInicio}
+        proxima={paradas?.[0]?.cliente}
+        restantes={paradas?.length ?? null}
+        onTarea={(x) => onGestionar({ titulo: x.titulo })}
+        onAccion={(id) => onAccion?.(id)}
+        onRuta={() => onTab("mapa")}
+        onAbrirTareas={() => onTab("insights")}
+      />
       {/* 1 · LO QUE HAY QUE DECIDIR AHORA. Va primero y es lo único grande.
           El inicio abría con un saludo y una caja de preguntar: un saludo no es
           una decisión, y quien abre esto a las siete de la mañana no necesita
@@ -160,8 +201,13 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
       {atencion && <TarjetaAtencion {...atencion} />}
 
       {/* 2 · Acciones rápidas — las de SU oficio, no las mismas para todos.
-          Ángela no está acá: vive en la barra. */}
-      <AccionesRapidas user={user} onAccion={onAccion} />
+          Ángela no está acá: vive en la barra.
+          En el CELULAR no se muestran acá: InicioPiso ya las pone arriba, en
+          cuadrados, y tenerlas dos veces comía media pantalla repitiendo lo
+          mismo. De tablet para arriba, donde el espacio sobra, siguen igual. */}
+      <div className="hidden sm:block">
+        <AccionesRapidas user={user} onAccion={onAccion} />
+      </div>
 
       {/* 3 · Lo que sigue: para el dueño, lo de más peso del día, con la
           recomendación de Ángela adentro. */}

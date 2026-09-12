@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { peso } from "../lib/format";
 import { useT } from "../lib/i18n";
@@ -32,6 +33,14 @@ const TONO = {
 
 export default function TarjetaAtencion({ tono = "oro", rotulo, hecho, contexto,
                                           monto, foto, cta, onCta }) {
+  // LA FOTO QUE NO CARGA NO DEJA UN RECUADRO ROTO. El endpoint de la prueba
+  // sirve un archivo del disco, y en Render el disco es efimero: un reporte
+  // sembrado puede tener id de prueba y no tener archivo. Ahi el navegador
+  // pinta el icono de imagen partida justo en la card que dice «alguien lo vio
+  // y lo reporto» — que es exactamente donde una imagen rota mas se nota.
+  // La card ya sabe armarse SIN foto y sin hueco (ver arriba): que no cargue
+  // pasa a ser el mismo caso.
+  const [fotoRota, setFotoRota] = useState(false);
   const t = useT();
   const c = TONO[tono] || TONO.oro;
   if (!hecho) return null;
@@ -54,9 +63,10 @@ export default function TarjetaAtencion({ tono = "oro", rotulo, hecho, contexto,
 
         {/* La evidencia, donde la imagen tiene la ilustración. Cuadrada y
             chica: es una prueba, no una galería — se abre al tocarla. */}
-        {foto && (
+        {foto && !fotoRota && (
           <button onClick={onCta} className="shrink-0" aria-label={t("atencion.ver_prueba")}>
             <img src={foto} alt="" loading="lazy"
+              onError={() => setFotoRota(true)}
               className="h-20 w-20 rounded-xl border border-linea object-cover" />
           </button>
         )}
