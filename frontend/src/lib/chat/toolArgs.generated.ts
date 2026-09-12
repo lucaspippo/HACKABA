@@ -28,6 +28,10 @@ export interface ToolArgs {
   consultar_compras: {
     proveedor?: string;
   };
+  consultar_conocimiento: {
+    entidad?: string;
+    nodo?: string;
+  };
   consultar_contexto_macro: {
     indicadores?: unknown[];
   };
