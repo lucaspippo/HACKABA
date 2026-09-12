@@ -2527,12 +2527,19 @@ def _knowledge_block(name: str | None) -> str:
     if not pieces:
         return ""
     lines = "".join(
-        f"\n- [{p.get('nodo')}] {conocimiento.texto_en(p, _idioma_actual())}"
+        f"\n- ({p.get('id')}) [{p.get('nodo')}] {conocimiento.texto_en(p, _idioma_actual())}"
         + (f" (sobre {p['entidad']})" if p.get("entidad") else "")
         for p in pieces[:KNOWLEDGE_CAP])
     return ("\n\nLO QUE ESTE NEGOCIO TE ENSEÑÓ (reglas ya activas; los análisis "
             "YA las aplican — usalas para explicar por qué un número es así, "
-            "nunca para recalcular a mano):" + lines)
+            "nunca para recalcular a mano):" + lines +
+            "\n\nCITÁ LA MEMORIA. Cuando uses una de estas reglas en tu "
+            "respuesta, poné [·](memoria:ID) INMEDIATAMENTE después de la "
+            "frase donde la usaste, con el ID entre paréntesis de la lista de "
+            "arriba (ej: [·](memoria:k01)). Así la persona ve que eso salió de "
+            "lo que ella misma le enseñó al sistema y no de una suposición "
+            "tuya. Una cita por regla usada, nunca al final de todo, y jamás "
+            "un ID que no esté en esa lista.")
 
 
 def _user_turn(message: str, events: list[str]) -> dict:

@@ -1,5 +1,7 @@
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import remarkGfm from "remark-gfm";
+import KnowledgeCite from "./KnowledgeCite";
+import { citedId } from "./knowledgeStore";
 
 const components = {
   p: (props: object) => <p className="mb-2 last:mb-0" {...props} />,
@@ -8,14 +10,23 @@ const components = {
   ol: (props: object) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0" {...props} />,
   ul: (props: object) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0" {...props} />,
   li: (props: object) => <li className="leading-snug" {...props} />,
-  a: (props: object) => (
-    <a
-      target="_blank"
-      rel="noopener noreferrer"
-      className="font-medium text-violeta underline underline-offset-2"
-      {...props}
-    />
-  ),
+  // Angela marks a rule she took from the business's memory as
+  // [·](memoria:<id>). Rendering it through the link slot keeps it out of the
+  // markdown pipeline: worst case it degrades to an inert link, never a
+  // broken marker in the middle of a sentence.
+  a: ({ href, ...props }: { href?: string } & object) => {
+    const cited = citedId(href);
+    if (cited) return <KnowledgeCite id={cited} />;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-violeta underline underline-offset-2"
+        {...props}
+      />
+    );
+  },
   h1: (props: object) => <h3 className="mb-1.5 font-display text-[1rem] font-bold" {...props} />,
   h2: (props: object) => <h3 className="mb-1.5 font-display text-[1rem] font-bold" {...props} />,
   h3: (props: object) => <h4 className="mb-1.5 font-display text-[0.95rem] font-bold" {...props} />,

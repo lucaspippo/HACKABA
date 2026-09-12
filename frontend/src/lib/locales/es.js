@@ -2992,6 +2992,8 @@ export const ES = {
   "hoy.aprendizaje_titulo": "Lo que Ángela va aprendiendo",
   "hoy.ver_aprendizaje": "Ver más",
 
+  "chat.cite.source": "memoria del negocio",
+  "chat.cite.label": "De la memoria del negocio: {text}",
   "chat.memory.header": "memoria",
   "chat.memory.kept_n": "guardado {n}",
   "chat.memory.save": "Guardar «{text}»",
@@ -3083,7 +3085,6 @@ export const ES = {
 
   // --- avisos del chat (el backend manda sólo el `kind`) ---
   "chat.notice.cap": "Llegaste al límite de mensajes de esta sesión.",
-  "chat.notice.fake_model": "Esto lo saqué de tus datos, sin el modelo conectado.",
   "chat.notice.tool_loop_exhausted": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
   "chat.notice.generico": "Ángela respondió en modo degradado.",
 
