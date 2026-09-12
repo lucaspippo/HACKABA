@@ -51,7 +51,7 @@ EFECTOS = {"ajusta_umbral", "suprime_alerta", "genera_alerta",
 # Dominio del mapa donde nace la pieza (los 8 nodos del Business Map).
 NODOS = {"ventas", "inventario", "deposito", "proveedores",
          "clientes", "caja", "equipo", "contexto"}
-ESTADOS = {"activo", "pausado", "pendiente"}
+ESTADOS = {"activo", "pausado", "pendiente", "revisar", "superada", "archivada"}
 
 # Scope por rol: qué feature (módulo del perfil) habilita ver las piezas de cada
 # nodo. El dueño (es_admin) ve todo; un empleado ve un nodo si tiene su módulo,
@@ -101,7 +101,8 @@ def _norm(s) -> str:
 
 def listar(nodo: str | None = None, tipo: str | None = None,
            entidad: str | None = None, ambito: str | None = None,
-           incluir_pausadas: bool = True, estado: str | None = None) -> list[dict]:
+           incluir_pausadas: bool = True, estado: str | None = None,
+           incluir_archivadas: bool = False) -> list[dict]:
     """Pieces matching the filters. Includes paused ones by default (Mi perfil
     lists them so they can be reactivated) but NEVER pending ones — an
     unreviewed proposal isn't the same as a paused piece, and mixing it into
@@ -128,6 +129,8 @@ def listar(nodo: str | None = None, tipo: str | None = None,
             if p.get("estado") != "activo":
                 continue
         elif p.get("estado") == "pendiente":
+            continue
+        elif not incluir_archivadas and p.get("estado") in ("archivada", "superada"):
             continue
         out.append(p)
     return out
@@ -468,6 +471,45 @@ def rechazar(pid: str, actor: str) -> bool:
         AuditLog(DATA_DIR).record(actor, "rechazar_conocimiento", None,
                               {"id": pid, "nodo": (pieza or {}).get("nodo")})
     return ok
+
+
+def archive(pid: str, *, actor: str, motivo: str | None = None) -> dict | None:
+    """Retires a piece that was ever active/paused/revisar — replaces
+    borrar() as the normal path so nothing that was once confirmed
+    disappears without a trace. borrar() stays for a rejected pendiente
+    proposal (nothing to preserve) and explicit admin purges."""
+    pieza = set_estado(pid, "archivada")
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "archivar_conocimiento", None,
+                              {"id": pieza["id"], "nodo": pieza["nodo"], "motivo": motivo})
+    return pieza
+
+
+def supersede(pid: str, *, replacement_id: str, actor: str) -> dict | None:
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    pieza = business_knowledge_repo.set_superseded(
+        _tenant.current_tenant_id(), pid, superseded_by=replacement_id)
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "reemplazar_conocimiento", None,
+                              {"id": pieza["id"], "superseded_by": replacement_id})
+    return pieza
+
+
+def reconfirm(pid: str, *, actor: str) -> dict | None:
+    """The review-queue "still valid" action: reinforces the piece and,
+    if it was in estado="revisar", brings it back to "activo"."""
+    p = detalle(pid)
+    if not p:
+        return None
+    pieza = reinforce(pid)
+    if p["estado"] == "revisar":
+        pieza = set_estado(pid, "activo")
+    from .audit import AuditLog
+    AuditLog(DATA_DIR).record(actor, "reconfirmar_conocimiento", None, {"id": pid})
+    return pieza
 
 
 def marcar_aplicada(pid: str, n: int = 1) -> dict | None:

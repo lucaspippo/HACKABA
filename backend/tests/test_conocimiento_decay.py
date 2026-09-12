@@ -99,3 +99,38 @@ def test_find_conflict_is_none_for_a_different_efecto():
     assert conocimiento.find_conflict(
         texto="Otra regla", nodo="clientes", entidad="Doña Elsa",
         efecto="suprime_alerta") is None
+
+
+def test_archive_moves_an_active_piece_out_of_aplicables():
+    p = conocimiento.crear(texto="x", tipo="regla", ambito="cliente", nodo="clientes",
+                           efecto="ajusta_umbral", entidad="Doña Elsa")
+    conocimiento.archive(p["id"], actor="aldo")
+    assert conocimiento.detalle(p["id"])["estado"] == "archivada"
+    assert conocimiento.para("Doña Elsa", nodo="clientes") == []
+
+
+def test_listar_excludes_archived_by_default():
+    p = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                           nodo="caja", efecto="contexto_para_angela")
+    conocimiento.archive(p["id"], actor="aldo")
+    assert conocimiento.listar() == []
+    assert len(conocimiento.listar(incluir_archivadas=True)) == 1
+
+
+def test_supersede_links_the_replacement():
+    old = conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
+                             nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
+    new = conocimiento.crear(texto="Tolerale 45 días", tipo="regla", ambito="cliente",
+                             nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
+    conocimiento.supersede(old["id"], replacement_id=new["id"], actor="aldo")
+    assert conocimiento.detalle(old["id"])["estado"] == "superada"
+    assert conocimiento.detalle(old["id"])["superseded_by"] == new["id"]
+
+
+def test_reconfirm_reinforces_and_reactivates_from_revisar():
+    p = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                           nodo="caja", efecto="contexto_para_angela")
+    conocimiento.set_estado(p["id"], "revisar")
+    out = conocimiento.reconfirm(p["id"], actor="aldo")
+    assert out["estado"] == "activo"
+    assert out["evidence_count"] == p["evidence_count"] + 1

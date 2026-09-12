@@ -14,7 +14,7 @@ from core.db.engine import tenant_connection
 _COLS = ("id", "texto", "texto_en", "tipo", "ambito", "entidad", "nodo",
          "efecto", "efecto_profundo", "params", "origen", "estado",
          "veces_aplicada", "confidence", "evidence_count",
-         "last_reinforced_at", "half_life_days")
+         "last_reinforced_at", "half_life_days", "superseded_by")
 
 
 def _to_piece(row) -> dict:
@@ -36,6 +36,7 @@ def _to_piece(row) -> dict:
         "evidence_count": row["evidence_count"],
         "last_reinforced_at": row["last_reinforced_at"].isoformat() if row["last_reinforced_at"] else None,
         "half_life_days": row["half_life_days"],
+        "superseded_by": row["superseded_by"],
     }
 
 
@@ -99,6 +100,19 @@ def update_reinforcement(tenant_id: str, piece_id: str, *, confidence: float,
                 f"WHERE id = :id RETURNING {', '.join(_COLS)}"
             ),
             {"confidence": confidence, "evidence_count": evidence_count, "id": piece_id},
+        ).mappings().one_or_none()
+    return _to_piece(row) if row else None
+
+
+def set_superseded(tenant_id: str, piece_id: str, *, superseded_by: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_knowledge_pieces SET estado = 'superada', "
+                "superseded_by = :sup_by "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"sup_by": superseded_by, "id": piece_id},
         ).mappings().one_or_none()
     return _to_piece(row) if row else None
 
