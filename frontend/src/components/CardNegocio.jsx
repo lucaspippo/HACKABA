@@ -562,26 +562,26 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </DrillSection>
         )}
 
-        {/* 4 · What it costs to do nothing, then what to do. */}
-        {risk?.label && (
-          <DrillSection title={t("cardneg.drill_risk")}>
-            <p className={`mt-1.5 rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
-              risk.level === "high"
-                ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
-                : "bg-papel-hondo/50 text-tinta"
-            }`}>
-              {risk.label}
-              {risk.exposure != null && (
-                <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
-              )}
-            </p>
-          </DrillSection>
-        )}
-
-        {(recommendation?.label || proposal || actionTaken) && (
+        {/* 4 · What it costs to do nothing, as the lead line, then what to do.
+            Risk and recommendation are causally paired — risk is typically one
+            short line, too light to earn its own section header — so they
+            share this section instead of each getting one. */}
+        {(risk?.label || recommendation?.label || proposal || actionTaken) && (
           <DrillSection title={t("cardneg.drill_recommend")}>
+            {risk?.label && (
+              <p className={`rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
+                risk.level === "high"
+                  ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
+                  : "bg-papel-hondo/50 text-tinta"
+              }`}>
+                {risk.label}
+                {risk.exposure != null && (
+                  <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
+                )}
+              </p>
+            )}
             {recommendation?.label && (
-              <p className="mt-1.5 text-[0.92rem] font-semibold leading-snug text-tinta">{recommendation.label}</p>
+              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
             )}
             {recommendation?.detail && (
               <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">{recommendation.detail}</p>
