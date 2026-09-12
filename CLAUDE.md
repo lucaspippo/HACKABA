@@ -92,11 +92,13 @@ Built on `@assistant-ui/react` 0.15 (`frontend/src/components/assistant/`,
 this layer** — it records the decisions below and why, including the ones a
 well-meaning change would otherwise undo.
 
-**Status (2026-09-02):** the design is approved; implementation runs in phases
-and has **not started**. So the rules below are the agreed target — where the
-current code contradicts one (the per-tool `if` chain in `ChatThread.jsx`, the
-still-present `_fallback` in `angela.py`, JSX rather than TypeScript), the rule
-wins and the code is what changes. Update this status line as phases land.
+**Status (2026-09-05):** Phase 1 (foundation) and Phase 3's presenter
+registry have landed, plus a markdown/accessibility pass and a rebuilt
+composer (D11). **Phase 1.5 has not** — `_fallback` is still ~940 lines in
+`angela.py`, so a keyword-matched reply can still pass for a real one.
+Phase 2 (run context, suggestions, `useAskAngela`) has not started.
+Where the code still contradicts a rule below, the rule wins and the code
+is what changes. Update this status line as phases land.
 
 Hard rules:
 
