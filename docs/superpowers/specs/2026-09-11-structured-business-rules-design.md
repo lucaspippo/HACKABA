@@ -123,7 +123,7 @@ three reference cases without a general expression parser:
 
 ```json
 {"op": "all", "clauses": [
-  {"field": "client_id", "operator": "eq", "value": "c123"},
+  {"field": "client_id", "operator": "eq", "value": "$entity"},
   {"field": "quantity", "operator": "gt", "value": 100}
 ]}
 ```
@@ -134,6 +134,17 @@ of nesting covers reference case 3's `A OR B` inside an implicit top-level
 AND with the rest). `operator` ∈ `eq, ne, gt, gte, lt, lte, in, not_in`.
 `field` is looked up directly in the fact dict passed to `evaluate()` — no
 schema registry; an unknown field simply never matches.
+
+The literal string `"$entity"` as a clause's `value` is a placeholder for
+"the resolved entity_id of this rule" — whoever writes the condition (a
+human, or Ángela via `propose_rule`) names the *field* an entity check
+belongs on (`client_id`, `supplier_id`, ...) without needing to already know
+the real ID, since that's only resolved during `create()` (see Entity
+resolution below). `create()` substitutes every `"$entity"` occurrence with
+the resolved `entity_id` before storing the condition; a stored rule never
+contains the placeholder. A `scope != "global"` rule whose condition has no
+`"$entity"` placeholder anywhere is rejected — a rule tied to one entity
+that doesn't actually gate on it is very likely a mistake.
 
 **Action** — a list of typed steps, each independently returned to the
 caller, never interpreted or executed by the engine itself:
@@ -162,12 +173,15 @@ existing lookups depending on `entity_type`:
   `listar()` (no name-search helper exists there yet; this spec adds one
   small local match, not a refactor of that module)
 
-A unique match stores `entity_id`/`entity_type` and the rule is created with
-whatever `status` was requested (`active` by default). No match, or more
-than one candidate, forces `status="pending"` regardless of what was
-requested — the same "needs a human before it's live" outcome
-`conocimiento`'s unreviewed proposals already use, so a rule never goes live
-pointed at the wrong client.
+A unique match resolves one `entity_id`, substituted into the condition's
+`"$entity"` placeholder(s), and the rule is created with whatever `status`
+was requested (`active` by default). No match, or more than one candidate,
+forces `status="pending"` regardless of what was requested — the same
+"needs a human before it's live" outcome `conocimiento`'s unreviewed
+proposals already use, so a rule never goes live pointed at the wrong
+client. Both cases collapse to the same `None` return from the resolver;
+the caller doesn't need to distinguish "not found" from "ambiguous" since
+the outcome (pending, human reviews it) is identical either way.
 
 `scope="global"` rules have no `entity_name`/`entity_type`/`entity_id` and
 match on their condition's fields alone.
@@ -188,12 +202,13 @@ verify(rule_id) -> {ok: bool, results: [{case, expected, actual, ok}]}
 ```
 
 `evaluate` only considers `status="active"` rules and matches each one's
-`condition` tree against `facts` field by field. Entity scoping is not a
-separate step: `create()` requires the condition to already contain an `eq`
-clause on the resolved `entity_id` when `scope != "global"` (e.g.
-`{"field": "client_id", "operator": "eq", "value": <resolved entity_id>}`) —
-one explicit clause like any other, so a non-global rule simply can't match
-a fact about a different entity. `evaluate` returns every rule whose full
+already-stored `condition` tree against `facts` field by field — plain
+recursive tree evaluation, no entity-specific logic at this stage. Entity
+scoping isn't a separate step at evaluation time because it was already
+baked into the condition at `create()` time (the `"$entity"` substitution
+above): a non-global rule's condition already contains a concrete `eq`
+clause on its one resolved `entity_id`, so it simply can't match a fact
+about a different entity. `evaluate` returns every rule whose full
 condition matches, each with its resolved `action`, and performs no side
 effects itself.
 
