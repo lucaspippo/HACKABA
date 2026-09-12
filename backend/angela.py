@@ -94,6 +94,7 @@ TOOL_FEATURE = {
     "analisis_rotacion": "inventario", "analisis_estacionalidad": "evolucion",
     "analisis_push_pull": "oportunidades", "objetivos_negocio": "oportunidades",
     "capital_recuperable": "oportunidades",
+    # listar_prioridades: alertas OR oportunidades — see tools_para / _run_tool.
 }
 
 
@@ -123,7 +124,13 @@ def tools_para(features: set[str] | None) -> list[dict]:
     """El subconjunto de TOOLS que este usuario puede usar (capa 1)."""
     if features is None:
         return TOOLS
-    return [t for t in TOOLS if TOOL_FEATURE.get(t["name"]) in (None, *features)]
+
+    def allowed(tool: dict) -> bool:
+        if tool["name"] == "listar_prioridades":
+            return "alertas" in features or "oportunidades" in features
+        return TOOL_FEATURE.get(tool["name"]) in (None, *features)
+
+    return [t for t in TOOLS if allowed(t)]
 
 
 def _pesos(n: float, lang: str | None = None) -> str:
@@ -612,7 +619,8 @@ TOOLS = [
         "el elemento exacto que tiene que tocar (queda resaltado hasta que lo apreta). Usalo "
         "cuando quiera VER algo o no sepa dónde tocar. Secciones (P9·C7/M12 — TODAS las "
         "actuales): 'panel' (el inicio), 'inventario', 'saneamiento' (datos a corregir), "
-        "'alertas', 'oportunidades', 'finanzas', 'cuentas', 'caja', 'cobranzas', 'deposito', "
+        "'prioridades' (qué hacer ahora; alias: 'alertas', 'oportunidades', 'insights'), "
+        "'finanzas', 'cuentas', 'caja', 'cobranzas', 'deposito', "
         "'evolucion', 'equipo' (incluye gestión, solicitudes y matriz), 'administracion', "
         "'cargar', 'documentos', 'pendientes' (datos en revisión), 'perfil'. En mobile las "
         "vistas son menos: si la sección no existe ahí, el sistema se lo dice al usuario. "
@@ -1146,6 +1154,16 @@ TOOLS = [
         "'excluidos' con el motivo por el que NO se suman (la exposición de clientes es riesgo, "
         "no plata a cobrar; la sobrecompra es pérdida evitada). Repetí el total tal cual: es un "
         "número del guion y jamás se recalcula ni se le suman los excluidos.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "listar_prioridades",
+        "description": "La lista CANÓNICA de lo que hay que hacer ahora: ya fusionada "
+        "(un hecho = una card) y ordenada (banda 'act' primero, 'watch' al final). Usala "
+        "para '¿qué hago ahora?', '¿cuáles son mis prioridades?', '¿qué es urgente?'. "
+        "Devolvé el orden TAL CUAL: jamás reordenes, ni mezcles act con watch, ni inventes "
+        "un ranking paralelo. Si el dueño quiere VERLA en pantalla, encadená navegar_a "
+        "con sección 'prioridades'.",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -1910,6 +1928,24 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         accion = {"type": "navigate", "section": "evolucion"} if p.get("hay_datos") else None
         return p, accion
 
+    if name == "listar_prioridades":
+        if not (_tiene_feature("alertas") or _tiene_feature("oportunidades")):
+            return {"error": "sin_acceso",
+                    "motivo": "tu rol no ve Prioridades; esto lo mira otra persona del equipo."}, None
+        from core import priorities
+        inbox = priorities.inbox(_idioma_actual(), _features_actuales())
+
+        def _slim(it: dict) -> dict:
+            return {k: it.get(k) for k in (
+                "id", "chip", "titulo", "resumen", "monto", "cifra_texto", "tono", "band")}
+
+        return {
+            "act": [_slim(i) for i in inbox["act"]],
+            "watch": [_slim(i) for i in inbox["watch"]],
+            "badge": inbox["badge"],
+            "orden": "canónico — no reordenar ni mezclar act con watch",
+        }, {"type": "navigate", "section": "prioridades"}
+
     if name == "capital_recuperable":
         # P45·T2 — la suma la hace core/oportunidades_neg sobre las MISMAS cards
         # que pinta el mapa. Acá no se suma nada: se pide y se pasa.
@@ -1918,7 +1954,7 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         cds = analisis_cache.get_o_computar("oportunidades", lang,
                                             lambda: oportunidades_neg.cards(lang))
         r = oportunidades_neg.recuperable(cds, lang)
-        accion = {"type": "navigate", "section": "oportunidades"} if r.get("disponible") else None
+        accion = {"type": "navigate", "section": "prioridades"} if r.get("disponible") else None
         return r, accion
 
     # Análisis que cruzan datos (P7). Los resultados van recortados (tokens).

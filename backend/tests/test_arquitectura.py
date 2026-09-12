@@ -145,6 +145,6 @@ def test_navegar_a_declara_todas_las_secciones_actuales():
     import angela
 
     decl = next(t for t in angela.TOOLS if t["name"] == "navegar_a")["description"]
-    for seccion in ("oportunidades", "documentos", "pendientes", "administracion",
+    for seccion in ("prioridades", "oportunidades", "documentos", "pendientes", "administracion",
                     "cobranzas", "panel", "perfil"):
         assert f"'{seccion}'" in decl, f"navegar_a no declara «{seccion}»"
