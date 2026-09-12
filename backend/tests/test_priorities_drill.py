@@ -45,3 +45,31 @@ def test_costo_viejo_drill_has_product_involucrados(monkeypatch):
     assert cv["drill"]["grafico"] is not None
     iv = cv["drill"]["involucrados"][0]
     assert iv["id"] == "P3" and iv["kind"] == "product"
+
+
+def test_caida_interanual_drill_has_chart(monkeypatch):
+    from core import evolucion
+    pan = {"hay_datos": True,
+          "serie": [{"mes": "2026-01", "nominal": 100, "real": 95},
+                    {"mes": "2026-02", "nominal": 110, "real": 90}]}
+    monkeypatch.setattr(evolucion, "panorama", lambda lang: pan)
+    monkeypatch.setattr(evolucion, "alertas_de", lambda p, lang: [
+        {"titulo": "Caída real", "detalle": "cayó"}])
+    out = priorities._alerts_evolucion("es")
+    a = out[0]
+    assert a["drill"]["grafico"] is not None
+    assert len(a["drill"]["grafico"]["series"][0]["puntos"]) == 2
+
+
+def test_caja_inusual_drill_has_chart(monkeypatch):
+    from core import caja
+    monkeypatch.setattr(caja, "estado", lambda: {
+        "abierta": True,
+        "totales": {"total": 500_000},
+        "historial": [{"fecha": f"2026-06-2{i}", "total": 260_000, "diferencia": 0}
+                     for i in range(5)],
+    })
+    out = priorities._alerts_caja("es")
+    a = out[0]
+    assert a["drill"]["grafico"] is not None
+    assert len(a["drill"]["grafico"]["series"][0]["puntos"]) == 6

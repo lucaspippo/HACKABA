@@ -671,6 +671,10 @@ def _alerts_caja(lang) -> list[dict]:
     desvio = abs(tot - prom) / prom if prom else 0
     if desvio <= 0.4:
         return []
+    grafico = _grafico(_t("core.prio.caja_g", lang),
+                       [{"x": h["fecha"], "y": h["total"]} for h in hist] +
+                       [{"x": _t("core.prio.caja_hoy", lang), "y": tot}],
+                       "$", True)
     return [_item(
         id="caja_inusual", tono="oro", chip=_t("core.prio.chip_ver", lang),
         titulo=_t("core.prio.caja_t", lang),
@@ -681,7 +685,10 @@ def _alerts_caja(lang) -> list[dict]:
         fuentes=[_t("core.prio.f_caja", lang)],
         navegar="caja",
         accion_chat=_t("core.prio.caja_chat", lang),
-        drill=_blank_drill(),
+        drill={"porque": [_t("core.prio.caja_p", lang, total=_pesos(tot, lang),
+                             prom=_pesos(prom, lang), pct=round(desvio * 100))],
+              "grafico": grafico, "involucrados": [],
+              "supuestos": [_t("core.prio.caja_s", lang)]},
     )]
 
 
@@ -691,6 +698,11 @@ def _alerts_evolucion(lang) -> list[dict]:
     if pan.get("hay_datos") is False:
         return []
     out = []
+    serie = pan.get("serie") or []
+    grafico = _grafico(_t("core.prio.caida_g", lang),
+                       [{"x": p["mes"], "y": p.get("real") if p.get("real") is not None
+                        else p.get("nominal")} for p in serie],
+                       "$", True) if serie else None
     for a in evolucion.alertas_de(pan, lang):
         out.append(_item(
             id="caida_interanual", tono="rojo", chip=_t("core.prio.chip_riesgo", lang),
@@ -701,7 +713,8 @@ def _alerts_evolucion(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_ventas", lang)],
             navegar="evolucion",
             accion_chat=_t("core.prio.caida_chat", lang),
-            drill=_blank_drill(),
+            drill={"porque": [a["detalle"]], "grafico": grafico, "involucrados": [],
+                  "supuestos": [_t("core.prio.caida_s", lang)]},
         ))
     return out
 
