@@ -16,9 +16,9 @@ import { accionDe, estiloAccion } from "../lib/prioridadAccion";
 
 let _cachePrio = { lang: null, data: null };
 
-// Mirrors Prioridades.jsx's INVOLUCRADO_NAV — where an involucrado's `kind`
+// Mirrors Prioridades.jsx's INVOLVED_NAV — where an involucrado's `kind`
 // sends the reader when tapped.
-const INVOLUCRADO_NAV = {
+const INVOLVED_NAV = {
   client: { section: "cuentas", anchor: (id) => `cliente-${id}` },
   product: { section: "inventario", anchor: (id) => `producto-${id}` },
 };
@@ -36,13 +36,13 @@ function rowOf(it) {
     montoLabel: it.monto_label,
     cifraTexto: it.cifra_texto,
     fuentes: it.fuentes || [],
-    origen: it.origen || [],
+    origins: it.origen || [],
     porque: it.drill?.porque || [],
     grafico: it.drill?.grafico,
     involucrados: it.drill?.involucrados || [],
     supuestos: it.drill?.supuestos || [],
     confidence: it.drill?.confidence,
-    metricas: it.drill?.metricas || [],
+    metrics: it.drill?.metrics || [],
     macro: it.macro,
     chat: it.accion_chat,
     navegar: it.navegar,
@@ -82,8 +82,8 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
   const [abierta, setAbierta] = useState(null);
   const [filtro, setFiltro] = useState(null);
-  const [propResultado, setPropResultado] = useState({});
-  const [propTrabajando, setPropTrabajando] = useState(false);
+  const [proposalResult, setProposalResult] = useState({});
+  const [proposalWorking, setProposalWorking] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
     return () => { vivo = false; };
   }, [langKey]);
 
-  const cargar = () => {
+  const reload = () => {
     api.prioridades()
       .then((d) => {
         _cachePrio = { lang: langKey, data: d };
@@ -127,23 +127,23 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   // shape, selection model) differ enough that a shared hook would need to
   // abstract more than it'd save.
   const canGiveFeedback = (item) =>
-    (item.origen || []).some((o) => o.startsWith("oportunidad:") || o.startsWith("patron:"));
+    (item.origins || []).some((o) => o.startsWith("oportunidad:") || o.startsWith("patron:"));
 
-  const aprobarPropuesta = async (c) => {
+  const approveProposal = async (c) => {
     const p = c.propuesta;
     if (!p) return;
-    setPropTrabajando(true);
+    setProposalWorking(true);
     try {
       const r = await api.ordenCompraPreparar({
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
       });
-      setPropResultado((s) => ({ ...s, [c.id]: r.mensaje }));
+      setProposalResult((s) => ({ ...s, [c.id]: r.mensaje }));
       toast(r.mensaje);
     } catch {
       toast(t("oportunidades.prop_error"));
     }
-    setPropTrabajando(false);
+    setProposalWorking(false);
   };
 
   const giveFeedback = (item, action) => {
@@ -152,14 +152,14 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       .then(() => {
         toast(t("aprendizaje.feedback_ok"));
         setAbierta(null);
-        cargar();
+        reload();
       })
       .catch(() => toast(t("aprendizaje.feedback_error"), "error"))
       .finally(() => setFeedbackBusy(false));
   };
 
-  const onVerInvolucrado = (iv) => {
-    const target = iv.kind && INVOLUCRADO_NAV[iv.kind];
+  const viewInvolvedRecord = (iv) => {
+    const target = iv.kind && INVOLVED_NAV[iv.kind];
     if (target && iv.id != null) onNavegar?.(target.section, target.anchor(iv.id));
   };
 
@@ -168,10 +168,10 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       <header>
         <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
         <p className="mt-1 text-[0.9rem] text-tinta-suave">
-          {actRaw.length > 0 ? t("prioridades.sub_conteo", { n: actRaw.length }) : t("prioridades.sub")}
+          {actRaw.length > 0 ? t("prioridades.sub_count", { n: actRaw.length }) : t("prioridades.sub")}
           {data?.recuperable?.disponible && (
             <span className="plata ml-2 font-semibold text-salvia">
-              · {t("prioridades.recuperable", { monto: pesoCorto(data.recuperable.total) })}
+              · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
             </span>
           )}
         </p>
@@ -239,16 +239,16 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           involucrados={abierta.involucrados || []}
           supuestos={abierta.supuestos || []}
           fuentes={abierta.fuentes || []}
-          origen={abierta.origen || []}
+          origins={abierta.origins || []}
           confidence={abierta.confidence}
-          metricas={abierta.metricas || []}
+          metrics={abierta.metrics || []}
           propuesta={abierta.propuesta}
-          propuestaTrabajando={propTrabajando}
-          propuestaResultado={propResultado[abierta.id]}
-          onAprobarPropuesta={() => aprobarPropuesta(abierta)}
+          propuestaTrabajando={proposalWorking}
+          propuestaResultado={proposalResult[abierta.id]}
+          onAprobarPropuesta={() => approveProposal(abierta)}
           onFeedback={canGiveFeedback(abierta) ? (action) => giveFeedback(abierta, action) : undefined}
           feedbackBusy={feedbackBusy}
-          onVerInvolucrado={onVerInvolucrado}
+          onVerInvolucrado={viewInvolvedRecord}
           chip={abierta.chip}
           chipIcon={accAbierta.icon}
           chipCls={accAbierta.cls}

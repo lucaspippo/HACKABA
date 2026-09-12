@@ -1482,12 +1482,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                             "en": "{cant} {unidad} of {producto} from {proveedor}, so it lands before the stock-out ({lead}-day lead time)."},
     # The same three numbers already narrated in qi_q1b/qi_r2 prose, repeated
     # as scannable stat labels next to the chart (P·restock-refine).
-    "core.opn.qi_m_cobertura": {"es": "Cobertura", "en": "Coverage"},
+    "core.opn.qi_m_coverage": {"es": "Cobertura", "en": "Coverage"},
     "core.opn.qi_m_lead": {"es": "Repone en", "en": "Restocks in"},
-    "core.opn.qi_m_ventana": {"es": "Margen para negociar", "en": "Room to negotiate"},
-    "core.opn.qi_m_dias": {"es": "{n} días", "en": "{n} days"},
-    "core.opn.qi_m_hoy": {"es": "sale hoy", "en": "ships today"},
-    "core.opn.qi_m_tarde": {"es": "{n} días tarde", "en": "{n} days late"},
+    "core.opn.qi_m_window": {"es": "Margen para negociar", "en": "Room to negotiate"},
+    "core.opn.qi_m_days": {"es": "{n} días", "en": "{n} days"},
+    "core.opn.qi_m_today": {"es": "sale hoy", "en": "ships today"},
+    "core.opn.qi_m_late": {"es": "{n} días tarde", "en": "{n} days late"},
     # E2 — línea genérica de conocimiento en el porqué de una card
     "core.opn.k_ensenaste": {"es": "Vos me enseñaste: «{texto}».", "en": "You taught me: “{texto}”."},
     # E2·pieza 11 — la regla de Aldo hace crítico al quiebre
