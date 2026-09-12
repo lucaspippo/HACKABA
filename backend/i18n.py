@@ -3423,6 +3423,30 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.confidence.reason_low": {
         "es": "Datos limitados: {points} datos y {assumptions} supuesto(s).",
         "en": "Limited data: {points} data points and {assumptions} assumption(s)."},
+    "core.confidence.data_high": {
+        "es": "Basado en {points} puntos de historia y {records} registros.",
+        "en": "Based on {points} data points and {records} records.",
+    },
+    "core.confidence.data_medium": {
+        "es": "Basado en {points} puntos y {records} registros — alcanza para la señal, no para el detalle.",
+        "en": "Based on {points} points and {records} records — enough for the signal, not the detail.",
+    },
+    "core.confidence.data_low": {
+        "es": "Poca evidencia detrás: {points} puntos, {records} registros.",
+        "en": "Thin evidence behind this: {points} points, {records} records.",
+    },
+    "core.confidence.hyp_high": {
+        "es": "No apoya en supuestos: la lectura sale directo de los datos.",
+        "en": "Rests on no assumptions — the reading comes straight from the data.",
+    },
+    "core.confidence.hyp_medium": {
+        "es": "Apoya en {assumptions} supuesto(s) y {alternatives} explicación(es) alternativa(s).",
+        "en": "Rests on {assumptions} assumption(s) with {alternatives} alternative explanation(s).",
+    },
+    "core.confidence.hyp_low": {
+        "es": "Lectura frágil: {assumptions} supuesto(s) y {alternatives} explicación(es) alternativa(s).",
+        "en": "Fragile reading: {assumptions} assumption(s) and {alternatives} alternative explanation(s).",
+    },
 }
 
 
