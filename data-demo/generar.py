@@ -484,6 +484,21 @@ def generar_ventas_por_cliente(arts, cuentas_, ventas):
                     continue
                 vistos.add(a["codigo"])
                 elegidos.append(a)
+            # El mate no se toma solo: el pedido que ya lleva yerba, en la
+            # mayoría de los casos (no siempre — el hueco ES la oportunidad)
+            # también se lleva azúcar de la misma canasta. Nadie armó nunca
+            # ese combo a propósito: es un patrón que vive en los pedidos,
+            # esperando a que "combos no percibidos" lo note.
+            yerba = next((a for a in elegidos if a["descripcion"].startswith("YERBA")), None)
+            azucar = next((a for a in canasta if a["descripcion"].startswith("AZUCAR")
+                           and a["codigo"] not in vistos), None)
+            if yerba and azucar and len(elegidos) >= 3 and RC.random() < 0.8:
+                idx = next((i for i in range(len(elegidos) - 1, -1, -1)
+                            if elegidos[i] is not yerba), None)
+                if idx is not None:
+                    vistos.discard(elegidos[idx]["codigo"])
+                    vistos.add(azucar["codigo"])
+                    elegidos[idx] = azucar
             partes = [RC.uniform(0.6, 1.6) for _ in elegidos]
             suma = sum(partes)
             items, acumulado = [], 0.0
@@ -545,7 +560,17 @@ def generar_caja():
         if f.weekday() == 6:  # domingo cerrado
             continue
         total = round(R.uniform(2_200_000, 4_900_000) * (1.25 if f.weekday() == 5 else 1.0))
-        dif = R.choice([0, 0, 0, 0, 0, 0, 0, -R.randint(500, 8000), R.randint(500, 5000)])
+        # Mismo par de sorteos que antes (mismos rangos, mismo largo de lista
+        # para R.choice): el Random compartido queda BYTE IGUAL para todo lo
+        # que se genera después. Lo único que cambia es qué arma con ellos:
+        # los sábados (más caja, más apuro, cajero de refuerzo) el faltante
+        # aparece mucho más seguido que el resto de la semana — un patrón que
+        # "faltantes de caja" puede encontrar, no un promedio que lo esconda.
+        falta, sobra = R.randint(500, 8000), R.randint(500, 5000)
+        opciones = ([0, 0, -falta, -falta, -falta, -falta, -falta, -falta, sobra]
+                    if f.weekday() == 5 else
+                    [0, 0, 0, 0, 0, 0, 0, -falta, sobra])
+        dif = R.choice(opciones)
         hist.append({"fecha": f.isoformat(), "total": total, "diferencia": dif})
     caja = {
         "abierta": True, "fecha": HOY.isoformat(), "saldo_inicial": 250_000,

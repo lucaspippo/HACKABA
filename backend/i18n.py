@@ -1703,6 +1703,66 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.sobre_prop_t": {"es": "Pedir sólo lo que se vende", "en": "Order only what sells"},
     "core.opn.sobre_prop_d": {"es": "Orden de {sug} de {producto} a {proveedor}, en vez de las {oferta} que te empujan.",
                                "en": "Order {sug} of {producto} from {proveedor}, instead of the {oferta} they're pushing."},
+
+    # --- core/patrones.py — aprendizaje continuo: patrones que nadie pidió calcular --
+    "core.pat.combo_t": {
+        "es": "{a} y {b} viajan juntos casi siempre",
+        "en": "{a} and {b} almost always travel together"},
+    "core.pat.combo_r_falta": {
+        "es": "{pct}% de los pedidos con {a} también llevan {b} — pero {n} no, y ahí se está perdiendo una venta cruzada.",
+        "en": "{pct}% of the orders with {a} also carry {b} — but {n} didn't, and that's a missed cross-sell."},
+    "core.pat.combo_r_conjunto": {
+        "es": "{pct}% de los pedidos con {a} también llevan {b}: un combo tácito que nadie armó todavía.",
+        "en": "{pct}% of the orders with {a} also carry {b}: an unofficial combo nobody's set up yet."},
+    "core.pat.combo_monto_label_potencial": {
+        "es": "venta cruzada sin aprovechar", "en": "unrealized cross-sell"},
+    "core.pat.combo_monto_label_conjunto": {
+        "es": "facturación conjunta ya detectada", "en": "combined revenue already detected"},
+    "core.pat.combo_chat": {
+        "es": "Contame más sobre el combo de {a} y {b}.",
+        "en": "Tell me more about the {a} and {b} combo."},
+    "core.pat.combo_q1": {
+        "es": "Crucé los {n} pedidos de los últimos {clientes} clientes que llevaron {a}: {pct}% de esas veces, {b} viajó en el mismo pedido. Eso no es casualidad — nadie lo cargó como combo, pero el patrón está en los datos.",
+        "en": "I crossed the {n} orders from the {clientes} customers who bought {a}: {pct}% of those times, {b} rode along in the same order. That's not chance — nobody set it up as a combo, but the pattern is right there in the data."},
+    "core.pat.combo_q2_falta": {
+        "es": "Las {n} veces que faltó, es plata que se dejó arriba del mostrador: armar el combo (o simplemente ofrecerlo al cerrar el pedido) puede cerrar esa brecha.",
+        "en": "The {n} times it was missing, that's money left on the counter: setting up the combo (or just offering it when closing the order) can close that gap."},
+    "core.pat.combo_q2_conjunto": {
+        "es": "Hoy esa plata ya entra, pero entra como dos ventas sueltas: empaquetarla (o negociarla junta con el proveedor) puede subir el ticket promedio de quien ya compra los dos.",
+        "en": "That money already comes in today, but as two separate sales: bundling it (or negotiating it jointly with the supplier) can lift the average ticket for whoever already buys both."},
+    "core.pat.combo_i_falta": {
+        "es": "se llevó {a} el {fecha} sin {b}", "en": "bought {a} on {fecha} without {b}"},
+    "core.pat.combo_i_conjunto": {
+        "es": "{fecha}: se llevó los dos juntos", "en": "{fecha}: bought both together"},
+    "core.pat.combo_s1": {
+        "es": "Supuesto: cruce sobre los pedidos abiertos en renglones (qué se lleva cada cliente), no sobre el total facturado.",
+        "en": "Assumption: crossed over itemized orders (what each customer takes home), not over total billing."},
+    "core.pat.combo_g": {"es": "Pedidos con {a}", "en": "Orders with {a}"},
+    "core.pat.combo_g_con": {"es": "con {b}", "en": "with {b}"},
+    "core.pat.combo_g_sin": {"es": "sin {b}", "en": "without {b}"},
+
+    "core.pat.caja_t": {
+        "es": "Cada {dia} la caja falta mucho más que el resto de la semana",
+        "en": "Every {dia} the till comes up short far more than the rest of the week"},
+    "core.pat.caja_r": {
+        "es": "Faltó en el {pct}% de los cierres de {dia} (vs {pct_resto}% el resto), {total} acumulado en {n} cierres.",
+        "en": "Came up short in {pct}% of {dia} closes (vs {pct_resto}% the rest of the week), {total} accumulated over {n} closes."},
+    "core.pat.caja_chat": {
+        "es": "¿Por qué falta tanto la caja los días {dia}?",
+        "en": "Why does the till come up short so often on {dia}s?"},
+    "core.pat.caja_q1": {
+        "es": "De los últimos {n} cierres de {dia}, {faltan} tuvieron faltante — {pct}% de las veces, contra {pct_resto}% el resto de los días de la semana.",
+        "en": "Of the last {n} {dia} closes, {faltan} came up short — {pct}% of the time, against {pct_resto}% the rest of the week."},
+    "core.pat.caja_q2": {
+        "es": "Nadie lo comparó día por día antes: el promedio general de la semana lo tapa. Sumado, son {total} que se fueron sin explicación los días {dia} de este período.",
+        "en": "Nobody compared it day-by-day before: the week's overall average hides it. Added up, that's {total} that went unexplained on {dia}s in this period."},
+    "core.pat.caja_s1": {
+        "es": "Supuesto: compara el faltante promedio de cada día de la semana contra el resto, sobre el historial de cierres disponible.",
+        "en": "Assumption: compares each weekday's average shortfall against the rest, over the available close history."},
+    "core.pat.caja_i": {
+        "es": "{fecha}: faltaron {monto}", "en": "{fecha}: short by {monto}"},
+    "core.pat.caja_g": {"es": "Faltante por cierre", "en": "Shortfall per close"},
+
     # P38·C — los grupos del canal MOSTRADOR (locales propios). El mismo fiambre
     # feteado o entero son dos negocios distintos: por eso son dos grupos.
     # P38·H — vencimientos gestionados (no un campo que nadie mira)
@@ -3136,6 +3196,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.chip_deposito": {"es": "Depósito", "en": "Warehouse"},
     "core.prio.chip_equipo": {"es": "Tu equipo", "en": "Your team"},
     "core.prio.chip_ver": {"es": "Mirar", "en": "Watch"},
+    "core.prio.chip_revisar": {"es": "Revisar", "en": "Review"},
     "core.prio.f_cuentas": {"es": "Cuentas corrientes", "en": "Receivables"},
     "core.prio.f_stock": {"es": "Stock", "en": "Stock"},
     "core.prio.f_ventas": {"es": "Ventas", "en": "Sales"},
@@ -3313,6 +3374,22 @@ def mes_nombre(numero: int, lang: str | None = None) -> str:
     """Nombre del mes 1..12 en el idioma pedido (default el del tenant)."""
     lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
     return MESES.get(lang, MESES["es"])[numero - 1]
+
+
+# Nombres de día de semana (0=lunes..6=domingo, el mismo índice que
+# datetime.date.weekday()) — para hallazgos que señalan UN día puntual
+# (core/patrones.py: el faltante de caja que se repite un día fijo).
+DIAS_SEMANA = {
+    "es": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+}
+
+
+def dia_semana_nombre(weekday: int, lang: str | None = None) -> str:
+    """Nombre del día 0=lunes..6=domingo (`datetime.date.weekday()`) en el
+    idioma pedido (default el del tenant)."""
+    lang = lang if lang in paths.IDIOMAS else paths.DEFAULT_LANG
+    return DIAS_SEMANA.get(lang, DIAS_SEMANA["es"])[weekday]
 
 
 # Rubros del dataset (los 8 `tipo` finitos). El valor crudo español es la clave
