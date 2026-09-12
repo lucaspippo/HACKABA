@@ -275,6 +275,7 @@ export default function ChatPanel({
         <ChatThread
           onExecutingChange={setExecuting}
           emptyState={emptyState}
+          onAttach={authStore.tiene("cargar") ? () => setPhotoOpen(true) : undefined}
           composerLeading={
             hasCamera && authStore.tiene("cargar") && (
               // Only where there is a camera to take the photo with. The

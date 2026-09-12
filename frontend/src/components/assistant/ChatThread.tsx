@@ -19,10 +19,13 @@ export default function ChatThread({
   onExecutingChange,
   composerLeading,
   emptyState,
+  onAttach,
 }: {
   onExecutingChange?: ExecutingHandler;
   composerLeading?: ReactNode;
   emptyState?: ReactNode;
+  /** Opens the app's document-upload flow; omit to hide the call's attach button. */
+  onAttach?: () => void;
 }) {
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
   // Its own bounded session (see VoiceCallScreen) — never appended into `messages`.
@@ -43,16 +46,23 @@ export default function ChatThread({
     setCall({ adapter, transcript: [] });
   };
   const endCall = () => setCall(null);
+  const attachFromCall = onAttach
+    ? () => {
+        endCall();
+        onAttach();
+      }
+    : undefined;
 
   return (
     <ThreadPrimitive.Root className="flex h-full flex-col">
       {call ? (
-        <div className="flex flex-1 flex-col items-center justify-center px-4">
+        <div className="flex flex-1 flex-col overflow-hidden">
           <VoiceCallScreen
             voice={call.adapter}
             transcript={call.transcript}
             onEnd={endCall}
             onError={endCall}
+            onAttach={attachFromCall}
           />
         </div>
       ) : (
