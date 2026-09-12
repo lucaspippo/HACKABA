@@ -3186,6 +3186,8 @@ export const ES = {
   "chat.memory.dismiss": "Descartar «{text}»",
   "chat.memory.saved": "Guardado",
   "chat.memory.pending": "Va a revisión",
+  "chat.memory.apply_rule": "También aplicarla",
+  "chat.memory.context_only": "Solo recordarlo",
   "chat.memory.save_error": "No pude guardarlo. Probá de nuevo.",
   "chat.knowledge.open": "La memoria del negocio",
   "chat.knowledge.title": "Lo que Ángela sabe del negocio",

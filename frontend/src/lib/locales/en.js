@@ -3212,6 +3212,8 @@ export const EN = {
   "chat.memory.dismiss": "Discard \"{text}\"",
   "chat.memory.saved": "Kept",
   "chat.memory.pending": "Sent for review",
+  "chat.memory.apply_rule": "Also apply this rule",
+  "chat.memory.context_only": "Just remember",
   "chat.memory.save_error": "Couldn't save that. Try again.",
   "chat.knowledge.open": "Business memory",
   "chat.knowledge.title": "What Ángela knows about the business",
