@@ -105,6 +105,7 @@ ACCIONES: dict[str, dict] = {
     "confirmar_entrega":  {"clase": "stock", "gate": "propia"},
     "pedir_reposicion":   {"clase": "stock", "gate": "propia"},
     "registrar_pedido":   {"clase": "stock", "gate": "propia"},
+    "registrar_presupuesto": {"clase": "stock", "gate": "propia"},
     "resolver_reporte_piso": {"clase": "stock", "gate": "aprobacion"},
     # --- permisos: quién ve qué ---------------------------------------------
     "solicitar_modulo":          {"clase": "permisos", "gate": "propia"},
