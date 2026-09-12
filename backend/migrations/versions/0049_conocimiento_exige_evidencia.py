@@ -1,7 +1,7 @@
 """business_knowledge_pieces: el efecto `exige_evidencia`
 
-Revision ID: 0045
-Revises: 0044
+Revision ID: 0049
+Revises: 0048
 Create Date: 2026-09-12
 
 Los cinco efectos que había describen qué le hace una regla a un ANÁLISIS:
@@ -25,8 +25,8 @@ y `core/conocimiento.py::EFECTOS`.
 """
 from alembic import op
 
-revision = "0045"
-down_revision = "0044"
+revision = "0049"
+down_revision = "0048"
 branch_labels = None
 depends_on = None
 
