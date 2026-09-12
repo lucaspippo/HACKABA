@@ -126,9 +126,9 @@ def test_fallback_revert_por_chat():
     hash_mutado = _hash()
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
     r = angela._fallback("revert the price update")
-    assert "revertir_version" in r["tools_usadas"]
+    assert "revertir_version" in r["tools_used"]
     assert _hash() != hash_mutado  # volvió
-    assert "back" in r["respuesta"].lower()
+    assert "back" in r["answer"].lower()
 
 
 def test_fallback_revert_sin_backup_honesto(monkeypatch):
@@ -136,7 +136,7 @@ def test_fallback_revert_sin_backup_honesto(monkeypatch):
     monkeypatch.setattr(store.versiones, "list", lambda: [])
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     r = angela._fallback("revertí la lista de precios")
-    assert "ninguna lista" in r["respuesta"].lower()
+    assert "ninguna lista" in r["answer"].lower()
 
 
 def test_muestra_lista_existe_en_demo():

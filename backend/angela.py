@@ -2293,8 +2293,8 @@ def _fallback(mensaje: str) -> dict:
     cat = _categoria_en(m)
 
     def resp(texto, acciones=None, opciones=None, tools=None):
-        return {"respuesta": texto, "modo": "simulado", "tools_usadas": tools or [],
-                "acciones": acciones or [], "opciones": opciones or []}
+        return {"answer": texto, "mode": "simulado", "tools_used": tools or [],
+                "actions": acciones or [], "options": opciones or []}
 
     def bloqueado(feature):
         """Corta un cluster de intents si el usuario no tiene ese módulo (capa 2 del
@@ -3355,17 +3355,17 @@ def responder(
             # Respuesta final
             texto = "".join(b.text for b in resp.content if b.type == "text").strip()
             return {
-                "respuesta": texto,
-                "modo": "claude",
-                "tools_usadas": tools_usadas,
-                "acciones": acciones,
+                "answer": texto,
+                "mode": "claude",
+                "tools_used": tools_usadas,
+                "actions": acciones,
             }
 
         return {
-            "respuesta": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
-            "modo": "claude",
-            "tools_usadas": tools_usadas,
-            "acciones": acciones,
+            "answer": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
+            "mode": "claude",
+            "tools_used": tools_usadas,
+            "actions": acciones,
         }
     except Exception as e:  # noqa: BLE001 — degradar nunca tira la app abajo
         fb = _fallback(mensaje)
@@ -3482,8 +3482,8 @@ def stream_response(
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         fb = _fallback(message)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
+        if fb.get("answer"):
+            yield {"type": "text", "text": fb["answer"]}
         yield {"type": "done", "result": fb}
         return
 
@@ -3491,8 +3491,8 @@ def stream_response(
         import anthropic
     except ImportError:
         fb = _fallback(message)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
+        if fb.get("answer"):
+            yield {"type": "text", "text": fb["answer"]}
         yield {"type": "done", "result": fb}
         return
 
@@ -3540,20 +3540,20 @@ def stream_response(
 
             text = "".join(b.text for b in resp.content if b.type == "text").strip()
             yield {"type": "done", "result": {
-                "respuesta": text, "modo": "claude",
-                "tools_usadas": tools_used, "acciones": actions,
+                "answer": text, "mode": "claude",
+                "tools_used": tools_used, "actions": actions,
             }}
             return
 
         stuck_text = "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?"
         yield {"type": "text", "text": stuck_text}
         yield {"type": "done", "result": {
-            "respuesta": stuck_text,
-            "modo": "claude", "tools_usadas": tools_used, "acciones": actions,
+            "answer": stuck_text,
+            "mode": "claude", "tools_used": tools_used, "actions": actions,
         }}
     except Exception as e:  # noqa: BLE001 — degrading gracefully never crashes the chat
         fb = _fallback(message)
         fb["error_tecnico"] = str(e)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
+        if fb.get("answer"):
+            yield {"type": "text", "text": fb["answer"]}
         yield {"type": "done", "result": fb}

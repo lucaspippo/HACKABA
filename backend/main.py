@@ -144,12 +144,12 @@ class ChatTurn(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    mensaje: str
-    historial: list[ChatTurn] | None = None
+    message: str
+    history: list[ChatTurn] | None = None
     token: str | None = None
-    # rol/nombre del body quedan SÓLO por compatibilidad legacy (WhatsApp, tests):
-    # si viene token, la identidad sale del token y estos se IGNORAN (no se puede
-    # falsear el rol desde el request). Ver /api/angela.
+    # rol/nombre stay ONLY for legacy compatibility (WhatsApp, tests): when a
+    # token is present, identity comes from the token and these are IGNORED
+    # (the role cannot be spoofed from the request). See /api/angela.
     rol: str | None = None
     nombre: str | None = None
 
@@ -1823,13 +1823,13 @@ def whatsapp_in(req: WhatsAppRequest):
     u = auth.usuario_por_numero(req.numero)
     if not u:
         return {"autorizado": False,
-                "respuesta": i18n.t("api.whatsapp_sin_cuenta")}
+                "answer": i18n.t("api.whatsapp_sin_cuenta")}
     # Mismo filtro anti-fuga que el chat web: el WhatsApp de cada empleado ve sólo
     # los módulos de su rol (las features salen de su cuenta, no del mensaje).
     r = angela.responder(req.mensaje, [], rol=u.get("rol"), nombre=u.get("username"),
                          features=u.get("features"))
     return {"autorizado": True, "usuario": u.get("nombre"), "rol": u.get("rol"),
-            "respuesta": r["respuesta"], "acciones": r.get("acciones", [])}
+            "answer": r["answer"], "actions": r.get("actions", [])}
 
 
 # --- WhatsApp Bot: canal de VENTAS de cara al cliente -------------------------
@@ -2039,13 +2039,13 @@ def _mensaje_cap(request: Request, token: str | None) -> dict:
     """El mismo mensaje amable del cap de sesión, en el idioma del usuario si
     hay token; si no, el default del tenant."""
     u = auth.usuario_por_token(token) if token else None
-    return {"respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
-            "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": []}
+    return {"answer": i18n.t("angela.cap_alcanzado", _lang(u)),
+            "mode": "cap", "tools_used": [], "actions": [], "options": []}
 
 
 @app.post("/api/angela")
 def chat(req: ChatRequest, request: Request):
-    historial = [t.model_dump() for t in (req.historial or [])]
+    historial = [t.model_dump() for t in (req.history or [])]
     # (B) Freno de gasto por IP (deploy público, solo demo): antes de cualquier
     # llamada al modelo. En piloto _cap_ip()=0 → no aplica.
     if _ip_excedido(_client_ip(request), _cap_ip()):
@@ -2061,24 +2061,24 @@ def chat(req: ChatRequest, request: Request):
         if cap > 0:
             usados = _CHAT_POR_SESION.get(req.token, 0)
             if usados >= cap:
-                return {"respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
-                        "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": []}
+                return {"answer": i18n.t("angela.cap_alcanzado", _lang(u)),
+                        "mode": "cap", "tools_used": [], "actions": [], "options": []}
             _CHAT_POR_SESION[req.token] = usados + 1
         import time as _time
         _t0 = _time.monotonic()
-        r = angela.responder(req.mensaje, historial, rol=u.get("rol"),
+        r = angela.responder(req.message, historial, rol=u.get("rol"),
                              nombre=u.get("username"), features=u.get("features"))
         _ms = round((_time.monotonic() - _t0) * 1000)
         # P24·F4 — telemetría simple de latencia por tipo de pedido (log local):
         # para saber qué esperar en la grabación, sin servicios externos.
-        print(f"[angela] {_ms}ms tools={','.join(r.get('tools_usadas') or []) or '-'} "
+        print(f"[angela] {_ms}ms tools={','.join(r.get('tools_used') or []) or '-'} "
               f"user={u['username']}", flush=True)
         # P24·E4 — registro LIVIANO de la interacción (tema = tools usadas, sin
         # transcripciones): alimenta "Lo que pasó con tu equipo". Es un evento
         # administrativo: no infla el feed del Home (filtrado en _cuerpo_actividad).
         try:
             store.audit.record(actor=u["username"], accion="consulta_angela",
-                               despues={"tools": (r.get("tools_usadas") or [])[:4],
+                               despues={"tools": (r.get("tools_used") or [])[:4],
                                         "ms": _ms})
         except Exception:  # noqa: BLE001
             pass
@@ -2089,7 +2089,7 @@ def chat(req: ChatRequest, request: Request):
     # siempre (NO confía en req.rol/req.nombre; features=[] → nada sensible).
     if _es_demo():
         raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
-    return angela.responder(req.mensaje, historial, rol="invitado", nombre=None, features=[])
+    return angela.responder(req.message, historial, rol="invitado", nombre=None, features=[])
 
 
 @app.post("/api/angela/stream")
@@ -2100,15 +2100,15 @@ def chat_stream(req: ChatRequest, request: Request):
     changes."""
     from fastapi.responses import StreamingResponse
 
-    history = [t.model_dump() for t in (req.historial or [])]
+    history = [t.model_dump() for t in (req.history or [])]
 
     def line(event: dict) -> str:
         return json.dumps(event, ensure_ascii=False, default=str) + "\n"
 
     def cap_event(u) -> str:
         return line({"type": "done", "result": {
-            "respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
-            "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": [],
+            "answer": i18n.t("angela.cap_alcanzado", _lang(u)),
+            "mode": "cap", "tools_used": [], "actions": [], "options": [],
         }})
 
     if _ip_excedido(_client_ip(request), _cap_ip()):
@@ -2131,7 +2131,7 @@ def chat_stream(req: ChatRequest, request: Request):
             _t0 = _time.monotonic()
             result = None
             for ev in angela.stream_response(
-                req.mensaje, history, role=u.get("rol"),
+                req.message, history, role=u.get("rol"),
                 name=u.get("username"), features=u.get("features"),
             ):
                 if ev.get("type") == "done":
@@ -2139,11 +2139,11 @@ def chat_stream(req: ChatRequest, request: Request):
                 yield line(ev)
             _ms = round((_time.monotonic() - _t0) * 1000)
             result = result or {}
-            print(f"[angela/stream] {_ms}ms tools={','.join(result.get('tools_usadas') or []) or '-'} "
+            print(f"[angela/stream] {_ms}ms tools={','.join(result.get('tools_used') or []) or '-'} "
                   f"user={u['username']}", flush=True)
             try:
                 store.audit.record(actor=u["username"], accion="consulta_angela",
-                                   despues={"tools": (result.get("tools_usadas") or [])[:4],
+                                   despues={"tools": (result.get("tools_used") or [])[:4],
                                             "ms": _ms})
             except Exception:  # noqa: BLE001
                 pass
@@ -2154,7 +2154,7 @@ def chat_stream(req: ChatRequest, request: Request):
         raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
 
     def generate_guest():
-        for ev in angela.stream_response(req.mensaje, history, role="invitado",
+        for ev in angela.stream_response(req.message, history, role="invitado",
                                          name=None, features=[]):
             yield line(ev)
 

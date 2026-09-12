@@ -99,15 +99,15 @@ def test_fallback_no_filtra_cuentas_a_deposito():
     angela._set_sesion(usuario="deposito", rol="Depósito", features=set(FEATURES_DEPOSITO))
     r = angela._fallback("¿quién me debe plata? mostrame los morosos")
     # NO aparece ningún nombre de cliente ni monto de deuda
-    assert "Pérez" not in r["respuesta"] and "30.000.000" not in r["respuesta"]
-    assert "cuentas_corrientes" not in r["tools_usadas"]
+    assert "Pérez" not in r["answer"] and "30.000.000" not in r["answer"]
+    assert "cuentas_corrientes" not in r["tools_used"]
 
 
 def test_fallback_no_filtra_caja_a_deposito():
     angela._set_sesion(features=set(FEATURES_DEPOSITO))
     r = angela._fallback("¿cuánta plata hay en la caja hoy?")
-    assert "caja" not in [t for t in r["tools_usadas"]]
-    assert "área de caja" in r["respuesta"] or "no está dentro" in r["respuesta"]
+    assert "caja" not in [t for t in r["tools_used"]]
+    assert "área de caja" in r["answer"] or "no está dentro" in r["answer"]
 
 
 def test_fallback_no_filtra_inmovilizado_global_a_deposito():
@@ -115,7 +115,7 @@ def test_fallback_no_filtra_inmovilizado_global_a_deposito():
     # ni el intent de plata ni el default deben soltar el inmovilizado
     r1 = angela._fallback("¿cuánta plata tengo en manteca?")
     r2 = angela._fallback("hola, ¿qué me contás?")
-    assert "541" not in r1["respuesta"] and "541" not in r2["respuesta"]
+    assert "541" not in r1["answer"] and "541" not in r2["answer"]
 
 
 def test_fallback_dueno_si_ve_todo():
@@ -123,7 +123,7 @@ def test_fallback_dueno_si_ve_todo():
     r = angela._fallback("¿quién me debe plata?")
     # P9·C7 (M11): el nombre real de la tool es cuentas_corrientes ("cuentas"
     # nunca existió en TOOLS).
-    assert "cuentas_corrientes" in r["tools_usadas"] or "Pérez" in r["respuesta"]
+    assert "cuentas_corrientes" in r["tools_used"] or "Pérez" in r["answer"]
 
 
 # --- El token manda: rol falso en el body no sirve de nada ---
@@ -142,25 +142,25 @@ def test_rol_falso_en_body_no_sirve(client_tokens):
     # token de DEPÓSITO + rol "Dueño" en el body: la identidad sale del token,
     # el body se ignora → no puede sacar los morosos.
     r = c.post("/api/angela", json={
-        "mensaje": "¿quién me debe plata? mostrame los morosos con montos",
+        "message": "¿quién me debe plata? mostrame los morosos con montos",
         "token": tk["deposito"], "rol": "Dueño", "nombre": "Emilio",
     }).json()
-    assert "30.000.000" not in r["respuesta"] and "Don Pérez" not in r["respuesta"]
+    assert "30.000.000" not in r["answer"] and "Don Pérez" not in r["answer"]
 
 
 def test_sin_token_es_anonimo_restringido(client_tokens):
     c, _ = client_tokens
     # sin token, con rol "Dueño" falseado en el body → no accede a nada sensible
     r = c.post("/api/angela", json={
-        "mensaje": "¿quién me debe plata? dame los saldos",
+        "message": "¿quién me debe plata? dame los saldos",
         "rol": "Dueño", "nombre": "Emilio",
     }).json()
-    assert "30.000.000" not in r["respuesta"] and "Don Pérez" not in r["respuesta"]
+    assert "30.000.000" not in r["answer"] and "Don Pérez" not in r["answer"]
 
 
 def test_token_invalido_da_401(client_tokens):
     c, _ = client_tokens
-    r = c.post("/api/angela", json={"mensaje": "hola", "token": "no-existe"})
+    r = c.post("/api/angela", json={"message": "hola", "token": "no-existe"})
     assert r.status_code == 401
 
 
@@ -182,11 +182,11 @@ def test_dueno_con_token_no_lo_frena_el_permiso(client_tokens):
     from core import cuentas
     c, tk = client_tokens
     r = c.post("/api/angela", json={
-        "mensaje": "¿quién me debe plata? mostrame los morosos",
+        "message": "¿quién me debe plata? mostrame los morosos",
         "token": tk["emilio"],
     }).json()
-    texto = r["respuesta"]
-    tools = r.get("tools_usadas", [])
+    texto = r["answer"]
+    tools = r.get("tools_used", [])
 
     if cuentas.hay_datos_reales():
         # con datos de verdad, contesta con ellos (tool de cuentas o el nombre)

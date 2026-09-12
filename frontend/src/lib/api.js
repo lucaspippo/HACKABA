@@ -344,7 +344,7 @@ export const api = {
     const res = await fetch("/api/angela", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensaje, historial, ...extra }),
+      body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
     });
     if (!res.ok) throw new Error(`angela → ${res.status}`);
     return res.json();
@@ -355,7 +355,7 @@ export const api = {
     const res = await fetch("/api/angela/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensaje, historial, ...extra }),
+      body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
       signal,
     });
     if (!res.ok || !res.body) throw new Error(`angela/stream → ${res.status}`);

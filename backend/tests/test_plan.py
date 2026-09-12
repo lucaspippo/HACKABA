@@ -87,17 +87,17 @@ def test_plan_sin_pendientes_honesto():
 def test_fallback_plan_completo_es():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     r = angela._fallback("corregí todos los errores de stock")
-    assert "proponer_plan" in r["tools_usadas"]
-    assert "1)" in r["respuesta"] and "backup" in r["respuesta"].lower()
-    assert r["opciones"]  # Dale / Mejor no
+    assert "proponer_plan" in r["tools_used"]
+    assert "1)" in r["answer"] and "backup" in r["answer"].lower()
+    assert r["options"]  # Dale / Mejor no
     r2 = angela._fallback("dale, ejecutá el plan")
-    assert "ejecutar_plan" in r2["tools_usadas"]
-    assert any(a["type"] == "plan_progreso" for a in r2["acciones"])
+    assert "ejecutar_plan" in r2["tools_used"]
+    assert any(a["type"] == "plan_progreso" for a in r2["actions"])
     assert saneamiento.proponer("fantasma")["cantidad"] == 0
 
 
 def test_fallback_plan_en():
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
     r = angela._fallback("fix all my stock errors")
-    assert "proponer_plan" in r["tools_usadas"]
-    assert "backup" in r["respuesta"].lower()
+    assert "proponer_plan" in r["tools_used"]
+    assert "backup" in r["answer"].lower()
