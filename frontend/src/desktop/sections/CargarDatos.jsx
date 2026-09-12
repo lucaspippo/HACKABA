@@ -5,6 +5,7 @@ import FacturaFlow from "../../components/FacturaFlow";
 import { api } from "../../lib/api";
 import { useEmpresa } from "../../lib/useEmpresa";
 import { useT } from "../../lib/i18n";
+import IngestPipeline from "./IngestPipeline";
 
 // Vista del DUEÑO: cargar archivos de SU negocio como "cartas de desbloqueo"
 // (valor primero). Al soltar un CSV, Ángela infiere el mapeo de columnas y lo
@@ -25,7 +26,7 @@ const CARTAS = [
   },
 ];
 
-export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbrirAngela }) {
+export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbrirAngela, onNavigate }) {
   const t = useT();
   const { erpSimulado } = useEmpresa();
   const [fotoAbierta, setFotoAbierta] = useState(false);
@@ -37,6 +38,9 @@ export default function CargarDatos({ user, onArchivoCargado, onPreguntar, onAbr
           <p className="mt-1 text-[0.95rem] text-tinta-suave">
             {t("cargar.sub")}
           </p>
+          <div className="mt-3">
+            <IngestPipeline current="cargar" onNavigate={onNavigate} />
+          </div>
         </div>
         {/* P18·C: la conexión ERP, visible y HONESTA — solo el demo, que la
             declara simulada; el piloto no lleva badge (su ERP es el delta real). */}

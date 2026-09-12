@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import StagingArea from "./StagingArea";
 import { ShieldCheck, Sparkles, RotateCcw, Check, ArrowRight, Lock, X, Download } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import PanelDecision from "../../components/PanelDecision";
@@ -11,6 +10,7 @@ import { responsableVerificacion } from "../../lib/equipoReal";
 import { focoStore } from "../../lib/focoStore";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import IngestPipeline from "./IngestPipeline";
 
 // Cuando Ángela corrige un grupo, delega sola la verificación al responsable
 // REAL del tenant (lib/equipoReal, P9·C2): nada de nombres hardcodeados.
@@ -34,20 +34,14 @@ const COLOR_ESTADO = {
 // Categoría del libro → grupo del inventario (para el filtro al navegar).
 const INV_GRUPO = { fantasma: "fantasmas", balanza: "balanza", negativo: "negativos", sin_precio: "sin_pvp", costo_viejo: "costo_viejo" };
 
-export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, onRecargar, onStagingCambio }) {
+export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, onRecargar }) {
   const t = useT();
-  // P24·G — la fusión: UNA sección para "¿qué datos necesitan algo de mí?",
-  // con los DOS flujos bien separados por atrás: (a) errores en datos que YA
-  // viven en el sistema/ERP (se corrigen), (b) cargas retenidas en revisión
-  // que NO entraron al ERP (se resuelven y recién ahí entran).
-  const [subtab, setSubtab] = useState("errores");
+  // Quality errors on data that is ALREADY live. New rows waiting for OK
+  // live on the staging step of the ingest pipeline.
   const [enRevision, setEnRevision] = useState(0);
   useEffect(() => {
     api.stagingListar().then((d) => setEnRevision(d.batches.length)).catch(() => {});
   }, []);
-  useEffect(() => {
-    if (highlight === "revision") setSubtab("revision");
-  }, [highlight]);
   const [libro, setLibro] = useState(null);
   const [anomalias, setAnomalias] = useState([]);
   const [preview, setPreview] = useState(null); // {categoria, ...proponer}
@@ -138,33 +132,21 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
         <div>
           <h1 className="font-display text-3xl font-bold leading-none">{t("saneamiento.titulo")}</h1>
           <p className="mt-1 text-[0.95rem] text-tinta-suave">
-            {t("saneamiento.sub_fusion")}
+            {t("saneamiento.subtitulo")}
           </p>
+          <div className="mt-3">
+            <IngestPipeline current="saneamiento" onNavigate={onNavegar} />
+          </div>
         </div>
       </header>
 
-      {/* P24·G — los dos bloques, en lenguaje de dueño */}
-      <div className="flex gap-2 border-b border-linea">
-        {[
-          { id: "errores", lk: "saneamiento.tab_errores", n: libro.total_issues },
-          { id: "revision", lk: "saneamiento.tab_revision", n: enRevision },
-        ].map((tb) => (
-          <button key={tb.id} onClick={() => setSubtab(tb.id)}
-            className={`-mb-px flex items-center gap-2 border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
-              subtab === tb.id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
-            }`}>
-            {t(tb.lk)}
-            {tb.n > 0 && (
-              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.7rem] font-bold text-crema">{num(tb.n)}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {subtab === "revision" ? (
-        <StagingArea onCambio={(n) => { setEnRevision(n); onStagingCambio?.(n); }} onRecargar={onRecargar} />
-      ) : (
-      <>
+      {enRevision > 0 && (
+        <button type="button" onClick={() => onNavegar?.("staging")}
+          className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.08] px-4 py-3 text-left">
+          <span className="text-[0.9rem] text-tinta">{t("saneamiento.go_staging", { n: enRevision })}</span>
+          <ArrowRight size={16} className="shrink-0 text-oro-tinta" />
+        </button>
+      )}
 
       {/* Intro de Ángela con el total */}
       <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-5">
@@ -361,8 +343,6 @@ export default function Saneamiento({ user, highlight, onNavegar, onPreguntar, o
             ))}
           </div>
         </section>
-      )}
-      </>
       )}
     </div>
   );
