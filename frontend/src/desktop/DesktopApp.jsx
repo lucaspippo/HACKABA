@@ -39,7 +39,6 @@ import {
   ShoppingBag,
   Scale,
   Lightbulb,
-  GripVertical,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useAngelaPanelWidth } from "../lib/useAngelaPanelWidth";
@@ -48,6 +47,7 @@ import AngelaMark from "../components/AngelaMark";
 import CommandPalette from "../components/CommandPalette";
 import AccountMenu from "../components/AccountMenu";
 import { ChatRuntimeProvider, useChatDock } from "../lib/chatRuntimeProvider";
+import ResizeHandle from "../components/assistant/ResizeHandle";
 import { useVista, vistaStore } from "../lib/vistaStore";
 import Inicio from "./sections/Inicio";
 // La sección del mapa tiene dos vistas (árbol de fuentes / cerebro de
@@ -233,6 +233,13 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const rowRef = useRef(null);
   const angelaTriggerRef = useRef(null);
   const panelWidth = useAngelaPanelWidth(rowRef, () => setFullscreen(true));
+  const dockWidth =
+    panelWidth.width > 0
+      ? panelWidth.width
+      : Math.max(
+          320,
+          Math.round((rowRef.current?.clientWidth || 1080) / 3),
+        );
 
   const closeDockOnEscape = (event) => {
     if (event.key !== "Escape") return;
@@ -405,7 +412,18 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     setHighlight(null);
     if (hl) setTimeout(() => setHighlight(hl), 30);
   };
+  // Fullscreen chat replaces the page. Leaving for another section has to
+  // drop back to the side dock — otherwise the destination never appears.
+  const openDock = () => {
+    setFullscreen(false);
+    setAngelaOpen(true);
+  };
+  const collapseFullscreenToDock = () => {
+    if (!fullscreen) return;
+    openDock();
+  };
   const navegar = (sec, hl) => {
+    collapseFullscreenToDock();
     let destino = ALIAS_SECCION[sec] || sec;
     // Old "pendientes" / saneamiento?revision land on the staging step.
     if (
@@ -442,6 +460,16 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   useEffect(() => {
     setGrupoAbierto(grupoDe(section));
   }, [section]);
+  // URL changes that skip `navegar` (back/forward, a raw <Link>) must also
+  // leave fullscreen — otherwise the new section stays hidden behind chat.
+  const sectionWhileFullscreen = useRef(section);
+  useEffect(() => {
+    if (sectionWhileFullscreen.current === section) return;
+    sectionWhileFullscreen.current = section;
+    collapseFullscreenToDock();
+    // collapseFullscreenToDock reads the latest fullscreen flag from this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section]);
   // Click en el PADRE de un grupo: si ya está abierto, sólo se cierra (no
   // navega — deja ocultar la lista sin abandonar la página); si está cerrado,
   // navega a su primer hijo y se abre, cerrando implícitamente cualquier otro
@@ -467,11 +495,11 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   }, []);
   const preguntar = (texto) => {
     setConsultaAngela(texto);
-    setAngelaOpen(true);
+    openDock();
   };
   // B1: abrir el panel de Ángela SIN auto-enviar ninguna pregunta — para que el
   // mensaje proactivo (angelaBus) se vea apenas se confirma una carga por foto.
-  const abrirAngela = () => setAngelaOpen(true);
+  const abrirAngela = () => openDock();
 
   // Highlight a nivel elemento: scrollea y deja el elemento TITILANDO hasta
   // que el usuario lo toca (navegación guiada de Ángela). Ver lib/navGuiada.
@@ -671,8 +699,11 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           />
           <button
             ref={angelaTriggerRef}
-            onClick={() => setAngelaOpen((v) => !v)}
-            aria-expanded={angelaOpen}
+            onClick={() => {
+              setFullscreen(false);
+              setAngelaOpen((open) => (fullscreen ? true : !open));
+            }}
+            aria-expanded={angelaOpen && !fullscreen}
             aria-controls="angela-dock"
             className="flex items-center gap-2 rounded-full bg-violeta px-3.5 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
           >
@@ -700,7 +731,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   onNavigate={navegar}
                   user={user}
                   onDatosCambiaron={onRecargar}
-                  placeholderChips={chipsPorRol(user)}
                   onCollapse={() => setFullscreen(false)}
                 />
 </Suspense>
@@ -813,7 +843,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                         onPreguntar={preguntar}
                         onInsight={(i) => {
                           setMapaInsight(i);
-                          if (i) setAngelaOpen(true);
+                          if (i) openDock();
                         }}
                       />
 </Suspense>
@@ -956,39 +986,42 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
             </main>
           )}
 
-          <AnimatePresence>
-            {angelaOpen && !fullscreen && (
-              <motion.aside
-                id="angela-dock"
-                aria-label={t("chat.panel")}
-                onKeyDown={closeDockOnEscape}
-                initial={{ x: 24, opacity: 0.4 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 24, opacity: 0.4 }}
-                transition={{ type: "spring", stiffness: 320, damping: 34 }}
-                style={{ width: panelWidth.width }}
-                className="relative flex shrink-0 flex-col border-l border-violeta/20 bg-violeta-suave/45"
+          {angelaOpen && !fullscreen && (
+            <aside
+              id="angela-dock"
+              aria-label={t("chat.panel")}
+              onKeyDown={closeDockOnEscape}
+              style={{ width: dockWidth }}
+              className="relative flex shrink-0 flex-col overflow-hidden border-l border-violeta/20 bg-violeta-suave/45"
+            >
+              <div
+                style={{ width: dockWidth }}
+                className="flex h-full min-h-0 flex-col"
               >
+                <ResizeHandle
+                  label={t("chat.control.resize")}
+                  dragging={panelWidth.dragging}
+                  onPointerDown={panelWidth.onPointerDown}
+                />
                 <ErrorBoundary
                   seccion="angela"
                   onInicio={() => setAngelaOpen(false)}
                 >
                   <Suspense fallback={<Cargando />}>
-<ChatPanel
-                    variant="dock"
-                    onExpand={() => setFullscreen(true)}
-                    onNavigate={navegar}
-                    inputInicial={consultaAngela}
-                    user={user}
-                    onDatosCambiaron={onRecargar}
-                    placeholderChips={chipsPorRol(user)}
-                    onCollapse={() => setAngelaOpen(false)}
-                  />
-</Suspense>
+                    <ChatPanel
+                      variant="dock"
+                      onExpand={() => setFullscreen(true)}
+                      onNavigate={navegar}
+                      inputInicial={consultaAngela}
+                      user={user}
+                      onDatosCambiaron={onRecargar}
+                      onCollapse={() => setAngelaOpen(false)}
+                    />
+                  </Suspense>
                 </ErrorBoundary>
-              </motion.aside>
-            )}
-          </AnimatePresence>
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </div>
@@ -1088,40 +1121,3 @@ function ItemNav({
   );
 }
 
-// Los chips muestran el label traducido (lk) y mandan el payload en ES
-// (el motor de Ángela entiende castellano) — mismo patrón que CHIPS default.
-function chipsPorRol(user) {
-  if (user.features.includes("inventario"))
-    return [
-      {
-        lk: "angela.chip_llevame_fantasma",
-        enviar: "Llevame a los productos fantasma",
-      },
-      { lk: "angela.chip_manteca", enviar: "¿Cuánta plata tengo en manteca?" },
-      { lk: "angela.chip_balanzas", enviar: "Mostrame las balanzas" },
-      {
-        lk: "angela.chip_riesgo",
-        enviar: "¿Dónde está el mayor riesgo de mi inventario?",
-      },
-    ];
-  if (user.features.includes("deposito"))
-    return [
-      { lk: "angela.chip_negativo", enviar: "Mostrame el stock negativo" },
-      {
-        lk: "angela.chip_fantasma",
-        enviar: "¿Cuáles son mis productos fantasma?",
-      },
-    ];
-  if (user.features.includes("cobranzas"))
-    return [
-      { lk: "angela.chip_cobrar", enviar: "¿A quién tengo que cobrar?" },
-      {
-        lk: "angela.chip_financiar",
-        enviar: "¿Cuánto puedo financiarle a un cliente?",
-      },
-    ];
-  return [
-    { lk: "angela.chip_hoy", enviar: "¿Qué tengo que hacer hoy?" },
-    { lk: "angela.chip_recordatorio", enviar: "Anotá un recordatorio" },
-  ];
-}

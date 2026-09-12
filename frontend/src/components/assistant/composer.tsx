@@ -3,6 +3,7 @@
 import { type ComponentProps, useMemo } from "react";
 import {
   ArrowUpIcon,
+  AudioLinesIcon,
   CheckIcon,
   ChevronDownIcon,
   FileArchiveIcon,
@@ -652,6 +653,30 @@ export function ComposerVoiceButton({
       ) : (
         <MicIcon className="size-4" />
       )}
+    </button>
+  );
+}
+
+export function ComposerCallButton({
+  label = "Start voice conversation",
+  className,
+  ...props
+}: Omit<ComponentProps<"button">, "children"> & {
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      data-slot="composer-call-button"
+      className={cn(
+        "grid size-8 place-items-center rounded-full",
+        inkButton,
+        className,
+      )}
+      {...props}
+    >
+      <AudioLinesIcon className="size-4" />
     </button>
   );
 }

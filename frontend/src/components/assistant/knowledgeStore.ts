@@ -7,6 +7,8 @@ export type KnowledgePiece = {
   nodo: string;
   entidad?: string | null;
   estado: string;
+  quien?: string | null;
+  cuando?: string | null;
 };
 
 let pieces: Record<string, KnowledgePiece> = {};

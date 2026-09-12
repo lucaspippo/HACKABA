@@ -8,6 +8,7 @@ import {
   ComposerAttachmentChip,
   ComposerAttachments,
   ComposerBar,
+  ComposerCallButton,
   ComposerCommandItem,
   ComposerContext,
   ComposerMenu,
@@ -17,6 +18,7 @@ import {
   ComposerVoice,
   ComposerVoiceButton,
 } from "../composer";
+import { isWebSpeechVoiceSupported } from "../../../lib/voice/webSpeechVoiceAdapter";
 import type { ComposerAttachment } from "../composer";
 import { useT } from "../../../lib/i18n";
 import { authStore } from "../../../lib/auth";
@@ -67,7 +69,16 @@ function attachmentView(attachment: {
   };
 }
 
-export default function Composer({ leading }: { leading?: ReactNode }) {
+export default function Composer({
+  leading,
+  onStartCall,
+  raised = false,
+}: {
+  leading?: ReactNode;
+  onStartCall?: () => void;
+  /** Lift the bar off a papel page (fullscreen / mobile). The dock already sits on a tinted aside. */
+  raised?: boolean;
+}) {
   const t = useT();
   const aui = useAui();
   const text = useAuiState((s) => s.composer.text);
@@ -145,6 +156,13 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
 
   const showDraft = draft !== null && !draftDismissed && !text.trim();
   const isDictating = dictation !== undefined;
+  const showCallButton =
+    Boolean(onStartCall) &&
+    !isRunning &&
+    !isDictating &&
+    !canSend &&
+    attachments.length === 0 &&
+    isWebSpeechVoiceSupported();
 
   return (
     <div className="relative w-full">
@@ -190,8 +208,20 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
           ))}
       </ComposerMenu>
 
-      <ComposerPrimitive.Root className="w-full">
-        <ComposerBar className="has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-violeta/40">
+      <ComposerPrimitive.Root
+        className={cn(
+          "w-full",
+          // Same tint family as the dock aside, so the bar reads as a control
+          // on the papel page instead of dissolving into it.
+          raised && "rounded-[28px] bg-violeta-suave p-1",
+        )}
+      >
+        <ComposerBar
+          className={cn(
+            "has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-violeta/40",
+            raised && "border-transparent sombra-papel",
+          )}
+        >
           {attachments.length > 0 && (
             <ComposerAttachments>
               {attachments.map((attachment) => (
@@ -255,20 +285,28 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
                   }
                 />
               )}
-              <ComposerSend
-                streaming={isRunning}
-                // The element reads `idle` as "nothing to send" and inks the
-                // button on its negation.
-                idle={!canSend}
-                disabled={!canSend && !isRunning}
-                sendLabel={t("chat.composer.send")}
-                stopLabel={t("chat.composer.stop")}
-                onClick={() => (isRunning ? aui.composer.cancel() : aui.composer.send())}
-                className={cn(
-                  "disabled:cursor-not-allowed",
-                  (canSend || isRunning) && "bg-violeta text-crema",
-                )}
-              />
+              {showCallButton ? (
+                <ComposerCallButton
+                  label={t("chat.composer.call_start")}
+                  onClick={onStartCall}
+                  className="bg-violeta text-crema"
+                />
+              ) : (
+                <ComposerSend
+                  streaming={isRunning}
+                  // The element reads `idle` as "nothing to send" and inks the
+                  // button on its negation.
+                  idle={!canSend}
+                  disabled={!canSend && !isRunning}
+                  sendLabel={t("chat.composer.send")}
+                  stopLabel={t("chat.composer.stop")}
+                  onClick={() => (isRunning ? aui.composer.cancel() : aui.composer.send())}
+                  className={cn(
+                    "disabled:cursor-not-allowed",
+                    (canSend || isRunning) && "bg-violeta text-crema",
+                  )}
+                />
+              )}
             </ComposerActions>
           </ComposerToolbar>
         </ComposerBar>

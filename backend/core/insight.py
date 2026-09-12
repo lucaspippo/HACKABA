@@ -119,6 +119,22 @@ def series(id: str, *, label: str, chart: dict, method: dict,
                      chart=chart)
 
 
+def knowledge(piece: dict, *, weight: str = "supporting") -> dict:
+    """A conocimiento piece cited as evidence. `piece` is the dict as
+    returned by conocimiento.listar()/aplicables()/para()/detalle() — this
+    function reads it, never mutates it. Freshness is derived HERE, not
+    stored on the evidence item at build time, so it always reflects the
+    piece's CURRENT decay state when this insight is read, not whenever it
+    happened to be built."""
+    from . import conocimiento
+    ev = _evidence(piece["id"], "knowledge", label=piece["texto"],
+                   method={"source": "conocimiento", "tipo": piece["tipo"]}, weight=weight)
+    ev["origen"] = piece.get("origen") or {}
+    ev["freshness"] = conocimiento.freshness(piece)
+    ev["needs_review"] = conocimiento.needs_review(piece)
+    return ev
+
+
 def record(*, kind: str, id, name: str, amount=None, detail: str | None = None) -> dict:
     """One clickable row. `kind` drives navigation ("client" → cuentas,
     "product" → inventario); an id with no kind has nowhere to land."""

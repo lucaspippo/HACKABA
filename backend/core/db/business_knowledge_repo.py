@@ -13,7 +13,8 @@ from core.db.engine import tenant_connection
 
 _COLS = ("id", "texto", "texto_en", "tipo", "ambito", "entidad", "nodo",
          "efecto", "efecto_profundo", "params", "origen", "estado",
-         "veces_aplicada")
+         "veces_aplicada", "confidence", "evidence_count",
+         "last_reinforced_at", "half_life_days", "superseded_by")
 
 
 def _to_piece(row) -> dict:
@@ -31,6 +32,11 @@ def _to_piece(row) -> dict:
         "origen": row["origen"] or {},
         "estado": row["estado"],
         "veces_aplicada": row["veces_aplicada"],
+        "confidence": float(row["confidence"]),
+        "evidence_count": row["evidence_count"],
+        "last_reinforced_at": row["last_reinforced_at"].isoformat() if row["last_reinforced_at"] else None,
+        "half_life_days": row["half_life_days"],
+        "superseded_by": row["superseded_by"],
     }
 
 
@@ -57,24 +63,76 @@ def create(tenant_id: str, *, id: str, texto: str, tipo: str, ambito: str,
           nodo: str, efecto: str, entidad: str | None = None,
           texto_en: str | None = None, efecto_profundo: bool = False,
           params: dict | None = None, origen: dict | None = None,
-          estado: str = "activo", veces_aplicada: int = 0) -> dict:
+          estado: str = "activo", veces_aplicada: int = 0,
+          confidence: float = 0.7, evidence_count: int = 1,
+          half_life_days: int | None = None) -> dict:
     with tenant_connection(tenant_id) as conn:
         row = conn.execute(
             text(
                 "INSERT INTO business_knowledge_pieces "
                 "(id, tenant_id, texto, texto_en, tipo, ambito, entidad, nodo, "
-                " efecto, efecto_profundo, params, origen, estado, veces_aplicada) "
+                " efecto, efecto_profundo, params, origen, estado, veces_aplicada, "
+                " confidence, evidence_count, half_life_days) "
                 "VALUES (:id, :tid, :texto, :texto_en, :tipo, :ambito, :entidad, :nodo, "
-                " :efecto, :efecto_profundo, :params, :origen, :estado, :veces_aplicada) "
+                " :efecto, :efecto_profundo, :params, :origen, :estado, :veces_aplicada, "
+                " :confidence, :evidence_count, :half_life_days) "
                 f"RETURNING {', '.join(_COLS)}"
             ),
             {"id": id, "tid": tenant_id, "texto": texto, "texto_en": texto_en,
              "tipo": tipo, "ambito": ambito, "entidad": entidad, "nodo": nodo,
              "efecto": efecto, "efecto_profundo": efecto_profundo,
              "params": json.dumps(params or {}), "origen": json.dumps(origen or {}),
-             "estado": estado, "veces_aplicada": veces_aplicada},
+             "estado": estado, "veces_aplicada": veces_aplicada,
+             "confidence": confidence, "evidence_count": evidence_count,
+             "half_life_days": half_life_days},
         ).mappings().one()
     return _to_piece(row)
+
+
+def update_reinforcement(tenant_id: str, piece_id: str, *, confidence: float,
+                         evidence_count: int) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_knowledge_pieces SET "
+                "confidence = :confidence, evidence_count = :evidence_count, "
+                "last_reinforced_at = now() "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"confidence": confidence, "evidence_count": evidence_count, "id": piece_id},
+        ).mappings().one_or_none()
+    return _to_piece(row) if row else None
+
+
+def set_superseded(tenant_id: str, piece_id: str, *, superseded_by: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_knowledge_pieces SET estado = 'superada', "
+                "superseded_by = :sup_by "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"sup_by": superseded_by, "id": piece_id},
+        ).mappings().one_or_none()
+    return _to_piece(row) if row else None
+
+
+def update_content(tenant_id: str, piece_id: str, *, texto: str, texto_en: str | None,
+                   tipo: str, ambito: str, efecto: str, entidad: str | None,
+                   params: dict, estado: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_knowledge_pieces SET "
+                "texto = :texto, texto_en = :texto_en, tipo = :tipo, ambito = :ambito, "
+                "efecto = :efecto, entidad = :entidad, params = :params, estado = :estado "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"texto": texto, "texto_en": texto_en, "tipo": tipo, "ambito": ambito,
+             "efecto": efecto, "entidad": entidad, "params": json.dumps(params or {}),
+             "estado": estado, "id": piece_id},
+        ).mappings().one_or_none()
+    return _to_piece(row) if row else None
 
 
 def set_status(tenant_id: str, piece_id: str, estado: str) -> dict | None:

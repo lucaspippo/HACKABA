@@ -14,6 +14,9 @@ export interface MemoryChip {
   id: string;
   text: string;
   change: MemoryChange;
+  // Present only when the model suggested a real effect: "id" here is a
+  // client-side key, not a server id — nothing is saved yet on either branch.
+  narrativeAlternative?: { id: string; text: string };
 }
 
 export interface MemoryChipsLabels {
@@ -23,6 +26,10 @@ export interface MemoryChipsLabels {
   dismiss: (text: string) => string;
   saved: string;
   pending: string;
+  applyRuleLabel: string;
+  contextOnlyLabel: string;
+  saveAsRule?: (text: string) => string;
+  saveAsContext?: (text: string) => string;
 }
 
 const TONE: Record<MemoryChange, string> = {
@@ -78,14 +85,35 @@ export function MemoryChips({
 
             {chip.change === "proposed" && (
               <>
-                <button
-                  type="button"
-                  aria-label={labels.save(chip.text)}
-                  onClick={() => onSave?.(chip.id)}
-                  className={cn(ghostButton, "size-4 shrink-0")}
-                >
-                  <CheckIcon className="size-2.5" />
-                </button>
+                {chip.narrativeAlternative ? (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={labels.saveAsRule?.(chip.text) ?? labels.save(chip.text)}
+                      onClick={() => onSave?.(chip.id)}
+                      className={cn(ghostButton, "px-1.5 text-2xs")}
+                    >
+                      {labels.applyRuleLabel}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={labels.saveAsContext?.(chip.text) ?? labels.save(chip.text)}
+                      onClick={() => onSave?.(chip.narrativeAlternative!.id)}
+                      className={cn(ghostButton, "px-1.5 text-2xs")}
+                    >
+                      {labels.contextOnlyLabel}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    aria-label={labels.save(chip.text)}
+                    onClick={() => onSave?.(chip.id)}
+                    className={cn(ghostButton, "size-4 shrink-0")}
+                  >
+                    <CheckIcon className="size-2.5" />
+                  </button>
+                )}
                 <button
                   type="button"
                   aria-label={labels.dismiss(chip.text)}

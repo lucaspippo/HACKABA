@@ -12,12 +12,25 @@
 // LO QUE ESTE COMPONENTE NO HACE: decidir. Manda el texto al backend, muestra
 // lo que Ángela entendió, y hasta que una persona no toca "Confirmar" no se
 // escribe nada. Si el backend marcó algo como bloqueado —una cantidad que no
-// cierra, dos productos que matchean igual— el botón no se habilita.
+// cierra, dos productos que matchean igual— el botón no se habilita. Eso NO
+// cambió acá: lo único que se volvió conversacional es la rama `consulta`
+// (una pregunta no escribe nada, nunca necesitó ese freno).
+//
+// THE CONVERSATIONAL PART: a question ("¿cuánto stock de aceite queda?")
+// hands off to VoiceCallScreen — a full voice-call screen built on
+// assistant-ui's own RealtimeVoiceAdapter (useVoiceState/useVoiceControls/
+// useVoiceVolume), backed here by lib/voice/webSpeechVoiceAdapter.ts (Web
+// Speech recognize/ask/speak, chained). Same shared component and adapter
+// shape core/voz_viva.py's GPT-Live-1 flow uses (VozVivaRecepcion.jsx) —
+// one state machine for "a live voice session with Ángela", two different
+// things behind it.
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, X, Check, AlertTriangle, MessageSquare } from "lucide-react";
+import { Mic, Square, X, Check, AlertTriangle } from "lucide-react";
 import AngelaMark from "./AngelaMark";
 import { api } from "../lib/api";
 import { useT } from "../lib/i18n";
+import { VoiceCallScreen } from "./voice/VoiceCallScreen";
+import { createWebSpeechVoiceAdapter, isWebSpeechVoiceSupported } from "../lib/voice/webSpeechVoiceAdapter";
 
 const Reconocimiento = typeof window !== "undefined"
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -25,7 +38,8 @@ const Reconocimiento = typeof window !== "undefined"
 
 export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const t = useT();
-  const [paso, setPaso] = useState("listo");   // listo|escuchando|pensando|propuesta|hecho
+  // listo|escuchando|pensando|propuesta|hecho
+  const [paso, setPaso] = useState("listo");
   const [texto, setTexto] = useState("");
   const [prop, setProp] = useState(null);
   const [elegido, setElegido] = useState(null);
@@ -33,6 +47,9 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const [error, setError] = useState(null);
   const [muestras, setMuestras] = useState([]);
   const rec = useRef(null);
+  // La llamada conversacional (rama `consulta`): mientras esté activa,
+  // VoiceCallScreen se hace cargo por completo — ver render() más abajo.
+  const [call, setCall] = useState(null);   // { adapter, transcript } | null
 
   useEffect(() => {
     api.vozMuestras().then((r) => setMuestras(r.muestras || [])).catch(() => {});
@@ -45,6 +62,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
     try {
       const r = await api.vozEscuchar(frase);
       if (!r.ok) { setError(r.motivo); setPaso("listo"); return; }
+      if (r.intencion === "consulta") { startCall(frase); return; }
       setProp(r);
       setElegido(r.elegido ?? null);
       setCantidad(r.datos?.cantidad ?? "");
@@ -53,6 +71,39 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
       setError(t("voz.err_red"));
       setPaso("listo");
     }
+  };
+
+  const appendToCall = (item) =>
+    setCall((prev) => prev && {
+      ...prev,
+      transcript: [...prev.transcript, { id: `${prev.transcript.length}`, ...item }],
+    });
+
+  const startCall = (initialQuestion) => {
+    if (!isWebSpeechVoiceSupported()) {
+      // sin reconocimiento/síntesis en este navegador: la pregunta se
+      // responde en el chat de texto, como siempre pudo.
+      onPreguntar?.(initialQuestion);
+      onCerrar?.();
+      return;
+    }
+    const adapter = createWebSpeechVoiceAdapter({
+      channel: "voz",
+      initialQuestion,
+      onTranscript: appendToCall,
+    });
+    setCall({ adapter, transcript: [{ id: "u0", role: "user", text: initialQuestion }] });
+  };
+
+  const endCall = () => {
+    setCall(null);
+    setPaso("listo");
+  };
+
+  const endCallWithError = () => {
+    setCall(null);
+    setError(t("voz.err_respuesta"));
+    setPaso("listo");
   };
 
   const escuchar = () => {
@@ -126,8 +177,13 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {call && (
+            <VoiceCallScreen voice={call.adapter} transcript={call.transcript}
+              onEnd={endCall} onError={endCallWithError} />
+          )}
+
           {/* ---------------------------------------------- hablar */}
-          {(paso === "listo" || paso === "escuchando") && (
+          {!call && (paso === "listo" || paso === "escuchando") && (
             <div className="space-y-4">
               <p className="text-sm leading-snug text-tinta-suave">{t("voz.ayuda")}</p>
               <button onClick={paso === "escuchando" ? () => rec.current?.stop() : escuchar}
@@ -175,7 +231,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
             </div>
           )}
 
-          {paso === "pensando" && (
+          {!call && paso === "pensando" && (
             <div className="flex items-center justify-center gap-3 py-10">
               <AngelaMark size={30} estado="ejecutando" />
               <p className="text-sm text-tinta-suave">{t("voz.pensando")}</p>
@@ -183,88 +239,75 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
           )}
 
           {/* ------------------------------------------- la propuesta */}
-          {paso === "propuesta" && prop && (
+          {!call && paso === "propuesta" && prop && (
             <div className="space-y-4">
               <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-sm italic text-tinta-suave">
                 «{prop.transcripcion}»
               </p>
 
-              {prop.intencion === "consulta" ? (
-                <>
-                  <p className="text-base text-tinta">{t("voz.es_consulta")}</p>
-                  <button onClick={() => { onPreguntar?.(prop.transcripcion); onCerrar?.(); }}
-                    className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2.5
-                               text-sm font-semibold text-crema">
-                    <MessageSquare size={15} /> {t("voz.preguntar")}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-start gap-2.5">
-                    <AngelaMark size={26} />
-                    <p className="text-base leading-snug text-tinta">
-                      {t(`voz.entendi_${prop.intencion}`)}
-                    </p>
+              <div className="flex items-start gap-2.5">
+                <AngelaMark size={26} />
+                <p className="text-base leading-snug text-tinta">
+                  {t(`voz.entendi_${prop.intencion}`)}
+                </p>
+              </div>
+
+              {/* el producto: se elige, no se adivina */}
+              {prop.candidatos?.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-tinta-suave">
+                    {t("voz.f_producto")}
+                  </p>
+                  <div className="mt-1 space-y-1">
+                    {prop.candidatos.map((c) => (
+                      <button key={c.codigo} onClick={() => setElegido(c.codigo)}
+                        className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left
+                                    text-sm ${elegido === c.codigo
+                            ? "border-violeta bg-violeta-suave font-semibold text-tinta"
+                            : "border-linea bg-crema text-tinta-suave hover:bg-papel-hondo/60"}`}>
+                        <span className="min-w-0 flex-1 truncate">{c.descripcion}</span>
+                        {elegido === c.codigo && <Check size={15} className="shrink-0 text-violeta" />}
+                      </button>
+                    ))}
                   </div>
-
-                  {/* el producto: se elige, no se adivina */}
-                  {prop.candidatos?.length > 0 && (
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-tinta-suave">
-                        {t("voz.f_producto")}
-                      </p>
-                      <div className="mt-1 space-y-1">
-                        {prop.candidatos.map((c) => (
-                          <button key={c.codigo} onClick={() => setElegido(c.codigo)}
-                            className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left
-                                        text-sm ${elegido === c.codigo
-                                ? "border-violeta bg-violeta-suave font-semibold text-tinta"
-                                : "border-linea bg-crema text-tinta-suave hover:bg-papel-hondo/60"}`}>
-                            <span className="min-w-0 flex-1 truncate">{c.descripcion}</span>
-                            {elegido === c.codigo && <Check size={15} className="shrink-0 text-violeta" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3">
-                    <label className="text-xs uppercase tracking-wide text-tinta-suave">
-                      {t("voz.f_cantidad")}
-                    </label>
-                    <input value={cantidad} inputMode="decimal"
-                      onChange={(e) => setCantidad(e.target.value)}
-                      className="plata w-24 rounded-lg border border-linea bg-crema px-2.5 py-1.5
-                                 text-right text-base" />
-                  </div>
-
-                  {/* lo que el CÓDIGO frenó: se dice y se explica */}
-                  {frenos.map((b, i) => (
-                    <p key={i} className="flex gap-2 rounded-xl border border-oro/40 bg-oro/[0.09]
-                                          px-3.5 py-2.5 text-sm leading-snug text-tinta">
-                      <AlertTriangle size={15} className="mt-0.5 shrink-0 text-oro-tinta" />
-                      {b.detalle}
-                    </p>
-                  ))}
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <button onClick={confirmar} disabled={!puedeConfirmar}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5
-                                 text-sm font-semibold text-crema disabled:opacity-40">
-                      <Check size={15} /> {t("voz.confirmar")}
-                    </button>
-                    <button onClick={() => { setProp(null); setPaso("listo"); }}
-                      className="rounded-full border border-linea bg-crema px-4 py-2.5
-                                 text-sm font-semibold text-tinta-suave">
-                      {t("voz.otra_vez")}
-                    </button>
-                  </div>
-                </>
+                </div>
               )}
+
+              <div className="flex items-center gap-3">
+                <label className="text-xs uppercase tracking-wide text-tinta-suave">
+                  {t("voz.f_cantidad")}
+                </label>
+                <input value={cantidad} inputMode="decimal"
+                  onChange={(e) => setCantidad(e.target.value)}
+                  className="plata w-24 rounded-lg border border-linea bg-crema px-2.5 py-1.5
+                             text-right text-base" />
+              </div>
+
+              {/* lo que el CÓDIGO frenó: se dice y se explica */}
+              {frenos.map((b, i) => (
+                <p key={i} className="flex gap-2 rounded-xl border border-oro/40 bg-oro/[0.09]
+                                      px-3.5 py-2.5 text-sm leading-snug text-tinta">
+                  <AlertTriangle size={15} className="mt-0.5 shrink-0 text-oro-tinta" />
+                  {b.detalle}
+                </p>
+              ))}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button onClick={confirmar} disabled={!puedeConfirmar}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5
+                             text-sm font-semibold text-crema disabled:opacity-40">
+                  <Check size={15} /> {t("voz.confirmar")}
+                </button>
+                <button onClick={() => { setProp(null); setPaso("listo"); }}
+                  className="rounded-full border border-linea bg-crema px-4 py-2.5
+                             text-sm font-semibold text-tinta-suave">
+                  {t("voz.otra_vez")}
+                </button>
+              </div>
             </div>
           )}
 
-          {paso === "hecho" && (
+          {!call && paso === "hecho" && (
             <div className="space-y-4 py-4 text-center">
               <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-salvia text-crema">
                 <Check size={20} />

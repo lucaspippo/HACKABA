@@ -42,6 +42,7 @@ CONOCIMIENTO_JSON = os.path.join(DATA_DIR, "conocimiento_negocio.json")
 
 # Las cuatro clases de conocimiento no estructurado (las que pide YC).
 TIPOS = {"regla", "excepcion", "protocolo", "contexto"}
+DEFAULT_HALF_LIFE = {"regla": 180, "excepcion": 120, "protocolo": 365, "contexto": 270}
 # A qué se refiere la pieza.
 AMBITOS = {"cliente", "proveedor", "categoria", "empleado", "global"}
 # Qué hace la pieza en el producto (el efecto verificable).
@@ -58,7 +59,7 @@ EFECTOS = {"ajusta_umbral", "suprime_alerta", "genera_alerta",
 # Dominio del mapa donde nace la pieza (los 8 nodos del Business Map).
 NODOS = {"ventas", "inventario", "deposito", "proveedores",
          "clientes", "caja", "equipo", "contexto"}
-ESTADOS = {"activo", "pausado", "pendiente"}
+ESTADOS = {"activo", "pausado", "pendiente", "revisar", "superada", "archivada"}
 
 # Scope por rol: qué feature (módulo del perfil) habilita ver las piezas de cada
 # nodo. El dueño (es_admin) ve todo; un empleado ve un nodo si tiene su módulo,
@@ -108,7 +109,8 @@ def _norm(s) -> str:
 
 def listar(nodo: str | None = None, tipo: str | None = None,
            entidad: str | None = None, ambito: str | None = None,
-           incluir_pausadas: bool = True, estado: str | None = None) -> list[dict]:
+           incluir_pausadas: bool = True, estado: str | None = None,
+           incluir_archivadas: bool = False) -> list[dict]:
     """Pieces matching the filters. Includes paused ones by default (Mi perfil
     lists them so they can be reactivated) but NEVER pending ones — an
     unreviewed proposal isn't the same as a paused piece, and mixing it into
@@ -135,6 +137,8 @@ def listar(nodo: str | None = None, tipo: str | None = None,
             if p.get("estado") != "activo":
                 continue
         elif p.get("estado") == "pendiente":
+            continue
+        elif not incluir_archivadas and p.get("estado") in ("archivada", "superada"):
             continue
         out.append(p)
     return out
@@ -209,11 +213,81 @@ def resumen_pieza(p: dict) -> dict:
     """La forma compacta que viaja al frontend en `conocimiento_aplicado`: lo que
     el mapa necesita para el chip, el panel 'Lo que Aldo me enseñó' y el nodo del
     camino de conocimiento. Lleva ambos idiomas — el frontend elige por idioma."""
+    origen = p.get("origen") or {}
+    sup_texto = None
+    if p.get("superseded_by"):
+        sup = detalle(p["superseded_by"])
+        sup_texto = sup["texto"] if sup else None
     return {"id": p["id"], "tipo": p["tipo"], "texto": p["texto"],
             "texto_en": p.get("texto_en"), "nodo": p["nodo"], "efecto": p["efecto"],
             "efecto_profundo": p.get("efecto_profundo", False),
             "veces_aplicada": p.get("veces_aplicada", 0),
-            "cuando": (p.get("origen") or {}).get("cuando")}
+            "cuando": origen.get("cuando"), "quien": origen.get("quien"),
+            "superseded_by_texto": sup_texto}
+
+
+def age_days(p: dict, *, today=None) -> int | None:
+    """Days since this piece was taught, or None if origen.cuando is
+    missing (a piece seeded without provenance)."""
+    cuando = (p.get("origen") or {}).get("cuando")
+    if not cuando:
+        return None
+    from datetime import date as _date
+    from . import fechas
+    ref = today or fechas.hoy()
+    try:
+        taught = _date.fromisoformat(cuando[:10])
+    except ValueError:
+        return None
+    return (ref - taught).days
+
+
+def decay_score(p: dict, *, today=None) -> float:
+    """Confidence right now: exponential half-life decay from
+    last_reinforced_at, read-time only — never mutates the stored row.
+        confidence(t) = stored_confidence * 2 ** (-age_days / half_life)
+    """
+    from datetime import date as _date
+    from . import fechas
+    ref = today or fechas.hoy()
+    reinforced = _date.fromisoformat(p["last_reinforced_at"][:10])
+    age = max(0, (ref - reinforced).days)
+    half_life = p.get("half_life_days") or DEFAULT_HALF_LIFE[p["tipo"]]
+    return float(p["confidence"]) * (2 ** (-age / half_life))
+
+
+def freshness(p: dict, *, today=None) -> str:
+    """"fresco" | "atencion" | "revisar" — the traffic-light bucket over
+    decay_score(), same three-tone vocabulary grafo.py/priorities.py
+    already use for riesgo/tono."""
+    score = decay_score(p, today=today)
+    if score >= 0.55:
+        return "fresco"
+    if score >= 0.35:
+        return "atencion"
+    return "revisar"
+
+
+def needs_review(p: dict, *, today=None, threshold: float = 0.35) -> bool:
+    """True once decay_score() crosses the review floor. Does NOT change
+    estado by itself."""
+    return decay_score(p, today=today) < threshold
+
+
+def reinforce(pid: str) -> dict | None:
+    """Bumps evidence_count and resets last_reinforced_at = today, nudging
+    confidence up by a decreasing amount so repeated reinforcement
+    approaches but never exceeds 1.0."""
+    p = detalle(pid)
+    if not p:
+        return None
+    bump = (1.0 - float(p["confidence"])) * 0.2
+    nuevo = min(1.0, float(p["confidence"]) + bump)
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.update_reinforcement(
+        _tenant.current_tenant_id(), pid, confidence=nuevo,
+        evidence_count=p["evidence_count"] + 1)
 
 
 # --- scope por rol ------------------------------------------------------------
@@ -284,11 +358,25 @@ def find_duplicate(*, texto: str, nodo: str, entidad: str | None = None) -> dict
     return None
 
 
+def find_conflict(*, texto: str, nodo: str, entidad: str | None,
+                  efecto: str) -> dict | None:
+    """An existing ACTIVE piece with the same (entidad, nodo, efecto) but
+    DIFFERENT texto. Distinct from find_duplicate: a duplicate says the
+    same thing about the same place; a conflict says something different
+    about the same triple."""
+    target = _norm(texto)
+    for p in listar(nodo=nodo, incluir_pausadas=False):
+        if (p.get("efecto") == efecto and _norm(p.get("entidad")) == _norm(entidad)
+                and _norm(p.get("texto")) != target):
+            return p
+    return None
+
+
 def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
           entidad: str | None = None, texto_en: str | None = None,
           efecto_profundo: bool = False, origen: dict | None = None,
           params: dict | None = None, estado: str = "activo",
-          veces_aplicada: int = 0) -> dict:
+          veces_aplicada: int = 0, half_life_days: int | None = None) -> dict:
     """Creates and persists a validated piece. `origen` = {quien, cuando}
     (who taught it and when — a human, or origen.quien="Ángela" when the
     piece comes from a learned finding, see pattern_feedback.learn()). Raises
@@ -306,11 +394,49 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
         texto=texto.strip(), texto_en=texto_en, tipo=tipo, ambito=ambito,
         entidad=(entidad or "").strip() or None, nodo=nodo, efecto=efecto,
         efecto_profundo=efecto_profundo, params=params or {}, origen=origen or {},
-        estado=estado, veces_aplicada=int(veces_aplicada))
+        estado=estado, veces_aplicada=int(veces_aplicada), half_life_days=half_life_days)
     if estado == "pendiente":
         from .audit import AuditLog
         AuditLog(DATA_DIR).record((origen or {}).get("quien", ""), "proponer_conocimiento",
                               None, {"id": pieza["id"], "nodo": pieza["nodo"]})
+    return pieza
+
+
+def edit_piece(pid: str, *, actor: str, is_admin: bool, texto: str | None = None,
+               texto_en: str | None = None, tipo: str | None = None,
+               ambito: str | None = None, efecto: str | None = None,
+               entidad: str | None = None, params: dict | None = None) -> dict | None:
+    """Merges the given fields onto the existing piece, validates the result
+    against the same catalog crear() enforces, persists, and audits before/
+    after. An admin's edit keeps the piece's current estado; anyone else's
+    (only the piece's own author reaches here — main.py enforces that) sends
+    it back to "pendiente" for re-review, same trust model as a fresh
+    proposal. Returns None if pid doesn't exist."""
+    actual = detalle(pid)
+    if not actual:
+        return None
+    nuevo_texto = texto if texto is not None else actual["texto"]
+    if not (nuevo_texto or "").strip():
+        raise ConocimientoInvalido("el texto no puede estar vacío")
+    nuevo_ambito = ambito or actual["ambito"]
+    nueva_entidad = entidad if entidad is not None else actual.get("entidad")
+    nuevo_tipo = tipo or actual["tipo"]
+    nuevo_efecto = efecto or actual["efecto"]
+    _validar(nuevo_tipo, nuevo_ambito, actual["nodo"], nuevo_efecto, actual["estado"])
+    if nuevo_ambito != "global" and not (nueva_entidad or "").strip():
+        raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
+    nuevo_estado = actual["estado"] if is_admin else "pendiente"
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    pieza = business_knowledge_repo.update_content(
+        _tenant.current_tenant_id(), pid, texto=nuevo_texto.strip(),
+        texto_en=(texto_en if texto_en is not None else actual.get("texto_en")),
+        tipo=nuevo_tipo, ambito=nuevo_ambito, efecto=nuevo_efecto,
+        entidad=(nueva_entidad or "").strip() or None,
+        params=(params if params is not None else actual.get("params") or {}),
+        estado=nuevo_estado)
+    from .audit import AuditLog
+    AuditLog(DATA_DIR).record(actor, "editar_conocimiento", actual, pieza)
     return pieza
 
 
@@ -358,6 +484,45 @@ def rechazar(pid: str, actor: str) -> bool:
         AuditLog(DATA_DIR).record(actor, "rechazar_conocimiento", None,
                               {"id": pid, "nodo": (pieza or {}).get("nodo")})
     return ok
+
+
+def archive(pid: str, *, actor: str, motivo: str | None = None) -> dict | None:
+    """Retires a piece that was ever active/paused/revisar — replaces
+    borrar() as the normal path so nothing that was once confirmed
+    disappears without a trace. borrar() stays for a rejected pendiente
+    proposal (nothing to preserve) and explicit admin purges."""
+    pieza = set_estado(pid, "archivada")
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "archivar_conocimiento", None,
+                              {"id": pieza["id"], "nodo": pieza["nodo"], "motivo": motivo})
+    return pieza
+
+
+def supersede(pid: str, *, replacement_id: str, actor: str) -> dict | None:
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    pieza = business_knowledge_repo.set_superseded(
+        _tenant.current_tenant_id(), pid, superseded_by=replacement_id)
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "reemplazar_conocimiento", None,
+                              {"id": pieza["id"], "superseded_by": replacement_id})
+    return pieza
+
+
+def reconfirm(pid: str, *, actor: str) -> dict | None:
+    """The review-queue "still valid" action: reinforces the piece and,
+    if it was in estado="revisar", brings it back to "activo"."""
+    p = detalle(pid)
+    if not p:
+        return None
+    pieza = reinforce(pid)
+    if p["estado"] == "revisar":
+        pieza = set_estado(pid, "activo")
+    from .audit import AuditLog
+    AuditLog(DATA_DIR).record(actor, "reconfirmar_conocimiento", None, {"id": pid})
+    return pieza
 
 
 def marcar_aplicada(pid: str, n: int = 1) -> dict | None:

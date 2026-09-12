@@ -179,6 +179,18 @@ class ChatRequest(BaseModel):
     # (the role cannot be spoofed from the request). See /api/angela.
     rol: str | None = None
     nombre: str | None = None
+    # Which surface this turn came from — for transcript tagging only (see
+    # core/angela_transcripts.py); never changes how the turn is answered.
+    # Not free-form: an unrecognized value is just treated as "chat", the
+    # same as not sending it at all.
+    channel: str | None = None
+
+
+_ANGELA_CHANNELS = {"chat", "voz"}
+
+
+def _channel(req: "ChatRequest") -> str:
+    return req.channel if req.channel in _ANGELA_CHANNELS else "chat"
 
 
 class LoginRequest(BaseModel):
@@ -2351,6 +2363,15 @@ def chat(req: ChatRequest, request: Request):
                                         "ms": _ms})
         except Exception:  # noqa: BLE001
             pass
+        # The RAW transcript — full text, not the summary above — so it can
+        # be looked back at. See core/angela_transcripts.py.
+        try:
+            from core import angela_transcripts
+            angela_transcripts.record_turn(
+                u["username"], req.message, r.get("answer") or "",
+                tools_used=r.get("tools_used"), channel=_channel(req))
+        except Exception:  # noqa: BLE001
+            pass
         return r
     # (A) Sin token en el DEMO público: se rechaza limpio, SIN llamar a Claude.
     # La UI siempre manda token (autologin), así que esto solo frena el abuso
@@ -2406,11 +2427,17 @@ def chat_stream(req: ChatRequest, request: Request):
             import time as _time
             _t0 = _time.monotonic()
             result = None
+            # The `done` event carries no text (D5: redundant with the text
+            # parts already emitted) — the transcript needs it assembled
+            # here, from the same deltas the client already received.
+            answer_chunks = []
             for ev in angela.stream_response(
                 req.message, history, role=u.get("rol"),
                 name=u.get("username"), features=u.get("features"),
             ):
-                if ev.get("type") == "done":
+                if ev.get("type") == "text":
+                    answer_chunks.append(ev.get("delta") or "")
+                elif ev.get("type") == "done":
                     result = ev.get("result") or {}
                 yield line(ev)
             _ms = round((_time.monotonic() - _t0) * 1000)
@@ -2421,6 +2448,13 @@ def chat_stream(req: ChatRequest, request: Request):
                 store.audit.record(actor=u["username"], accion="consulta_angela",
                                    despues={"tools": (result.get("tools_used") or [])[:4],
                                             "ms": _ms})
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                from core import angela_transcripts
+                angela_transcripts.record_turn(
+                    u["username"], req.message, "".join(answer_chunks),
+                    tools_used=result.get("tools_used"), channel=_channel(req))
             except Exception:  # noqa: BLE001
                 pass
 
@@ -2435,6 +2469,28 @@ def chat_stream(req: ChatRequest, request: Request):
             yield line(ev)
 
     return StreamingResponse(generate_guest(), media_type="application/x-ndjson")
+
+
+# --- Ángela's raw transcript, for audit ---------------------------------------
+# Same gate as /api/auditoria: only someone with the feature sees the FULL
+# history (their own, or anyone's — it's an audit tool, not "my history").
+# See core/angela_transcripts.py.
+
+@app.get("/api/angela/conversaciones")
+def angela_conversations(actor: str | None = None, channel: str | None = None,
+                         limit: int = 100, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    return {"conversations": angela_transcripts.list_conversations(
+        actor=actor, channel=channel, limit=max(1, min(limit, 500)))}
+
+
+@app.get("/api/angela/conversaciones/{conversation_id}")
+def angela_conversation(conversation_id: str, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    conv = angela_transcripts.get_transcript(conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversación inexistente")
+    return conv
 
 
 @app.get("/api/oportunidades")
@@ -3527,13 +3583,32 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
 # /rechazar — same scope as visibles_para, not admin-only).
 # Persists per-tenant in business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
+def _con_procedencia(piezas: list[dict]) -> list[dict]:
+    """Flattens origen.{quien,cuando} onto each piece, on top of every other
+    field — the panel and the chat citation card (KnowledgePanel.tsx,
+    KnowledgeCite.tsx) read piece.quien/piece.cuando directly, but the raw
+    piece dict only carries them nested under `origen`. Also attaches the
+    piece's CURRENT decay state (freshness/needs_review), computed at read
+    time — never stored — so the panel's freshness indicator always reflects
+    live decay, not whenever the piece happened to be fetched before."""
+    out = []
+    for p in piezas:
+        origen = p.get("origen") or {}
+        out.append({**p, "quien": origen.get("quien"), "cuando": origen.get("cuando"),
+                    "freshness": conocimiento.freshness(p),
+                    "needs_review": conocimiento.needs_review(p)})
+    return out
+
+
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         entidad: str | None = None, ambito: str | None = None,
+                        incluir_archivadas: bool = False,
                         u: dict = Depends(usuario_actual)):
-    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
+    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito,
+                                 incluir_archivadas=incluir_archivadas)
     piezas = conocimiento.visibles_para(u, piezas)
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/pendientes")
@@ -3544,7 +3619,7 @@ def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_a
     user sees (`visibles_para`), not a separate permission. Declared BEFORE
     /{pid} — otherwise "pendientes" would match there as if it were an id."""
     piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/{pid}")
@@ -3553,6 +3628,15 @@ def conocimiento_detalle(pid: str, u: dict = Depends(usuario_actual)):
     if not p or p not in conocimiento.visibles_para(u, [p]):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
     return p
+
+
+@app.get("/api/conocimiento/{pid}/historial")
+def conocimiento_historial(pid: str, u: dict = Depends(usuario_actual)):
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    from core.audit import AuditLog
+    return {"eventos": AuditLog().list_for(pid)}
 
 
 class ConocimientoNuevo(BaseModel):
@@ -3614,6 +3698,12 @@ def conocimiento_confirm(req: KnowledgeProposal, u: dict = Depends(usuario_actua
 @app.post("/api/conocimiento")
 def conocimiento_crear(req: ConocimientoNuevo, u: dict = Depends(require_admin)):
     from core import fechas
+    conflicto = conocimiento.find_conflict(
+        texto=req.texto, nodo=req.nodo, entidad=req.entidad, efecto=req.efecto)
+    if conflicto:
+        raise HTTPException(status_code=409, detail=i18n.t(
+            "api.conocimiento_conflicto", _lang(u), entidad=req.entidad or "",
+            nodo=req.nodo, efecto=req.efecto, texto=conflicto["texto"]))
     try:
         pieza = conocimiento.crear(
             texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
@@ -3646,6 +3736,80 @@ def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+class RuleProposal(BaseModel):
+    description: str
+    condition: dict
+    action: list
+    node: str
+    scope: str
+    entity_name: str | None = None
+    entity_type: str | None = None
+
+
+def _can_activate_rule(u: dict, node: str, scope: str) -> bool:
+    """Second gate on top of rules.create()'s own entity-resolution check —
+    even a cleanly resolved rule stays pending if this user couldn't have
+    activated it outright. Mirrors _can_activate above for conocimiento."""
+    if u.get("es_admin"):
+        return True
+    if scope == "global":
+        return False
+    from core import perfiles
+    return conocimiento.NODO_FEATURE.get(node) in set(perfiles.features_efectivas(u["username"]))
+
+
+@app.post("/api/rules/confirm")
+def rules_confirm(req: RuleProposal, u: dict = Depends(usuario_actual)):
+    """The user taps 'keep' on a chip Ángela proposed (angela.py's
+    propose_rule writes nothing). Lands active only when rules.create()'s
+    entity resolution succeeded AND this user could have activated it anyway;
+    pending otherwise."""
+    from core import fechas, rules
+    try:
+        # validate_proposal fails fast with 400 on a bad request, and its
+        # prepared condition is what the duplicate check compares against. It
+        # is not reused for create() below because it already resolves and
+        # substitutes '$entity' into the condition, and passing that
+        # substituted condition back into create() (which validates again
+        # from scratch) would trip its own "condition must reference
+        # '$entity'" check for any rule whose entity resolved cleanly.
+        proposal = rules.validate_proposal(
+            description=req.description, condition=req.condition, action=req.action,
+            node=req.node, scope=req.scope, entity_name=req.entity_name,
+            entity_type=req.entity_type)
+    except rules.RulesInvalid as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # The chip survives a page reload and can be tapped twice; a second
+    # identical active rule would double every action evaluate() returns.
+    existing = rules.find_duplicate(
+        condition=proposal["condition"], action=proposal["action"],
+        node=proposal["node"], scope=proposal["scope"],
+        entity_name=proposal["entity_name"])
+    if existing:
+        return {"ok": True, "rule": existing, "state": existing["status"],
+                "already_existed": True}
+
+    rule = rules.create(
+        description=req.description, condition=req.condition, action=req.action,
+        node=req.node, scope=req.scope, entity_name=req.entity_name,
+        entity_type=req.entity_type,
+        origin={"author": u["username"], "created_at": fechas.hoy().isoformat(),
+               "source": "conversation"})
+
+    # rules.create() already resolved active/pending from entity resolution
+    # alone; downgrade further when the confirming user lacks the authority
+    # to activate this rule outright (mirrors conocimiento_confirm's
+    # _can_activate). core/rules.py exposes no "set to pending" verb of its
+    # own (pending only ever happens as a side effect of creation), so this
+    # one case goes straight through the repo.
+    if rule["status"] == "active" and not _can_activate_rule(u, rule["node"], rule["scope"]):
+        from core.db import business_rules_repo
+        from core.db import tenant as _tenant
+        rule = business_rules_repo.set_status(_tenant.current_tenant_id(), rule["id"], "pending")
+    return {"ok": True, "rule": rule, "state": rule["status"], "already_existed": False}
+
+
 def _revisor_o_404(pid: str, u: dict) -> dict:
     """Only someone who'd already see this as active knowledge can review
     (approve/reject) a proposal — same node/feature scope as visibles_para,
@@ -3656,6 +3820,38 @@ def _revisor_o_404(pid: str, u: dict) -> dict:
     if not p or p not in conocimiento.visibles_para(u, [p]):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
     return p
+
+
+def _editor_o_403(pid: str, u: dict) -> dict:
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    if not (u.get("es_admin") or (p.get("origen") or {}).get("quien") == u["username"]):
+        raise HTTPException(status_code=403, detail=i18n.t("api.conocimiento_sin_permiso", _lang(u)))
+    return p
+
+
+class ConocimientoEditar(BaseModel):
+    texto: str | None = None
+    texto_en: str | None = None
+    tipo: str | None = None
+    ambito: str | None = None
+    efecto: str | None = None
+    entidad: str | None = None
+    params: dict | None = None
+
+
+@app.post("/api/conocimiento/{pid}/editar")
+def conocimiento_editar(pid: str, req: ConocimientoEditar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    try:
+        pieza = conocimiento.edit_piece(
+            pid, actor=u["username"], is_admin=bool(u.get("es_admin")),
+            texto=req.texto, texto_en=req.texto_en, tipo=req.tipo, ambito=req.ambito,
+            efecto=req.efecto, entidad=req.entidad, params=req.params)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "pieza": pieza}
 
 
 @app.post("/api/conocimiento/{pid}/aprobar")
@@ -3674,6 +3870,38 @@ def conocimiento_rechazar(pid: str, u: dict = Depends(usuario_actual)):
         raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
     conocimiento.rechazar(pid, u["username"])
     return {"ok": True}
+
+
+class ConocimientoArchivar(BaseModel):
+    motivo: str | None = None
+
+
+@app.post("/api/conocimiento/{pid}/archivar")
+def conocimiento_archivar(pid: str, req: ConocimientoArchivar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.archive(pid, actor=u["username"], motivo=req.motivo)
+    return {"ok": True, "pieza": pieza}
+
+
+class ConocimientoReemplazar(BaseModel):
+    replacement_id: str
+
+
+@app.post("/api/conocimiento/{pid}/reemplazar")
+def conocimiento_reemplazar(pid: str, req: ConocimientoReemplazar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    if not conocimiento.detalle(req.replacement_id):
+        raise HTTPException(status_code=400,
+                           detail=i18n.t("api.conocimiento_replacement_inexistente", _lang(u)))
+    pieza = conocimiento.supersede(pid, replacement_id=req.replacement_id, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
+@app.post("/api/conocimiento/{pid}/reconfirmar")
+def conocimiento_reconfirmar(pid: str, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.reconfirm(pid, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
 
 
 # --- Importador asistido (Plan 4) ---

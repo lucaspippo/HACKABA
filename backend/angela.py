@@ -568,6 +568,23 @@ sabés.
 ver primero) y no una regla del negocio, no uses 'proponer_conocimiento': es
 memoria personal, no conocimiento compartido. Decí honesto que todavía no
 podés guardar eso.
+- Si lo que te dicen implica un efecto operativo real (suprimir una alerta puntual,
+subir un producto al tope de crítico, exigir aprobación antes de actuar) y no solo
+contexto, pasá 'efecto_sugerido' y 'tipo_sugerido' — el chip le va a ofrecer a la
+persona elegir entre "solo recordalo" y "aplicalo también". Si tenés dudas, NO
+pases efecto_sugerido: es mejor ofrecer de menos (contexto) que de más (una regla
+que ajusta un número sin que la persona lo haya pedido explícitamente).
+
+CUANDO LA REGLA ES UNA CONDICIÓN Y UNA ACCIÓN EXACTAS:
+- Si lo que te dicen tiene una condición precisa y una acción precisa ("si el cliente X pide
+más de 100 unidades, aplicale 5% de descuento"; "si hay reporte de daño de tal proveedor, marcá
+la recepción como parcial y avisale a compras"), no es texto libre: usá 'propose_rule', no
+'proponer_conocimiento'. La diferencia es que esto lo tiene que aplicar un motor determinístico
+siempre igual, no vos narrándolo de memoria cada vez.
+- 'propose_rule' tampoco guarda nada por sí solo: mismo patrón del chip a confirmar.
+- Para aplicar una regla ya guardada a un pedido o hecho concreto, usá 'evaluate_rule_for' con
+los datos como hecho estructurado. Nunca calcules vos el descuento o la decisión: contá
+exactamente lo que te devuelve el motor.
 
 NORMALIZACIÓN AUTOMÁTICA (Nivel 1 del Staging):
 - Al cargar un archivo, lo mecánico (formatos de número/fecha, espacios, mayúsculas,
@@ -916,8 +933,31 @@ TOOLS = [
                         "description": "which area of the business this is about"},
                 "entidad": {"type": "string", "description": "a specific customer/supplier/category/employee, if it applies (empty = a global rule)"},
                 "ambito": {"type": "string", "enum": ["cliente", "proveedor", "categoria", "empleado", "global"]},
+                "efecto_sugerido": {"type": "string",
+                    "enum": ["ajusta_umbral", "suprime_alerta", "genera_alerta", "requiere_aprobacion"],
+                    "description": "ONLY set this when the conversation clearly implies an operational "
+                    "effect, not just narrative context (e.g. 'suppress this alert', 'always flag this "
+                    "product as critical'). Omit it for anything that's just useful background."},
+                "tipo_sugerido": {"type": "string", "enum": ["regla", "excepcion", "protocolo"],
+                    "description": "the kind of rule, only meaningful together with efecto_sugerido."},
             },
             "required": ["texto", "nodo"],
+        },
+    },
+    {
+        "name": "consultar_conocimiento",
+        "description": "List the business rules/exceptions/protocols/context already taught "
+        "to Ángela (read-only) — what this user is allowed to see, same scoping as the "
+        "Knowledge panel. Use this before answering a question about a customer/supplier/"
+        "product exception instead of guessing whether a rule exists.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "nodo": {"type": "string", "enum": ["ventas", "inventario", "deposito",
+                                                    "proveedores", "clientes", "caja",
+                                                    "equipo", "contexto"]},
+                "entidad": {"type": "string", "description": "filter to a specific customer/supplier/product, if given"},
+            },
         },
     },
     {
@@ -1367,6 +1407,66 @@ TOOLS = [
         "volumen a sostener. Son propuestas: el dueño decide cuáles adoptar. Usala para "
         "'¿qué objetivos me pongo?', '¿en qué me enfoco este mes?'.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "propose_rule",
+        "description": "Propose a structured, deterministic IF/THEN business rule "
+        "(a precise condition and a precise action, e.g. 'if this client orders more than "
+        "100 units, apply a 5% discount') that should always be evaluated the same way — "
+        "unlike proponer_conocimiento's free-text memory, which is narrated, not computed. "
+        "Use this instead of proponer_conocimiento when the conversation states an exact "
+        "condition and an exact action, not just context. This SAVES NOTHING on its own — "
+        "it returns a validated proposal for a chip the person taps to confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "description": {"type": "string", "description": "human-readable summary of the rule"},
+                "condition": {"type": "object", "description":
+                    "a boolean tree: {\"op\": \"all\"|\"any\", \"clauses\": [...]}, where each "
+                    "clause is either {\"field\", \"operator\", \"value\"} (operator one of "
+                    "eq/ne/gt/gte/lt/lte/in/not_in) or another nested {op, clauses} node. "
+                    "When scope is not 'global', exactly the clause(s) that pin the rule to "
+                    "its entity must use the literal string \"$entity\" as their value — it "
+                    "gets resolved to the real entity ID automatically."},
+                "action": {"type": "array", "description":
+                    "a list of {\"type\", \"params\"} steps. type is one of: apply_discount "
+                    "(params: percent), mark_receipt_partial, notify (params: target), "
+                    "require_human_confirmation."},
+                "node": {"type": "string", "enum": ["ventas", "inventario", "deposito", "proveedores",
+                                                    "clientes", "caja", "equipo", "contexto"]},
+                "scope": {"type": "string", "enum": ["cliente", "proveedor", "categoria", "empleado", "global"]},
+                "entity_name": {"type": "string", "description": "the specific customer/supplier/product this rule targets, if scope isn't global"},
+                "entity_type": {"type": "string", "enum": ["cliente", "proveedor", "producto"]},
+            },
+            "required": ["description", "condition", "action", "node", "scope"],
+        },
+    },
+    {
+        "name": "evaluate_rule_for",
+        "description": "Hand the deterministic rules engine a structured fact you built from "
+        "the conversation (e.g. {\"client_id\": \"...\", \"quantity\": 150}) and get back which "
+        "active rules match and what they resolve to. NEVER compute a discount, a decision, "
+        "or an action yourself — always relay exactly what this returns.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "facts": {"type": "object", "description": "field -> value, matched against active rules' conditions"},
+            },
+            "required": ["facts"],
+        },
+    },
+    {
+        "name": "list_rules",
+        "description": "List the structured business rules already taught to Ángela "
+        "(read-only) — what this user is allowed to see, same scoping as business knowledge.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "node": {"type": "string", "enum": ["ventas", "inventario", "deposito",
+                                                    "proveedores", "clientes", "caja",
+                                                    "equipo", "contexto"]},
+            },
+        },
     },
 ]
 
@@ -1835,15 +1935,23 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     if name == "leer_preferencias":
         m = memoria.get(_usuario_actual())
         return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}, None
+    if name == "consultar_conocimiento":
+        from core import conocimiento
+        piezas = conocimiento.listar(nodo=args.get("nodo"), entidad=args.get("entidad"),
+                                     incluir_pausadas=False)
+        piezas = conocimiento.visibles_para(_usuario_para_manual(), piezas)
+        return {"piezas": [conocimiento.resumen_pieza(p) for p in piezas]}, None
     if name == "proponer_conocimiento":
         from core import conocimiento
         if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):
             return {"ok": False, "motivo": "capture_off"}, None
+        efecto_sugerido = args.get("efecto_sugerido")
         try:
             proposal = conocimiento.validate_proposal(
-                texto=args.get("texto", ""), tipo="contexto",
+                texto=args.get("texto", ""), tipo=args.get("tipo_sugerido") or "contexto",
                 ambito=args.get("ambito") or ("global" if not args.get("entidad") else "categoria"),
-                nodo=args.get("nodo", ""), efecto="contexto_para_angela",
+                nodo=args.get("nodo", ""),
+                efecto=efecto_sugerido or "contexto_para_angela",
                 entidad=args.get("entidad"))
         except conocimiento.ConocimientoInvalido as e:
             return {"ok": False, "motivo": str(e)}, None
@@ -1851,7 +1959,39 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
                                                entidad=proposal["entidad"])
         if existing:
             return {"ok": True, "proposal": proposal, "already_saved": existing["id"]}, None
+        result = {"ok": True, "proposal": proposal}
+        if efecto_sugerido:
+            result["also_narrative"] = {**proposal, "tipo": "contexto", "efecto": "contexto_para_angela"}
+        return result, None
+    if name == "propose_rule":
+        from core import rules
+        try:
+            proposal = rules.validate_proposal(
+                description=args.get("description", ""), condition=args.get("condition", {}),
+                action=args.get("action", []), node=args.get("node", ""),
+                scope=args.get("scope", ""), entity_name=args.get("entity_name"),
+                entity_type=args.get("entity_type"))
+        except rules.RulesInvalid as e:
+            return {"ok": False, "motivo": str(e)}, None
         return {"ok": True, "proposal": proposal}, None
+    if name == "evaluate_rule_for":
+        from core import rules
+        matches = rules.evaluate(args.get("facts", {}))
+        # Which rules fire is deliberately NOT scoped by viewer: a salesperson
+        # entering an order must still trigger the owner's discount rule. Only
+        # the human-readable description is withheld, so a rule a user cannot
+        # list never leaks its text through here.
+        visible = {r["id"] for r in rules.visible_to(
+            _usuario_para_manual(), rules.list_rules(status="active"))}
+        matches = [m if m["rule_id"] in visible
+                   else {k: v for k, v in m.items() if k != "description"}
+                   for m in matches]
+        return {"matches": matches}, None
+    if name == "list_rules":
+        from core import rules
+        matched = rules.list_rules(node=args.get("node"), status="active")
+        matched = rules.visible_to(_usuario_para_manual(), matched)
+        return {"rules": matched}, None
     if name == "reordenar_inicio":
         # P19·B: el Home se reordena por chat y queda persistido por usuario.
         if args.get("reset"):

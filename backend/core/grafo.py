@@ -602,10 +602,10 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
     # reclamo».
     try:
         from . import conocimiento
-        for p in conocimiento.listar():
+        for p in conocimiento.listar(incluir_pausadas=False, incluir_archivadas=False):
             ent = (p.get("entidad") or "").strip()
             if not ent:
-                continue
+                continue  # global pieces: no single entity to attach to (see plan's scope note)
             objetivo = next((nid for nid, n in nodos.items()
                              if n["tipo"] in ("producto", "cliente", "proveedor")
                              and _norm(ent) in _norm(n["nombre"])), None)
@@ -616,6 +616,7 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
             nodos[kid] = _nodo(
                 kid, "conocimiento", p.get("texto") or p.get("id"),
                 seccion=p.get("nodo") or "contexto",
+                riesgo=("atencion" if conocimiento.needs_review(p) else None),
                 texto=p.get("texto"), texto_en=p.get("texto_en"),
                 efecto=p.get("efecto"), params=p.get("params") or {},
                 quien=origen.get("quien"), cuando=origen.get("cuando"),
@@ -764,6 +765,13 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
         # prueba que el cruce tocó lo no estructurado.
         for nt in (datos.get("notas") or []):
             nid = f"nota:{nt.get('id')}" if isinstance(nt, dict) else f"nota:{nt}"
+            if nid in indice:
+                semillas.append(nid)
+        # Lo que Aldo enseñó y la card citó como evidencia es también SEMILLA
+        # (E3): el camino tiene que mostrar que el hallazgo se apoyó en una
+        # regla del dueño, no solo en los datos estructurados.
+        for p in (card.get("conocimiento_aplicado") or []):
+            nid = f"conocimiento:{p.get('id')}"
             if nid in indice:
                 semillas.append(nid)
 

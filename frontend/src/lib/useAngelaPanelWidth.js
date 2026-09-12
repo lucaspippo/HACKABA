@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const FRACTION_KEY = "polpilot.angelaPanelFraction";
 const DEFAULT_FRACTION = 1 / 3;
@@ -12,12 +12,62 @@ function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
 }
 
+function clearDragCursor() {
+  document.body.style.cursor = "";
+  document.body.style.userSelect = "";
+}
+
 export function useAngelaPanelWidth(containerRef, onMaximize) {
   const [fraction, setFraction] = useState(DEFAULT_FRACTION);
+  const [dragging, setDragging] = useState(false);
+  const [, bump] = useState(0);
+
   const fractionRef = useRef(fraction);
   fractionRef.current = fraction;
-  const drag = useRef(null);
-  const [, bump] = useState(0);
+  const dragRef = useRef(null);
+  const onMaximizeRef = useRef(onMaximize);
+  onMaximizeRef.current = onMaximize;
+  const containerRefHeld = useRef(containerRef);
+  containerRefHeld.current = containerRef;
+
+  const persist = useCallback((next) => {
+    try { window.localStorage.setItem(FRACTION_KEY, String(next)); } catch { /* empty */ }
+  }, []);
+
+  // Stable window listeners: identities never change, body always reads refs.
+  const listeners = useRef({ move: null, up: null });
+  const detach = () => {
+    window.removeEventListener("pointermove", listeners.current.move);
+    window.removeEventListener("mousemove", listeners.current.move);
+    window.removeEventListener("pointerup", listeners.current.up);
+    window.removeEventListener("mouseup", listeners.current.up);
+    window.removeEventListener("pointercancel", listeners.current.up);
+  };
+  if (!listeners.current.move) {
+    listeners.current.move = (e) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const next = drag.startFraction + (drag.startX - e.clientX) / drag.total;
+      if (next > MAX_FRACTION + OVERDRAG_PX / drag.total) {
+        dragRef.current = null;
+        setDragging(false);
+        clearDragCursor();
+        detach();
+        onMaximizeRef.current?.();
+        return;
+      }
+      const minF = Math.min(MIN_WIDTH_PX / drag.total, MAX_FRACTION);
+      setFraction(clamp(next, minF, MAX_FRACTION));
+    };
+    listeners.current.up = () => {
+      if (!dragRef.current) return;
+      dragRef.current = null;
+      setDragging(false);
+      clearDragCursor();
+      detach();
+      persist(fractionRef.current);
+    };
+  }
 
   useEffect(() => {
     let raw = null;
@@ -29,11 +79,17 @@ export function useAngelaPanelWidth(containerRef, onMaximize) {
   useEffect(() => {
     const onResize = () => bump((n) => n + 1);
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      detach();
+      clearDragCursor();
+    };
   }, []);
 
-  const persist = useCallback((next) => {
-    try { window.localStorage.setItem(FRACTION_KEY, String(next)); } catch { /* empty */ }
+  // Ref is empty on the first render; reread after layout so open isn't
+  // stuck at width 0 (which the motion dock treats as "closed").
+  useLayoutEffect(() => {
+    bump((n) => n + 1);
   }, []);
 
   const total = containerRef.current?.clientWidth || 0;
@@ -41,41 +97,32 @@ export function useAngelaPanelWidth(containerRef, onMaximize) {
   const width = Math.round(clamp(fraction, minFraction, MAX_FRACTION) * total) || undefined;
 
   const onPointerDown = useCallback((e) => {
-    const t = containerRef.current?.clientWidth || 0;
+    const dock = e.currentTarget.closest("#angela-dock");
+    const t = dock?.parentElement?.clientWidth || containerRefHeld.current.current?.clientWidth || 0;
     if (!t) return;
     e.preventDefault();
-    drag.current = { startX: e.clientX, startFraction: fractionRef.current, total: t };
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    const dockWidth = dock?.getBoundingClientRect().width || fractionRef.current * t;
+    dragRef.current = {
+      startX: e.clientX,
+      startFraction: dockWidth / t,
+      total: t,
+    };
+    setDragging(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    window.addEventListener("pointermove", listeners.current.move);
+    window.addEventListener("mousemove", listeners.current.move);
+    window.addEventListener("pointerup", listeners.current.up);
+    window.addEventListener("mouseup", listeners.current.up);
+    window.addEventListener("pointercancel", listeners.current.up);
   }, []);
 
-  const onPointerMove = useCallback((e) => {
-    if (!drag.current) return;
-    const { startX, startFraction, total: t } = drag.current;
-    // The panel sits on the right edge, so dragging left grows it.
-    const next = startFraction + (startX - e.clientX) / t;
-    if (next > MAX_FRACTION + OVERDRAG_PX / t) {
-      drag.current = null;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      onMaximize?.();
-      return;
-    }
-    const minF = Math.min(MIN_WIDTH_PX / t, MAX_FRACTION);
-    setFraction(clamp(next, minF, MAX_FRACTION));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onMaximize]);
+  const remeasure = useCallback(() => bump((n) => n + 1), []);
 
-  const endDrag = useCallback((e) => {
-    if (!drag.current) return;
-    drag.current = null;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-    persist(fractionRef.current);
-  }, [persist]);
-
-  return { width, onPointerDown, onPointerMove, onPointerUp: endDrag };
+  return {
+    width,
+    dragging,
+    onPointerDown,
+    remeasure,
+  };
 }

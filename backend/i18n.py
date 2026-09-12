@@ -290,6 +290,20 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Esa pieza ya fue revisada — no está pendiente.",
         "en": "That piece was already reviewed — it isn't pending.",
     },
+    "api.conocimiento_sin_permiso": {
+        "es": "Solo el dueño o quien la enseñó puede editar esta pieza.",
+        "en": "Only the owner or whoever taught it can edit this piece.",
+    },
+    "api.conocimiento_replacement_inexistente": {
+        "es": "La pieza de reemplazo no existe.",
+        "en": "The replacement piece doesn't exist.",
+    },
+    "api.conocimiento_conflicto": {
+        "es": "Ya hay una regla distinta para {entidad} en {nodo} ({efecto}): "
+              "\"{texto}\". Revisala antes de crear una nueva.",
+        "en": "There's already a different rule for {entidad} in {nodo} ({efecto}): "
+              "\"{texto}\". Review it before creating a new one.",
+    },
     "api.version_inexistente": {
         "es": "Versión inexistente: {version_id}",
         "en": "No such version: {version_id}",
@@ -3515,6 +3529,20 @@ CATALOGO: dict[str, dict[str, str]] = {
                                        "en": "Approved a business-knowledge proposal"},
     "audit.acc.rechazar_conocimiento": {"es": "Rechazó una propuesta de conocimiento del negocio",
                                         "en": "Rejected a business-knowledge proposal"},
+    "audit.acc.editar_conocimiento": {"es": "Editó una pieza de conocimiento del negocio",
+                                      "en": "Edited a piece of business knowledge"},
+    "audit.acc.archivar_conocimiento": {"es": "Archivó una pieza de conocimiento del negocio",
+                                        "en": "Archived a piece of business knowledge"},
+    "audit.acc.reemplazar_conocimiento": {"es": "Reemplazó una pieza de conocimiento del negocio",
+                                          "en": "Replaced a piece of business knowledge"},
+    "audit.acc.reconfirmar_conocimiento": {"es": "Reconfirmó una pieza de conocimiento del negocio",
+                                           "en": "Reconfirmed a piece of business knowledge"},
+    "audit.acc.create_rule": {"es": "Creó una regla estructurada del negocio",
+                              "en": "Created a structured business rule"},
+    "audit.acc.archive_rule": {"es": "Archivó una regla estructurada del negocio",
+                               "en": "Archived a structured business rule"},
+    "audit.acc.supersede_rule": {"es": "Reemplazó una regla estructurada del negocio",
+                                 "en": "Replaced a structured business rule"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {

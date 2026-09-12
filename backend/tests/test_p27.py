@@ -134,3 +134,39 @@ def test_demo_bilingue():
         if k in ("ventana_compra",):  # el título lleva solo el nombre propio
             continue
         assert es[k] != en[k], k  # traducidas de verdad
+
+
+def test_dormido_cites_the_cleanup_exception_as_evidence_not_assumption():
+    card = next(c for c in _demo_cards("es") if c["id"] == "despertar_dormido")
+    evidence_kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assumption_labels = [a["label"] for a in card["insight"]["assumptions"]]
+    assert "knowledge" in evidence_kinds
+    assert not any("limpieza" in (lbl or "") for lbl in assumption_labels)
+
+
+def test_quiebre_inminente_cites_knowledge_not_a_null_metric():
+    card = next(c for c in _demo_cards("es") if c["id"] == "quiebre_inminente")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert kinds[0] == "knowledge"  # still first, same priority as before
+    assert card["chip_conocimiento"]  # unchanged UI behavior
+
+
+def test_concentracion_cites_knowledge_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "concentracion")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    labels = [a["label"] for a in card["insight"]["assumptions"]]
+    assert "knowledge" in kinds
+    assert not any("concentrac" in (lbl or "").lower() and "riesgo" in (lbl or "").lower()
+                  for lbl in labels)
+
+
+def test_ventana_compra_cites_the_supplier_rules_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "ventana_compra")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert "knowledge" in kinds
+
+
+def test_cobrar_morosos_cites_a_tolerance_rule_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "cobrar_morosos")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert "knowledge" in kinds

@@ -28,6 +28,10 @@ export interface ToolArgs {
   consultar_compras: {
     proveedor?: string;
   };
+  consultar_conocimiento: {
+    entidad?: string;
+    nodo?: string;
+  };
   consultar_contexto_macro: {
     indicadores?: unknown[];
   };
@@ -95,6 +99,9 @@ export interface ToolArgs {
   };
   ejecutar_plan: Record<string, never>;
   estado_caja: Record<string, never>;
+  evaluate_rule_for: {
+    facts: Record<string, unknown>;
+  };
   generar_documento: {
     asunto?: string;
     destinatario?: string;
@@ -112,6 +119,9 @@ export interface ToolArgs {
     titulo: string;
   };
   leer_preferencias: Record<string, never>;
+  list_rules: {
+    node?: string;
+  };
   listar_grupo: {
     grupo: string;
     limit?: number;
@@ -138,14 +148,25 @@ export interface ToolArgs {
   };
   proponer_conocimiento: {
     ambito?: string;
+    efecto_sugerido?: string;
     entidad?: string;
     nodo: string;
     texto: string;
+    tipo_sugerido?: string;
   };
   proponer_correccion: {
     categoria: string;
   };
   proponer_plan: Record<string, never>;
+  propose_rule: {
+    action: unknown[];
+    condition: Record<string, unknown>;
+    description: string;
+    entity_name?: string;
+    entity_type?: string;
+    node: string;
+    scope: string;
+  };
   recordar: {
     clave: string;
     valor: string;

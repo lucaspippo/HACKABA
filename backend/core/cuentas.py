@@ -121,7 +121,8 @@ def _enriquecer(c: dict) -> dict:
         "disponible": max(0, c.get("limite_credito", 0) - c["saldo"]),
         "atraso_vs_promedio": atraso,
         **({"tolerancia_dias": tol, "exceso_tolerancia": exceso,
-            "conocimiento": [conocimiento.resumen_pieza(p) for p in piezas_tol]}
+            "conocimiento": [conocimiento.resumen_pieza(p) for p in piezas_tol],
+            "piezas_conocimiento": piezas_tol}
            if exceso is not None else {}),
     }
 

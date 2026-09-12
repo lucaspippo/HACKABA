@@ -71,6 +71,14 @@ ACCIONES: dict[str, dict] = {
     "proponer_conocimiento": {"clase": "datos", "gate": "propia"},
     "aprobar_conocimiento":  {"clase": "datos", "gate": "aprobacion"},
     "rechazar_conocimiento": {"clase": "datos", "gate": "aprobacion"},
+    "editar_conocimiento":   {"clase": "datos", "gate": "propia"},
+    "archivar_conocimiento": {"clase": "datos", "gate": "propia"},
+    "reemplazar_conocimiento": {"clase": "datos", "gate": "propia"},
+    "reconfirmar_conocimiento": {"clase": "datos", "gate": "propia"},
+    # --- structured business rules (core/rules.py) ---------------------------
+    "create_rule":    {"clase": "datos", "gate": "propia"},
+    "archive_rule":   {"clase": "datos", "gate": "propia"},
+    "supersede_rule": {"clase": "datos", "gate": "propia"},
     # --- stock y piso --------------------------------------------------------
     "preparar_orden_compra": {"clase": "stock", "gate": "aprobacion"},
     # The yes on the expiry card: a lot marked for promotion or for the

@@ -35,7 +35,19 @@ def _insight_chart_points(insight: dict) -> int:
 
 
 def _insight_record_count(insight: dict) -> int:
-    return sum(len(ev.get("records") or []) for ev in insight.get("evidence") or [])
+    """Real rows give breadth; a cited knowledge piece is as much "a real
+    thing behind this" as a database row, so it counts the same way."""
+    from_records = sum(len(ev.get("records") or []) for ev in insight.get("evidence") or [])
+    from_knowledge = sum(1 for ev in insight.get("evidence") or [] if ev.get("kind") == "knowledge")
+    return from_records + from_knowledge
+
+
+def _sources_stale(insight: dict) -> bool:
+    """True when ANY cited knowledge evidence is due for review — errs
+    toward surfacing the caveat, same "declare it and let confidence show
+    it" philosophy as _hypothesis_level."""
+    return any(ev.get("needs_review") for ev in insight.get("evidence") or []
+              if ev.get("kind") == "knowledge")
 
 
 def _data_level(points: int, records: int) -> str:
@@ -80,7 +92,7 @@ def split_for(insight: dict, lang: str | None = None) -> dict:
             "reason": i18n.t(f"core.confidence.data_{data_level}", lang,
                              points=points, records=records),
             "signals": {"chart_points": points, "record_count": records,
-                        "sources_stale": False, "missing": []},
+                        "sources_stale": _sources_stale(insight), "missing": []},
         },
         "hypothesis": {
             "level": hyp_level,
