@@ -3509,6 +3509,15 @@ def conocimiento_detalle(pid: str, u: dict = Depends(usuario_actual)):
     return p
 
 
+@app.get("/api/conocimiento/{pid}/historial")
+def conocimiento_historial(pid: str, u: dict = Depends(usuario_actual)):
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    from core.audit import AuditLog
+    return {"eventos": AuditLog().list_for(pid)}
+
+
 class ConocimientoNuevo(BaseModel):
     texto: str
     tipo: str

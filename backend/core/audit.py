@@ -40,3 +40,9 @@ class AuditLog:
         tid = _tenant.current_tenant_id()
         audit_repo.seed_if_empty(tid, _seed_inicial())
         return audit_repo.list_events(tid)
+
+    def list_for(self, ref_id: str) -> list[dict]:
+        from core.db import audit_repo, tenant as _tenant
+        tid = _tenant.current_tenant_id()
+        audit_repo.seed_if_empty(tid, _seed_inicial())
+        return audit_repo.list_events_for_ref(tid, ref_id)
