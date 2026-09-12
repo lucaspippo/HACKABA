@@ -64,3 +64,15 @@ def test_archived_knowledge_produces_no_node():
     conocimiento.archive(pieza["id"], actor="aldo")
     g = grafo.construir()
     assert f"conocimiento:{pieza['id']}" not in g["_indice"]
+
+
+def test_caminos_can_seed_from_a_knowledge_piece():
+    pieza = conocimiento.crear(
+        texto="Tolerale 45 días", tipo="regla", ambito="cliente", nodo="clientes",
+        efecto="ajusta_umbral", entidad="Despensa González")
+    g = grafo.construir()
+    card = {"id": "x", "titulo": "x", "tipo": "x",
+            "conocimiento_aplicado": [conocimiento.resumen_pieza(pieza)]}
+    caminos = grafo.caminos(g, [card])
+    assert caminos
+    assert f"conocimiento:{pieza['id']}" in caminos[0]["semillas"]

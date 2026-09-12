@@ -567,6 +567,13 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
             nid = f"nota:{nt.get('id')}" if isinstance(nt, dict) else f"nota:{nt}"
             if nid in indice:
                 semillas.append(nid)
+        # Lo que Aldo enseñó y la card citó como evidencia es también SEMILLA
+        # (E3): el camino tiene que mostrar que el hallazgo se apoyó en una
+        # regla del dueño, no solo en los datos estructurados.
+        for p in (card.get("conocimiento_aplicado") or []):
+            nid = f"conocimiento:{p.get('id')}"
+            if nid in indice:
+                semillas.append(nid)
 
         semillas = list(dict.fromkeys(semillas))
         if not semillas:
