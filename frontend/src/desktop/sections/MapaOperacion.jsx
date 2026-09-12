@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow, ReactFlowProvider, Background, Handle, Position, MarkerType,
-  useNodesState, useEdgesState, useReactFlow,
+  useNodesState, useEdgesState, useReactFlow, useNodesInitialized,
+  BaseEdge, EdgeLabelRenderer,
+  getBezierPath, getStraightPath, getSmoothStepPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
   Snowflake, Warehouse, Truck, Store, Users, Building2, FileText, PackageCheck,
-  ChevronDown, ChevronRight, X, Package,
+  ChevronDown, ChevronRight, X, Package, ArrowRight,
   Mic, MessageSquare, ClipboardList, Camera, Database, BookOpen, Eye, Check,
   Mail, Sparkles,
 } from "lucide-react";
@@ -56,9 +58,12 @@ const ICONO = {
 // The WhatsApp glyph, monochrome in its own green. Drawn here because no icon
 // library ships brand marks, and the visitor recognizes it before reading the
 // word — which is exactly what it is there for.
+// Monochrome and `currentColor`: the recognisable SHAPE is what makes the
+// channel readable at a glance — the official brand green would break the
+// palette and drag a branding question into a data screen for no gain.
 function IconoWhatsApp({ size = 12 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="#25D366" aria-hidden>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2Zm0 18.12h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.35c0-4.54 3.7-8.24 8.25-8.24 2.2 0 4.27.86 5.83 2.42a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.2-8.24 8.2Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.14.16-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.12-.15.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.47c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.06s.89 2.39 1.01 2.56c.12.16 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.14-1.18-.06-.11-.22-.17-.47-.29Z" />
     </svg>
   );
@@ -250,24 +255,38 @@ function NodoCanales({ data }) {
         </p>
         <p className="text-[0.66rem] italic text-tinta-suave/80">{data.subtitulo}</p>
       </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {(data.chips || []).map((c) => {
-          const I = ICONO_CANAL[c.id] || ClipboardList;
-          const marca = c.id === "whatsapp";
+      {/* GROUPED, not tagged one by one. The per-chip "← de afuera" label had
+          to be read to be understood; two labelled groups separated by a rule
+          are understood before being read — which is the whole job of this
+          band. Outside first: the reading order carries the thesis. */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+        {[true, false].map((deAfuera) => {
+          const grupo = (data.chips || []).filter((c) => !!c.de_afuera === deAfuera);
+          if (!grupo.length) return null;
           return (
-            <span key={c.id}
-                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border
-                              bg-crema px-2.5 py-1 text-[0.72rem] transition
-                              hover:border-oro ${c.de_afuera
-                      ? "border-oro/45 font-medium text-tinta" : "border-linea text-tinta-suave"}`}
-                  data-chip={c.id}>
-              {/* The brand glyph keeps its color; generic ones go amber. */}
-              <I size={12} className="shrink-0"
-                 style={marca ? undefined : { color: c.de_afuera ? AMBAR : "#8d887f" }}
-                 data-chip={c.id} />
-              <span data-chip={c.id}>{c.nombre}</span>
-              <strong className="tabular-nums" data-chip={c.id}>{c.total}</strong>
-            </span>
+            <div key={String(deAfuera)} className="flex items-center gap-1.5">
+              <span className={`shrink-0 text-[0.56rem] font-semibold uppercase
+                                tracking-[0.1em] ${deAfuera ? "text-oro-tinta" : "text-tinta-suave/70"}`}>
+                {deAfuera ? data.rotulo_afuera : data.rotulo_adentro}
+              </span>
+              {grupo.map((c) => {
+                const I = ICONO_CANAL[c.id] || ClipboardList;
+                return (
+                  <span key={c.id}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-full border
+                                    px-2.5 py-1 text-[0.72rem] transition ${deAfuera
+                            ? "border-oro/50 bg-oro/[0.07] font-medium text-tinta hover:border-oro"
+                            : "border-linea bg-crema text-tinta-suave hover:border-tinta-suave/40"}`}
+                        data-chip={c.id}>
+                    <I size={12} className="shrink-0"
+                       style={{ color: deAfuera ? AMBAR : "#8d887f" }}
+                       data-chip={c.id} />
+                    <span data-chip={c.id}>{c.nombre}</span>
+                    <strong className="tabular-nums" data-chip={c.id}>{c.total}</strong>
+                  </span>
+                );
+              })}
+            </div>
           );
         })}
       </div>
@@ -371,6 +390,183 @@ function NodoDevuelve({ data }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// LA ARISTA CON RÓTULO — el número va donde SE LEE, no donde cae el medio.
+// ---------------------------------------------------------------------------
+// El problema, medido: una arista que va del cuadro central a las columnas de
+// la derecha tiene su punto medio geométrico ADENTRO de una tarjeta
+// intermedia, y React Flow dibuja las aristas por debajo de los nodos — así
+// que el rótulo quedaba cortado («…tos sin confirmar»).
+//
+// Subir el z-index lo dejaría flotando encima de las tarjetas: se leería, pero
+// ensuciaría el cuadro. En vez de eso, el rótulo se corre al primer punto
+// LIBRE de su propio recorrido (ver `posicionLibre`), medido contra los
+// rectángulos reales de los nodos. Ningún nodo se mueve y ningún rótulo se
+// pierde.
+function AristaRotulada(props) {
+  const {
+    id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition,
+    markerEnd, style, label, data,
+  } = props;
+  const forma = data?.forma;
+  const [path] =
+    forma === "straight"
+      ? getStraightPath({ sourceX, sourceY, targetX, targetY })
+      : forma === "smoothstep"
+        ? getSmoothStepPath({ sourceX, sourceY, targetX, targetY,
+                              sourcePosition, targetPosition })
+        : getBezierPath({ sourceX, sourceY, targetX, targetY,
+                          sourcePosition, targetPosition });
+  const pos = posicionLibre(id, { x: sourceX, y: sourceY },
+                            { x: targetX, y: targetY },
+                            label, data?.rects || []);
+  return (
+    <>
+      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            className="pointer-events-none absolute rounded"
+            style={{
+              transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)`,
+              fontSize: 10,
+              fontWeight: 500,
+              lineHeight: 1.4,
+              padding: "1px 5px",
+              whiteSpace: "nowrap",
+              color: data.alerta ? GRAFICO.rojo : GRAFICO.tintaSuave,
+              // Opaque, not translucent: where a stroke passes underneath, a
+              // 92%-alpha pill still shows the line through the digits.
+              background: "#fbfbfa",
+              opacity: data.opacidad,
+              transition: "opacity .2s ease",
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+}
+
+const TIPOS_ARISTA = { rotulada: AristaRotulada };
+
+/**
+ * Cuánto mide de ancho un rótulo, en píxeles, de verdad.
+ *
+ * Estimarlo por cantidad de caracteres se pasaba largo — «69 bultos sin
+ * confirmar» da 141 px estimados contra 113 reales — y con 28 px de más el
+ * test de colisión descartaba huecos donde el rótulo entraba holgado. Se mide
+ * con el mismo tipo con el que se va a dibujar y se cachea: es una medición
+ * por texto distinto, no por render.
+ */
+const _anchos = new Map();
+let _pincel = null;
+function anchoDeTexto(texto) {
+  const s = String(texto || "");
+  const ya = _anchos.get(s);
+  if (ya != null) return ya;
+  if (!_pincel && typeof document !== "undefined") {
+    _pincel = document.createElement("canvas").getContext("2d");
+    const familia = getComputedStyle(document.body).fontFamily || "sans-serif";
+    _pincel.font = `500 10px ${familia}`;   // el mismo del rótulo
+  }
+  // +14 = los 10 px de padding lateral del chip y 4 de margen de seguridad.
+  const w = _pincel ? Math.ceil(_pincel.measureText(s).width) + 14 : s.length * 6;
+  _anchos.set(s, w);
+  return w;
+}
+
+const ALTO_ROTULO = 16;
+const PADDING_ROTULO = 7;   // lo que sobra a cada lado del texto dentro del chip
+                            // (5 px de padding + 2 de margen, ver anchoDeTexto)
+
+// Puntos a probar a lo largo del trayecto, del medio hacia las puntas, y en
+// cada uno un corrimiento PERPENDICULAR, de menor a mayor: mover el número dos
+// líneas arriba de su propia arista no lo despega de ella. El paso es chico a
+// propósito: con saltos de 18 px el mejor lugar para «76 bultos sin confirmar»
+// se comía la «r» final, y con 9 px entra entero.
+const _TES = Array.from({ length: 25 },
+  (_, i) => 0.5 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.035);
+const _OFFS = Array.from({ length: 27 },
+  (_, i) => (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 9);
+
+// Dónde quedó cada rótulo de esta pasada, para que el siguiente lo esquive.
+const _colocados = new Map();
+let _rectsDeLaPasada = null;
+
+/**
+ * Dónde poner el rótulo de una arista para que se lea entero.
+ *
+ * Devuelve el primer punto que no pisa ningún nodo. Si no hay ninguno —y hay
+ * cuatro que no lo tienen: el pasillo entre columnas mide 44 px y «10 pedidos»
+ * mide 59, así que el hueco no existe y no lo va a crear un barrido más
+ * ancho— devuelve el que menos TEXTO tapa, penalizando la distancia a la línea
+ * para que no se vaya lejos a cambio de dos píxeles: un rótulo a 106 px de un
+ * trayecto de 46 ya no se lee como suyo. Eso reemplaza al viejo «si no hay
+ * lugar, al punto medio», que mandaba el número justo adentro de una tarjeta.
+ *
+ * Los rótulos ya colocados en esta misma pasada cuentan como obstáculo: sin
+ * eso, correrlos para esquivar las tarjetas los hacía chocar entre ellos —
+ * medido, cuatro pares encimados hasta un 78 %. React Flow dibuja las aristas
+ * en un solo barrido y en orden, así que alcanza con ir anotándolos; el
+ * registro se vacía cuando cambian las medidas de los nodos, que es lo único
+ * que puede mover a todos de lugar.
+ *
+ * Nunca devuelve null: toda línea lleva su número, es regla del mapa.
+ */
+function posicionLibre(id, a, b, texto, rects) {
+  if (rects !== _rectsDeLaPasada) { _colocados.clear(); _rectsDeLaPasada = rects; }
+  const ancho = anchoDeTexto(texto);
+  const medioAlto = ALTO_ROTULO / 2;
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const largo = Math.hypot(dx, dy) || 1;
+  const px = -dy / largo, py = dx / largo;    // normal unitaria al trayecto
+  const estorban = [...rects];
+  _colocados.forEach((r, k) => { if (k !== id) estorban.push(r); });
+
+  const anotar = (x, y) => {
+    _colocados.set(id, { x: x - ancho / 2, y: y - medioAlto,
+                         w: ancho, h: ALTO_ROTULO });
+    return { x, y };
+  };
+
+  // Cuando no queda ningún lugar limpio —y hay tres que no lo tienen: el
+  // pasillo entre columnas mide 44 px y «10 pedidos» mide 59, así que el hueco
+  // no existe y no lo va a crear un barrido más ancho— gana el que tape menos
+  // LETRA. El chip se puede solapar por el padding sin que se pierda nada; que
+  // se coma una «r» no. De ahí el peso de 100 a 1 entre una cosa y la otra.
+  const anchoTexto = ancho - PADDING_ROTULO * 2;
+  const medioAltoTexto = medioAlto - 2;
+  let mejor = null;
+  for (const t of _TES) {
+    for (const off of _OFFS) {
+      const x = a.x + dx * t + px * off;
+      const y = a.y + dy * t + py * off;
+      let chip = 0, letra = 0;
+      for (const n of estorban) {
+        const ix = Math.max(0, Math.min(x + ancho / 2, n.x + n.w) - Math.max(x - ancho / 2, n.x));
+        if (ix <= 0) continue;
+        const alto = Math.max(0, Math.min(y + medioAlto, n.y + n.h) - Math.max(y - medioAlto, n.y));
+        if (alto <= 0) continue;
+        chip += ix * alto;
+        const jx = Math.max(0, Math.min(x + anchoTexto / 2, n.x + n.w)
+                               - Math.max(x - anchoTexto / 2, n.x));
+        if (jx <= 0) continue;
+        letra += jx * Math.max(0, Math.min(y + medioAltoTexto, n.y + n.h)
+                                  - Math.max(y - medioAltoTexto, n.y));
+      }
+      // Un lugar limpio gana siempre, por lejos que esté: el barrido ya va del
+      // centro hacia afuera, así que el primero que aparece es el más cercano.
+      if (!chip) return anotar(x, y);
+      const puntaje = letra * 100 + chip + Math.abs(off) * 4;
+      if (!mejor || puntaje < mejor.puntaje) mejor = { x, y, puntaje };
+    }
+  }
+  return anotar(mejor.x, mejor.y);
+}
+
 const TIPOS_NODO = {
   operacion: NodoOperacion, marca: NodoMarca, canales: NodoCanales,
   equipo: NodoEquipo, reglas: NodoReglas, devuelve: NodoDevuelve,
@@ -381,6 +577,30 @@ const PESO_DE_CAPA = { centro: 1, origen: 2, destino: 2, contexto: 3 };
 // React Flow frames ONCE, on mount. When the Ángela aside opens, the canvas
 // loses 380 px and the right column hides. This re-frames whenever the
 // container resizes — the map moves over instead of hiding.
+// Los rectángulos REALES de los nodos, para que el rótulo sepa qué esquivar.
+// Se miden en vez de estimarse: una zona mide ~145 px de alto, no los ~196 que
+// sugiere la constante del layout, y con la estimación de más el test de
+// colisión rechazaba todos los candidatos y mandaba cada rótulo al medio —
+// justo lo que había que arreglar. React Flow ya los midió; acá se leen.
+function MedidorDeNodos({ onCambio }) {
+  const inicializados = useNodesInitialized();
+  const { getNodes } = useReactFlow();
+  useEffect(() => {
+    if (!inicializados) return;
+    // Redondeadas a propósito: `measured` trae fracciones que cambian de un
+    // render a otro, y con eso la firma de abajo nunca coincidía consigo
+    // misma — el lienzo entraba en un bucle de re-render y la pestaña se
+    // quedaba sin responder. Al píxel alcanza y de sobra para esquivar una
+    // tarjeta.
+    onCambio(getNodes()
+      .filter((n) => n.measured?.width)
+      .map((n) => ({ x: Math.round(n.position.x), y: Math.round(n.position.y),
+                     w: Math.round(n.measured.width),
+                     h: Math.round(n.measured.height) })));
+  }, [inicializados, getNodes, onCambio]);
+  return null;
+}
+
 function Reencuadre({ contenedor }) {
   const rf = useReactFlow();
   useEffect(() => {
@@ -398,14 +618,24 @@ function Reencuadre({ contenedor }) {
 }
 
 // ---------------------------------------------------------------------------
-export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
+export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = null }) {
   const t = useT();
   const [d, setD] = useState(null);
   const [foco, setFoco] = useState(null);
   const [abierto, setAbierto] = useState(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [rects, setRects] = useState([]);
   const lienzo = useRef(null);
+  // Sólo re-dibuja las aristas si las MEDIDAS cambiaron de verdad: el medidor
+  // corre en cada render del lienzo y un array nuevo cada vez sería un bucle.
+  const firmaRects = useRef("");
+  const recibirRects = useCallback((rs) => {
+    const firma = rs.map((r) => `${r.x},${r.y},${r.w},${r.h}`).join("|");
+    if (firma === firmaRects.current) return;
+    firmaRects.current = firma;
+    setRects(rs);
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -441,6 +671,7 @@ export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
     };
     const celda = {};
     todos.forEach((n) => { if (n.celda != null) celda[n.id] = n.celda; });
+
 
     const ns = todos
       .filter((n) => posiciones[n.id] && !n.es_hub)
@@ -496,14 +727,15 @@ export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
         : [pa && pb ? `s-${ladoHacia(pa, pb)}` : undefined,
            pa && pb ? `t-${ladoHacia(pb, pa)}` : undefined,
            "default"];
+      const muestraRotulo = (enCam || !camino) && rotulable;
+      const opacidad = camino ? (enCam ? 1 : 0.06)
+        : flojo ? 0.35 : a.alerta ? 0.9 : 0.55;
       return {
-        id: a.id, source: a.origen, target: a.destino, type: forma,
+        id: a.id, source: a.origen, target: a.destino, type: "rotulada",
         sourceHandle: sh, targetHandle: th,
-        label: (enCam || !camino) && rotulable ? a.etiqueta : undefined,
-        labelStyle: { fontSize: 10, fontWeight: 500,
-                      fill: a.alerta ? GRAFICO.rojo : GRAFICO.tintaSuave },
-        labelBgStyle: { fill: "#fbfbfa", fillOpacity: 0.92 },
-        labelBgPadding: [4, 2], labelBgBorderRadius: 4,
+        // Sin hueco libre no hay rótulo: el número se lee tocando el nodo.
+        label: muestraRotulo ? a.etiqueta : undefined,
+        data: { forma, rects, alerta: !!a.alerta, opacidad },
         animated: !!a.punteada && (!camino || enCam),
         markerEnd: { type: MarkerType.ArrowClosed, color: enCam ? AZUL_IA : color,
                      width: 13, height: 13 },
@@ -518,7 +750,7 @@ export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
     });
     setNodes(ns);
     setEdges(es);
-  }, [d, camino, setNodes, setEdges, t]);
+  }, [d, camino, rects, setNodes, setEdges, t]);
 
   const abrir = useCallback((id, etiqueta) => {
     setAbierto({ id, etiqueta, cargando: true });
@@ -605,7 +837,7 @@ export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
         <ReactFlow
           nodes={nodes} edges={edges}
           onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-          nodeTypes={TIPOS_NODO}
+          nodeTypes={TIPOS_NODO} edgeTypes={TIPOS_ARISTA}
           fitView fitViewOptions={{ padding: 0.06 }}
           minZoom={0.25} maxZoom={1.5}
           nodesConnectable={false} edgesFocusable={false} zoomOnDoubleClick={false}
@@ -618,11 +850,13 @@ export default function MapaOperacion({ onPreguntar, focoInicial = null }) {
         >
           <Background gap={24} size={1} color="#eceae5" />
           <Reencuadre contenedor={lienzo} />
+          <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
         </ReactFlowProvider>
 
         {abierto && (
-          <Panel p={abierto} onCerrar={() => setAbierto(null)} onPreguntar={onPreguntar} />
+          <Panel p={abierto} onCerrar={() => setAbierto(null)}
+                 onPreguntar={onPreguntar} onNavegar={onNavegar} />
         )}
       </div>
     </div>
@@ -685,7 +919,7 @@ function Leyenda() {
 
 const ANCHO_PANEL = 420;
 
-function Panel({ p, onCerrar, onPreguntar }) {
+function Panel({ p, onCerrar, onPreguntar, onNavegar }) {
   const t = useT();
   // Whoever taps the card already knows how many lots there are: it is
   // written on it. They want WHY it is red and WHAT TO DO. Hence the order:
@@ -801,13 +1035,14 @@ function Panel({ p, onCerrar, onPreguntar }) {
               <div className="flex items-start gap-2.5">
                 <AngelaMark size={22} />
                 <div className="min-w-0 flex-1">
-                  {queHacer.propuesta ? (
-                    <p className="text-[0.88rem] leading-snug text-tinta">{queHacer.propuesta}</p>
-                  ) : (
-                    <p className="text-[0.84rem] leading-snug text-tinta-suave">
-                      {t("mapaop.nada_frenado")}
-                    </p>
-                  )}
+                  {/* Design rule #1: a panel that ends in "nothing to do here"
+                      is a report, and a report is an unfinished process. The
+                      healthy state is stated as a FACT, and the exit — go see
+                      the data where it lives — sits right underneath. */}
+                  <p className={`leading-snug ${queHacer.propuesta
+                      ? "text-[0.88rem] text-tinta" : "text-[0.84rem] text-tinta-suave"}`}>
+                    {queHacer.propuesta || t("mapaop.sin_frenos")}
+                  </p>
                 </div>
               </div>
               {queHacer.accion && onPreguntar && (
@@ -816,6 +1051,15 @@ function Panel({ p, onCerrar, onPreguntar }) {
                                    gap-2 rounded-lg bg-violeta px-3 text-[0.84rem] font-semibold
                                    text-crema transition hover:brightness-110">
                   <Check size={15} /> {queHacer.boton}
+                </button>
+              )}
+              {p.ver && onNavegar && (
+                <button onClick={() => onNavegar(p.ver.seccion, p.ver.foco || null)}
+                        className={`flex min-h-[44px] w-full items-center justify-center gap-2
+                                    rounded-lg border border-violeta/35 px-3 text-[0.84rem]
+                                    font-semibold text-violeta transition hover:bg-violeta-suave
+                                    ${queHacer.accion && onPreguntar ? "mt-2" : "mt-3"}`}>
+                  {p.ver.label} <ArrowRight size={15} />
                 </button>
               )}
             </div>
