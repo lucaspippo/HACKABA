@@ -149,3 +149,12 @@ def test_quiebre_inminente_cites_knowledge_not_a_null_metric():
     kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
     assert kinds[0] == "knowledge"  # still first, same priority as before
     assert card["chip_conocimiento"]  # unchanged UI behavior
+
+
+def test_concentracion_cites_knowledge_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "concentracion")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    labels = [a["label"] for a in card["insight"]["assumptions"]]
+    assert "knowledge" in kinds
+    assert not any("concentrac" in (lbl or "").lower() and "riesgo" in (lbl or "").lower()
+                  for lbl in labels)

@@ -930,13 +930,12 @@ def _card_concentracion(lang, ctx) -> dict | None:
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
     }
     # Piece 4 — el matiz de Aldo: son los que pagan en fecha, el riesgo es de
-    # concentración, no de cobro. Reencuadra la card sin cambiar el número.
+    # concentración, no de cobro. Reencuadra la card sin cambiar el número —
+    # citado como evidencia, nunca como assumption.
     asunciones = [ins.assumption(_t("core.opn.conc_s1", lang))]
     k_conc = [p for p in conocimiento.aplicables(nodo="clientes", efecto="contexto_para_angela")
               if p.get("ambito") == "global" and (p.get("params") or {}).get("marca") == "concentracion"]
     if k_conc:
-        asunciones.append(ins.assumption(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_conc[0], lang))))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_conc]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.conc_q1", lang, pct=f"{pct:.0f}",
@@ -960,6 +959,7 @@ def _card_concentracion(lang, ctx) -> dict | None:
                        weight="supporting",
                        method={"key": "core.method.client_concentration",
                                "label": _t("core.method.client_concentration", lang)}),
+            *([ins.knowledge(k_conc[0])] if k_conc else []),
         ],
         assumptions=asunciones,
         risk=ins.risk(_t("core.opn.conc_q2", lang), exposure=monto),
