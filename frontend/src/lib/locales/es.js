@@ -2979,4 +2979,14 @@ export const ES = {
 
   "hoy.aprendizaje_titulo": "Lo que Ángela va aprendiendo",
   "hoy.ver_aprendizaje": "Ver más",
+
+  "memoria_chips.memoria": "memoria",
+  "memoria_chips.recordado_n": "recordado {n}",
+  "memoria_chips.olvidar": "Olvidar «{texto}»",
+  "memoria_chips.error": "No pude anotarlo. Probá de nuevo.",
+  "conocimiento_pendiente.titulo": "Propuestas de conocimiento",
+  "conocimiento_pendiente.vacio": "No hay propuestas esperando revisión.",
+  "conocimiento_pendiente.aprobar": "Aprobar",
+  "conocimiento_pendiente.rechazar": "Rechazar",
+  "conocimiento_pendiente.propuesto_por": "propuesto por {actor}",
 };

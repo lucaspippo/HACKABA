@@ -16,6 +16,15 @@ production, never before):
   2. faltante_caja_patron  — a weekday where the till comes up short far
                               more often than the rest, hidden by the
                               overall average
+  3. cruce_no_programado   — different in kind from the two above: 1 and 2
+                              each answer a hypothesis a developer chose in
+                              advance (products×products, one weekday×the
+                              rest). This one tags every order with whatever
+                              generic attributes it carries (customer,
+                              weekday, product category) and searches EVERY
+                              cross-dimension pair for the same statistical
+                              signal — no developer declares which pair to
+                              look for. See docs/auto-learn-knowledge-brain.md.
 
 Same rule as `oportunidades_neg`: without the minimum statistical support
 (volume, distinct customers, effect size) the card doesn't exist — it drops
@@ -325,6 +334,124 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
     }
 
 
+# --- 3 · cruce_no_programado: generic cross-dimension discovery ---------------
+#
+# combo_no_percibido and faltante_caja_patron above each answer ONE hypothesis
+# a developer picked in advance. This one doesn't know in advance WHICH
+# dimensions matter: it tags every order with whatever generic attributes it
+# happens to carry, then searches every CROSS-dimension pair of tags for the
+# same lift/support signal combo_no_percibido looks for in one pre-chosen
+# pair (same-dimension pairs, e.g. product×product, are combo_no_percibido's
+# job already — skipped here to stay a genuinely different finding). Adding a
+# new dimension later (salesperson, payment method, once that data exists)
+# is a one-line addition to `_tags_de_pedido`, not a new hypothesis function.
+
+_DIMENSIONES_CRUCE = ("cliente", "dia_semana", "categoria")
+
+
+def _tags_de_pedido(order: dict) -> set[tuple[str, str]]:
+    """The generic (dimension, value) tags this ONE order carries. Nobody
+    hardcodes which pair of these matters — `_cruces_por_lift` tries all of
+    them."""
+    from . import fechas
+    tags: set[tuple[str, str]] = set()
+    cliente = order.get("cliente")
+    if cliente:
+        tags.add(("cliente", cliente))
+    fecha = fechas.parse_fecha(order.get("fecha"))
+    if fecha:
+        tags.add(("dia_semana", str(fecha.weekday())))
+    for item in order.get("items") or []:
+        categoria = item.get("categoria")
+        if categoria:
+            tags.add(("categoria", categoria))
+    return tags
+
+
+def _cruces_por_lift(orders: list[dict]) -> list[dict]:
+    """Every cross-dimension tag pair that co-occurs far more than chance
+    would explain — the generic version of `_pairs_by_lift`, run over
+    whatever dimensions `_tags_de_pedido` produced instead of one hardcoded
+    pair. Same statistical bar as combo_no_percibido on purpose: this is a
+    different SEARCH, not a looser one."""
+    n = len(orders)
+    conteo: dict[tuple, int] = collections.Counter()
+    clientes_por_tag: dict[tuple, set] = collections.defaultdict(set)
+    conteo_par: dict[tuple, int] = collections.Counter()
+    clientes_por_par: dict[tuple, set] = collections.defaultdict(set)
+    for order in orders:
+        tags = _tags_de_pedido(order)
+        cliente_id = order.get("cliente_id")
+        for tag in tags:
+            conteo[tag] += 1
+            clientes_por_tag[tag].add(cliente_id)
+        for a, b in itertools.combinations(sorted(tags), 2):
+            if a[0] == b[0]:
+                continue  # same-dimension pairs: combo_no_percibido's job
+            conteo_par[(a, b)] += 1
+            clientes_por_par[(a, b)].add(cliente_id)
+    out = []
+    for (a, b), cnt in conteo_par.items():
+        if cnt < MIN_COOCCURRENCES or n == 0:
+            continue
+        clientes = clientes_por_par[(a, b)]
+        if len(clientes) < MIN_DISTINCT_CUSTOMERS:
+            continue
+        lift = (cnt / n) / ((conteo[a] / n) * (conteo[b] / n))
+        if lift < MIN_LIFT:
+            continue
+        out.append({"a": a, "b": b, "cnt": cnt, "lift": lift, "clientes": len(clientes)})
+    out.sort(key=lambda x: (-x["lift"], -x["cnt"]))
+    return out
+
+
+def _etiqueta_tag(tag: tuple[str, str], lang: str | None) -> str:
+    dim, valor = tag
+    if dim == "dia_semana":
+        import i18n
+        return i18n.weekday_name(int(valor), lang)
+    return valor  # cliente/categoria: ya son texto de dato, no vocabulario
+
+
+def _cruce_no_programado_card(lang) -> dict | None:
+    from . import ventas_cliente
+    orders = ventas_cliente.all_orders()
+    if len(orders) < MIN_TOTAL_ORDERS:
+        return None
+    cruces = _cruces_por_lift(orders)
+    if not cruces:
+        return None
+    top = cruces[0]
+    a_label, b_label = _etiqueta_tag(top["a"], lang), _etiqueta_tag(top["b"], lang)
+    a_dim = _t(f"core.pat.cruce_dim_{top['a'][0]}", lang)
+    b_dim = _t(f"core.pat.cruce_dim_{top['b'][0]}", lang)
+    lift = round(top["lift"], 1)
+    return {
+        "id": "cruce_no_programado", "tipo": "revisar",
+        # Identifies THIS specific dimension pair+values; a different cross
+        # firing later (a different weekday, a different category) is a
+        # different finding, same convention as combo_no_percibido.
+        "fingerprint": f"{top['a'][0]}:{top['a'][1]}|{top['b'][0]}:{top['b'][1]}",
+        "titulo": _t("core.pat.cruce_t", lang, a=a_label, b=b_label),
+        "monto": None, "monto_label": None,
+        "datos": {"dimension_a": top["a"][0], "valor_a": top["a"][1],
+                  "dimension_b": top["b"][0], "valor_b": top["b"][1],
+                  "coocurrencias": top["cnt"], "clientes": top["clientes"], "lift": lift},
+        "resumen": _t("core.pat.cruce_r", lang, a_dim=a_dim, a=a_label, b_dim=b_dim,
+                     b=b_label, n=top["cnt"], clientes=top["clientes"], lift=lift),
+        "accion_chat": _t("core.pat.cruce_chat", lang, a=a_label, b=b_label),
+        "navegar": "cuentas",
+        "fuentes": [_t("core.opn.f_cuentas", lang)],
+        "drill": {
+            "porque": [_t("core.pat.cruce_q1", lang, clientes=top["clientes"],
+                          n=top["cnt"], lift=lift)],
+            "grafico": None,
+            "involucrados": [],
+            "supuestos": [_t("core.pat.cruce_s1", lang)],
+        },
+    }
+
+
 # --- the set ---------------------------------------------------------------
 
 # Values match the shared vocabulary already established by
@@ -333,6 +460,7 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
 NATURE_BY_ID = {
     "combo_no_percibido": "accionable",
     "faltante_caja_patron": "riesgo",
+    "cruce_no_programado": "accionable",
 }
 
 # Same module-gating convention as oportunidades_neg.DOMINIO: a card only
@@ -340,9 +468,11 @@ NATURE_BY_ID = {
 MODULES_BY_ID = {
     "combo_no_percibido": ("cuentas", "oportunidades"),
     "faltante_caja_patron": ("caja",),
+    "cruce_no_programado": ("cuentas", "oportunidades"),
 }
 
-_CARD_BUILDERS = (_unnoticed_combo_card, _cash_shortfall_weekday_card)
+_CARD_BUILDERS = (_unnoticed_combo_card, _cash_shortfall_weekday_card,
+                  _cruce_no_programado_card)
 
 
 def cards(lang: str | None = None) -> list[dict]:
@@ -368,3 +498,16 @@ def record_feedback(card_id: str, action: str, *, actor: str,
     from . import pattern_feedback
     return pattern_feedback.record(lambda: cards(lang), card_id, action,
                                    actor=actor, note=note)
+
+
+def record_learn(card_id: str, *, actor: str, tipo: str, ambito: str, nodo: str,
+                 efecto: str, entidad: str | None = None, texto: str | None = None,
+                 texto_en: str | None = None, params: dict | None = None,
+                 note: str | None = None, lang: str | None = None) -> dict:
+    """"Enseñar a Ángela": thin wrapper over pattern_feedback.learn(), the
+    generic engine this module shares with core/oportunidades_neg.py."""
+    from . import pattern_feedback
+    return pattern_feedback.learn(
+        lambda: cards(lang), card_id, actor=actor, tipo=tipo, ambito=ambito,
+        nodo=nodo, efecto=efecto, entidad=entidad, texto=texto, texto_en=texto_en,
+        params=params, note=note)

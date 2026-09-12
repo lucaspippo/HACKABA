@@ -2235,6 +2235,58 @@ def patrones_feedback(req: PatternFeedbackRequest, u: dict = Depends(usuario_act
     raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
 
 
+class HallazgoAprenderRequest(BaseModel):
+    card_id: str
+    tipo: str
+    ambito: str
+    nodo: str
+    efecto: str
+    entidad: str | None = None
+    texto: str | None = None
+    texto_en: str | None = None
+    params: dict | None = None
+    note: str | None = None
+
+
+def _learn_sources():
+    """Same dispatch as `_feedback_sources()`, for "Enseñar a Ángela":
+    promoting a live finding into a durable core/conocimiento.py piece
+    instead of just muting it. Any finding source that already has a
+    record_feedback() gets this for free the moment it adds its own
+    record_learn() wrapper (see core/patrones.py, core/oportunidades_neg.py)
+    — no new code needed here or in core/conocimiento.py for a future source."""
+    from core import oportunidades_neg
+    return (
+        (patrones.MODULES_BY_ID, patrones.record_learn),
+        (oportunidades_neg.DOMINIO, oportunidades_neg.record_learn),
+    )
+
+
+@app.post("/api/patrones/aprender")
+def patrones_aprender(req: HallazgoAprenderRequest, u: dict = Depends(require_admin)):
+    """"Enseñar a Ángela": promote a live finding (from any source in
+    _learn_sources()) into durable business knowledge. Owner-only — picking
+    `efecto` changes what Ángela does going forward, the same bar
+    POST /api/conocimiento already holds a hand-taught piece to. Statistics
+    can say a deviation is real; only the owner decides what Ángela should
+    DO about it, so tipo/ambito/nodo/efecto are never inferred here."""
+    for modules_by_id, learn_fn in _learn_sources():
+        if req.card_id not in modules_by_id:
+            continue
+        try:
+            pieza = learn_fn(
+                req.card_id, actor=u["username"], tipo=req.tipo, ambito=req.ambito,
+                nodo=req.nodo, efecto=req.efecto, entidad=req.entidad, texto=req.texto,
+                texto_en=req.texto_en, params=req.params, note=req.note, lang=_lang(u))
+        except conocimiento.ConocimientoInvalido as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except KeyError:
+            raise HTTPException(status_code=404,
+                                detail=i18n.t("api.patron_inexistente", _lang(u)))
+        return {"ok": True, "pieza": pieza}
+    raise HTTPException(status_code=404, detail=i18n.t("api.patron_inexistente", _lang(u)))
+
+
 @app.get("/api/patrones/historial")
 def patrones_historial(u: dict = Depends(usuario_actual)):
     """What Ángela has flagged — from any source — and what the owner said
@@ -2974,11 +3026,15 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
     return {"ok": True, "vista": m.get("vista", {}), "notas": m.get("preferencias", {})}
 
 
-# --- Conocimiento del negocio ("lo que Aldo le enseñó a Ángela") ---
-# La capa no estructurada: reglas, excepciones, protocolos y contexto que ningún
-# ERP tiene. Lectura scopeada por rol (el dueño ve todo; el empleado, lo suyo);
-# escritura solo el dueño (require_admin) — el chat de Ángela también escribe por
-# acá. Persiste por-tenant en conocimiento_negocio.json.
+# --- Business knowledge ("what Aldo taught Ángela") ---
+# The unstructured layer: rules, exceptions, protocols, and context no ERP
+# has. Reading is role-scoped (the owner sees everything; an employee sees
+# their own scope). Creating/pausing/deleting a CONFIRMED piece is still
+# owner-only (require_admin). But any user can PROPOSE one via Ángela's chat
+# (proponer_conocimiento in angela.py) — it's born in "pendiente" state, with
+# no effect, until someone with that node approves or rejects it (/aprobar,
+# /rechazar — same scope as visibles_para, not admin-only).
+# Persists per-tenant in business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
@@ -2986,6 +3042,17 @@ def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         u: dict = Depends(usuario_actual)):
     piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
     piezas = conocimiento.visibles_para(u, piezas)
+    return {"piezas": piezas, "total": len(piezas)}
+
+
+@app.get("/api/conocimiento/pendientes")
+def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_actual)):
+    """Proposals someone left via chat (proponer_conocimiento) that haven't
+    been activated or rejected yet — THIS user's review queue: same
+    node/feature scope that already governs which active knowledge each
+    user sees (`visibles_para`), not a separate permission. Declared BEFORE
+    /{pid} — otherwise "pendientes" would match there as if it were an id."""
+    piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
     return {"piezas": piezas, "total": len(piezas)}
 
 
@@ -3039,6 +3106,36 @@ def conocimiento_estado(pid: str, req: ConocimientoEstado, u: dict = Depends(req
 def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
     if not conocimiento.borrar(pid):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return {"ok": True}
+
+
+def _revisor_o_404(pid: str, u: dict) -> dict:
+    """Only someone who'd already see this as active knowledge can review
+    (approve/reject) a proposal — same node/feature scope as visibles_para,
+    not a separate "reviewer" permission. Returns the piece or raises 404
+    (whether it doesn't exist or it just isn't this user's: we don't
+    distinguish, same criterion as conocimiento_detalle)."""
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return p
+
+
+@app.post("/api/conocimiento/{pid}/aprobar")
+def conocimiento_aprobar(pid: str, u: dict = Depends(usuario_actual)):
+    p = _revisor_o_404(pid, u)
+    if p["estado"] != "pendiente":
+        raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
+    pieza = conocimiento.aprobar(pid, u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
+@app.post("/api/conocimiento/{pid}/rechazar")
+def conocimiento_rechazar(pid: str, u: dict = Depends(usuario_actual)):
+    p = _revisor_o_404(pid, u)
+    if p["estado"] != "pendiente":
+        raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
+    conocimiento.rechazar(pid, u["username"])
     return {"ok": True}
 
 

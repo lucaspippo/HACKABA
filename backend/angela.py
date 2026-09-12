@@ -784,6 +784,29 @@ TOOLS = [
         "input_schema": {"type": "object", "properties": {}},
     },
     {
+        "name": "proponer_conocimiento",
+        "description": "Note down a rule, exception, or BUSINESS context (not this user's own "
+        "view preference — use 'recordar' for that) that came up in the conversation and is "
+        "worth the system remembering permanently: how to treat a customer, why something is "
+        "different from normal, a protocol for a given event. Any user can propose one — it "
+        "lands PENDING review (never active right away), and whoever has that node's module "
+        "approves or discards it before it affects anything. Use it when what you were told is "
+        "about the business in general, not just this chat — and offer it yourself when you "
+        "notice something that valuable, without waiting to be asked.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "texto": {"type": "string", "description": "the rule/exception/context, in the words of whoever told you"},
+                "nodo": {"type": "string", "enum": ["ventas", "inventario", "deposito", "proveedores",
+                                                    "clientes", "caja", "equipo", "contexto"],
+                        "description": "which area of the business this is about"},
+                "entidad": {"type": "string", "description": "a specific customer/supplier/category/employee, if it applies (empty = a global rule)"},
+                "ambito": {"type": "string", "enum": ["cliente", "proveedor", "categoria", "empleado", "global"]},
+            },
+            "required": ["texto", "nodo"],
+        },
+    },
+    {
         "name": "recuperar",
         "description": "Trae lo que recordás del usuario (preferencias, objetivos, datos cargados, "
         "recomendaciones previas) para personalizar tu respuesta.",
@@ -1711,6 +1734,19 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     if name == "leer_preferencias":
         m = memoria.get(_usuario_actual())
         return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}, None
+    if name == "proponer_conocimiento":
+        from core import conocimiento, fechas
+        actor = _usuario_actual()
+        try:
+            pieza = conocimiento.crear(
+                texto=args.get("texto", ""), tipo="contexto",
+                ambito=args.get("ambito") or ("global" if not args.get("entidad") else "categoria"),
+                nodo=args.get("nodo", ""), efecto="contexto_para_angela",
+                entidad=args.get("entidad"), estado="pendiente",
+                origen={"quien": actor, "cuando": fechas.hoy().isoformat()})
+        except conocimiento.ConocimientoInvalido as e:
+            return {"ok": False, "motivo": str(e)}, None
+        return {"ok": True, "pieza": pieza, "pendiente": True}, None
     if name == "reordenar_inicio":
         # P19·B: el Home se reordena por chat y queda persistido por usuario.
         if args.get("reset"):
