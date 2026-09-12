@@ -465,18 +465,24 @@ def construir() -> dict:
     except Exception:  # noqa: BLE001 — sin notas, el grafo es el de siempre
         pass
 
-    # --- lo que el dueño le enseñó a Ángela, pegado a su entidad ---------------
+    # --- lo que el dueño le enseñó a Ángela, como nodo real -------------------
     try:
         from . import conocimiento
-        for p in conocimiento.listar(incluir_pausadas=False):
+        for p in conocimiento.listar(incluir_pausadas=False, incluir_archivadas=False):
             ent = (p.get("entidad") or "").strip()
             if not ent:
-                continue
+                continue  # global pieces: no single entity to attach to (see plan's scope note)
             objetivo = next((nid for nid, n in nodos.items()
                              if n["tipo"] in ("producto", "cliente", "proveedor")
                              and _norm(ent) in _norm(n["nombre"])), None)
-            if objetivo:
-                nodos[objetivo].setdefault("conocimiento", []).append(p.get("id"))
+            if not objetivo:
+                continue
+            kid = f"conocimiento:{p['id']}"
+            nodos[kid] = _nodo(
+                kid, "conocimiento", p["texto"][:80], seccion=p["nodo"],
+                riesgo=("atencion" if conocimiento.needs_review(p) else None),
+                texto=p.get("texto"), texto_en=p.get("texto_en"))
+            add_arista(kid, objetivo, "aplica_a")
     except Exception:
         pass
 
