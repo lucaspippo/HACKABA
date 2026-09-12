@@ -3036,6 +3036,8 @@ export const ES = {
   "tool.consultar_manual.running": "Revisando el manual…",
   "tool.consultar_manual.done": "Revisó el manual",
 
+  "chat.pensando": "Pensando…",
+
   // --- avisos del chat (el backend manda sólo el `kind`) ---
   "chat.notice.cap": "Llegaste al límite de mensajes de esta sesión.",
   "chat.notice.fake_model": "Esto lo saqué de tus datos, sin el modelo conectado.",

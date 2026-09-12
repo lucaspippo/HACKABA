@@ -3063,6 +3063,8 @@ export const EN = {
   "tool.consultar_manual.running": "Checking the manual…",
   "tool.consultar_manual.done": "Checked the manual",
 
+  "chat.pensando": "Thinking…",
+
   // --- chat notices (the backend sends only the `kind`) ---
   "chat.notice.cap": "You reached this session's message limit.",
   "chat.notice.fake_model": "This came from your data, without the model connected.",
