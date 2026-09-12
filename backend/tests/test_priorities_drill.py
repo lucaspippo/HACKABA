@@ -220,3 +220,26 @@ def test_dep_discrep_count_does_not_contradict_its_rows():
         # count exceeds the cap: rows must be a prefix of the counted set,
         # not a mismatched (e.g. unfiltered) collection.
         assert len(rows) == 8
+
+
+@pytest.mark.parametrize("cid", ["costo_viejo", "caja_inusual",
+                                 "caida_interanual", "pico"])
+def test_remaining_alerts_carry_pattern_and_evidence(cid):
+    c = _card(cid)
+    if c is None:
+        pytest.skip(f"{cid} not present in the demo dataset")
+    ins = c["insight"]
+    assert ins["pattern"]["label"]
+    assert ins["evidence"]
+
+
+def test_whole_business_alerts_carry_a_chart_instead_of_records():
+    """No per-row UI exists for caja/evolución, so these prove themselves
+    with a series rather than fake links."""
+    for cid in ("caja_inusual", "caida_interanual"):
+        c = _card(cid)
+        if c is None:
+            continue
+        ev = c["insight"]["evidence"]
+        assert any(e["kind"] == "series" and e["chart"] for e in ev), cid
+        assert not [r for e in ev for r in e["records"]], cid

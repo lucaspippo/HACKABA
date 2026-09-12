@@ -3475,6 +3475,50 @@ CATALOGO: dict[str, dict[str, str]] = {
                         "en": "{cat} spikes in {mes}."},
     "core.prio.pico_chat": {"es": "¿Cómo me preparo para el pico de {cat}?",
                            "en": "How do I prepare for the {cat} peak?"},
+    "core.prio.costo_viejo_hyp": {
+        "es": "El precio quedó viejo frente al costo, no es un problema de demanda.",
+        "en": "The price fell behind the cost — this isn't a demand problem.",
+    },
+    "core.prio.caja_hyp": {
+        "es": "Un movimiento puntual, no un cambio de nivel.",
+        "en": "A one-off movement, not a level shift.",
+    },
+    "core.prio.caida_hyp": {
+        "es": "La caída es de volumen, no de precio.",
+        "en": "The drop is in volume, not price.",
+    },
+    "core.method.stale_cost_value": {
+        "es": "Suma del valor inmovilizado (cantidad × costo) de los productos con costo cargado hace más de un año.",
+        "en": "Sum of the immobilized value (quantity × cost) of products whose cost was loaded over a year ago.",
+    },
+    "core.method.stale_cost_rows": {
+        "es": "Productos con costo cargado hace más de un año, ordenados por valor inmovilizado.",
+        "en": "Products with a cost loaded over a year ago, sorted by immobilized value.",
+    },
+    "core.method.stale_cost_chart": {
+        "es": "Valor inmovilizado por producto con costo desactualizado, de mayor a menor.",
+        "en": "Immobilized value per product with a stale cost, highest to lowest.",
+    },
+    "core.method.cash_today": {
+        "es": "Total de caja del cierre de hoy.",
+        "en": "Today's closing cash total.",
+    },
+    "core.method.cash_history": {
+        "es": "Total de caja de los últimos cierres con caja positiva, en orden cronológico.",
+        "en": "Cash total of recent closes with a positive balance, in chronological order.",
+    },
+    "core.method.yoy_change": {
+        "es": "Variación interanual de la facturación real (deflactada por IPC) del último mes contra el mismo mes del año anterior.",
+        "en": "Year-over-year change in real (CPI-deflated) revenue for the latest month vs the same month last year.",
+    },
+    "core.method.yoy_series": {
+        "es": "Facturación real mensual, deflactada por IPC, mes a mes.",
+        "en": "Monthly real revenue, CPI-deflated, month by month.",
+    },
+    "core.method.peak_multiplier": {
+        "es": "Índice de estacionalidad de la categoría para el mes: veces la venta promedio de un mes normal.",
+        "en": "The category's seasonality index for the month: multiple of an average month's sales.",
+    },
     # --- conciliación depósito (conteo vs sistema) --------------------------------
     "conc.hip.conteo_incompleto": {
         "es": "Este lote se contó, pero {n} lote(s) del mismo producto todavía no. Hasta completar el conteo no se puede explicar el hueco.",

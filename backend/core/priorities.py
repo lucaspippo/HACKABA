@@ -1038,13 +1038,19 @@ def _alerts_deposito(lang) -> list[dict]:
 
 
 def _alerts_inventario(lang) -> list[dict]:
-    from . import store
+    from . import store, insight as ins
     pan = store.panorama()
     cv = (pan.get("alertas") or {}).get("costo_viejo") or {}
     if not cv.get("cantidad"):
         return []
     items = sorted(pan.get("grupos", {}).get("costo_viejo") or [],
                    key=lambda d: -(d.get("inmovilizado") or 0))[:8]
+    value_metodo = {"key": "core.method.stale_cost_value",
+                     "label": _t("core.method.stale_cost_value", lang)}
+    rows_metodo = {"key": "core.method.stale_cost_rows",
+                    "label": _t("core.method.stale_cost_rows", lang)}
+    chart_metodo = {"key": "core.method.stale_cost_chart",
+                     "label": _t("core.method.stale_cost_chart", lang)}
     return [_item(
         id="costo_viejo", tono="oro", chip=_t("core.prio.chip_precio", lang),
         titulo=_t("core.prio.costo_viejo_t", lang),
@@ -1055,24 +1061,39 @@ def _alerts_inventario(lang) -> list[dict]:
         fuentes=[_t("core.prio.f_costos", lang)],
         navegar="inventario",
         accion_chat=_t("core.prio.costo_viejo_chat", lang),
-        drill={
-            "porque": [_t("core.prio.costo_viejo_p", lang, n=_num(cv["cantidad"], lang))],
-            "grafico": _grafico(_t("core.prio.costo_viejo_g", lang),
-                                [{"x": d.get("descripcion") or "", "y": d.get("inmovilizado") or 0}
-                                 for d in items], "$", False),
-            "involucrados": [{"id": d.get("codigo"), "kind": "product",
-                              "nombre": d.get("descripcion") or "",
-                              "monto": d.get("inmovilizado") or 0,
-                              "detalle": _t("core.prio.costo_viejo_i", lang,
-                                            dias=d.get("antiguedad_costo_dias") or 0)}
-                             for d in items],
-            "supuestos": [],
-        },
+        insight=ins.build(
+            pattern=ins.pattern(_t("core.prio.costo_viejo_p", lang, n=_num(cv["cantidad"], lang)),
+                                scope={"kind": "products", "count": cv["cantidad"]}),
+            hypothesis=ins.hypothesis(_t("core.prio.costo_viejo_hyp", lang)),
+            evidence=[
+                ins.metric("stale_cost_value", label=_pesos(cv.get("impacto_pesos"), lang),
+                           value=cv.get("impacto_pesos"), unit="ars", weight="primary",
+                           method=value_metodo),
+                ins.records("stale_cost_rows", label=_t("core.prio.costo_viejo_t", lang),
+                            weight="primary",
+                            rows=[ins.record(kind="product", id=d.get("codigo"),
+                                             name=d.get("descripcion") or "",
+                                             amount=d.get("inmovilizado") or 0,
+                                             detail=_t("core.prio.costo_viejo_i", lang,
+                                                       dias=d.get("antiguedad_costo_dias") or 0))
+                                  for d in items],
+                            method=rows_metodo),
+                ins.series("stale_cost_chart", label=_t("core.prio.costo_viejo_g", lang),
+                           chart=_grafico(_t("core.prio.costo_viejo_g", lang),
+                                         [{"x": d.get("descripcion") or "",
+                                           "y": d.get("inmovilizado") or 0}
+                                          for d in items], "$", False),
+                           method=chart_metodo),
+            ],
+            recommendation=ins.recommendation(
+                _t("core.prio.costo_viejo_t", lang), navigate="inventario",
+                chat=_t("core.prio.costo_viejo_chat", lang)),
+        ),
     )]
 
 
 def _alerts_caja(lang) -> list[dict]:
-    from . import caja
+    from . import caja, insight as ins
     cj = caja.estado()
     tot = (cj.get("totales") or {}).get("total") or 0
     hist = [h for h in (cj.get("historial") or []) if (h.get("total") or 0) > 0]
@@ -1086,6 +1107,9 @@ def _alerts_caja(lang) -> list[dict]:
                        [{"x": h["fecha"], "y": h["total"]} for h in hist] +
                        [{"x": _t("core.prio.caja_hoy", lang), "y": tot}],
                        "$", True)
+    today_metodo = {"key": "core.method.cash_today", "label": _t("core.method.cash_today", lang)}
+    history_metodo = {"key": "core.method.cash_history",
+                       "label": _t("core.method.cash_history", lang)}
     return [_item(
         id="caja_inusual", tono="oro", chip=_t("core.prio.chip_ver", lang),
         titulo=_t("core.prio.caja_t", lang),
@@ -1096,15 +1120,31 @@ def _alerts_caja(lang) -> list[dict]:
         fuentes=[_t("core.prio.f_caja", lang)],
         navegar="caja",
         accion_chat=_t("core.prio.caja_chat", lang),
-        drill={"porque": [_t("core.prio.caja_p", lang, total=_pesos(tot, lang),
-                             prom=_pesos(prom, lang), pct=round(desvio * 100))],
-              "grafico": grafico, "involucrados": [],
-              "supuestos": [_t("core.prio.caja_s", lang)]},
+        # No records: caja.py's history entries have no stable id (only a
+        # `fecha`, not guaranteed unique) and Caja.jsx has no per-row list
+        # UI to land on. The chart is this card's whole proof.
+        insight=ins.build(
+            pattern=ins.pattern(_t("core.prio.caja_p", lang, total=_pesos(tot, lang),
+                                   prom=_pesos(prom, lang), pct=round(desvio * 100))),
+            hypothesis=ins.hypothesis(_t("core.prio.caja_hyp", lang)),
+            evidence=[
+                ins.metric("cash_today", label=_pesos(tot, lang), value=tot, unit="ars",
+                           weight="primary",
+                           baseline={"value": prom, "label": _t("core.prio.caja_s", lang)},
+                           method=today_metodo),
+                ins.series("cash_history", label=_t("core.prio.caja_g", lang),
+                           chart=grafico, method=history_metodo),
+            ],
+            assumptions=[ins.assumption(_t("core.prio.caja_s", lang))],
+            recommendation=ins.recommendation(
+                _t("core.prio.caja_t", lang), navigate="caja",
+                chat=_t("core.prio.caja_chat", lang)),
+        ),
     )]
 
 
 def _alerts_evolucion(lang) -> list[dict]:
-    from . import evolucion
+    from . import evolucion, insight as ins
     pan = evolucion.panorama(lang)
     if pan.get("hay_datos") is False:
         return []
@@ -1114,7 +1154,24 @@ def _alerts_evolucion(lang) -> list[dict]:
                        [{"x": p["mes"], "y": p.get("real") if p.get("real") is not None
                         else p.get("nominal")} for p in serie],
                        "$", True) if serie else None
+    inter = pan.get("interanual") or {}
+    change_metodo = {"key": "core.method.yoy_change", "label": _t("core.method.yoy_change", lang)}
+    series_metodo = {"key": "core.method.yoy_series", "label": _t("core.method.yoy_series", lang)}
     for a in evolucion.alertas_de(pan, lang):
+        # No records: evolucion.py has no per-category or per-product
+        # breakdown, and Evolucion.jsx has no per-row list UI to land on.
+        # The year-over-year figure and the chart are this card's proof.
+        evidence = []
+        if inter.get("variacion_real_pct") is not None:
+            evidence.append(ins.metric(
+                "yoy_change", label=f"{_num(inter['variacion_real_pct'], lang)}%",
+                value=inter["variacion_real_pct"], unit="pct", weight="primary",
+                baseline={"value": inter.get("real_anterior"),
+                          "label": _t("core.prio.caida_s", lang)},
+                method=change_metodo))
+        if grafico:
+            evidence.append(ins.series("yoy_series", label=_t("core.prio.caida_g", lang),
+                                       chart=grafico, method=series_metodo))
         out.append(_item(
             # tono=oro, not rojo: this id lives in WATCH_IDS (informational,
             # own heading) — rojo is reserved for items in `act` so the
@@ -1127,20 +1184,29 @@ def _alerts_evolucion(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_ventas", lang)],
             navegar="evolucion",
             accion_chat=_t("core.prio.caida_chat", lang),
-            drill={"porque": [a["detalle"]], "grafico": grafico, "involucrados": [],
-                  "supuestos": [_t("core.prio.caida_s", lang)]},
+            insight=ins.build(
+                pattern=ins.pattern(a["detalle"]),
+                hypothesis=ins.hypothesis(_t("core.prio.caida_hyp", lang)),
+                evidence=evidence,
+                assumptions=[ins.assumption(_t("core.prio.caida_s", lang))],
+                recommendation=ins.recommendation(
+                    a["titulo"], navigate="evolucion",
+                    chat=_t("core.prio.caida_chat", lang)),
+            ),
         ))
     return out
 
 
 def _alerts_pico(lang) -> list[dict]:
-    from . import analisis
+    from . import analisis, insight as ins
     est = analisis.estacionalidad(lang)
     if not est.get("disponible"):
         return []
     pico = (est.get("proximos_picos") or [None])[0]
     if not pico:
         return []
+    metodo = {"key": "core.method.peak_multiplier",
+              "label": _t("core.method.peak_multiplier", lang)}
     return [_item(
         id="pico", tono="azul", chip=_t("core.prio.chip_planificar", lang),
         titulo=_t("core.prio.pico_t", lang),
@@ -1150,7 +1216,16 @@ def _alerts_pico(lang) -> list[dict]:
         fuentes=[_t("core.prio.f_ventas", lang)],
         navegar="evolucion",
         accion_chat=_t("core.prio.pico_chat", lang, cat=pico.get("categoria") or ""),
-        drill={"porque": [_t("core.prio.pico_p", lang, mes=pico.get("mes") or "",
-                             cat=pico.get("categoria") or "")],
-               "grafico": None, "involucrados": [], "supuestos": []},
+        insight=ins.build(
+            pattern=ins.pattern(_t("core.prio.pico_p", lang, mes=pico.get("mes") or "",
+                                   cat=pico.get("categoria") or "")),
+            evidence=[
+                ins.metric("peak_multiplier", label=f"×{pico.get('indice')}",
+                           value=pico.get("indice"), unit="×", weight="primary",
+                           method=metodo),
+            ],
+            recommendation=ins.recommendation(
+                _t("core.prio.pico_t", lang), navigate="evolucion",
+                chat=_t("core.prio.pico_chat", lang, cat=pico.get("categoria") or "")),
+        ),
     )]
