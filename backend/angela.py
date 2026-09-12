@@ -568,6 +568,12 @@ sabés.
 ver primero) y no una regla del negocio, no uses 'proponer_conocimiento': es
 memoria personal, no conocimiento compartido. Decí honesto que todavía no
 podés guardar eso.
+- Si lo que te dicen implica un efecto operativo real (suprimir una alerta puntual,
+subir un producto al tope de crítico, exigir aprobación antes de actuar) y no solo
+contexto, pasá 'efecto_sugerido' y 'tipo_sugerido' — el chip le va a ofrecer a la
+persona elegir entre "solo recordalo" y "aplicalo también". Si tenés dudas, NO
+pases efecto_sugerido: es mejor ofrecer de menos (contexto) que de más (una regla
+que ajusta un número sin que la persona lo haya pedido explícitamente).
 
 NORMALIZACIÓN AUTOMÁTICA (Nivel 1 del Staging):
 - Al cargar un archivo, lo mecánico (formatos de número/fecha, espacios, mayúsculas,
@@ -916,6 +922,13 @@ TOOLS = [
                         "description": "which area of the business this is about"},
                 "entidad": {"type": "string", "description": "a specific customer/supplier/category/employee, if it applies (empty = a global rule)"},
                 "ambito": {"type": "string", "enum": ["cliente", "proveedor", "categoria", "empleado", "global"]},
+                "efecto_sugerido": {"type": "string",
+                    "enum": ["ajusta_umbral", "suprime_alerta", "genera_alerta", "requiere_aprobacion"],
+                    "description": "ONLY set this when the conversation clearly implies an operational "
+                    "effect, not just narrative context (e.g. 'suppress this alert', 'always flag this "
+                    "product as critical'). Omit it for anything that's just useful background."},
+                "tipo_sugerido": {"type": "string", "enum": ["regla", "excepcion", "protocolo"],
+                    "description": "the kind of rule, only meaningful together with efecto_sugerido."},
             },
             "required": ["texto", "nodo"],
         },
@@ -1861,11 +1874,13 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         from core import conocimiento
         if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):
             return {"ok": False, "motivo": "capture_off"}, None
+        efecto_sugerido = args.get("efecto_sugerido")
         try:
             proposal = conocimiento.validate_proposal(
-                texto=args.get("texto", ""), tipo="contexto",
+                texto=args.get("texto", ""), tipo=args.get("tipo_sugerido") or "contexto",
                 ambito=args.get("ambito") or ("global" if not args.get("entidad") else "categoria"),
-                nodo=args.get("nodo", ""), efecto="contexto_para_angela",
+                nodo=args.get("nodo", ""),
+                efecto=efecto_sugerido or "contexto_para_angela",
                 entidad=args.get("entidad"))
         except conocimiento.ConocimientoInvalido as e:
             return {"ok": False, "motivo": str(e)}, None
@@ -1873,7 +1888,10 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
                                                entidad=proposal["entidad"])
         if existing:
             return {"ok": True, "proposal": proposal, "already_saved": existing["id"]}, None
-        return {"ok": True, "proposal": proposal}, None
+        result = {"ok": True, "proposal": proposal}
+        if efecto_sugerido:
+            result["also_narrative"] = {**proposal, "tipo": "contexto", "efecto": "contexto_para_angela"}
+        return result, None
     if name == "reordenar_inicio":
         # P19·B: el Home se reordena por chat y queda persistido por usuario.
         if args.get("reset"):

@@ -346,3 +346,29 @@ def test_age_days_is_none_without_origen():
     pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
                                nodo="caja", efecto="contexto_para_angela")
     assert conocimiento.age_days(pieza) is None
+
+
+def test_the_tool_can_propose_a_real_effect():
+    angela._set_sesion(usuario="emilio", rol="dueño", features=None, idioma="es")
+    result, _ = angela._run_tool("proponer_conocimiento", {
+        "texto": "Suprimí la alerta de balanza 2, desvía menos de 1%",
+        "nodo": "deposito", "efecto_sugerido": "suprime_alerta",
+        "tipo_sugerido": "excepcion"})
+    assert result["proposal"]["efecto"] == "suprime_alerta"
+    assert result["proposal"]["tipo"] == "excepcion"
+
+
+def test_confirming_just_context_still_forces_narrative_effect(tokens):
+    r = client.post("/api/conocimiento/confirm", json={
+        "texto": "Suprimí la alerta de balanza 2", "nodo": "deposito",
+        "tipo": "contexto", "efecto": "contexto_para_angela"},  # client explicitly chose "just remember"
+        headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.json()["piece"]["efecto"] == "contexto_para_angela"
+
+
+def test_confirming_apply_the_rule_passes_the_real_effect_through(tokens):
+    r = client.post("/api/conocimiento/confirm", json={
+        "texto": "Suprimí la alerta de balanza 2", "nodo": "deposito",
+        "tipo": "excepcion", "efecto": "suprime_alerta"},  # client explicitly chose "also apply"
+        headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.json()["piece"]["efecto"] == "suprime_alerta"
