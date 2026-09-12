@@ -2105,15 +2105,23 @@ def chat_stream(req: ChatRequest, request: Request):
     def line(event: dict) -> str:
         return json.dumps(event, ensure_ascii=False, default=str) + "\n"
 
-    def cap_event(u) -> str:
-        return line({"type": "done", "result": {
-            "answer": i18n.t("angela.cap_alcanzado", _lang(u)),
-            "mode": "cap", "tools_used": [], "actions": [], "options": [],
-        }})
+    def cap_events(u) -> str:
+        """The cap is a NOTICE plus a done — never a done alone.
+
+        v1 emitted only `done`, so the frontend built zero content parts and
+        rendered an empty bubble: the user hit their limit and was told
+        nothing. See the design doc, D5.
+        """
+        return (
+            line({"type": "notice", "kind": "cap",
+                  "text": i18n.t("angela.cap_alcanzado", _lang(u))})
+            + line({"type": "done", "result": {
+                "mode": "cap", "tools_used": [], "actions": [], "options": []}})
+        )
 
     if _ip_excedido(_client_ip(request), _cap_ip()):
         u = auth.usuario_por_token(req.token) if req.token else None
-        return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
+        return StreamingResponse(iter([cap_events(u)]), media_type="application/x-ndjson")
 
     if req.token:
         u = auth.usuario_por_token(req.token)
@@ -2123,7 +2131,7 @@ def chat_stream(req: ChatRequest, request: Request):
         if cap > 0:
             used = _CHAT_POR_SESION.get(req.token, 0)
             if used >= cap:
-                return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
+                return StreamingResponse(iter([cap_events(u)]), media_type="application/x-ndjson")
             _CHAT_POR_SESION[req.token] = used + 1
 
         def generate():

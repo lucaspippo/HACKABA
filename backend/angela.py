@@ -3459,6 +3459,31 @@ def _prepare_turn(message, history, role, name, features, language):
     return system, model, available_tools, messages
 
 
+def _build_client(api_key: str):
+    """The Anthropic client, behind a seam so tests can make construction fail."""
+    import anthropic
+    return anthropic.Anthropic(api_key=api_key)
+
+
+def _degraded_stream(message: str, kind: str):
+    """A reply produced WITHOUT the model, always labelled as such.
+
+    Phase 1.5 removes `_fallback` entirely (see the design doc, D9); until
+    then the deterministic router still answers, but it can no longer pass
+    itself off as Ángela: the `notice` says where the answer came from.
+    """
+    fb = _fallback(message)
+    yield {"type": "notice", "kind": kind,
+           "text": i18n.t("angela.sin_modelo", _idioma_actual())}
+    if fb.get("answer"):
+        yield {"type": "text", "delta": fb["answer"]}
+    yield {"type": "done", "result": {
+        "mode": fb.get("mode", "simulado"),
+        "tools_used": fb.get("tools_used", []),
+        "actions": fb.get("actions", []),
+        "options": fb.get("options", [])}}
+
+
 def stream_response(
     message: str,
     history: list[dict] | None = None,
@@ -3469,34 +3494,36 @@ def stream_response(
 ):
     """Like responder(), but as a generator: emits events as they happen so
     the assistant-ui chat can stream text and show each tool call with its
-    result as soon as it runs, instead of waiting for the whole reply. The
-    final `done` event carries the SAME shape responder() has always
-    returned (respuesta/modo/tools_usadas/acciones), so nothing reading that
-    result (audit log, telemetry) has to change.
+    result as soon as it runs, instead of waiting for the whole reply.
 
-    Events: {"type": "text", "text": <accumulated>}
+    Protocol v2: failures and degraded modes are first-class events (`notice`,
+    `error`) instead of masquerading as normal answers. `text` events carry a
+    delta, never the accumulated string. `done.result` no longer carries the
+    answer text — that already arrived as `text` deltas.
+
+    Events: {"type": "text", "delta": str}
             {"type": "tool_call", "id", "name", "input"}
-            {"type": "tool_result", "id", "name", "input", "result"}
-            {"type": "done", "result": {...}}
+            {"type": "tool_result", "id", "result"}
+            {"type": "notice", "kind", "text"}
+            {"type": "error", "code", "message", "retryable"}
+            {"type": "done", "result": {"mode", "tools_used", "actions", "options"}}
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        fb = _fallback(message)
-        if fb.get("answer"):
-            yield {"type": "text", "text": fb["answer"]}
-        yield {"type": "done", "result": fb}
+        yield from _degraded_stream(message, "fake_model")
         return
 
     try:
-        import anthropic
-    except ImportError:
-        fb = _fallback(message)
-        if fb.get("answer"):
-            yield {"type": "text", "text": fb["answer"]}
-        yield {"type": "done", "result": fb}
+        client = _build_client(api_key)
+    except Exception as e:  # noqa: BLE001
+        print(f"[angela/stream] client init failed: {e}", flush=True)
+        yield {"type": "error", "code": "model_unavailable",
+               "message": i18n.t("angela.modelo_no_disponible", _idioma_actual()),
+               "retryable": True}
+        yield {"type": "done", "result": {"mode": "error", "tools_used": [],
+                                          "actions": [], "options": []}}
         return
 
-    client = anthropic.Anthropic(api_key=api_key)
     system, model, available_tools, messages = _prepare_turn(
         message, history, role, name, features, language)
 
@@ -3504,7 +3531,6 @@ def stream_response(
     actions: list[dict] = []
     try:
         for _ in range(MAX_TOOL_TURNS):
-            accumulated_text = ""
             with client.messages.stream(
                 model=model, max_tokens=MAX_TOKENS, system=system,
                 tools=available_tools, messages=messages,
@@ -3512,8 +3538,8 @@ def stream_response(
                 for event in stream:
                     if (event.type == "content_block_delta"
                             and event.delta.type == "text_delta"):
-                        accumulated_text += event.delta.text
-                        yield {"type": "text", "text": accumulated_text}
+                        # v2: the DELTA travels, never the accumulation.
+                        yield {"type": "text", "delta": event.delta.text}
                 resp = stream.get_final_message()
 
             if resp.stop_reason == "tool_use":
@@ -3528,7 +3554,6 @@ def stream_response(
                         if action:
                             actions.append(action)
                         yield {"type": "tool_result", "id": block.id,
-                               "name": block.name, "input": block.input or {},
                                "result": result}
                         tool_results.append({
                             "type": "tool_result",
@@ -3538,22 +3563,22 @@ def stream_response(
                 messages.append({"role": "user", "content": tool_results})
                 continue
 
-            text = "".join(b.text for b in resp.content if b.type == "text").strip()
             yield {"type": "done", "result": {
-                "answer": text, "mode": "claude",
-                "tools_used": tools_used, "actions": actions,
-            }}
+                "mode": "claude", "tools_used": tools_used,
+                "actions": actions, "options": []}}
             return
 
-        stuck_text = "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?"
-        yield {"type": "text", "text": stuck_text}
+        yield {"type": "notice", "kind": "tool_loop_exhausted",
+               "text": i18n.t("angela.muchas_vueltas", _idioma_actual())}
         yield {"type": "done", "result": {
-            "answer": stuck_text,
-            "mode": "claude", "tools_used": tools_used, "actions": actions,
-        }}
-    except Exception as e:  # noqa: BLE001 — degrading gracefully never crashes the chat
-        fb = _fallback(message)
-        fb["error_tecnico"] = str(e)
-        if fb.get("answer"):
-            yield {"type": "text", "text": fb["answer"]}
-        yield {"type": "done", "result": fb}
+            "mode": "claude", "tools_used": tools_used,
+            "actions": actions, "options": []}}
+    except Exception as e:  # noqa: BLE001
+        # The technical detail is logged, never shipped: it leaks internals.
+        print(f"[angela/stream] failed after tools={tools_used}: {e}", flush=True)
+        yield {"type": "error", "code": "model_failed",
+               "message": i18n.t("angela.error_modelo", _idioma_actual()),
+               "retryable": True}
+        yield {"type": "done", "result": {
+            "mode": "error", "tools_used": tools_used,
+            "actions": actions, "options": []}}
