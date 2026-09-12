@@ -468,7 +468,7 @@ def construir() -> dict:
     # --- lo que el dueño le enseñó a Ángela, pegado a su entidad ---------------
     try:
         from . import conocimiento
-        for p in conocimiento.listar():
+        for p in conocimiento.listar(incluir_pausadas=False):
             ent = (p.get("entidad") or "").strip()
             if not ent:
                 continue
