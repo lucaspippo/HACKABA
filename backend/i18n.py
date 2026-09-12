@@ -3424,6 +3424,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                                           "en": "Replaced a piece of business knowledge"},
     "audit.acc.reconfirmar_conocimiento": {"es": "Reconfirmó una pieza de conocimiento del negocio",
                                            "en": "Reconfirmed a piece of business knowledge"},
+    "audit.acc.create_rule": {"es": "Creó una regla estructurada del negocio",
+                              "en": "Created a structured business rule"},
+    "audit.acc.archive_rule": {"es": "Archivó una regla estructurada del negocio",
+                               "en": "Archived a structured business rule"},
+    "audit.acc.supersede_rule": {"es": "Reemplazó una regla estructurada del negocio",
+                                 "en": "Replaced a structured business rule"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {
