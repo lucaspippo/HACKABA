@@ -5,7 +5,7 @@ import {
   useAuiState,
   ComposerPrimitive,
 } from "@assistant-ui/react";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Send, AlertCircle } from "lucide-react";
 import AngelaMark from "../AngelaMark";
@@ -47,6 +47,13 @@ const TOOL_COMPONENTS = {
 
 type MemoryChip = { id: string; pid: string; text: string; change: string };
 
+// `useAuiState` is a `useSyncExternalStore` selector: its return value MUST
+// be referentially stable across calls with unchanged state, or React
+// re-renders forever ("getSnapshot should be cached"). A literal `?? []`/`?? {}`
+// fallback allocates a NEW array/object every call, which is just as much of
+// a footgun as `.filter().map()` — reuse this constant instead of a literal.
+const EMPTY_ARRAY: readonly never[] = [];
+
 // A message's "extras" (plan checklist, document card, memory chips) are
 // NOT content parts — they travel in metadata.custom.actions (the same
 // shape /api/angela has always returned) or, for memory chips, get pulled
@@ -62,10 +69,17 @@ function MessageExtras({ onExecutingChange }: { onExecutingChange?: ExecutingHan
     enviar: string;
   }>;
   const isRunning = useAuiState((s) => s.thread.isRunning);
-  const propuestas =
-    useAuiState((s) =>
+  // `s.message.content` is a reference the store already owns and only
+  // changes identity when the content actually changes — safe to hand
+  // straight to useAuiState. The `.filter().map()` that used to live INSIDE
+  // that selector allocated a new array (and new objects) on every call,
+  // which broke useSyncExternalStore's referential-stability requirement
+  // and caused an infinite render loop; it's derived with useMemo instead.
+  const content = useAuiState((s) => s.message.content) ?? EMPTY_ARRAY;
+  const propuestas = useMemo(
+    () =>
       (
-        (s.message.content ?? []) as unknown as Array<{
+        content as unknown as Array<{
           type: string;
           toolName?: string;
           toolCallId?: string;
@@ -79,7 +93,8 @@ function MessageExtras({ onExecutingChange }: { onExecutingChange?: ExecutingHan
           text: p.result!.pieza!.texto,
           change: "added",
         })),
-    ) ?? [];
+    [content],
+  );
   const [olvidadas, setOlvidadas] = useState(() => new Set<string>());
   const chips = propuestas.filter((c) => !olvidadas.has(c.id));
   const onForget = async (chip: { id: string; pid: string }) => {

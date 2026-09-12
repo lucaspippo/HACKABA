@@ -454,13 +454,15 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
         <div className="flex min-h-0 flex-1">
           {fullscreen ? (
             <div className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
-              <ChatFullscreen
-                onNavigate={navegar}
-                user={user}
-                onDatosCambiaron={onRecargar}
-                placeholderChips={chipsPorRol(user)}
-                onCollapse={() => setFullscreen(false)}
-              />
+              <ErrorBoundary seccion="angela" onInicio={() => setFullscreen(false)}>
+                <ChatFullscreen
+                  onNavigate={navegar}
+                  user={user}
+                  onDatosCambiaron={onRecargar}
+                  placeholderChips={chipsPorRol(user)}
+                  onCollapse={() => setFullscreen(false)}
+                />
+              </ErrorBoundary>
             </div>
           ) : (
           <main className={`min-w-0 flex-1 ${
@@ -574,15 +576,17 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     </ErrorBoundary>
                   )}
                   <div className="min-h-0 flex-1 overflow-hidden">
-                    <ChatPanel
-                      variant="dock"
-                      onExpand={() => setFullscreen(true)}
-                      onNavigate={navegar}
-                      inputInicial={consultaAngela}
-                      user={user}
-                      onDatosCambiaron={onRecargar}
-                      placeholderChips={chipsPorRol(user)}
-                    />
+                    <ErrorBoundary seccion="angela" onInicio={() => setAngelaOpen(false)}>
+                      <ChatPanel
+                        variant="dock"
+                        onExpand={() => setFullscreen(true)}
+                        onNavigate={navegar}
+                        inputInicial={consultaAngela}
+                        user={user}
+                        onDatosCambiaron={onRecargar}
+                        placeholderChips={chipsPorRol(user)}
+                      />
+                    </ErrorBoundary>
                   </div>
                 </div>
               </motion.aside>
