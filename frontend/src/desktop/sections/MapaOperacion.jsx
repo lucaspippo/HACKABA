@@ -12,7 +12,7 @@ import {
   ChevronDown, ChevronRight, X, Package, ArrowRight,
   Mic, MessageSquare, ClipboardList, Camera, Database, BookOpen, Eye, Check,
   Mail, Sparkles,
-  Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen,
+  Maximize2, Minimize2, Maximize, Plus, Minus, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import AngelaMark from "../../components/AngelaMark";
@@ -603,32 +603,141 @@ function MedidorDeNodos({ onCambio }) {
   return null;
 }
 
-function Reencuadre({ contenedor, completo, riel }) {
+// =============================================================================
+// LA CÁMARA DEL MAPA. Una sola, y ese es el punto.
+//
+// Hay TRES cosas que quieren mover el encuadre y si cada una lo hace por su
+// cuenta se pelean:
+//
+//   · el contenedor cambia de tamaño (abrir el panel lateral le come 420 px,
+//     plegar el riel se los devuelve, entrar a pantalla completa lo cambia
+//     todo);
+//   · alguien toca una tarjeta y hay que acercarse a ella;
+//   · alguien toca «centrar» o el fondo y hay que volver a ver todo.
+//
+// El caso que lo hacía obvio: al tocar una tarjeta se abre el panel, el panel
+// achica el lienzo, el ResizeObserver ve el cambio y hacía `fitView` de TODO —
+// o sea que deshacía el acercamiento 80 ms después de hacerlo. Por eso el
+// observer no reencuadra "todo": llama a `encuadrar()`, que sabe si hay una
+// tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
+//
+// `foco` es el id de la tarjeta enfocada, o null para el mapa entero.
+function Camara({ contenedor, completo, riel, foco }) {
   const rf = useReactFlow();
+  const refFoco = useRef(foco);
+  refFoco.current = foco;
+
+  // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada se
+  // ve grande y sin contexto, que es justo lo contrario de lo que se quiere:
+  // lo que hay que leer es esa parte del mapa y de qué se conecta.
+  const encuadrar = useCallback((duracion = 620) => {
+    const id = refFoco.current;
+    if (!id) {
+      rf.fitView({ padding: 0.06, duration: duracion });
+      return;
+    }
+    const vecinas = new Set([id]);
+    for (const e of rf.getEdges()) {
+      if (e.source === id) vecinas.add(e.target);
+      else if (e.target === id) vecinas.add(e.source);
+    }
+    rf.fitView({
+      nodes: [...vecinas].map((x) => ({ id: x })),
+      // con vecinas hace falta menos aire; una tarjeta sola pide más para no
+      // quedar ocupando la pantalla entera
+      padding: vecinas.size > 1 ? 0.22 : 0.42,
+      // el techo evita que una tarjeta chica se agrande hasta verse pixelada
+      maxZoom: 1.3,
+      duration: duracion,
+    });
+  }, [rf]);
+
+  // EL TAMAÑO DEL CONTENEDOR. El padding del panel entra sin transición, así
+  // que el observer ve el tamaño final de una; los 80 ms son para no encuadrar
+  // en cada paso de un arrastre del borde de la ventana.
   useEffect(() => {
     const el = contenedor.current;
     if (!el || typeof ResizeObserver === "undefined") return undefined;
     let t = null;
     const ro = new ResizeObserver(() => {
       clearTimeout(t);
-      t = setTimeout(() => rf.fitView({ padding: 0.06, duration: 220 }), 80);
+      t = setTimeout(() => encuadrar(220), 80);
     });
     ro.observe(el);
     return () => { ro.disconnect(); clearTimeout(t); };
-  }, [contenedor, rf]);
+  }, [contenedor, encuadrar]);
 
   // Entrar o salir de pantalla completa, y plegar el riel, cambian el ancho
-  // UTIL sin que el contenedor observado cambie de tamanio en el mismo tick:
-  // el riel se anima 200ms, asi que el observer ve el paso intermedio o no ve
-  // nada. Se reencuadra explicito cuando termina.
+  // ÚTIL sin que el contenedor observado cambie de tamaño en el mismo tick: el
+  // riel se anima 200 ms, así que el observer ve el paso intermedio o no ve
+  // nada. Se encuadra explícito cuando termina.
   useEffect(() => {
-    const t = setTimeout(() => rf.fitView({ padding: 0.06, duration: 220 }), 260);
+    const t = setTimeout(() => encuadrar(220), 260);
     return () => clearTimeout(t);
-  }, [completo, riel, rf]);
+  }, [completo, riel, encuadrar]);
+
+  // Y el acercamiento propiamente dicho, cuando cambia la tarjeta enfocada.
+  // Con duración larga a propósito: el MOVIMIENTO es lo que hace entender que
+  // te acercaste a una parte de algo más grande. Un salto no cuenta esa
+  // historia, sólo cambia lo que hay en pantalla.
+  //
+  // La PRIMERA vez no: al montar, `foco` ya es null y encuadrar acá sería
+  // pelearse con el `fitView` inicial de <ReactFlow> —dos encuadres en el
+  // primer frame se ven como un parpadeo al entrar a la pantalla.
+  const primera = useRef(true);
+  useEffect(() => {
+    if (primera.current) { primera.current = false; return; }
+    encuadrar(620);
+  }, [foco, encuadrar]);
   return null;
 }
 
-// ---------------------------------------------------------------------------
+// LOS CONTROLES, ARRIBA A LA DERECHA.
+//
+// Estaban abajo a la derecha porque arriba corre la barra de rótulos de capa
+// (RotulosDeCapa) y se pisaban. Pero abajo nadie los busca: el lugar donde uno
+// va a buscar «ver completo» y el zoom es la esquina de arriba. Así que se
+// ponen arriba y DEBAJO de esa barra, que mide ~52 px — la esquina de arriba
+// del lienzo propiamente dicho, sin pisar nada.
+//
+// Van adentro del bloque del lienzo, así que aparecen igual en pantalla
+// completa: expandido es justamente donde más falta hace poder volver a ver
+// todo.
+function Controles({ completo, onCompleto, onCentrar, t }) {
+  const rf = useReactFlow();
+  const boton = "grid h-8 w-8 place-items-center text-tinta-suave transition-colors hover:text-tinta";
+  return (
+    <div className="absolute right-3 top-[60px] z-20 flex items-center gap-1
+                    rounded-full border border-linea bg-crema/95 px-1 py-1
+                    shadow-sm backdrop-blur">
+      <button onClick={() => onCompleto(!completo)}
+              aria-label={completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
+              className="flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[0.76rem]
+                         font-semibold text-tinta-suave transition-colors hover:text-tinta">
+        {completo ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+        {completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
+      </button>
+      <span className="h-5 w-px bg-linea" />
+      <button onClick={() => rf.zoomOut({ duration: 180 })}
+              aria-label={t("mapaop.alejar")} className={boton}>
+        <Minus className="size-4" />
+      </button>
+      <button onClick={() => rf.zoomIn({ duration: 180 })}
+              aria-label={t("mapaop.acercar")} className={boton}>
+        <Plus className="size-4" />
+      </button>
+      {/* CENTRAR vuelve a ver todo DESDE DONDE SEA: suelta la tarjeta enfocada
+          (por eso avisa al padre) y encuadra el mapa entero. Si sólo limpiara
+          el foco, con el foco ya en null —alguien que hizo zoom a mano— no
+          pasaría nada. */}
+      <button onClick={() => { onCentrar(); rf.fitView({ padding: 0.06, duration: 520 }); }}
+              aria-label={t("mapaop.centrar")} className={boton}>
+        <Maximize className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = null }) {
   const t = useT();
   const [d, setD] = useState(null);
@@ -644,6 +753,12 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // El riel de hallazgos se puede plegar: con el mapa lleno, a veces lo que se
   // quiere es el mapa y nada mas.
   const [riel, setRiel] = useState(true);
+  // QUE TARJETA ESTA ENFOCADA (null = el mapa entero). Tocar una tarjeta abria
+  // el panel y dejaba la tarjeta donde estaba: habia que buscarla con la vista
+  // para entender de que hablaba el panel. Ahora el lienzo se acerca a ella.
+  // Es la unica fuente de verdad del encuadre: la Camara la mira y ella sola
+  // decide, asi que el observer de tamanio no puede deshacer un acercamiento.
+  const [nodoFoco, setNodoFoco] = useState(null);
   const lienzo = useRef(null);
   // Sólo re-dibuja las aristas si las MEDIDAS cambiaron de verdad: el medidor
   // corre en cada render del lienzo y un array nuevo cada vez sería un bucle.
@@ -903,30 +1018,27 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
             // A channel chip opens ITS detail, not the whole block's.
             const chip = e.target?.closest?.("[data-chip]")?.dataset?.chip;
             abrir(chip ? `${n.id}:${chip}` : n.id, n.data.etiqueta);
+            // y el lienzo se acerca a ella. El panel dice QUE pasa; el
+            // acercamiento dice DONDE, que es la mitad de la respuesta en un
+            // mapa. Se enfoca la tarjeta, no el chip: el chip es un detalle
+            // adentro de la misma tarjeta.
+            setNodoFoco(n.id);
           }}
+          // TOCAR EL FONDO ES VOLVER. Cierra el panel y suelta la tarjeta, y
+          // al soltarla la Camara encuadra el mapa entero.
+          onPaneClick={() => { setAbierto(null); setNodoFoco(null); }}
         >
           <Background gap={24} size={1} color="#eceae5" />
-          <Reencuadre contenedor={lienzo} completo={completo} riel={riel} />
           <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
+        <Camara contenedor={lienzo} completo={completo} riel={riel} foco={nodoFoco} />
+        <Controles completo={completo} onCompleto={setCompleto}
+                   onCentrar={() => setNodoFoco(null)} t={t} />
         </ReactFlowProvider>
-        {/* el boton vive SOBRE el lienzo, ABAJO a la derecha: arriba corre la
-            barra de rotulos de capa (RotulosDeCapa) y se pisarian. En pantalla
-            completa no hay encabezado donde ponerlo, asi que tiene que estar
-            sobre el lienzo en los dos modos. */}
-        <button onClick={() => setCompleto((v) => !v)}
-                aria-label={completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
-                className="absolute bottom-3 right-3 z-10 flex min-h-[36px] items-center gap-1.5
-                           rounded-full border border-linea bg-crema/95 px-3 text-[0.76rem]
-                           font-semibold text-tinta-suave shadow-sm backdrop-blur
-                           transition-colors hover:text-tinta">
-          {completo ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
-          {completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
-        </button>
       </div>
 
       {abierto && (
-        <Panel p={abierto} onCerrar={() => setAbierto(null)}
+        <Panel p={abierto} onCerrar={() => { setAbierto(null); setNodoFoco(null); }}
                onPreguntar={onPreguntar} onNavegar={onNavegar} />
       )}
     </div>
