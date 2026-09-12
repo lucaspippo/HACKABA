@@ -31,7 +31,7 @@ export default function ChatThread({
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
   // Its own bounded RealtimeVoiceAdapter session while live (see VoiceCallScreen);
   // on end, its transcript is replayed into this thread as real messages (below)
-  // so the call reads back as an ordinary part of the conversation.
+  // so the call reads back as an ordinary, persisted part of the conversation.
   const [call, setCall] = useState<Call | null>(null);
 
   const startCall = () => {
@@ -48,17 +48,54 @@ export default function ChatThread({
     });
     setCall({ adapter, transcript: [] });
   };
+  // Replays the call's own transcript verbatim — never re-asks Ángela — so
+  // what lands in the thread is exactly what was said out loud, not a
+  // second, possibly different, answer. Each append needs an explicit
+  // parentId: without one, the repository links it off the root instead of
+  // the previous message, so only the last append in the batch would ever
+  // end up reachable from the thread head.
+  //
+  // A message completing triggers the runtime's own thread-title generation
+  // (see assistant-ui's subscribeToTitleGeneration), which writes back to
+  // the thread-list store — appending again before that settles can lose
+  // the race entirely (assistant-ui throws "resetHead: Branch not found",
+  // the just-added message gone before its own append call returns).
+  // Confirming the message actually landed, and retrying otherwise, makes
+  // replay resilient to that instead of silently dropping turns.
+  const appendVerbatim = async (item: VoiceTranscriptItem, parentId: string | null) => {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      try {
+        await aui.thread.append({
+          role: item.role,
+          content: [{ type: "text", text: item.text }],
+          parentId,
+          ...(item.role === "user" ? { startRun: false } : {}),
+        });
+      } catch {
+        // Fall through to the landed-check below: a rejected append can
+        // still have partially applied before the race hit it.
+      }
+      const last = aui.thread.getState().messages.at(-1);
+      const landed = last && last.content[0]?.type === "text" && last.content[0].text === item.text;
+      if (landed) return last!.id;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return null;
+  };
+  const replayCallTranscript = async (items: VoiceTranscriptItem[]) => {
+    let parentId = aui.thread.getState().messages.at(-1)?.id ?? null;
+    for (const item of items) {
+      const newId = await appendVerbatim(item, parentId);
+      if (newId) parentId = newId;
+      // Give the title-generation write a moment to settle before the next
+      // append, rather than racing it every single turn.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  };
   const endCall = () => {
     setCall((prev) => {
-      // Already-narrated turns, replayed as real messages — startRun: false
-      // on the user side so replaying doesn't re-ask Ángela a second time.
-      for (const item of prev?.transcript ?? []) {
-        if (item.role === "user") {
-          aui.thread.append({ role: "user", content: [{ type: "text", text: item.text }], startRun: false });
-        } else {
-          aui.thread.append({ role: "assistant", content: [{ type: "text", text: item.text }] });
-        }
-      }
+      const items = prev?.transcript ?? [];
+      if (items.length > 0) void replayCallTranscript(items);
       return null;
     });
   };
