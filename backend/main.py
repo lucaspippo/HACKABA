@@ -3689,6 +3689,38 @@ def conocimiento_rechazar(pid: str, u: dict = Depends(usuario_actual)):
     return {"ok": True}
 
 
+class ConocimientoArchivar(BaseModel):
+    motivo: str | None = None
+
+
+@app.post("/api/conocimiento/{pid}/archivar")
+def conocimiento_archivar(pid: str, req: ConocimientoArchivar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.archive(pid, actor=u["username"], motivo=req.motivo)
+    return {"ok": True, "pieza": pieza}
+
+
+class ConocimientoReemplazar(BaseModel):
+    replacement_id: str
+
+
+@app.post("/api/conocimiento/{pid}/reemplazar")
+def conocimiento_reemplazar(pid: str, req: ConocimientoReemplazar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    if not conocimiento.detalle(req.replacement_id):
+        raise HTTPException(status_code=400,
+                           detail=i18n.t("api.conocimiento_replacement_inexistente", _lang(u)))
+    pieza = conocimiento.supersede(pid, replacement_id=req.replacement_id, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
+@app.post("/api/conocimiento/{pid}/reconfirmar")
+def conocimiento_reconfirmar(pid: str, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.reconfirm(pid, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
 # --- Importador asistido (Plan 4) ---
 
 class ImportPreviewRequest(BaseModel):

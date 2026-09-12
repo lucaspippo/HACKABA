@@ -292,6 +292,29 @@ def test_edit_endpoint_404s_on_a_missing_piece(tokens):
     assert r.status_code == 404
 
 
+def test_archive_endpoint_needs_admin_or_author(tokens):
+    pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela",
+                               origen={"quien": "aldo", "cuando": "2026-09-10"})
+    r = client.post(f"/api/conocimiento/{pieza['id']}/archivar", json={},
+                    headers={"Authorization": f"Bearer {tokens['vendedor']}"})
+    assert r.status_code == 403
+    r = client.post(f"/api/conocimiento/{pieza['id']}/archivar", json={},
+                    headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.status_code == 200
+    assert r.json()["pieza"]["estado"] == "archivada"
+
+
+def test_reconfirmar_endpoint(tokens):
+    pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela")
+    conocimiento.set_estado(pieza["id"], "revisar")
+    r = client.post(f"/api/conocimiento/{pieza['id']}/reconfirmar", json=None,
+                    headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.status_code == 200
+    assert r.json()["pieza"]["estado"] == "activo"
+
+
 def test_create_endpoint_blocks_a_conflicting_rule(tokens):
     conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
                        nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
