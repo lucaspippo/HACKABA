@@ -20,13 +20,33 @@ import { useEmpresa } from "../lib/useEmpresa";
 function Vencimientos({ onPreguntar }) {
   const t = useT();
   const [v, setV] = useState(null);
-  const [hecho, setHecho] = useState(false);
+  const [hecho, setHecho] = useState(null);      // the persisted decision, from the server
   const [pospuesto, setPospuesto] = useState(false);
+  const [trabajando, setTrabajando] = useState(false);
 
-  useEffect(() => { api.vencimientos(30).then(setV).catch(() => setV(false)); }, []);
-  if (!v || !v.disponible || !v.lotes_en_riesgo) return null;
+  const cargar = () => api.vencimientos(30).then(setV).catch(() => setV(false));
+  useEffect(() => { cargar(); }, []);
+  if (!v || !v.disponible || (!v.lotes_en_riesgo && !(v.gestionados || []).length)) return null;
 
-  const aprobar = () => { setHecho(true); toast(t("deposito.venc_prop_ok")); };
+  // "Aprobar" persists the decision (core/vencimientos.gestionar): a row, an
+  // audit event attributed to this person, and the lot leaves the list on
+  // reload. It used to set local state and show a toast — nothing behind it.
+  const decidir = async (tipo) => {
+    const p = v.propuesta;
+    if (!p || trabajando) return;
+    setTrabajando(true);
+    try {
+      const r = await api.vencimientoGestionar({
+        codigo: p.codigo, lote: p.lote, tipo, cantidad: p.cantidad,
+      });
+      setHecho(r.gestion);
+      toast(t("deposito.venc_prop_ok"));
+      cargar();
+    } catch {
+      toast(t("deposito.venc_prop_error"), "error");
+    }
+    setTrabajando(false);
+  };
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-rojo/25 bg-crema sombra-papel">
@@ -87,14 +107,20 @@ function Vencimientos({ onPreguntar }) {
               <p className="mt-0.5 text-sm leading-snug text-tinta">{v.propuesta.detalle}</p>
               {hecho ? (
                 <p className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-salvia">
-                  <Check size={15} /> {t("deposito.venc_prop_ok")}
+                  <Check size={15} /> {t(hecho.tipo === "locales" ? "deposito.venc_hecho_locales" : "deposito.venc_hecho_promocion", { quien: hecho.actor })}
                 </p>
               ) : (
                 <div className="mt-2.5 flex flex-wrap gap-2">
-                  <button onClick={aprobar}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
+                  <button onClick={() => decidir(v.propuesta.gestion || "promocion")} disabled={trabajando}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
                     <Check size={14} /> {t("cardneg.prop_aprobar")}
                   </button>
+                  {v.propuesta.alternativa && (
+                    <button onClick={() => decidir(v.propuesta.alternativa.gestion)} disabled={trabajando}
+                      className="rounded-full border border-violeta/40 px-4 py-2 text-sm font-semibold text-violeta hover:border-violeta disabled:opacity-50">
+                      {v.propuesta.alternativa.label}
+                    </button>
+                  )}
                   <button onClick={() => setPospuesto(true)}
                     className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                     {t("cardneg.prop_despues")}
@@ -108,6 +134,17 @@ function Vencimientos({ onPreguntar }) {
             </div>
           </div>
         </div>
+      )}
+      {(v.gestionados || []).length > 0 && (
+        <ul className="border-t border-linea px-4 py-2.5 text-xs leading-snug text-tinta-suave">
+          {v.gestionados.map((g) => (
+            <li key={`${g.codigo}-${g.lote}`} className="flex items-center gap-1.5">
+              <Check size={12} className="shrink-0 text-salvia" />
+              {t(g.tipo === "locales" ? "deposito.venc_gest_locales" : "deposito.venc_gest_promocion",
+                 { producto: g.producto, quien: g.actor, fecha: fecha(g.cuando) })}
+            </li>
+          ))}
+        </ul>
       )}
       <p className="border-t border-linea px-4 py-2.5 text-xs leading-snug text-tinta-suave">
         {t("deposito.venc_nota_captura")}
