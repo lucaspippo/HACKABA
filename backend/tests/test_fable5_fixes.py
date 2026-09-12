@@ -78,18 +78,40 @@ def test_run_tool_resuelve_cuentas_y_caja():
 
 # --- A2 / B4: el modo y el modelo salen de config, en runtime ---
 
+def _sin_proveedor(monkeypatch):
+    """Ningún proveedor configurado: hay que limpiar TODAS las credenciales
+    (config.credential_vars() es la fuente única), no sólo la directa — con una
+    credencial de gateway puesta en backend/.env sigue habiendo proveedor."""
+    for var in config.credential_vars():
+        monkeypatch.delenv(var, raising=False)
+
+
 def test_modo_se_evalua_en_runtime(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _sin_proveedor(monkeypatch)
     assert config.modo() == "simulado"
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     assert config.modo() == "claude"
 
 
-def test_modelo_default_es_sonnet_no_fable():
+def test_modelo_default_es_sonnet_no_fable(monkeypatch):
     # Fable 5 está DISPONIBLE pero no es el default de validación (decisión tomada).
+    # El slug depende del proveedor (directo: con guiones; gateway: con prefijo
+    # y puntos), así que se fija el proveedor en lugar de leer el .env de quien
+    # corra los tests — antes esto pasaba o fallaba según esa máquina.
     assert "claude-fable-5" in config.MODELOS_DISPONIBLES
+
+    _sin_proveedor(monkeypatch)
+    monkeypatch.delenv("ANGELA_MODEL", raising=False)
+    monkeypatch.delenv("GATEWAY_MODEL", raising=False)
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     assert config.modelo_para() != "claude-fable-5"
     assert config.modelo_para().startswith("claude-sonnet")
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    monkeypatch.setenv("AI_GATEWAY_API_KEY", "gw-test")
+    assert config.modelo_para() != "anthropic/claude-fable-5"
+    assert "claude-sonnet" in config.modelo_para()
 
 
 # --- C3: el fallback TLS de macro tiene que atrapar el SSLError aunque urllib

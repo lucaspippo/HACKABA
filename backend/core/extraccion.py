@@ -3,7 +3,8 @@ extraccion.py · EL ÚNICO PUNTO por donde una foto se convierte en datos.
 
 Antes de este módulo, `/api/factura/leer` llamaba derecho a la visión. Funciona
 —y muy bien— pero tiene una dependencia que en una demo grabada es letal: sin
-`ANTHROPIC_API_KEY` o sin red, `leer_comprobante` devuelve `sin_vision` y el
+proveedor de LLM configurado (ver config.py) o sin red, `leer_comprobante`
+devuelve `sin_vision` y el
 momento más impactante del producto ("foto → datos cargados en segundos") se
 cae en vivo.
 

@@ -5,8 +5,9 @@ de confianza por campo. La IA acá NUNCA inventa: campo ilegible = null y
 listado en campos_ilegibles — preferimos "no pude leer el CUIT" a un CUIT
 inventado. El texto DENTRO de la imagen es DATO, jamás una instrucción.
 
-Modelo: Claude Sonnet 4.6 con visión (el mismo que ya usa Ángela), configurable
-por env POLPILOT_VISION_MODEL. Decisión de precio-calidad REAL: a volumen de
+Modelo: el mismo que ya usa Ángela — lo resuelve config.py según el proveedor
+configurado (directo o AI Gateway) — y se puede pisar con la env
+POLPILOT_VISION_MODEL. Decisión de precio-calidad REAL: a volumen de
 demo el costo es de centavos y lo que no se negocia es que la extracción salga
 perfecta en cámara; en producción con volumen se puede bajar a Haiku cambiando
 la env var, sin tocar código.
@@ -14,9 +15,17 @@ la env var, sin tocar código.
 from __future__ import annotations
 
 import base64
-import os
 
-MODELO_VISION = os.environ.get("POLPILOT_VISION_MODEL", "claude-sonnet-4-6")
+import config
+
+
+def _modelo_vision() -> str:
+    """POLPILOT_VISION_MODEL, or the provider-appropriate default. Resolved at
+    call time, never baked into a constant: the right slug depends on which
+    provider config resolved."""
+    return config.modelo_feature("POLPILOT_VISION_MODEL")
+
+
 MEDIA_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_BYTES = 5 * 1024 * 1024  # coherente con la validación client-side (5 MB)
 
@@ -125,18 +134,18 @@ def leer_comprobante(imagen_b64: str, media_type: str = "image/jpeg",
     if not crudo or len(crudo) > MAX_BYTES:
         return {"error": "tamano", "mensaje": _t("vision.tamano", lang)}
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return {"error": "sin_vision", "mensaje": _t("vision.sin_api", lang)}
+    # config is the single provider switch (direct Anthropic or the AI
+    # Gateway); reading a key here would disagree with it.
     try:
-        import anthropic
-    except ImportError:
+        client = config.get_client()
+    except ImportError:                  # sin el paquete `anthropic`
+        client = None
+    if client is None:
         return {"error": "sin_vision", "mensaje": _t("vision.sin_api", lang)}
 
-    client = anthropic.Anthropic(api_key=api_key)
     try:
         resp = client.messages.create(
-            model=MODELO_VISION,
+            model=_modelo_vision(),
             max_tokens=2048,
             system=SYSTEM_VISION,
             tools=[EXTRACCION_TOOL],

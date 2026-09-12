@@ -11,7 +11,21 @@ Regression cover for three verified defects in v1:
 import json
 
 import angela
+import config
 import pytest
+
+
+def _no_provider(monkeypatch):
+    """Express "no LLM configured" — the whole credential set, not one var.
+
+    Clearing ANTHROPIC_API_KEY alone used to be enough. It isn't: with a
+    gateway credential in backend/.env, a provider stays configured and these
+    tests silently exercise the REAL model (network, tokens, nondeterminism)
+    instead of the degraded path they exist to cover. config.credential_vars()
+    is the single source of truth, so a renamed provider can't drift again.
+    """
+    for var in config.credential_vars():
+        monkeypatch.delenv(var, raising=False)
 
 
 def _events(monkeypatch, **kwargs):
@@ -29,7 +43,7 @@ def test_text_events_carry_deltas_not_accumulated_text(monkeypatch):
     deltas before it — i.e. the stream never re-sends a growing snapshot of
     the accumulated text, which is exactly the v1 O(n^2) accumulation bug.
     """
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _no_provider(monkeypatch)
     events = _events(monkeypatch)
     deltas = [e["delta"] for e in events if e["type"] == "text"]
     assert deltas, "expected at least one text event"
@@ -51,7 +65,7 @@ def test_text_events_carry_deltas_not_accumulated_text(monkeypatch):
 
 
 def test_no_api_key_emits_a_notice_not_a_silent_answer(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _no_provider(monkeypatch)
     events = _events(monkeypatch)
     kinds = [e["kind"] for e in events if e["type"] == "notice"]
     assert "fake_model" in kinds, (
@@ -60,7 +74,7 @@ def test_no_api_key_emits_a_notice_not_a_silent_answer(monkeypatch):
 
 
 def test_done_result_has_english_keys_and_no_answer(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _no_provider(monkeypatch)
     done = [e for e in _events(monkeypatch) if e["type"] == "done"]
     assert len(done) == 1
     result = done[0]["result"]
@@ -71,6 +85,7 @@ def test_done_result_has_english_keys_and_no_answer(monkeypatch):
 
 def test_model_failure_emits_an_error_event(monkeypatch):
     """A raised model call must surface as `error`, not as a fake answer."""
+    _no_provider(monkeypatch)
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-not-real")
 
     class _Boom:
@@ -88,6 +103,6 @@ def test_model_failure_emits_an_error_event(monkeypatch):
 
 
 def test_every_event_is_json_serialisable(monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _no_provider(monkeypatch)
     for e in _events(monkeypatch):
         json.dumps(e, ensure_ascii=False, default=str)
