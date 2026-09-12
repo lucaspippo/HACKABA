@@ -29,10 +29,19 @@ Steps:
      backend/core/db/MIGRATING_A_MODULE.md). Idempotent: re-creating the
      tenant row here is a no-op (ensure_tenant() already created it in
      step 2).
-  5. Hard verification: the inventory landed in POSTGRES (not the JSON file
-     on disk, which the server no longer reads at runtime). This still
-     guards a misconfigured productive tenant correctly — it is true for a
-     real tenant with real data and false otherwise.
+  5. Dataset verification against POSTGRES (not the JSON file on disk, which
+     the server no longer reads at runtime). It separates two failures the
+     old single assertion conflated — and conflating them made a productive
+     tenant's FIRST deploy impossible, because the only way to load its data
+     is through an app that would not start:
+       - Postgres unreadable (no APP_DATABASE_URL, refused connection, bad
+         credentials, missing schema, no `tenants` row): a real
+         misconfiguration, hard exit.
+       - Postgres readable but this tenant has no inventory yet: with
+         seeding ON that means the seed silently did nothing, so it is still
+         a hard exit. With seeding OFF it is a legitimate day-one productive
+         tenant that has not loaded its data yet — warn loudly and serve, so
+         the operator can actually load it.
   6. Canonical copy for RESET (DATA_DIR -> POLPILOT_CANONICAL_DIR): the
      admin reset endpoint restores THIS state without restarting the
      container. (Render's filesystem is also ephemeral: every
@@ -49,6 +58,7 @@ import os
 import shutil
 import subprocess
 import sys
+from typing import NoReturn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RAIZ = os.path.dirname(HERE)
@@ -60,7 +70,7 @@ sys.path.insert(0, BACKEND)
 import deploy_guard  # noqa: E402  (needs BACKEND on the path first)
 
 
-def fallar(msg: str) -> None:
+def fallar(msg: str) -> NoReturn:
     print(f"[boot][X] {msg}", flush=True)
     sys.exit(1)
 
@@ -104,15 +114,30 @@ def main() -> None:
     else:
         print("[boot] seeding skipped (POLPILOT_SEED_ON_BOOT is not 1)", flush=True)
 
-    # 5 · verificación dura del dataset — contra POSTGRES, la fuente real en
-    #     runtime (inventory.json en disco es sólo el seed source de arriba)
+    # 5 · dataset verification against POSTGRES, the real runtime source
+    #     (inventory.json on disk is only the seed source above). Reading and
+    #     being empty are DIFFERENT failures — see the module docstring.
     try:
-        from core import store as core_store
-        n = len(core_store.raw_actual())
-        assert n > 0
+        from core.db import inventory_repo
+        from core.db import tenant as db_tenant
+        articulos = inventory_repo.get_articles(db_tenant.current_tenant_id())
     except Exception as e:  # noqa: BLE001
-        fallar(f"inventario ilegible o vacío en Postgres ({e}) — el server NO levanta sin datos")
-    print(f"[boot] dataset ok: {n} artículos (Postgres)", flush=True)
+        fallar(f"Postgres unreadable ({e}) — check APP_DATABASE_URL, the "
+               f"credentials and that the schema is migrated (deploy/migrate.py)")
+    n = len(articulos or [])
+    if n > 0:
+        print(f"[boot] dataset ok: {n} artículos (Postgres)", flush=True)
+    elif deploy_guard.seed_on_boot():
+        # Seeding ran and left nothing behind: silent data loss, not a
+        # day-one tenant. Never serve an empty demo.
+        fallar(f"tenant '{tenant}' has no inventory in Postgres even though "
+               f"POLPILOT_SEED_ON_BOOT is on — the seed did nothing")
+    else:
+        print(f"[boot][!] tenant '{tenant}' has no inventory in Postgres yet — "
+              f"serving anyway so its data can be loaded through the app. "
+              f"This is expected on a productive tenant's first deploy; if it "
+              f"persists, check that POLPILOT_TENANT and APP_DATABASE_URL name "
+              f"the intended tenant and database.", flush=True)
 
     # 6 · copia canónica para el reset manual
     if CANONICAL:
