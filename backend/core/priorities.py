@@ -169,6 +169,7 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
         "drill": drill or _blank_drill(),
         "reportes": reportes,
         "band": None,
+        "action_taken": None,
     }
 
 
@@ -282,6 +283,19 @@ def inbox(lang: str | None = None, features=None) -> dict:
     }
 
 
+def with_action_taken(items: list[dict]) -> list[dict]:
+    """Mark each card whose proposal already produced a real record.
+
+    Derived per request from the domain table (see core/proposal_state.py),
+    so every user sees the same answer and a reload never resurrects a
+    proposal somebody already approved.
+    """
+    from . import proposal_state
+    for it in items:
+        it["action_taken"] = proposal_state.for_proposal(it.get("propuesta"), it["id"])
+    return items
+
+
 def _compose(lang) -> dict:
     from . import confidence
     items: list[dict] = []
@@ -292,6 +306,7 @@ def _compose(lang) -> dict:
     merged = merge_duplicates(items)
     for it in merged:
         it["drill"]["confidence"] = confidence.level_for(it["drill"], lang)
+    with_action_taken(merged)
     hay_ventas = False
     try:
         from . import ventas

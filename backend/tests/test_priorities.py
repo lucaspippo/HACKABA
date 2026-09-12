@@ -272,3 +272,27 @@ def test_compose_attaches_confidence_to_every_item(monkeypatch):
         conf = it["drill"].get("confidence")
         assert conf and conf["level"] in ("high", "medium", "low")
         assert conf["reason"]
+
+
+def test_compose_marks_cards_whose_proposal_already_ran(monkeypatch):
+    from core import proposal_state
+    monkeypatch.setattr(
+        proposal_state, "_find_order",
+        lambda origen, codigo: {
+            "numero": "OC-2026-0901", "estado": "borrador",
+            "aprobada_por": "Aldo", "preparada": "2026-07-07T09:14:02",
+        } if origen == "quiebre_inminente" else None)
+
+    con = _item("quiebre_inminente", propuesta={"tipo": "orden_compra", "codigo": 7})
+    sin = _item("despertar_dormido")
+    for it in priorities.with_action_taken([con, sin]):
+        if it["id"] == "quiebre_inminente":
+            assert it["action_taken"]["label"] == "OC-2026-0901"
+            assert it["action_taken"]["actor"] == "Aldo"
+        else:
+            assert it["action_taken"] is None
+
+
+def test_cards_without_a_proposal_are_never_marked():
+    out = priorities.with_action_taken([_item("caja_inusual")])
+    assert out[0]["action_taken"] is None
