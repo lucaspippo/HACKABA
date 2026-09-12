@@ -203,13 +203,61 @@ whether a local build ever ran: if another tenant's data, an asset, a `.env`,
 or credentials reached the image, Render's build fails and nothing gets
 published.
 
-When a local build does work:
+When a local build does work, the guard-check run needs nothing else:
 
 ```bash
 docker build -t polpilot-app .
 docker run --rm polpilot-app sh -c "ls /app && test ! -e /app/data && echo NO-OTHER-TENANT-DATA-OK"
-docker run --rm -p 8080:8000 -e ANTHROPIC_API_KEY=YOUR_KEY -e POLPILOT_TENANT=demo -e POLPILOT_SEED_ON_BOOT=1 polpilot-app
 ```
 
-Then `http://localhost:8080` → run the §6 checklist (PDF included, to prove
-WeasyPrint on Linux).
+Actually booting the image locally is a separate matter, because
+`deploy/boot.py` (the image's `CMD`) no longer migrates — that step moved to
+`deploy/migrate.py`, which Render runs as `preDeployCommand` and this `docker
+run` does not invoke. Two things must already be true before the container
+can come up:
+
+1. **A reachable Postgres with the schema at head.** From the repo root,
+   start the compose database and migrate it exactly as local dev already
+   does (`start_demo.py`'s own steps 3–4):
+   ```bash
+   docker compose up -d db
+   cd backend && ../.venv/Scripts/python.exe -m alembic upgrade head
+   ```
+   On a database container that just started, give Postgres a few seconds to
+   accept connections before the `alembic` command — `start_demo.py` polls
+   for this; running the two commands back-to-back by hand may need a short
+   pause or a retry. This also assumes `backend/.env` already has
+   `DATABASE_URL` set (the standard local-dev setup — see the Tests section
+   of the root `CLAUDE.md`); if not, export it for this one command instead.
+2. **`DATABASE_URL` and `APP_DATABASE_URL` passed into the container**,
+   pointed at that same database. A container cannot reach the host via
+   `localhost` — on Docker Desktop the host is `host.docker.internal` — and
+   `docker-compose.yml` publishes Postgres on host port **5434**, not 5432.
+   The roles and passwords are `docker/init-app-role.sql`'s and
+   `docker-compose.yml`'s: `polpilot`/`polpilot` (owner, matches
+   `POSTGRES_USER`/`POSTGRES_PASSWORD`) and `polpilot_app`/`polpilot_app` (the
+   `NOBYPASSRLS` role). Both URLs need the explicit `+psycopg` driver — see
+   `backend/core/db/url.py` for why a bare `postgresql://` fails at the first
+   query instead of at startup:
+   ```bash
+   docker run --rm -p 8080:8000 \
+     -e ANTHROPIC_API_KEY=YOUR_KEY \
+     -e POLPILOT_TENANT=demo \
+     -e POLPILOT_SEED_ON_BOOT=1 \
+     -e DATABASE_URL="postgresql+psycopg://polpilot:polpilot@host.docker.internal:5434/polpilot" \
+     -e APP_DATABASE_URL="postgresql+psycopg://polpilot_app:polpilot_app@host.docker.internal:5434/polpilot" \
+     polpilot-app
+   ```
+   `host.docker.internal` is resolved automatically by Docker Desktop (macOS
+   and Windows). On native Linux Docker (no Desktop), add
+   `--add-host=host.docker.internal:host-gateway` to the command above.
+
+This last command is reasoned from the actual code paths
+(`deploy/boot.py`'s `seed_db.ensure_tenant()` → `core.db.engine.get_admin_engine()`
+→ `os.environ["DATABASE_URL"]`, and `docker-compose.yml`/`init-app-role.sql`
+for the connection details) but has not been executed end-to-end in this
+environment — treat it as reasoned-but-unverified and expect to debug the
+first run.
+
+Once it boots, `http://localhost:8080` → run the §6 checklist (PDF included,
+to prove WeasyPrint on Linux).
