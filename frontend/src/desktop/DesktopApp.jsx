@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -45,19 +45,15 @@ import { api } from "../lib/api";
 import { useAngelaPanelWidth } from "../lib/useAngelaPanelWidth";
 import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
-import ChatPanel from "../views/ChatPanel";
-import ChatFullscreen from "../views/ChatFullscreen";
 import CommandPalette from "../components/CommandPalette";
 import AccountMenu from "../components/AccountMenu";
 import { ChatRuntimeProvider, useChatDock } from "../lib/chatRuntimeProvider";
 import { useVista, vistaStore } from "../lib/vistaStore";
 import Inicio from "./sections/Inicio";
-import { InsightNodo } from "./sections/MapaNegocio";
 // La sección del mapa tiene dos vistas (árbol de fuentes / cerebro de
 // entidades). El switch vive en MapaSeccion; acá se monta una sola cosa.
-import MapaSeccion from "./sections/MapaSeccion";
 import ErrorBoundary from "../components/ErrorBoundary";
-import Inventario from "./sections/Inventario";
+import Cargando from "../components/Cargando";
 import Productos from "./sections/Productos";
 import Saneamiento from "./sections/Saneamiento";
 import Finanzas from "./sections/Finanzas";
@@ -74,7 +70,6 @@ import StagingArea from "./sections/StagingArea";
 import Documentos from "./sections/Documentos";
 import CuentasCorrientes from "./sections/CuentasCorrientes";
 import Caja from "./sections/Caja";
-import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
 import Conectores from "./sections/Conectores";
 import Ubicaciones from "./sections/Ubicaciones";
@@ -96,6 +91,15 @@ import { VerComoChip } from "../components/VerComo";
 import { useT } from "../lib/i18n";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
+
+// Lazy on purpose — these five are the only screens that import a graph
+// engine, the chart library or the fullscreen chat. Everything else stays in
+// the main chunk. See vite.config.js `manualChunks` for the chunk names.
+const MapaSeccion = lazy(() => import("./sections/MapaSeccion"));
+const Inventario = lazy(() => import("./sections/Inventario"));
+const Evolucion = lazy(() => import("./sections/Evolucion"));
+const ChatPanel = lazy(() => import("../views/ChatPanel"));
+const ChatFullscreen = lazy(() => import("../views/ChatFullscreen"));
 
 // Catálogo de secciones desktop. Se muestran según las features del usuario.
 // Los labels viven en el diccionario i18n (lk = label key); las KEYS del catálogo
@@ -691,13 +695,15 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 seccion="angela"
                 onInicio={() => setFullscreen(false)}
               >
-                <ChatFullscreen
+                <Suspense fallback={<Cargando />}>
+<ChatFullscreen
                   onNavigate={navegar}
                   user={user}
                   onDatosCambiaron={onRecargar}
                   placeholderChips={chipsPorRol(user)}
                   onCollapse={() => setFullscreen(false)}
                 />
+</Suspense>
               </ErrorBoundary>
             </div>
           ) : (
@@ -801,7 +807,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                         />
                       ))}
                     {section === "mapa" && (
-                      <MapaSeccion
+                      <Suspense fallback={<Cargando />}>
+<MapaSeccion
                         onNavegar={navegar}
                         onPreguntar={preguntar}
                         onInsight={(i) => {
@@ -809,17 +816,20 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                           if (i) setAngelaOpen(true);
                         }}
                       />
+</Suspense>
                     )}
                     {section === "aprendizaje" && (
                       <AprendizajeContinuo onPreguntar={preguntar} />
                     )}
                     {section === "inventario" && (
-                      <Inventario
+                      <Suspense fallback={<Cargando />}>
+<Inventario
                         data={data}
                         highlight={highlight}
                         onPreguntar={preguntar}
                         onNavegar={navegar}
                       />
+</Suspense>
                     )}
                     {section === "saneamiento" && (
                       <Saneamiento
@@ -896,11 +906,13 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                       />
                     )}
                     {section === "evolucion" && (
-                      <Evolucion
+                      <Suspense fallback={<Cargando />}>
+<Evolucion
                         data={data}
                         onNavegar={navegar}
                         onPreguntar={preguntar}
                       />
+</Suspense>
                     )}
                     {section === "auditoria" && <Auditoria />}
                     {section === "conectores" && (
@@ -961,7 +973,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   seccion="angela"
                   onInicio={() => setAngelaOpen(false)}
                 >
-                  <ChatPanel
+                  <Suspense fallback={<Cargando />}>
+<ChatPanel
                     variant="dock"
                     onExpand={() => setFullscreen(true)}
                     onNavigate={navegar}
@@ -971,6 +984,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     placeholderChips={chipsPorRol(user)}
                     onCollapse={() => setAngelaOpen(false)}
                   />
+</Suspense>
                 </ErrorBoundary>
               </motion.aside>
             )}
