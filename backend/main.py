@@ -3122,6 +3122,52 @@ class ConocimientoNuevo(BaseModel):
     params: dict | None = None
 
 
+class ConocimientoPropuesta(BaseModel):
+    texto: str
+    nodo: str
+    tipo: str = "contexto"
+    ambito: str = "global"
+    efecto: str = "contexto_para_angela"
+    entidad: str | None = None
+
+
+def _puede_activar(u: dict, nodo: str, ambito: str) -> bool:
+    """Whether this user's confirmation activates a piece outright or only
+    queues it. A global piece reaches everyone, so it stays admin-only —
+    `visibles_para` would wave it through for any employee."""
+    if u.get("es_admin"):
+        return True
+    if ambito == "global":
+        return False
+    from core import perfiles
+    return conocimiento.NODO_FEATURE.get(nodo) in set(perfiles.features_efectivas(u["username"]))
+
+
+@app.post("/api/conocimiento/confirmar")
+def conocimiento_confirmar(req: ConocimientoPropuesta, u: dict = Depends(usuario_actual)):
+    """The user taps 'keep' on a chip Ángela proposed (angela.py's
+    proponer_conocimiento writes nothing). Lands active when they could have
+    reviewed it anyway, pending otherwise."""
+    from core import fechas
+    try:
+        propuesta = conocimiento.validar_propuesta(
+            texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
+            efecto=req.efecto, entidad=req.entidad)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    ya = conocimiento.equivalente(texto=propuesta["texto"], nodo=propuesta["nodo"],
+                                  entidad=propuesta["entidad"])
+    if ya:
+        return {"ok": True, "pieza": ya, "estado": ya["estado"], "ya_existia": True}
+
+    estado = "activo" if _puede_activar(u, propuesta["nodo"], propuesta["ambito"]) else "pendiente"
+    pieza = conocimiento.crear(
+        **propuesta, estado=estado,
+        origen={"quien": u["username"], "cuando": fechas.hoy().isoformat()})
+    return {"ok": True, "pieza": pieza, "estado": estado, "ya_existia": False}
+
+
 @app.post("/api/conocimiento")
 def conocimiento_crear(req: ConocimientoNuevo, u: dict = Depends(require_admin)):
     from core import fechas
