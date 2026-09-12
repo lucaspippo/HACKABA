@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import time
 
 import config
@@ -2628,6 +2629,38 @@ def _prefix_tokens(client, model: str, system, tools: list[dict]) -> tuple[int, 
     return measured
 
 
+def _prefix_tokens_sin_bloquear(client, model: str, system, tools: list[dict]):
+    """Lo mismo, pero SIN hacer esperar a quien pregunto.
+
+    `_prefix_tokens` hace TRES llamadas `count_tokens` a la API antes de la
+    primera llamada al modelo. Son tres round-trips en el camino critico —
+    antes de que se vea una sola palabra— y todo para un medidor de contexto.
+
+    Encima empeoro solo: la llave del cache incluye `len(tools)`, y desde que
+    las herramientas se recortan por tema (core/temas.py) la cantidad cambia
+    segun lo que se pregunte. O sea que cada tema nuevo volvia a pagar los tres
+    round-trips. Medido contra Render: 9,6 s hasta el primer evento.
+
+    Ahora: si ya esta medido, se usa (gratis). Si no, este turno va sin medidor
+    y la medicion se hace en un hilo para que el turno siguiente si lo tenga.
+    `_usage_report` ya sabe esconderse cuando no hay numero — mostrar un
+    estimado disfrazado de medicion es justo lo que no se hace aca.
+    """
+    key = f"{model}:{hash(json.dumps(system, ensure_ascii=False, default=str))}:{len(tools)}"
+    ya = _PREFIX_TOKENS.get(key)
+    if ya:
+        return ya
+
+    def medir():
+        try:
+            _prefix_tokens(client, model, system, tools)
+        except Exception as e:  # noqa: BLE001 — el medidor nunca rompe un turno
+            print(f"[angela] prefix count (en segundo plano) fallo: {e}", flush=True)
+
+    threading.Thread(target=medir, name="angela-prefix-tokens", daemon=True).start()
+    return 0, 0
+
+
 def _usage_report(resp, system_tokens: int, tools_tokens: int) -> dict | None:
     """The context breakdown for one turn, or None when it cannot be measured.
 
@@ -2884,7 +2917,7 @@ def stream_response(
     try:
         # A failure here must cost the turn nothing: the meter simply hides.
         try:
-            system_tokens, tools_tokens = _prefix_tokens(
+            system_tokens, tools_tokens = _prefix_tokens_sin_bloquear(
                 client, model, system, available_tools)
         except Exception as e:  # noqa: BLE001
             print(f"[angela/stream] prefix count failed: {e}", flush=True)
