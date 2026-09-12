@@ -57,6 +57,7 @@ CASOS_ADMIN = [
     ("odoo_config_ver", "GET", "/api/conectores/odoo"),
     ("odoo_sync", "POST", "/api/conectores/odoo/sync"),
     ("odoo_sync_productos", "POST", "/api/conectores/odoo/sync-productos"),
+    ("odoo_ingest_productos", "POST", "/api/conectores/odoo/ingest-productos"),
     ("odoo_sync_proveedores", "POST", "/api/conectores/odoo/sync-proveedores"),
     ("odoo_sync_ordenes_compra", "POST", "/api/conectores/odoo/sync-ordenes-compra"),
 ]
