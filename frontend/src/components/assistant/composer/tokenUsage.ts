@@ -1,9 +1,6 @@
-export type WireUsage = {
-  system?: number;
-  tools?: number;
-  messages?: number;
-  context_window?: number;
-};
+import type { WireUsage } from "../../../lib/chat/protocol";
+
+export type { WireUsage };
 
 export type ComposerUsageValues = {
   system: number;
