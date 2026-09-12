@@ -443,7 +443,12 @@ def _alerts_cuentas(lang) -> list[dict]:
             drill={"porque": [_t("core.prio.atraso_p", lang, nombre=d["nombre"],
                                  dias=_num(d["dias_sin_pagar"], lang),
                                  prom=_num(d.get("promedio_pago_dias") or 0, lang))],
-                   "grafico": None, "involucrados": [], "supuestos": []},
+                   "grafico": None,
+                   "involucrados": [{"id": d.get("id"), "kind": "client",
+                                     "nombre": d["nombre"], "monto": d.get("saldo"),
+                                     "detalle": _t("core.prio.atraso_i", lang,
+                                                   dias=d["dias_sin_pagar"])}],
+                   "supuestos": []},
         ))
     return out
 
@@ -456,6 +461,7 @@ def _alerts_ventas(lang) -> list[dict]:
     q = pan.get("quiebre") or {}
     if not q.get("cantidad"):
         return []
+    items = (q.get("items") or [])[:8]
     return [_item(
         id="quiebre", tono="rojo", chip=_t("core.prio.chip_reponer", lang),
         titulo=_t("core.prio.quiebre_t", lang),
@@ -466,7 +472,14 @@ def _alerts_ventas(lang) -> list[dict]:
         navegar="inventario",
         accion_chat=_t("core.prio.quiebre_chat", lang),
         drill={"porque": [_t("core.prio.quiebre_p", lang, n=_num(q["cantidad"], lang))],
-               "grafico": None, "involucrados": [], "supuestos": []},
+               "grafico": None,
+               "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                                 "nombre": x.get("descripcion") or "",
+                                 "monto": None,
+                                 "detalle": _t("core.prio.quiebre_i", lang,
+                                               dias=x.get("dias_cobertura") or 0)}
+                                for x in items],
+               "supuestos": []},
     )]
 
 

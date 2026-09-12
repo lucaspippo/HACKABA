@@ -90,3 +90,28 @@ def test_pago_vencido_drill_has_chart_and_text_involucrados(monkeypatch):
     # scope decision) — involucrados here stay text-only, non-clickable.
     assert iv.get("id") is None and iv.get("kind") is None
     assert "Proveedor Uno" in iv["nombre"]
+
+
+def test_moroso_atraso_drill_has_client_involucrado(monkeypatch):
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [
+        {"id": 9, "nombre": "Cliente Atraso", "en_mora": True, "dias_sin_pagar": 120,
+         "atraso_vs_promedio": 200, "promedio_pago_dias": 30, "saldo": 40_000}])
+    out = priorities._alerts_cuentas("es")
+    ma = next(i for i in out if i["id"] == "moroso_atraso")
+    iv = ma["drill"]["involucrados"][0]
+    assert iv["id"] == 9 and iv["kind"] == "client"
+
+
+def test_quiebre_drill_has_product_involucrados(monkeypatch):
+    from core import ventas
+    monkeypatch.setattr(ventas, "panorama", lambda lang: {
+        "disponible": True,
+        "quiebre": {"cantidad": 1, "items": [
+            {"codigo": "P4", "descripcion": "Prod Cuatro", "stock": 3,
+             "dias_cobertura": 2.5, "demanda_diaria": 1.2}]},
+    })
+    out = priorities._alerts_ventas("es")
+    q = next(i for i in out if i["id"] == "quiebre")
+    iv = q["drill"]["involucrados"][0]
+    assert iv["id"] == "P4" and iv["kind"] == "product"
