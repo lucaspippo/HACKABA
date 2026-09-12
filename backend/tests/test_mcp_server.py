@@ -95,6 +95,18 @@ def test_bad_token_is_rejected():
     assert any("No valid session" in m for m in _messages(excinfo.value))
 
 
+def test_every_tool_is_marked_read_only(tokens):
+    """Every tool this server advertises must carry readOnlyHint=True — the
+    one signal a compliant MCP client has, today, for 'safe to call without
+    asking'. The day a write tool is added elsewhere in this file, this test
+    forces a conscious annotations decision for it too (see MCP.md's write
+    operations roadmap)."""
+    tools = _mcp_call(tokens["emilio"], lambda s: s.list_tools()).tools
+    assert tools
+    for tool in tools:
+        assert tool.annotations is not None and tool.annotations.readOnlyHint is True, tool.name
+
+
 def test_tool_list_matches_role_features(tokens):
     # emilio (Dueño): full roster, incl. inventario + caja.
     owner_tools = {t.name for t in _mcp_call(tokens["emilio"], lambda s: s.list_tools()).tools}
