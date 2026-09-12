@@ -87,7 +87,7 @@ export function presentacionAlertas(t, onNavegar) {
       fuentes: [t("alertasneg.f_deposito")],
       porque: [t("alertasneg.q_dep_discrep", { n: num(d.discrepancias) })],
       chat: t("alertasneg.ac_dep_discrep"),
-      cta: t("alertasneg.ver_deposito"), ir: () => onNavegar?.("deposito") }),
+      cta: t("alertasneg.ver_conciliacion"), ir: () => onNavegar?.("conciliacion") }),
     pago_semana: (d) => ({ icon: Banknote, titulo: t("alertasneg.pago_semana_t"),
       detalle: t("alertasneg.pago_semana_d", { monto: pesoCorto(d.por_pagar_semana) }),
       monto: d.por_pagar_semana,

@@ -115,10 +115,42 @@ def test_movements_list_page_and_extra_fields():
     assert page["total"] == 1
     assert page["items"][0]["in_date"] == "2026-07-02"
     assert page["items"][0]["counted_qty"] == 49
+    assert page["items"][0]["diferencia"] == -1
     csv = lotes.export_csv()
     assert "Harina" in csv
     assert "ubicacion" in csv.splitlines()[0]
     lotes.eliminar(created["id"], "emilio")
+
+
+def test_movements_list_page_filters_discrepancies():
+    gap = lotes.crear(
+        {"producto": "Harina gap", "ubicacion": "Rack B", "lote": "L-gap",
+         "cantidad": 50, "counted_qty": 40},
+        "emilio",
+    )
+    match = lotes.crear(
+        {"producto": "Harina ok", "ubicacion": "Rack B", "lote": "L-ok",
+         "cantidad": 20, "counted_qty": 20},
+        "emilio",
+    )
+    uncounted = lotes.crear(
+        {"producto": "Harina pending", "ubicacion": "Rack B", "lote": "L-pend",
+         "cantidad": 10},
+        "emilio",
+    )
+    page = lotes.list_page(discrepancia=True)
+    ids = {r["id"] for r in page["items"]}
+    assert gap["id"] in ids
+    assert match["id"] not in ids
+    assert uncounted["id"] not in ids
+    gap_row = next(r for r in page["items"] if r["id"] == gap["id"])
+    assert gap_row["diferencia"] == -10
+    csv = lotes.export_csv(discrepancia=True)
+    assert "Harina gap" in csv
+    assert "Harina ok" not in csv
+    lotes.eliminar(gap["id"], "emilio")
+    lotes.eliminar(match["id"], "emilio")
+    lotes.eliminar(uncounted["id"], "emilio")
 
 
 def test_product_delete_and_list_page():
@@ -129,6 +161,8 @@ def test_product_delete_and_list_page():
     page = store.list_page(q="producto crud")
     assert page["total"] == 1
     assert page["items"][0]["codigo"] == 9101
+    assert page["items"][0]["margen_venta_pct"] is None
+    assert page["items"][0]["margen_pesos"] is None
 
     store.eliminar_articulo(9101, "emilio")
     assert store.list_page(q="producto crud")["total"] == 0
@@ -146,3 +180,5 @@ def test_product_list_page_filters_source_and_quality():
     assert odoo["total"] == 1
     assert odoo["items"][0]["sku"] == "ACE-001"
     assert odoo["items"][0]["source"] == "odoo"
+    assert odoo["items"][0]["margen_venta_pct"] == 33.33
+    assert odoo["items"][0]["margen_pesos"] == 50.0

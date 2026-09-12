@@ -2396,19 +2396,39 @@ def articulos_eliminar(codigo: int, u: dict = Depends(require_feature("inventari
 @app.get("/api/movimientos")
 def movimientos_list(q: str = "", sort: str | None = "producto", dir: str = "asc",
                      offset: int = 0, limit: int = 50, source: str | None = None,
+                     discrepancia: int = 0,
                      _u: dict = Depends(require_feature("inventario"))):
     from core import lotes
     return lotes.list_page(q=q, sort=sort, direction=dir, offset=offset,
-                           limit=limit, source=source)
+                           limit=limit, source=source,
+                           discrepancia=bool(discrepancia))
 
 
 @app.get("/api/movimientos/export.csv")
 def movimientos_export(q: str = "", sort: str | None = "producto", dir: str = "asc",
-                       source: str | None = None,
+                       source: str | None = None, discrepancia: int = 0,
                        _u: dict = Depends(require_feature("inventario"))):
     from core import lotes
-    return _csv_file(lotes.export_csv(q=q, sort=sort, direction=dir, source=source),
+    return _csv_file(lotes.export_csv(q=q, sort=sort, direction=dir, source=source,
+                                      discrepancia=bool(discrepancia)),
                      "movimientos.csv")
+
+
+@app.get("/api/conciliacion")
+def conciliacion_list(u: dict = Depends(require_feature("deposito"))):
+    from core import conciliacion
+    return conciliacion.resumen(lang=_lang(u))
+
+
+@app.post("/api/conciliacion/{id}/aceptar")
+def conciliacion_aceptar(id: str, u: dict = Depends(require_feature("deposito"))):
+    from core import conciliacion
+    try:
+        return conciliacion.aceptar(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 class ArticuloRequest(BaseModel):
