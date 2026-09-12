@@ -147,7 +147,8 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
     if existente:
         antes = dict(existente)
         for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp",
-                      "free_qty", "incoming_qty", "outgoing_qty", "estado"):
+                      "free_qty", "incoming_qty", "outgoing_qty", "estado",
+                      "pricing_status", "precio_lista", "moneda", "precios_pricelist"):
             if campo in fila:
                 existente[campo] = fila[campo]
         _recalcular_inmovilizado(existente)
@@ -164,6 +165,10 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
         "free_qty": fila.get("free_qty"),
         "incoming_qty": fila.get("incoming_qty"),
         "outgoing_qty": fila.get("outgoing_qty"),
+        "pricing_status": fila.get("pricing_status"),
+        "precio_lista": fila.get("precio_lista"),
+        "moneda": fila.get("moneda"),
+        "precios_pricelist": fila.get("precios_pricelist") or [],
     }
     _recalcular_inmovilizado(nuevo)
     raw.append(nuevo)
@@ -336,6 +341,9 @@ def articulos_con_estado() -> list[dict]:
             "free_qty": d.get("free_qty"),
             "incoming_qty": d.get("incoming_qty"),
             "outgoing_qty": d.get("outgoing_qty"),
+            "pricing_status": d.get("pricing_status"),
+            "precio_lista": d.get("precio_lista"),
+            "moneda": d.get("moneda"),
         })
     return out
 

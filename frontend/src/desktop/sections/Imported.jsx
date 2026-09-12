@@ -11,6 +11,8 @@ const TABS = [
   { id: "products", lk: "imported.tab_products" },
   { id: "sales", lk: "imported.tab_sales" },
   { id: "receipts", lk: "imported.tab_receipts" },
+  { id: "deliveries", lk: "imported.tab_deliveries" },
+  { id: "invoices", lk: "imported.tab_invoices" },
   { id: "movements", lk: "imported.tab_movements" },
 ];
 const ROW_CAP = 1000;
@@ -52,6 +54,13 @@ export default function Imported({ highlight, onNavigate }) {
       key: "source", label: t("imported.col_source"), sortable: true,
       render: (row) => <SourceBadge source={row.source} t={t} />,
     };
+    const pricingLabel = (status) => {
+      if (status === "needs_pricing") return t("imported.pricing_needs");
+      if (status === "wholesale_only") return t("imported.pricing_wholesale");
+      if (status === "retail") return t("imported.pricing_retail");
+      return status || "—";
+    };
+    const yn = (v) => t(v ? "imported.yes" : "imported.no");
     if (tab === "products") {
       return [
         { key: "sku", label: t("imported.col_sku"), sortable: true, plata: true,
@@ -65,7 +74,12 @@ export default function Imported({ highlight, onNavigate }) {
         { key: "cost", label: t("imported.col_cost"), sortable: true, align: "right", plata: true,
           render: (p) => (p.cost == null ? "—" : peso(p.cost)) },
         { key: "list_price", label: t("imported.col_list_price"), sortable: true, align: "right", plata: true,
-          render: (p) => (p.list_price == null ? "—" : peso(p.list_price)) },
+          render: (p) => (p.pricing_status === "needs_pricing" || p.list_price == null
+            ? "—" : peso(p.list_price)) },
+        { key: "pricing_status", label: t("imported.col_pricing"), sortable: true, plata: true,
+          render: (p) => pricingLabel(p.pricing_status) },
+        { key: "currency", label: t("imported.col_currency"), sortable: true, plata: true,
+          render: (p) => p.currency || "—" },
         sourceCol,
       ];
     }
@@ -81,6 +95,8 @@ export default function Imported({ highlight, onNavigate }) {
           render: (row) => num(row.quantity || 0) },
         { key: "price", label: t("imported.col_price"), sortable: true, align: "right", plata: true,
           render: (row) => (row.price == null ? "—" : peso(row.price)) },
+        { key: "currency", label: t("imported.col_currency"), sortable: true, plata: true,
+          render: (row) => row.currency || "—" },
         sourceCol,
       ];
     }
@@ -98,6 +114,52 @@ export default function Imported({ highlight, onNavigate }) {
           render: (row) => row.warehouse || "—" },
         { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true,
           render: (row) => row.po_number || row.origin || "—" },
+        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true,
+          render: (row) => yn(row.pending) },
+        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true,
+          render: (row) => yn(row.is_backorder) },
+        sourceCol,
+      ];
+    }
+    if (tab === "deliveries") {
+      return [
+        { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
+          render: (row) => (row.date ? fecha(row.date) : "—") },
+        { key: "product", label: t("imported.col_product"), sortable: true,
+          render: (row) => <span className="font-medium text-tinta">{row.product || "—"}</span> },
+        { key: "customer", label: t("imported.col_customer"), sortable: true,
+          render: (row) => row.customer || "—" },
+        { key: "quantity", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
+          render: (row) => num(row.quantity || 0) },
+        { key: "so_number", label: t("imported.col_origin"), sortable: true, plata: true,
+          render: (row) => row.so_number || row.origin || "—" },
+        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true,
+          render: (row) => yn(row.pending) },
+        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true,
+          render: (row) => yn(row.is_backorder) },
+        sourceCol,
+      ];
+    }
+    if (tab === "invoices") {
+      return [
+        { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
+          render: (row) => (row.date ? fecha(row.date) : "—") },
+        { key: "number", label: t("imported.col_po"), sortable: true, plata: true,
+          render: (row) => row.number || "—" },
+        { key: "partner", label: t("imported.col_partner"), sortable: true,
+          render: (row) => row.partner || "—" },
+        { key: "kind", label: t("imported.col_origin"), sortable: true, plata: true,
+          render: (row) => row.kind || "—" },
+        { key: "total", label: t("imported.col_total"), sortable: true, align: "right", plata: true,
+          render: (row) => (row.total == null ? "—" : peso(row.total)) },
+        { key: "residual", label: t("imported.col_residual"), sortable: true, align: "right", plata: true,
+          render: (row) => (row.residual == null ? "—" : peso(row.residual)) },
+        { key: "currency", label: t("imported.col_currency"), sortable: true, plata: true,
+          render: (row) => row.currency || "—" },
+        { key: "aging", label: t("imported.col_aging"), sortable: true, plata: true,
+          render: (row) => row.aging || row.payment_state || "—" },
+        { key: "due", label: t("imported.col_due"), sortable: true, plata: true,
+          render: (row) => (row.due ? fecha(row.due) : "—") },
         sourceCol,
       ];
     }
@@ -132,6 +194,8 @@ export default function Imported({ highlight, onNavigate }) {
     products: "imported.empty_products",
     sales: "imported.empty_sales",
     receipts: "imported.empty_receipts",
+    deliveries: "imported.empty_deliveries",
+    invoices: "imported.empty_invoices",
     movements: "imported.empty_movements",
   }[tab];
 

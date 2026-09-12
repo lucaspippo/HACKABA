@@ -192,3 +192,40 @@ def resumen() -> dict:
         "cheques_cartera": len(cheq),
         "cheques_total": round(sum(c["monto"] for c in cheq), 2),
     }
+
+
+def upsert_from_odoo_bills(bills: list[dict]) -> dict:
+    """Replace Odoo-sourced vendor bills in pagos_proveedores, leave the
+    rest of finance_data (tarjeta, cheques, hand-entered bills) alone."""
+    d = _load()
+    kept = [p for p in d["pagos_proveedores"] if p.get("source") != "odoo"]
+    by_id = {(p.get("source"), str(p.get("source_id"))): p for p in kept
+             if p.get("source")}
+    inserted, updated = 0, 0
+    for bill in bills:
+        key = ("odoo", str(bill.get("source_id")))
+        existing = by_id.get(key)
+        row = {
+            "proveedor": bill.get("proveedor") or "",
+            "numero": bill.get("numero") or "",
+            "emision": bill.get("emision") or "",
+            "vencimiento": bill.get("vencimiento") or "",
+            "monto": float(bill.get("monto") or 0),
+            "estado": bill.get("estado") or "pendiente",
+            "payment_state": bill.get("payment_state") or "",
+            "aging": bill.get("aging") or "",
+            "currency": bill.get("currency") or "",
+            "source": "odoo",
+            "source_id": str(bill.get("source_id") or ""),
+        }
+        if existing:
+            existing.update(row)
+            updated += 1
+        else:
+            kept.append(row)
+            by_id[key] = row
+            inserted += 1
+    d["pagos_proveedores"] = kept
+    from core.db import blob_repo, tenant as _tenant
+    blob_repo.save_blob("finance_data", _tenant.current_tenant_id(), d)
+    return {"nuevos": inserted, "actualizados": updated}
