@@ -96,7 +96,7 @@ export default function OrdenesCompra({ highlight }) {
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("ordenes.buscar")}
-        vacio={t("ordenes.vacio")}
+        vacio={qn ? t("ordenes.vacio_filtro") : t("ordenes.vacio")}
         acciones={(o) => (
           <div className="flex justify-end gap-1.5">
             {o.estado === "borrador" && (
