@@ -2704,10 +2704,6 @@ export const EN = {
   "conectores.whatsapp_desc": "The sales channel: catalog, orders and quotes over chat, handled by Ángela.",
 
   // --- WhatsApp bot (customer-facing sales channel) --------------------------
-  "nav.whatsapp_bot": "WhatsApp bot",
-  "whatsapp_bot.titulo": "WhatsApp bot",
-  "whatsapp_bot.subtitulo": "Connect your WhatsApp Business number so customers can ask about the catalog, place an order or request a quote by chat.",
-  "whatsapp_bot.angela": "Once you connect it, I'm the one answering on the other end: catalog, price and stock, and I capture the order or quote. I never close a sale on my own — you see and approve each one just like any other order the team logs.",
   "whatsapp_bot.error_generico": "Something failed. Try again in a moment.",
   "whatsapp_bot.error_guardar": "I couldn't validate those credentials against WhatsApp Business. Check them and try again.",
   "whatsapp_bot.canal_nombre": "WhatsApp Business",

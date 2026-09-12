@@ -1,5 +1,28 @@
 import { ChevronDown, Loader2 } from "lucide-react";
 
+// Marcas reales, inline (sin assets externos — mismo criterio que el resto
+// de la app): un conector reconocible de un vistazo pesa más para la
+// confianza/adopción que un ícono genérico. CSV/BCRA/MCP no tienen una marca
+// propia que valga la pena reproducir; Odoo y WhatsApp sí.
+export function LogoWhatsApp({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="#25D366" aria-hidden="true">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-2-1.2 7.4 7.4 0 0 1-1.4-1.7c-.1-.2 0-.4.1-.5l.4-.5a1.7 1.7 0 0 0 .3-.4.5.5 0 0 0 0-.4c0-.1-.6-1.4-.8-1.9s-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 2.9 2.9 0 0 0-.9 2.2 5 5 0 0 0 1 2.7 11.4 11.4 0 0 0 4.4 3.9 14.8 14.8 0 0 0 1.5.5 3.6 3.6 0 0 0 1.6.1 2.7 2.7 0 0 0 1.7-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.2-.2-.4-.3Z" />
+    </svg>
+  );
+}
+
+export function LogoOdoo({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#714B67" />
+      <path fillRule="evenodd" clipRule="evenodd"
+        d="M12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2Zm0 2.5a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2Z"
+        fill="#fff" />
+    </svg>
+  );
+}
+
 // Shared visual language for every connector panel (Odoo, WhatsApp, and
 // whatever comes next): one card shell, one status-pill vocabulary, one
 // field style, one button hierarchy, one sync/ingest action row. Before this,
@@ -33,7 +56,7 @@ export function ConnectorStatusPill({ variant = "pendiente", children }) {
 // --- card shell: icon badge + title + subtitle + status + optional toggle ---
 
 export function ConnectorCard({
-  icon: Icon, tone = "neutral", title, subtitle, status,
+  icon: Icon, logo: Logo, tone = "neutral", title, subtitle, status,
   expanded, onToggle, children, footer,
 }) {
   const badgeTone =
@@ -51,9 +74,17 @@ export function ConnectorCard({
         aria-expanded={interactive ? !!expanded : undefined}
         className={`flex w-full items-center gap-3 p-4 text-left ${interactive ? "cursor-pointer" : ""}`}
       >
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${badgeTone}`}>
-          <Icon size={18} />
-        </span>
+        {/* Una marca real (Logo) trae su propio color — vive en un chip neutro
+            con un hairline, no en el badge tonal que usan los íconos genéricos. */}
+        {Logo ? (
+          <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full ring-1 ring-linea">
+            <Logo size={22} />
+          </span>
+        ) : (
+          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${badgeTone}`}>
+            <Icon size={18} />
+          </span>
+        )}
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
             <span className="font-display text-[1.02rem] font-bold leading-tight text-tinta">{title}</span>

@@ -7,7 +7,7 @@ import {
   Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
   ShoppingCart, Plug, Layers, Inbox, PackageCheck, Package, PackagePlus, ShoppingBag,
-  Scale, MessageCircle,
+  Scale,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -44,7 +44,6 @@ import Caja from "./sections/Caja";
 import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
 import Conectores from "./sections/Conectores";
-import WhatsAppBot from "./sections/WhatsAppBot";
 import Ubicaciones from "./sections/Ubicaciones";
 import Movimientos from "./sections/Movimientos";
 import Ventas from "./sections/Ventas";
@@ -94,7 +93,6 @@ const CATALOGO = {
   auditoria: { lk: "nav.auditoria", icon: ShieldCheck },
   // Plan 11 — sistemas externos (CSV/BCRA/Odoo/MCP): mismo scope que auditoría.
   conectores: { lk: "nav.conectores", icon: Plug },
-  whatsapp_bot: { lk: "nav.whatsapp_bot", icon: MessageCircle },
   staging: { lk: "nav.pendientes", icon: PackageCheck },
   admin_contexto: { lk: "nav.admin_contexto", icon: Globe },
   perfil: { lk: "nav.perfil", icon: UserCircle },
@@ -116,7 +114,7 @@ const GRUPOS_NAV = [
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
   { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "productos", "ventas", "recepciones", "movimientos", "deposito", "conciliacion", "ubicaciones"] },
-  { id: "ingesta", lk: "nav.grupo_ingesta", icon: Inbox, ids: ["cargar", "conectores", "whatsapp_bot", "staging", "imported", "saneamiento"] },
+  { id: "ingesta", lk: "nav.grupo_ingesta", icon: Inbox, ids: ["cargar", "conectores", "staging", "imported", "saneamiento"] },
   { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
   { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["documentos", "auditoria", "admin_contexto"] },
@@ -523,7 +521,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "evolucion" && <Evolucion data={data} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "auditoria" && <Auditoria />}
                 {section === "conectores" && <Conectores onNavigate={navegar} />}
-                {section === "whatsapp_bot" && <WhatsAppBot />}
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
