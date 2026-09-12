@@ -553,6 +553,7 @@ def objetivos_medidos_endpoint(u: dict = Depends(usuario_actual)):
 
 @app.get("/api/health")
 def health():
+    from core import fechas
     return {
         "ok": True,
         "servicio": "polpilot-demo",
@@ -561,6 +562,7 @@ def health():
         "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
         "routing_modelos": config.ROUTING_ACTIVO,  # apagado durante validación
         "idioma_default": paths.DEFAULT_LANG,  # default del tenant (Login lo usa pre-sesión)
+        "hoy": fechas.hoy().isoformat(),  # frozen demo date or the real today
         "tenant": paths.TENANT,  # el frontend elige seeds/copys por config, no por nombre
         "role_switch": auth.role_switch_activo(),  # "View as" del demo (P9·E)
         "autologin": auth.autologin_activo(),      # entrada directa del demo (P11·B8)
@@ -1690,6 +1692,83 @@ def odoo_ingest_recepciones(_u: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/conectores/odoo/sync-entregas")
+def odoo_sync_entregas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_entregas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-entregas")
+def odoo_ingest_entregas(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_entregas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-facturas")
+def odoo_sync_facturas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_facturas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-facturas")
+def odoo_ingest_facturas(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_facturas(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-pagos")
+def odoo_sync_pagos(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_pagos()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/ingest-pagos")
+def odoo_ingest_pagos(_u: dict = Depends(require_admin)):
+    from core import odoo_ingest
+    try:
+        return odoo_ingest.ingest_pagos(actor=_u["username"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-listas-precios")
+def odoo_sync_listas_precios(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_listas_precios()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/conectores/odoo/sync-monedas")
+def odoo_sync_monedas(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    conector = conectores.ConectorOdoo(_tenant.current_tenant_id())
+    try:
+        return conector.pull_monedas()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # FASE 2 — Webhook receiver (hook listo, todavía no procesa): responde 200 OK.
 # EXCEPCIÓN documentada: es máquina-a-máquina (Faro/Tango), NO lleva token de
 # sesión de humano. Cuando procese de verdad necesitará auth de webhook (secret/
@@ -2317,22 +2396,30 @@ class ReceiptRequest(BaseModel):
 def receipts_list(q: str = "", sort: str | None = "fecha", dir: str = "desc",
                   offset: int = 0, limit: int = 50, source: str | None = None,
                   date_from: str | None = None, date_to: str | None = None,
+                  proveedor: str | None = None, deposito: str | None = None,
+                  po_number: str | None = None, sin_po: int = 0,
                   _u: dict = Depends(require_feature("inventario"))):
     from core import receipts as receipts_mod
     return receipts_mod.list_page(q=q, sort=sort, direction=dir, offset=offset,
                                   limit=limit, source=source, date_from=date_from,
-                                  date_to=date_to)
+                                  date_to=date_to, proveedor=proveedor,
+                                  deposito=deposito, po_number=po_number,
+                                  sin_po=bool(sin_po))
 
 
 @app.get("/api/receipts/export.csv")
 def receipts_export(q: str = "", sort: str | None = "fecha", dir: str = "desc",
                     source: str | None = None, date_from: str | None = None,
-                    date_to: str | None = None,
+                    date_to: str | None = None, proveedor: str | None = None,
+                    deposito: str | None = None, po_number: str | None = None,
+                    sin_po: int = 0,
                     _u: dict = Depends(require_feature("inventario"))):
     from core import receipts as receipts_mod
     return _csv_file(receipts_mod.export_csv(
         q=q, sort=sort, direction=dir, source=source,
-        date_from=date_from, date_to=date_to), "recepciones.csv")
+        date_from=date_from, date_to=date_to, proveedor=proveedor,
+        deposito=deposito, po_number=po_number, sin_po=bool(sin_po)),
+        "recepciones.csv")
 
 
 @app.post("/api/receipts")
@@ -2369,18 +2456,22 @@ def receipts_delete(id: str, u: dict = Depends(require_feature("inventario"))):
 def productos_list(q: str = "", sort: str | None = "descripcion", dir: str = "asc",
                    offset: int = 0, limit: int = 50, source: str | None = None,
                    filtro: str | None = None, err: str | None = None,
+                   tipo: str | None = None, proveedor: str | None = None,
                    _u: dict = Depends(require_feature("inventario"))):
     return store.list_page(q=q, sort=sort, direction=dir, offset=offset, limit=limit,
-                           source=source, filtro=filtro, err=err)
+                           source=source, filtro=filtro, err=err,
+                           tipo=tipo, proveedor=proveedor)
 
 
 @app.get("/api/productos/export.csv")
 def productos_export(q: str = "", sort: str | None = "descripcion", dir: str = "asc",
                      source: str | None = None, filtro: str | None = None,
-                     err: str | None = None,
+                     err: str | None = None, tipo: str | None = None,
+                     proveedor: str | None = None,
                      _u: dict = Depends(require_feature("inventario"))):
     return _csv_file(store.export_csv(
-        q=q, sort=sort, direction=dir, source=source, filtro=filtro, err=err),
+        q=q, sort=sort, direction=dir, source=source, filtro=filtro, err=err,
+        tipo=tipo, proveedor=proveedor),
         "productos.csv")
 
 
@@ -2396,21 +2487,31 @@ def articulos_eliminar(codigo: int, u: dict = Depends(require_feature("inventari
 @app.get("/api/movimientos")
 def movimientos_list(q: str = "", sort: str | None = "producto", dir: str = "asc",
                      offset: int = 0, limit: int = 50, source: str | None = None,
-                     discrepancia: int = 0,
+                     discrepancia: int = 0, date_from: str | None = None,
+                     date_to: str | None = None, ubicacion: str | None = None,
+                     proximos: int = 0,
                      _u: dict = Depends(require_feature("inventario"))):
     from core import lotes
     return lotes.list_page(q=q, sort=sort, direction=dir, offset=offset,
                            limit=limit, source=source,
-                           discrepancia=bool(discrepancia))
+                           discrepancia=bool(discrepancia),
+                           date_from=date_from, date_to=date_to,
+                           ubicacion=ubicacion,
+                           proximos=proximos or None)
 
 
 @app.get("/api/movimientos/export.csv")
 def movimientos_export(q: str = "", sort: str | None = "producto", dir: str = "asc",
                        source: str | None = None, discrepancia: int = 0,
+                       date_from: str | None = None, date_to: str | None = None,
+                       ubicacion: str | None = None, proximos: int = 0,
                        _u: dict = Depends(require_feature("inventario"))):
     from core import lotes
     return _csv_file(lotes.export_csv(q=q, sort=sort, direction=dir, source=source,
-                                      discrepancia=bool(discrepancia)),
+                                      discrepancia=bool(discrepancia),
+                                      date_from=date_from, date_to=date_to,
+                                      ubicacion=ubicacion,
+                                      proximos=proximos or None),
                      "movimientos.csv")
 
 

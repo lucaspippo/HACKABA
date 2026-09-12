@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Truck, Plus, X, Pencil, Trash2 } from "lucide-react";
+import { Truck, Pencil, Trash2, X } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
+import CellLink, { paramLink, qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
+import { useQuerySeed } from "../../lib/usePagedList";
 
 function qDeHighlight(highlight) {
   if (!highlight) return "";
@@ -16,7 +18,8 @@ export default function Proveedores({ highlight }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
-  const [q, setQ] = useState(() => qDeHighlight(highlight));
+  const seed = useQuerySeed();
+  const [q, setQ] = useState(() => qDeHighlight(highlight) || seed);
 
   useEffect(() => {
     const n = qDeHighlight(highlight);
@@ -25,6 +28,7 @@ export default function Proveedores({ highlight }) {
 
   const cargar = () => api.proveedores().then((d) => setItems(d.proveedores)).catch(setError);
   useEffect(() => { cargar(); }, []);
+  useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const eliminar = async (id) => {
     try {
@@ -45,7 +49,15 @@ export default function Proveedores({ highlight }) {
 
   const columnas = [
     { key: "nombre", label: t("proveedores.nombre"), sortable: true,
-      render: (p) => <span className="font-medium text-tinta">{p.nombre}</span> },
+      render: (p) => (
+        <span className="flex flex-col">
+          <span className="font-medium text-tinta">{p.nombre}</span>
+          <span className="mt-0.5 flex gap-2 text-[0.78rem]">
+            <CellLink to={paramLink("recepciones", "proveedor", p.nombre)}>{t("proveedores.ver_recepciones")}</CellLink>
+            <CellLink to={qLink("ordenes_compra", p.nombre)}>{t("proveedores.ver_ordenes")}</CellLink>
+          </span>
+        </span>
+      ) },
     { key: "contacto", label: t("proveedores.contacto"), render: (p) => p.contacto || "—" },
     { key: "telefono", label: t("proveedores.telefono"), render: (p) => p.telefono || "—" },
     { key: "email", label: t("proveedores.email"), render: (p) => p.email || "—" },
@@ -53,31 +65,29 @@ export default function Proveedores({ highlight }) {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Truck size={24} className="text-tinta-suave" />
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-none">{t("proveedores.titulo")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("proveedores.subtitulo")}</p>
-          </div>
+      <header className="flex items-center gap-2">
+        <Truck size={24} className="text-tinta-suave" />
+        <div>
+          <h1 className="font-display text-2xl font-bold leading-none">{t("proveedores.titulo")}</h1>
+          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("proveedores.subtitulo")}</p>
         </div>
-        <button onClick={() => setModal("nuevo")}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
-          <Plus size={15} /> {t("proveedores.nuevo")}
-        </button>
       </header>
 
       <TablaCRUD
+        titulo={t("proveedores.titulo")}
         columnas={columnas}
         filas={filtrados}
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("proveedores.buscar")}
         vacio={qn ? t("proveedores.vacio_filtro") : t("proveedores.vacio")}
+        onCrear={() => setModal("nuevo")}
+        crearLabel={t("proveedores.nuevo")}
+        onLimpiar={q ? () => setQ("") : undefined}
         acciones={(p) => (
           <div className="flex items-center justify-end gap-2">
-            <button onClick={() => setModal(p)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
-            <button onClick={() => eliminar(p.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
+            <button type="button" onClick={() => setModal(p)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
+            <button type="button" onClick={() => eliminar(p.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
           </div>
         )}
       />

@@ -247,6 +247,12 @@ def inbox(lang: str | None = None, features=None) -> dict:
         "watch": watch,
         "badge": len(act),
         "hay_ventas": bool(composed.get("hay_ventas")),
+        # Same items already carry `naturaleza` from the opportunity cards, so
+        # this reuses the one canonical sum (opn.recuperable) instead of
+        # re-filtering/summing here — that duplication is what caused the
+        # "$900M" double-counting bug (see opn.recuperable's docstring).
+        # Computed post-`visibles_para` so a role only sees its own exposure.
+        "recuperable": opn.recuperable(cards_=items, lang=lang),
     }
 
 

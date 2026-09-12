@@ -1,9 +1,32 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Plus, Download } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, Plus, Download, ChevronRight } from "lucide-react";
+import { GroupBySelect } from "./FilterRail";
+import { num } from "../lib/format";
+import { useT } from "../lib/i18n";
+
+export { SourceChips } from "./FilterRail";
+
+export function SourceBadge({ source, t }) {
+  const odoo = source === "odoo";
+  const manual = source === "manual";
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${
+      odoo ? "bg-violeta/12 text-violeta"
+        : manual ? "bg-salvia/15 text-salvia"
+          : "bg-papel-hondo text-tinta-suave"}`}>
+      {t(odoo ? "crud.source_odoo" : manual ? "crud.source_manual" : "crud.source_csv")}
+    </span>
+  );
+}
+
+function groupValue(fila, col) {
+  const raw = col.groupBy ? col.groupBy(fila) : fila[col.key];
+  if (raw == null || raw === "") return "";
+  return String(raw);
+}
 
 // Shared CRUD datagrid: search, optional facet slot, sortable columns,
-// create + CSV in the header (same chrome as Inventario "Todo tu stock"),
-// and optional infinite-scroll loading of further pages.
+// group-by, create + CSV in the header, and optional infinite-scroll.
 export default function TablaCRUD({
   columnas, filas, idDe = (f) => f.id, q, onQ, buscarPlaceholder,
   acciones, vacio, accionHeader,
@@ -14,10 +37,18 @@ export default function TablaCRUD({
   onSort, orden: ordenExterno,
   onLoadMore, hasMore, cargandoMas,
   cargando,
+  onLimpiar,
 }) {
+  const t = useT();
   const [ordenLocal, setOrdenLocal] = useState({ campo: null, dir: 1 });
   const orden = onSort ? (ordenExterno || { campo: null, dir: 1 }) : ordenLocal;
   const sentinel = useRef(null);
+  const groupables = useMemo(
+    () => columnas.filter((c) => c.groupable).map((c) => ({ key: c.key, label: c.label })),
+    [columnas],
+  );
+  const [groupKey, setGroupKey] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => new Set());
 
   const ordenadas = useMemo(() => {
     if (onSort || !orden.campo) return filas;
@@ -31,6 +62,19 @@ export default function TablaCRUD({
       return (va - vb) * orden.dir;
     });
   }, [filas, orden, columnas, onSort]);
+
+  const grouped = useMemo(() => {
+    if (!groupKey) return null;
+    const col = columnas.find((c) => c.key === groupKey);
+    if (!col) return null;
+    const map = new Map();
+    for (const fila of ordenadas) {
+      const k = groupValue(fila, col);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(fila);
+    }
+    return { col, buckets: [...map.entries()] };
+  }, [groupKey, ordenadas, columnas]);
 
   const clickCol = (key, sortable) => {
     if (!sortable) return;
@@ -53,7 +97,30 @@ export default function TablaCRUD({
     return () => io.disconnect();
   }, [onLoadMore, hasMore, ordenadas.length]);
 
-  const toolbar = onQ || onCrear || onExport || titulo;
+  useEffect(() => { setCollapsed(new Set()); }, [groupKey]);
+
+  const toggleGroup = (key) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toolbar = onQ || onCrear || onExport || titulo || groupables.length > 0;
+  const colCount = columnas.length + (acciones ? 1 : 0);
+
+  const renderRows = (rows) => rows.map((fila) => (
+    <tr key={idDe(fila)} className="border-b border-linea/70 last:border-0 hover:bg-papel-hondo/30">
+      {columnas.map((c) => (
+        <td key={c.key} className={`px-4 py-2.5 ${c.align === "right" ? "text-right" : ""} ${c.plata ? "plata" : ""}`}>
+          {c.render ? c.render(fila) : (fila[c.key] ?? "—")}
+        </td>
+      ))}
+      {acciones && <td className="px-4 py-2.5">{acciones(fila)}</td>}
+    </tr>
+  ));
 
   return (
     <div className="space-y-3">
@@ -68,6 +135,9 @@ export default function TablaCRUD({
                 <input value={q} onChange={(e) => onQ(e.target.value)} placeholder={buscarPlaceholder}
                   className="w-full rounded-full border border-linea bg-papel py-2 pl-9 pr-3 text-[0.86rem] outline-none focus:border-tinta/40" />
               </div>
+            )}
+            {groupables.length > 0 && (
+              <GroupBySelect options={groupables} value={groupKey} onChange={setGroupKey} />
             )}
             {onExport && (
               <button type="button" onClick={onExport} disabled={exportando}
@@ -84,7 +154,7 @@ export default function TablaCRUD({
           </div>
         )}
         {filtros && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-linea px-4 py-2.5">
+          <div className="border-b border-linea px-4 py-2.5">
             {filtros}
           </div>
         )}
@@ -92,11 +162,19 @@ export default function TablaCRUD({
         {cargando && ordenadas.length === 0 ? (
           <p className="px-4 py-8 text-[0.9rem] text-tinta-suave">{vacio}</p>
         ) : ordenadas.length === 0 ? (
-          <p className="px-4 py-8 text-[0.9rem] text-tinta-suave">{vacio}</p>
+          <div className="px-4 py-8 text-center">
+            <p className="text-[0.9rem] text-tinta-suave">{vacio}</p>
+            {onLimpiar && (
+              <button type="button" onClick={onLimpiar}
+                className="mt-3 text-[0.84rem] font-semibold text-hielo hover:underline">
+                {t("crud.limpiar_filtros")}
+              </button>
+            )}
+          </div>
         ) : (
           <div className={onLoadMore ? "max-h-[min(70vh,40rem)] overflow-auto" : "overflow-x-auto"}>
             <table className="w-full text-left text-[0.86rem]">
-              <thead className="sticky top-0 bg-crema">
+              <thead className="sticky top-0 z-[1] bg-crema">
                 <tr className="border-b border-linea text-[0.72rem] uppercase tracking-wide text-tinta-suave">
                   {columnas.map((c) => (
                     <th key={c.key} onClick={() => clickCol(c.key, c.sortable)}
@@ -115,16 +193,33 @@ export default function TablaCRUD({
                 </tr>
               </thead>
               <tbody>
-                {ordenadas.map((fila) => (
-                  <tr key={idDe(fila)} className="border-b border-linea/70 last:border-0 hover:bg-papel-hondo/30">
-                    {columnas.map((c) => (
-                      <td key={c.key} className={`px-4 py-2.5 ${c.align === "right" ? "text-right" : ""} ${c.plata ? "plata" : ""}`}>
-                        {c.render ? c.render(fila) : (fila[c.key] ?? "—")}
-                      </td>
-                    ))}
-                    {acciones && <td className="px-4 py-2.5">{acciones(fila)}</td>}
-                  </tr>
-                ))}
+                {grouped ? grouped.buckets.map(([key, rows]) => {
+                  const closed = collapsed.has(key);
+                  const title = key === "" ? t("crud.sin_valor") : (
+                    grouped.col.groupLabel ? grouped.col.groupLabel(key, rows) : key
+                  );
+                  return (
+                    <Fragment key={key || "__empty"}>
+                      <tr className="border-b border-linea bg-papel-hondo/70">
+                        <td colSpan={colCount} className="px-3 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(key)}
+                            aria-expanded={!closed}
+                            className="flex w-full items-center gap-2 text-left text-[0.82rem] font-semibold text-tinta"
+                          >
+                            <ChevronRight size={14} className={`shrink-0 text-tinta-suave transition-transform ${closed ? "" : "rotate-90"}`} />
+                            <span className="min-w-0 flex-1 truncate">{title}</span>
+                            <span className="plata text-[0.78rem] font-normal text-tinta-suave">
+                              {t("crud.grupo_n", { n: num(rows.length) })}
+                            </span>
+                          </button>
+                        </td>
+                      </tr>
+                      {!closed && renderRows(rows)}
+                    </Fragment>
+                  );
+                }) : renderRows(ordenadas)}
               </tbody>
             </table>
             {onLoadMore && (
@@ -139,31 +234,3 @@ export default function TablaCRUD({
   );
 }
 
-export function SourceChips({ value, onChange, t }) {
-  const opts = [
-    { id: "all", lk: "crud.source_all" },
-    { id: "odoo", lk: "crud.source_odoo" },
-    { id: "csv", lk: "crud.source_csv" },
-    { id: "manual", lk: "crud.source_manual" },
-  ];
-  return opts.map((o) => (
-    <button key={o.id} type="button" onClick={() => onChange(o.id)}
-      className={`rounded-full px-3 py-1 text-[0.82rem] font-semibold ${
-        value === o.id ? "bg-tinta text-crema" : "border border-linea text-tinta-suave hover:text-tinta"}`}>
-      {t(o.lk)}
-    </button>
-  ));
-}
-
-export function SourceBadge({ source, t }) {
-  const odoo = source === "odoo";
-  const manual = source === "manual";
-  return (
-    <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${
-      odoo ? "bg-violeta/12 text-violeta"
-        : manual ? "bg-salvia/15 text-salvia"
-          : "bg-papel-hondo text-tinta-suave"}`}>
-      {t(odoo ? "crud.source_odoo" : manual ? "crud.source_manual" : "crud.source_csv")}
-    </span>
-  );
-}

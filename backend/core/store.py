@@ -147,7 +147,8 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
     if existente:
         antes = dict(existente)
         for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp",
-                      "free_qty", "incoming_qty", "outgoing_qty", "estado"):
+                      "free_qty", "incoming_qty", "outgoing_qty", "estado",
+                      "pricing_status", "precio_lista", "moneda", "precios_pricelist"):
             if campo in fila:
                 existente[campo] = fila[campo]
         _recalcular_inmovilizado(existente)
@@ -164,6 +165,10 @@ def upsert_desde_conector(fila: dict, actor: str) -> dict:
         "free_qty": fila.get("free_qty"),
         "incoming_qty": fila.get("incoming_qty"),
         "outgoing_qty": fila.get("outgoing_qty"),
+        "pricing_status": fila.get("pricing_status"),
+        "precio_lista": fila.get("precio_lista"),
+        "moneda": fila.get("moneda"),
+        "precios_pricelist": fila.get("precios_pricelist") or [],
     }
     _recalcular_inmovilizado(nuevo)
     raw.append(nuevo)
@@ -336,6 +341,9 @@ def articulos_con_estado() -> list[dict]:
             "free_qty": d.get("free_qty"),
             "incoming_qty": d.get("incoming_qty"),
             "outgoing_qty": d.get("outgoing_qty"),
+            "pricing_status": d.get("pricing_status"),
+            "precio_lista": d.get("precio_lista"),
+            "moneda": d.get("moneda"),
         })
     return out
 
@@ -348,7 +356,8 @@ _PRODUCT_CSV = ("codigo", "sku", "descripcion", "stock", "costo_iva", "pvp",
 
 def _filtered_articles(*, q: str = "", sort: str | None = "descripcion",
                        direction: str = "asc", source: str | None = None,
-                       filtro: str | None = None, err: str | None = None) -> list[dict]:
+                       filtro: str | None = None, err: str | None = None,
+                       tipo: str | None = None, proveedor: str | None = None) -> list[dict]:
     from . import paging, section_records
     rows = articulos_con_estado()
     if filtro == "ok":
@@ -360,25 +369,37 @@ def _filtered_articles(*, q: str = "", sort: str | None = "descripcion",
         if err and err != "todos":
             rows = [r for r in rows if r.get("estado_calidad") == err]
     rows = section_records.match_source(rows, source)
+    equals = {}
+    if tipo:
+        equals["tipo"] = tipo
+    if proveedor:
+        equals["proveedor"] = proveedor
     return paging.filter_sort(
-        rows, q=q, search_in=_PRODUCT_SEARCH, sort=sort, direction=direction)
+        rows, q=q, search_in=_PRODUCT_SEARCH, sort=sort, direction=direction,
+        equals=equals or None,
+    )
 
 
 def list_page(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
               offset: int = 0, limit: int = 50, source: str | None = None,
-              filtro: str | None = None, err: str | None = None) -> dict:
+              filtro: str | None = None, err: str | None = None,
+              tipo: str | None = None, proveedor: str | None = None) -> dict:
     from . import paging
+    facet_src = _filtered_articles(source=source, filtro=filtro, err=err)
     rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
-                              filtro=filtro, err=err)
-    return paging.page_rows(rows, offset=offset, limit=limit)
+                              filtro=filtro, err=err, tipo=tipo, proveedor=proveedor)
+    result = paging.page_rows(rows, offset=offset, limit=limit)
+    result["facets"] = paging.collect_facets(facet_src, ("tipo", "proveedor"))
+    return result
 
 
 def export_csv(*, q: str = "", sort: str | None = "descripcion", direction: str = "asc",
                source: str | None = None, filtro: str | None = None,
-               err: str | None = None) -> str:
+               err: str | None = None, tipo: str | None = None,
+               proveedor: str | None = None) -> str:
     from . import paging
     rows = _filtered_articles(q=q, sort=sort, direction=direction, source=source,
-                              filtro=filtro, err=err)
+                              filtro=filtro, err=err, tipo=tipo, proveedor=proveedor)
     return paging.rows_to_csv(rows, _PRODUCT_CSV)
 
 

@@ -180,3 +180,24 @@ def test_demo_warehouse_does_not_see_debtors():
     assert "cobrar_morosos" not in ids
     assert "concentracion" not in ids
     assert "quiebre_inminente" in ids
+
+
+def test_demo_recuperable_matches_canonical_sum_for_full_role():
+    d = _en_demo(
+        "__import__('core.priorities', fromlist=['x']).inbox('es', "
+        "['alertas','oportunidades','cuentas','inventario','deposito',"
+        "'finanzas','caja','evolucion'])")
+    canon = _en_demo(
+        "__import__('core.oportunidades_neg', fromlist=['x']).recuperable(lang='es')")
+    assert d["recuperable"]["disponible"] is True
+    assert d["recuperable"]["total"] == canon["total"]
+    assert {c["id"] for c in d["recuperable"]["componentes"]} == \
+        {c["id"] for c in canon["componentes"]}
+
+
+def test_demo_recuperable_hides_warehouse_exposure():
+    d = _en_demo(
+        "__import__('core.priorities', fromlist=['x']).inbox('es', "
+        "['inventario','deposito'])")
+    ids = {c["id"] for c in d["recuperable"]["componentes"]}
+    assert "cobrar_morosos" not in ids

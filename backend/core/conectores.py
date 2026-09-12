@@ -15,7 +15,7 @@ from __future__ import annotations
 import xmlrpc.client
 from abc import ABC, abstractmethod
 
-from . import macro, sync
+from . import fechas, macro, odoo_fx, sync
 from core.db import odoo_connections_repo
 
 
@@ -99,36 +99,139 @@ def probar_conexion_odoo(url: str, database: str, username: str, api_key: str) -
 
 
 class ConectorOdoo(IConector):
-    """La cuenta Odoo propia del cliente (admin), vía XML-RPC — mismo protocolo
-    que examples/xmlrpc_example.py en odoo-test-env. Arranca por res.partner
-    (Contactos): es el módulo más simple para conectar — vive en el módulo
-    `base` de Odoo (siempre instalado), sin depender de que la app de
-    Contabilidad esté activa, y sin estados de flujo de negocio que resolver
-    (a diferencia de account.move/facturas).
+    """The client's own Odoo account (admin), via XML-RPC.
 
-    pull_data() trae los contactos-cliente (customer_rank > 0) tal cual están
-    en Odoo. A propósito NO los empuja a la Staging Area: ese pipeline (core/
-    staging.py) hoy sólo sabe coercionar "venta", "deposito" y "logistica" —
-    cualquier otro tipo, incluido "cliente", cae al branch default y se
-    interpreta como filas de PRODUCTO (ver _coerce_y_analizar), lo que
-    corrompería los nombres de clientes silenciosamente. Hasta que la Staging
-    Area sepa coercionar "cliente" de verdad, esto es un preview de sólo
-    lectura; mapear el resultado a customer_accounts (core/cuentas.py) queda
-    como trabajo futuro explícito, no una integración a medias."""
+    Preview (`pull_*`) is read-only. Real writes go through core/odoo_ingest.py.
+    Amounts on sale.order / purchase.order / account.move honour each record's
+    currency_id and dated res.currency.rate points — never a flat FX rate.
+    Product catalog prices come from pricelist items, not from converting
+    list_price; the charged sale price is sale.order.line.price_unit.
+    """
     nombre = "odoo"
 
     def __init__(self, tenant_id: str | None = None):
         self.tenant_id = tenant_id
         self._conexion = odoo_connections_repo.get(tenant_id) if tenant_id else None
+        self._uid = None
+        self._models = None
+        self._fx_cache = None
+        self._pricelist_cache = None
 
-    def _execute_kw(self, model: str, method: str, *args, **kwargs):
+    def _ensure_rpc(self):
         c = self._conexion
+        if self._uid is not None:
+            return
         common = xmlrpc.client.ServerProxy(f"{c['url']}/xmlrpc/2/common")
         uid = common.authenticate(c["database"], c["username"], c["api_key"], {})
         if not uid:
             raise ValueError("Odoo rechazó las credenciales guardadas para este tenant.")
-        models = xmlrpc.client.ServerProxy(f"{c['url']}/xmlrpc/2/object")
-        return models.execute_kw(c["database"], uid, c["api_key"], model, method, list(args), kwargs)
+        self._uid = uid
+        self._models = xmlrpc.client.ServerProxy(f"{c['url']}/xmlrpc/2/object")
+
+    def _execute_kw(self, model: str, method: str, *args, **kwargs):
+        c = self._conexion
+        self._ensure_rpc()
+        return self._models.execute_kw(
+            c["database"], self._uid, c["api_key"], model, method, list(args), kwargs)
+
+    def _try_kw(self, model: str, method: str, *args, **kwargs):
+        """Optional models (pricelists, accounting, extra rate fields). Auth
+        failures still raise; missing models / unknown fields return empty."""
+        try:
+            return self._execute_kw(model, method, *args, **kwargs)
+        except ValueError:
+            raise
+        except Exception:
+            if method == "search":
+                return []
+            if method == "read":
+                return []
+            return None
+
+    def _company_and_rates(self) -> tuple[dict, list[dict]]:
+        if self._fx_cache is not None:
+            return self._fx_cache
+        company = {"currency": "ARS", "country": "", "name": ""}
+        rows = self._try_kw("res.company", "search", [], limit=1) or []
+        if rows:
+            recs = self._try_kw(
+                "res.company", "read", rows,
+                fields=["name", "currency_id", "country_id"],
+            ) or []
+            if recs:
+                rec = recs[0]
+                company = {
+                    "id": rec["id"],
+                    "name": rec.get("name") or "",
+                    "currency": odoo_fx._iso_code(rec.get("currency_id")) or "ARS",
+                    "country": _m2o_name(rec.get("country_id")),
+                }
+        rate_ids = self._try_kw("res.currency.rate", "search", [], limit=500) or []
+        raw_rates = self._try_kw(
+            "res.currency.rate", "read", rate_ids,
+            fields=["name", "rate", "currency_id", "company_rate", "inverse_company_rate"],
+        ) if rate_ids else []
+        cur_ids = sorted({
+            _m2o_id(r.get("currency_id")) for r in (raw_rates or [])
+            if _m2o_id(r.get("currency_id"))
+        })
+        currencies = self._try_kw(
+            "res.currency", "read", cur_ids, fields=["name", "symbol"],
+        ) if cur_ids else []
+        names = {c["id"]: odoo_fx._iso_code(c.get("name")) for c in (currencies or [])}
+        rates = odoo_fx.normalize_rates(raw_rates or [], names)
+        self._fx_cache = (company, rates)
+        return self._fx_cache
+
+    def _pricelists_and_items(self) -> tuple[list[dict], list[dict]]:
+        if self._pricelist_cache is not None:
+            return self._pricelist_cache
+        ids = self._try_kw("product.pricelist", "search", [], limit=50) or []
+        lists = self._try_kw(
+            "product.pricelist", "read", ids, fields=["name", "currency_id"],
+        ) if ids else []
+        item_ids = self._try_kw(
+            "product.pricelist.item", "search",
+            [["pricelist_id", "in", ids]] if ids else [],
+            limit=5000,
+        ) if ids else []
+        items = self._try_kw(
+            "product.pricelist.item", "read", item_ids,
+            fields=["pricelist_id", "applied_on", "compute_price", "fixed_price",
+                    "percent_price", "price_discount", "categ_id",
+                    "product_tmpl_id", "product_id", "min_quantity"],
+        ) if item_ids else []
+        self._pricelist_cache = (lists or [], items or [])
+        return self._pricelist_cache
+
+    def _convert(self, amount, currency, when) -> float:
+        company, rates = self._company_and_rates()
+        return odoo_fx.to_company_amount(
+            amount, currency, when, rates, company.get("currency") or "ARS")
+
+    def _currency_of(self, record: dict, company_currency: str) -> str:
+        return odoo_fx._iso_code(record.get("currency_id")) or company_currency
+
+    def _open_backorder_origins(self, picking_type_code: str) -> set[str]:
+        ids = self._try_kw(
+            "stock.picking", "search",
+            [["picking_type_code", "=", picking_type_code],
+             ["state", "in", list(odoo_fx.PENDING_PICKING_STATES)],
+             ["backorder_id", "!=", False]],
+            limit=2000,
+        ) or []
+        if not ids:
+            return set()
+        rows = self._try_kw(
+            "stock.picking", "read", ids,
+            fields=["origin", "backorder_id", "state"],
+        ) or []
+        return {
+            r.get("origin") for r in rows
+            if r.get("origin")
+            and _m2o_id(r.get("backorder_id"))
+            and odoo_fx.is_pending_picking(r.get("state"))
+        }
 
     def pull_data(self, **kwargs) -> dict:
         if not self._conexion:
@@ -137,7 +240,8 @@ class ConectorOdoo(IConector):
             "res.partner", "search", [["customer_rank", ">", 0]], limit=kwargs.get("limite", 500)
         )
         partners = self._execute_kw(
-            "res.partner", "read", ids, fields=["name", "vat", "city", "phone", "email"]
+            "res.partner", "read", ids,
+            fields=["name", "vat", "city", "phone", "email", "property_product_pricelist"],
         )
         clientes = [
             {
@@ -147,20 +251,24 @@ class ConectorOdoo(IConector):
                 "localidad": p.get("city") or "",
                 "telefono": p.get("phone") or "",
                 "email": p.get("email") or "",
+                "pricelist_id": _m2o_id(p.get("property_product_pricelist")),
+                "pricelist": _m2o_name(p.get("property_product_pricelist")),
             }
             for p in partners
         ]
         return {"origen": "odoo", "modulo": "res.partner", "total": len(clientes), "clientes": clientes}
 
     def pull_productos(self, **kwargs) -> dict:
-        """Trae el catálogo de productos activos con su stock disponible
-        (product.template.qty_available, que Odoo calcula sumando los
-        movimientos de todos los depósitos internos). Mismo criterio de
-        sólo-lectura que pull_data(): esto es un preview, no toca
-        core/store.py (el catálogo real de PolPilot) — ver la nota en la
-        docstring de la clase."""
+        """Active (or in-stock) product.template rows with stock rollup and
+        pricelist-resolved prices. `list_price` is the retail/reference
+        price; `precio` is the sellable price (mayorista item when the
+        product is wholesale-only; None when it genuinely needs pricing).
+        USD pricelist `fixed` items are native quotes, not FX of list_price.
+        """
         if not self._conexion:
             raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        company, rates = self._company_and_rates()
+        pricelists, pl_items = self._pricelists_and_items()
         ids = self._execute_kw(
             "product.template", "search",
             ["|", ["active", "=", True], ["qty_available", "!=", 0]],
@@ -173,23 +281,34 @@ class ConectorOdoo(IConector):
                     "standard_price", "active"],
         )
         stock_by_tmpl = self._stock_by_template(ids)
-        catalogo = [
-            {
+        catalogo = []
+        for p in productos:
+            pricing = odoo_fx.resolve_product_pricing(p, pricelists, pl_items)
+            precio = pricing["precio"]
+            if precio is None and pricing.get("usd_fixed"):
+                precio = odoo_fx.to_company_amount(
+                    pricing["usd_fixed"], pricing.get("usd_currency"),
+                    fechas.hoy(), rates, company.get("currency") or "ARS")
+            catalogo.append({
                 "id": p["id"],
                 "codigo": p.get("default_code") or "",
                 "nombre": p.get("name") or "",
                 "categoria": (p.get("categ_id") or [None, ""])[1],
-                "precio": p.get("list_price") or 0,
+                "precio": precio,
+                "precio_lista": pricing["precio_lista"],
+                "pricing_status": pricing["pricing_status"],
+                "precios_pricelist": pricing["precios_pricelist"],
+                "moneda": company.get("currency") or "ARS",
                 "stock": (stock_by_tmpl.get(p["id"]) or {}).get("qty_available") or 0,
                 "costo": p.get("standard_price") or 0,
                 "free_qty": (stock_by_tmpl.get(p["id"]) or {}).get("free_qty") or 0,
                 "incoming_qty": (stock_by_tmpl.get(p["id"]) or {}).get("incoming_qty") or 0,
                 "outgoing_qty": (stock_by_tmpl.get(p["id"]) or {}).get("outgoing_qty") or 0,
                 "activo": bool(p.get("active", True)),
-            }
-            for p in productos
-        ]
-        return {"origen": "odoo", "modulo": "product.template", "total": len(catalogo), "productos": catalogo}
+            })
+        return {"origen": "odoo", "modulo": "product.template", "total": len(catalogo),
+                "moneda_compania": company.get("currency") or "ARS",
+                "productos": catalogo}
 
     def pull_proveedores(self, **kwargs) -> dict:
         """Trae los contactos-proveedor (supplier_rank > 0), la contraparte de
@@ -230,7 +349,8 @@ class ConectorOdoo(IConector):
         )
         ordenes = self._execute_kw(
             "purchase.order", "read", ids,
-            fields=["name", "partner_id", "state", "date_order", "amount_total"],
+            fields=["name", "partner_id", "state", "date_order", "amount_total",
+                    "currency_id"],
         )
         lineas_por_orden: dict[int, list[dict]] = {o["id"]: [] for o in ordenes}
         if ordenes:
@@ -261,19 +381,30 @@ class ConectorOdoo(IConector):
             "draft": "borrador", "sent": "enviada", "purchase": "confirmada",
             "done": "cerrada", "cancel": "cancelada",
         }
-        compras = [
-            {
+        company, _rates = self._company_and_rates()
+        company_cur = company.get("currency") or "ARS"
+        open_origins = self._open_backorder_origins("incoming")
+        compras = []
+        for o in ordenes:
+            items = lineas_por_orden.get(o["id"], [])
+            currency = self._currency_of(o, company_cur)
+            fecha = o.get("date_order") or ""
+            open_bo = (o.get("name") or "") in open_origins
+            compras.append({
                 "id": o["id"],
                 "numero": o.get("name") or "",
                 "proveedor": (o.get("partner_id") or [None, ""])[1],
                 "estado": _ESTADOS.get(o.get("state"), o.get("state") or ""),
-                "fecha": o.get("date_order") or "",
+                "fecha": fecha,
                 "total": o.get("amount_total") or 0,
-                "items": lineas_por_orden.get(o["id"], []),
-            }
-            for o in ordenes
-        ]
-        return {"origen": "odoo", "modulo": "purchase.order", "total": len(compras), "ordenes": compras}
+                "currency": currency,
+                "total_company": self._convert(o.get("amount_total") or 0, currency, fecha),
+                "open_backorder": open_bo,
+                "fulfillment": odoo_fx.lines_fulfillment(items, open_backorder=open_bo),
+                "items": items,
+            })
+        return {"origen": "odoo", "modulo": "purchase.order", "total": len(compras),
+                "moneda_compania": company_cur, "ordenes": compras}
 
     def pull_ordenes_venta(self, **kwargs) -> dict:
         """Preview of sale.order rows (all workflow states) with lines.
@@ -285,7 +416,8 @@ class ConectorOdoo(IConector):
         )
         ordenes = self._execute_kw(
             "sale.order", "read", ids,
-            fields=["name", "partner_id", "state", "date_order", "amount_total"],
+            fields=["name", "partner_id", "state", "date_order", "amount_total",
+                    "currency_id", "pricelist_id"],
         )
         lineas_por_orden: dict[int, list[dict]] = {o["id"]: [] for o in ordenes}
         if ordenes:
@@ -295,35 +427,57 @@ class ConectorOdoo(IConector):
             lineas = self._execute_kw(
                 "sale.order.line", "read", linea_ids,
                 fields=["order_id", "product_id", "product_template_id", "name",
-                        "product_uom_qty", "price_unit"],
+                        "product_uom_qty", "price_unit", "qty_delivered"],
             )
             for l in lineas:
                 tmpl = l.get("product_template_id") or [None, ""]
                 prod = l.get("product_id") or [None, l.get("name") or ""]
-                lineas_por_orden[l["order_id"][0]].append({
+                oid = _m2o_id(l.get("order_id"))
+                if oid not in lineas_por_orden:
+                    continue
+                lineas_por_orden[oid].append({
                     "id": l["id"],
-                    "producto": prod[1],
-                    "product_tmpl_id": tmpl[0],
+                    "producto": prod[1] if isinstance(prod, (list, tuple)) else (l.get("name") or ""),
+                    "product_tmpl_id": tmpl[0] if isinstance(tmpl, (list, tuple)) else tmpl,
                     "cantidad": l.get("product_uom_qty") or 0,
+                    "qty_delivered": l.get("qty_delivered") or 0,
                     "precio_unitario": l.get("price_unit") or 0,
                 })
         _ESTADOS = {
             "draft": "borrador", "sent": "enviada", "sale": "confirmada",
             "done": "confirmada", "cancel": "cancelada",
         }
-        ventas = [
-            {
+        company, _rates = self._company_and_rates()
+        company_cur = company.get("currency") or "ARS"
+        open_origins = self._open_backorder_origins("outgoing")
+        ventas = []
+        for o in ordenes:
+            currency = self._currency_of(o, company_cur)
+            fecha = o.get("date_order") or ""
+            items = []
+            for it in lineas_por_orden.get(o["id"], []):
+                item = dict(it)
+                item["precio_company"] = self._convert(
+                    it.get("precio_unitario") or 0, currency, fecha)
+                items.append(item)
+            open_bo = (o.get("name") or "") in open_origins
+            ventas.append({
                 "id": o["id"],
                 "numero": o.get("name") or "",
                 "cliente": (o.get("partner_id") or [None, ""])[1],
                 "estado": _ESTADOS.get(o.get("state"), o.get("state") or ""),
-                "fecha": o.get("date_order") or "",
+                "fecha": fecha,
                 "total": o.get("amount_total") or 0,
-                "items": lineas_por_orden.get(o["id"], []),
-            }
-            for o in ordenes
-        ]
-        return {"origen": "odoo", "modulo": "sale.order", "total": len(ventas), "ordenes": ventas}
+                "currency": currency,
+                "total_company": self._convert(o.get("amount_total") or 0, currency, fecha),
+                "pricelist": _m2o_name(o.get("pricelist_id")),
+                "open_backorder": open_bo,
+                "fulfillment": odoo_fx.lines_fulfillment(
+                    items, done_key="qty_delivered", open_backorder=open_bo),
+                "items": items,
+            })
+        return {"origen": "odoo", "modulo": "sale.order", "total": len(ventas),
+                "moneda_compania": company_cur, "ordenes": ventas}
 
     def _read_by_id(self, model: str, ids: list, fields: list[str]) -> dict:
         ids = [i for i in ids if i]
@@ -405,38 +559,43 @@ class ConectorOdoo(IConector):
             rows.append(row)
         return {"origen": "odoo", "modulo": "stock.quant", "total": len(rows), "quants": rows}
 
-    def pull_recepciones(self, **kwargs) -> dict:
-        """Done incoming pickings, one row per stock.move."""
-        if not self._conexion:
-            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+    def _pull_pickings_as_moves(self, picking_type_code: str, limite: int) -> list[dict]:
+        """Incoming or outgoing pickings in done OR still-open states, one
+        row per stock.move. Open backorders (backorder_id set, pending state)
+        are included — cancelled backorders are not."""
         picking_ids = self._execute_kw(
             "stock.picking", "search",
-            [["picking_type_code", "=", "incoming"], ["state", "=", "done"]],
-            limit=kwargs.get("limite", 500),
+            [["picking_type_code", "=", picking_type_code],
+             ["state", "in", list(odoo_fx.OPEN_PICKING_STATES)]],
+            limit=limite,
         )
         pickings = self._execute_kw(
             "stock.picking", "read", picking_ids,
-            fields=["name", "partner_id", "date_done", "origin",
-                    "location_dest_id", "state"],
+            fields=["name", "partner_id", "date_done", "scheduled_date", "origin",
+                    "location_dest_id", "state", "backorder_id", "picking_type_code"],
         ) if picking_ids else []
         pick_by_id = {p["id"]: p for p in pickings}
         move_ids = self._execute_kw(
             "stock.move", "search",
-            [["picking_id", "in", picking_ids], ["state", "=", "done"]],
+            [["picking_id", "in", picking_ids]],
         ) if picking_ids else []
         moves = self._execute_kw(
             "stock.move", "read", move_ids,
-            fields=["picking_id", "product_id", "quantity", "location_dest_id",
-                    "purchase_line_id", "state"],
+            fields=["picking_id", "product_id", "quantity", "product_uom_qty",
+                    "location_dest_id", "purchase_line_id", "sale_line_id", "state"],
         ) if move_ids else []
-        loc_ids = sorted({_m2o_id(m.get("location_dest_id")) or _m2o_id(p.get("location_dest_id"))
-                          for m in moves for p in [pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}]
-                          if _m2o_id(m.get("location_dest_id")) or _m2o_id(p.get("location_dest_id"))})
+        loc_ids = sorted({
+            _m2o_id(m.get("location_dest_id")) or _m2o_id(
+                (pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}).get("location_dest_id"))
+            for m in moves
+            if _m2o_id(m.get("location_dest_id")) or _m2o_id(
+                (pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}).get("location_dest_id"))
+        })
         var_ids = sorted({_m2o_id(m.get("product_id")) for m in moves if _m2o_id(m.get("product_id"))})
         pol_ids = sorted({_m2o_id(m.get("purchase_line_id")) for m in moves if _m2o_id(m.get("purchase_line_id"))})
         locations = self._read_by_id("stock.location", loc_ids, ["complete_name"])
         variants = self._read_by_id("product.product", var_ids, ["product_tmpl_id"])
-        polines = self._read_by_id("purchase.order.line", pol_ids, ["order_id"])
+        polines = self._read_by_id("purchase.order.line", pol_ids, ["order_id"]) if pol_ids else {}
         rows = []
         for m in moves:
             picking = pick_by_id.get(_m2o_id(m.get("picking_id"))) or {}
@@ -445,33 +604,202 @@ class ConectorOdoo(IConector):
             var = variants.get(_m2o_id(m.get("product_id"))) or {}
             pol = polines.get(_m2o_id(m.get("purchase_line_id"))) or {}
             po_number = _m2o_name(pol.get("order_id")) or (picking.get("origin") or "")
-            qty = m.get("quantity")
-            if qty is None:
-                qty = m.get("quantity_done") or 0
+            qty_done = m.get("quantity")
+            if qty_done is None:
+                qty_done = m.get("quantity_done") or 0
+            qty_ordered = m.get("product_uom_qty")
+            if qty_ordered in (None, False):
+                qty_ordered = qty_done or 0
+            state = picking.get("state") or ""
+            backorder_id = _m2o_id(picking.get("backorder_id"))
+            fecha = _date_part(picking.get("date_done")) or _date_part(picking.get("scheduled_date"))
             rows.append({
                 "id": m["id"],
-                "fecha": _date_part(picking.get("date_done")),
+                "picking_id": picking.get("id"),
+                "fecha": fecha,
                 "producto": _m2o_name(m.get("product_id")),
                 "product_tmpl_id": _m2o_id(var.get("product_tmpl_id")),
+                "partner": _m2o_name(picking.get("partner_id")),
                 "proveedor": _m2o_name(picking.get("partner_id")),
-                "cantidad": qty or 0,
+                "cantidad": qty_done or 0,
+                "qty_ordered": qty_ordered or 0,
                 "deposito": loc.get("complete_name") or _m2o_name(picking.get("location_dest_id")),
                 "origen": picking.get("name") or "",
                 "po_number": po_number,
-                "estado": picking.get("state") or "",
+                "so_number": picking.get("origin") or "" if picking_type_code == "outgoing" else "",
+                "estado": state,
+                "backorder_id": backorder_id,
+                "es_backorder": bool(backorder_id),
+                "pendiente": odoo_fx.is_pending_picking(state),
+                "open_backorder": bool(backorder_id) and odoo_fx.is_pending_picking(state),
             })
+        return rows
+
+    def pull_recepciones(self, **kwargs) -> dict:
+        """Incoming pickings (done and still-open), one row per stock.move."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        rows = self._pull_pickings_as_moves("incoming", kwargs.get("limite", 500))
         return {"origen": "odoo", "modulo": "stock.picking", "total": len(rows),
                 "recepciones": rows}
+
+    def pull_entregas(self, **kwargs) -> dict:
+        """Outgoing pickings (done and still-open sale deliveries), including
+        real open backorders."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        rows = self._pull_pickings_as_moves("outgoing", kwargs.get("limite", 500))
+        for r in rows:
+            r["cliente"] = r.get("partner") or ""
+        return {"origen": "odoo", "modulo": "stock.picking", "total": len(rows),
+                "entregas": rows}
+
+    def pull_listas_precios(self, **kwargs) -> dict:
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        lists, items = self._pricelists_and_items()
+        by_pl: dict[int, list[dict]] = {}
+        for it in items:
+            pid = _m2o_id(it.get("pricelist_id"))
+            by_pl.setdefault(pid, []).append({
+                "id": it["id"],
+                "applied_on": it.get("applied_on") or "",
+                "compute_price": it.get("compute_price") or "",
+                "fixed_price": it.get("fixed_price"),
+                "price_discount": it.get("price_discount"),
+                "categ_id": _m2o_id(it.get("categ_id")),
+                "categoria": _m2o_name(it.get("categ_id")),
+                "product_tmpl_id": _m2o_id(it.get("product_tmpl_id")),
+                "producto": _m2o_name(it.get("product_tmpl_id")) or _m2o_name(it.get("product_id")),
+            })
+        listas = [{
+            "id": pl["id"],
+            "nombre": pl.get("name") or "",
+            "currency": odoo_fx._iso_code(pl.get("currency_id")) or "ARS",
+            "items": by_pl.get(pl["id"], []),
+        } for pl in lists]
+        return {"origen": "odoo", "modulo": "product.pricelist", "total": len(listas),
+                "listas": listas}
+
+    def pull_monedas(self, **kwargs) -> dict:
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        company, rates = self._company_and_rates()
+        return {
+            "origen": "odoo", "modulo": "res.currency.rate",
+            "moneda_compania": company.get("currency") or "ARS",
+            "pais": company.get("country") or "",
+            "empresa": company.get("name") or "",
+            "total": len(rates),
+            "tipos_cambio": [
+                {"currency": r["currency"], "fecha": r["date"].isoformat(),
+                 "inverse_company_rate": r.get("inverse_company_rate"),
+                 "rate": r.get("rate")}
+                for r in sorted(rates, key=lambda x: x["date"])
+            ],
+        }
+
+    def pull_facturas(self, **kwargs) -> dict:
+        """Posted customer invoices and vendor bills, with payment aging
+        against the seed's invoice 'today' (2026-07-20)."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        company, _rates = self._company_and_rates()
+        company_cur = company.get("currency") or "ARS"
+        as_of = odoo_fx.hoy_facturas()
+        ids = self._try_kw(
+            "account.move", "search",
+            [["move_type", "in", ["out_invoice", "in_invoice"]],
+             ["state", "=", "posted"]],
+            limit=kwargs.get("limite", 5000),
+        ) or []
+        moves = self._try_kw(
+            "account.move", "read", ids,
+            fields=["name", "partner_id", "move_type", "invoice_date",
+                    "invoice_date_due", "amount_total", "amount_residual",
+                    "amount_untaxed", "payment_state", "currency_id",
+                    "invoice_origin", "state"],
+        ) if ids else []
+        rows = []
+        for m in moves or []:
+            currency = self._currency_of(m, company_cur)
+            fecha = _date_part(m.get("invoice_date"))
+            residual = m.get("amount_residual")
+            if residual in (None, False):
+                residual = m.get("amount_total") or 0
+            aging = odoo_fx.classify_invoice_aging(
+                m.get("payment_state"), m.get("invoice_date_due"), as_of, residual)
+            rows.append({
+                "id": m["id"],
+                "numero": m.get("name") or "",
+                "partner": _m2o_name(m.get("partner_id")),
+                "partner_id": _m2o_id(m.get("partner_id")),
+                "move_type": m.get("move_type") or "",
+                "tipo": "factura" if m.get("move_type") == "out_invoice" else "factura_compra",
+                "fecha": fecha,
+                "vencimiento": _date_part(m.get("invoice_date_due")),
+                "total": m.get("amount_total") or 0,
+                "residual": residual or 0,
+                "untaxed": m.get("amount_untaxed") or 0,
+                "currency": currency,
+                "total_company": self._convert(m.get("amount_total") or 0, currency, fecha),
+                "residual_company": self._convert(residual or 0, currency, fecha),
+                "origen": m.get("invoice_origin") or "",
+                "estado": m.get("state") or "",
+                **aging,
+            })
+        return {"origen": "odoo", "modulo": "account.move", "total": len(rows),
+                "as_of": as_of.isoformat(), "moneda_compania": company_cur,
+                "facturas": rows}
+
+    def pull_pagos(self, **kwargs) -> dict:
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        company, _rates = self._company_and_rates()
+        company_cur = company.get("currency") or "ARS"
+        ids = self._try_kw(
+            "account.payment", "search",
+            [["state", "=", "posted"]],
+            limit=kwargs.get("limite", 5000),
+        ) or []
+        pays = self._try_kw(
+            "account.payment", "read", ids,
+            fields=["name", "partner_id", "amount", "date", "payment_type",
+                    "partner_type", "currency_id", "ref", "state"],
+        ) if ids else []
+        rows = []
+        for p in pays or []:
+            currency = self._currency_of(p, company_cur)
+            fecha = _date_part(p.get("date"))
+            rows.append({
+                "id": p["id"],
+                "numero": p.get("name") or "",
+                "partner": _m2o_name(p.get("partner_id")),
+                "partner_id": _m2o_id(p.get("partner_id")),
+                "monto": p.get("amount") or 0,
+                "monto_company": self._convert(p.get("amount") or 0, currency, fecha),
+                "fecha": fecha,
+                "payment_type": p.get("payment_type") or "",
+                "partner_type": p.get("partner_type") or "",
+                "currency": currency,
+                "ref": p.get("ref") or "",
+                "estado": p.get("state") or "",
+            })
+        return {"origen": "odoo", "modulo": "account.payment", "total": len(rows),
+                "moneda_compania": company_cur, "pagos": rows}
 
     def push_action(self, accion: dict) -> dict:
         return {"ok": False, "motivo": "Conector Odoo: por ahora solo lectura (Contactos)."}
 
     def get_schema(self) -> dict:
         return {
-            "modulo": "res.partner (Contactos) — el módulo más simple de Odoo para arrancar",
-            "campos": ["name", "vat", "city", "phone", "email"],
+            "modulo": "res.partner, product.template, sale.order, purchase.order, "
+                      "stock.quant, stock.picking, account.move, product.pricelist",
+            "campos": ["name", "vat", "city", "phone", "email", "currency_id",
+                       "payment_state", "backorder_id", "in_date"],
             "requiere_conexion": ["url", "database", "username", "api_key"],
             "conectado": self._conexion is not None,
+            "moneda_compania": "ARS",
         }
 
 
