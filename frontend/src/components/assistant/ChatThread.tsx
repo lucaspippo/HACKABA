@@ -122,7 +122,7 @@ export default function ChatThread({
         <>
           <ThreadPrimitive.Viewport className="flex flex-1 flex-col overflow-y-auto pb-2">
             {isEmpty && emptyState ? (
-              <div className="flex flex-1 flex-col justify-end px-0.5 pb-5 pt-8">
+              <div className="flex flex-1 flex-col px-0.5 pb-5 pt-4">
                 {emptyState}
               </div>
             ) : (
