@@ -105,7 +105,7 @@ def credential_vars() -> tuple[str, ...]:
 
 def _resolve_provider() -> str | None:
     """Which provider is actually usable right now, or None if neither is
-    (→ the deterministic 'simulado' fallback).
+    (→ no provider; chat returns an error, it does not invent a reply).
 
     Selection:
     1. LLM_PROVIDER=anthropic|gateway, if set, is authoritative — but only
@@ -130,7 +130,7 @@ def _resolve_provider() -> str | None:
 
 
 def provider() -> str | None:
-    """The provider that would answer right now, or None (simulado fallback)."""
+    """The provider that would answer right now, or None if none is configured."""
     return _resolve_provider()
 
 
@@ -182,20 +182,20 @@ def modelo_feature(env_var: str) -> str:
 
 
 # --- EL SWITCH ---------------------------------------------------------------
-# Modo de Ángela: "claude" si CUALQUIER proveedor está totalmente configurado
-# (ver _resolve_provider), si no "simulado" (router de intenciones). Enchufar
-# el modelo real = setear ANTHROPIC_API_KEY (directo) o LLM_PROVIDER=gateway +
-# AI_GATEWAY_API_KEY (AI Gateway). Nada más.
-# OJO: se computa en runtime (ver modo()). MODO queda como snapshot de import-time
-# sólo por compatibilidad; el código nuevo debe llamar modo().
-MODO = "claude" if model_disponible() else "simulado"
+# Ángela's mode: "claude" if any provider is fully configured (see
+# _resolve_provider), otherwise "offline" — no canned router, no fake reply.
+# Plug the real model in by setting ANTHROPIC_API_KEY (direct) or
+# LLM_PROVIDER=gateway + AI_GATEWAY_API_KEY. Nothing else.
+# Evaluated at runtime (see modo()). MODO is an import-time snapshot for
+# compatibility; new code must call modo().
+MODO = "claude" if model_disponible() else "offline"
 
 
 def modo() -> str:
-    """El modo REAL, evaluado ahora (no en import-time). Fuente única de verdad:
-    si algún proveedor está configurado → 'claude'; si no → 'simulado'. Así health
-    y Ángela nunca discrepan aunque la key se cargue después de importar."""
-    return "claude" if model_disponible() else "simulado"
+    """Live mode, evaluated now (not at import). One source of truth: a
+    configured provider → 'claude'; otherwise 'offline'. Health and Ángela
+    never disagree even if the key lands after import."""
+    return "claude" if model_disponible() else "offline"
 
 
 # --- ROUTING DE MODELOS ------------------------------------------------------

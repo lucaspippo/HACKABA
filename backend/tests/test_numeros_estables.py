@@ -28,15 +28,6 @@ def test_totales_identicos_en_tres_llamadas():
     assert tres[0] == tres[1] == tres[2]
 
 
-def test_fallback_morosos_usa_el_total_del_core():
-    respuestas = set()
-    for _ in range(3):
-        angela._set_sesion(features=None)
-        respuestas.add(angela._fallback("¿quién me debe plata?")["answer"])
-    angela._set_sesion()
-    assert len(respuestas) == 1   # byte-idéntico las tres veces
-
-
 def test_top_inmovilizado_trae_total_del_listado():
     angela._set_sesion(features=None)
     r, _ = angela._run_tool("top_inmovilizado", {"n": 5})

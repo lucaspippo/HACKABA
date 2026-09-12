@@ -121,25 +121,6 @@ def test_consultar_matchea_nombres_libres(monkeypatch):
     assert set(macro.consultar(["cualquier cosa"])) == {"dolar", "inflacion"}
 
 
-# --- P9·C7 (M11): paridad simulado↔Claude en los nombres de tools ---
-
-def test_tools_usadas_del_simulado_existen_en_tools():
-    """El router simulado solo reporta nombres que EXISTEN en TOOLS: reportar
-    tools inventadas rompió la paridad declarada y ya causó un test flaky."""
-    import inspect
-    import re
-
-    import angela
-
-    src = inspect.getsource(angela)
-    reales = {t["name"] for t in angela.TOOLS}
-    reportadas = set()
-    for m in re.finditer(r"tools=\[([^\]]*)\]", src):
-        reportadas.update(re.findall(r'"([a-z_]+)"', m.group(1)))
-    fantasmas = reportadas - reales
-    assert not fantasmas, f"tools reportadas que no existen: {sorted(fantasmas)}"
-
-
 def test_navegar_a_declara_todas_las_secciones_actuales():
     """M12: el modelo tiene que poder llevarte a TODAS las secciones de hoy."""
     import angela

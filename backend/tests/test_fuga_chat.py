@@ -5,7 +5,7 @@ no puede sacar saldos de clientes por chat, por NINGÚN camino.
 
 Las tres capas + el token del endpoint:
   1. tools_para(features) no ofrece la tool del módulo ajeno.
-  2. _run_tool la rechaza aunque se la fuerce (cubre el router simulado).
+  2. _run_tool la rechaza aunque se la fuerce.
   3. el contexto del prompt no lleva el snapshot global a quien no tiene inventario.
   + /api/angela toma la identidad del token; un rol falso en el body no sirve.
 """
@@ -70,7 +70,7 @@ def test_dueno_ve_todas_las_tools():
         assert t in nombres  # el dueño sí
 
 
-# --- Capa 2: _run_tool rechaza aunque se fuerce la tool (router simulado incluido) ---
+# --- Capa 2: _run_tool rechaza aunque se fuerce la tool ---
 
 @pytest.mark.parametrize("tool", SENSIBLES_AJENAS)
 def test_run_tool_rechaza_modulo_ajeno(tool):
@@ -91,39 +91,6 @@ def test_run_tool_sin_restriccion_ejecuta():
     angela._set_sesion(features=None)  # legacy
     res, _ = angela._run_tool("cuentas_corrientes", {})
     assert res.get("error") != "sin_acceso"
-
-
-# --- Fuga por el router simulado (_fallback), el camino determinista ---
-
-def test_fallback_no_filtra_cuentas_a_deposito():
-    angela._set_sesion(usuario="deposito", rol="Depósito", features=set(FEATURES_DEPOSITO))
-    r = angela._fallback("¿quién me debe plata? mostrame los morosos")
-    # NO aparece ningún nombre de cliente ni monto de deuda
-    assert "Pérez" not in r["answer"] and "30.000.000" not in r["answer"]
-    assert "cuentas_corrientes" not in r["tools_used"]
-
-
-def test_fallback_no_filtra_caja_a_deposito():
-    angela._set_sesion(features=set(FEATURES_DEPOSITO))
-    r = angela._fallback("¿cuánta plata hay en la caja hoy?")
-    assert "caja" not in [t for t in r["tools_used"]]
-    assert "área de caja" in r["answer"] or "no está dentro" in r["answer"]
-
-
-def test_fallback_no_filtra_inmovilizado_global_a_deposito():
-    angela._set_sesion(features=set(FEATURES_DEPOSITO))
-    # ni el intent de plata ni el default deben soltar el inmovilizado
-    r1 = angela._fallback("¿cuánta plata tengo en manteca?")
-    r2 = angela._fallback("hola, ¿qué me contás?")
-    assert "541" not in r1["answer"] and "541" not in r2["answer"]
-
-
-def test_fallback_dueno_si_ve_todo():
-    angela._set_sesion(features=set(auth.perfil_publico("emilio")["features"]))
-    r = angela._fallback("¿quién me debe plata?")
-    # P9·C7 (M11): el nombre real de la tool es cuentas_corrientes ("cuentas"
-    # nunca existió en TOOLS).
-    assert "cuentas_corrientes" in r["tools_used"] or "Pérez" in r["answer"]
 
 
 # --- El token manda: rol falso en el body no sirve de nada ---
