@@ -31,3 +31,17 @@ def test_venc_riesgo_drill_has_product_involucrados(monkeypatch):
     assert venc["drill"]["grafico"] is not None
     iv = venc["drill"]["involucrados"][0]
     assert iv["id"] == "P2" and iv["kind"] == "product"
+
+
+def test_costo_viejo_drill_has_product_involucrados(monkeypatch):
+    from core import store
+    monkeypatch.setattr(store, "panorama", lambda: {"alertas": {"costo_viejo": {"cantidad": 1}},
+                                                     "grupos": {"costo_viejo": [
+                                                         {"codigo": "P3", "descripcion": "Prod Tres",
+                                                          "inmovilizado": 20_000,
+                                                          "antiguedad_costo_dias": 400}]}})
+    out = priorities._alerts_inventario("es")
+    cv = next(i for i in out if i["id"] == "costo_viejo")
+    assert cv["drill"]["grafico"] is not None
+    iv = cv["drill"]["involucrados"][0]
+    assert iv["id"] == "P3" and iv["kind"] == "product"
