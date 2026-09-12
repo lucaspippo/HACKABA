@@ -3068,4 +3068,19 @@ export const EN = {
   "chat.notice.fake_model": "This came from your data, without the model connected.",
   "chat.notice.tool_loop_exhausted": "I'm going in circles with that query. Can you rephrase it more simply?",
   "chat.notice.generico": "Ángela replied in degraded mode.",
+
+  // --- chat errors ---
+  "chat.error.reintentar": "Try again",
+  "chat.error.reintentando": "Trying…",
+  "chat.error.rate_limit.titulo": "Too many requests",
+  "chat.error.rate_limit.detalle": "The model is rate-limited right now. Try again in a moment.",
+  "chat.error.session_expired.titulo": "Your session ended",
+  "chat.error.session_expired.detalle": "Log back in to keep talking to Ángela.",
+  "chat.error.session_expired.accion": "Log back in",
+  "chat.error.network.titulo": "No connection",
+  "chat.error.network.detalle": "Can't reach the server. Check your connection and try again.",
+  "chat.error.server.titulo": "Couldn't answer",
+  "chat.error.server.detalle": "The request was cut off. Try again in a moment.",
+  "chat.error.stream.titulo": "The reply was cut off",
+  "chat.error.stream.detalle": "The reply stopped partway through. Try again.",
 };
