@@ -844,36 +844,35 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
 
   // --- LA CÁMARA -------------------------------------------------------
   //
-  // POR QUÉ ESTÁ ESCRITA A MANO Y NO USA `fitView`.
+  // POR QUÉ EL ENCUADRE SE CALCULA Y SE ANIMA ACÁ, Y NO CON `fitView`.
   //
-  // Medido contra el deploy, llamando los métodos sobre la instancia real que
-  // devuelve `onInit` (28 nodos, todos medidos, bounds 1514×856 correctos):
+  // Primero, una corrección sobre cómo llegué acá, porque importa para el que
+  // venga después: pasé un buen rato creyendo que `fitView` y todo lo que
+  // lleva `duration` estaban rotos en esta app, porque medidos contra el
+  // deploy no movían un pixel. No era eso. Las animaciones de React Flow van
+  // por d3-transition, que corre sobre requestAnimationFrame, y el panel del
+  // navegador donde yo probaba estaba oculto a nivel compositor: rAF daba CERO
+  // frames en 400 ms con `document.visibilityState === "visible"`. O sea que
+  // no animaba NADA —ni la librería ni nada mío— y todo lo directo
+  // (`setViewport` sin duración, la rueda del mouse) sí andaba. `fitView`
+  // funciona perfectamente en una ventana de verdad.
   //
-  //     zoomIn()                        0,80 -> 0,96   anda
-  //     zoomIn({duration:180})          0,80 -> 0,80   NO HACE NADA
-  //     setViewport(v)                  anda
-  //     setViewport(v,{duration:600})   NO HACE NADA
-  //     fitBounds(b,{duration:0})       anda
-  //     setCenter(x,y,{duration:0})     anda
-  //     fitView(...)                    NO HACE NADA, con o sin duración
+  // Dicho eso, el encuadre se queda escrito a mano por dos razones que siguen
+  // valiendo:
   //
-  // O sea: TODO lo que anima por d3-transition es mudo en esta app, y
-  // `fitView` usa ese camino siempre. No tira un solo error. Eso significa que
-  // el reencuadre por tamaño que había antes —`Reencuadre`, que llamaba
-  // `fitView({duration:220})`— tampoco funcionaba nunca: se veía encuadrado
-  // sólo por el `fitView` inicial del propio <ReactFlow>, que corre por otro
-  // camino.
-  //
-  // Así que el encuadre se calcula acá y se anima con requestAnimationFrame
-  // sobre `setViewport` sin duración, que sí responde. De paso queda control
-  // fino de la curva, que es lo que pide un movimiento de cámara: lo que hace
-  // entender que te acercaste a una parte de algo más grande es el MOVIMIENTO,
-  // no el destino.
+  //   · CONTROL DE LA CURVA. easeInOutCubic arranca y frena suave, que es como
+  //     se mueve una cámara. Lo que hace entender que te acercaste a una parte
+  //     de algo más grande es el MOVIMIENTO, no el destino.
+  //   · SIEMPRE LLEGA. Si rAF no corre —una pestaña en segundo plano, una
+  //     máquina que ahoga el navegador, un `prefers-reduced-motion` agresivo—
+  //     igual se aplica el destino. Vale más llegar sin animación que quedarse
+  //     donde estabas: eso último se lee como que el clic no hizo nada.
   const refFoco = useRef(null);
   refFoco.current = nodoFoco;
   const refAristas = useRef(edges);
   refAristas.current = edges;
   const refAnim = useRef(0);
+  const refRed = useRef(0);
   const pane = useRef(null);
 
   const animarA = useCallback((destino, duracion) => {
@@ -883,7 +882,9 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     const desde = rf.getViewport();
     if (duracion <= 0) { rf.setViewport(destino); return; }
     const t0 = performance.now();
+    let vivos = 0;
     const paso = (ahora) => {
+      vivos++;
       const p = Math.min(1, (ahora - t0) / duracion);
       // easeInOutCubic: arranca y frena suave, que es como se mueve una cámara
       const e = p < 0.5 ? 4 * p * p * p : 1 - ((-2 * p + 2) ** 3) / 2;
@@ -895,6 +896,14 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
       if (p < 1) refAnim.current = requestAnimationFrame(paso);
     };
     refAnim.current = requestAnimationFrame(paso);
+    // LA RED: si a los 120 ms no corrió un solo frame, rAF no está corriendo
+    // (pestaña en segundo plano, compositor detenido) y la animación no va a
+    // pasar nunca. Se salta al destino. Quedarse donde estabas se lee como que
+    // el clic no hizo nada, que es peor que no tener animación.
+    clearTimeout(refRed.current);
+    refRed.current = setTimeout(() => {
+      if (vivos === 0) { cancelAnimationFrame(refAnim.current); rf.setViewport(destino); }
+    }, 120);
   }, []);
 
   /** El viewport que encuadra `caja` dejando `relleno` de aire alrededor. */
@@ -998,7 +1007,10 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     encuadrar(620);
   }, [nodoFoco, encuadrar]);
 
-  useEffect(() => () => cancelAnimationFrame(refAnim.current), []);
+  useEffect(() => () => {
+    cancelAnimationFrame(refAnim.current);
+    clearTimeout(refRed.current);
+  }, []);
 
   // Arriving from a Home card: the finding is pre-chosen. Its path lights and
   // its panel opens as soon as data lands, so the first second on the map is
