@@ -14,8 +14,9 @@ import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { CoverLeadScatter, LeadTruth } from "./InventarioViz";
 
-export default function Reponer({ onPreguntar, onNavegar }) {
+export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
   const t = useT();
   const [d, setD] = useState(null);
 
@@ -33,6 +34,13 @@ export default function Reponer({ onPreguntar, onNavegar }) {
 
   return (
     <div className="space-y-5">
+      <CoverLeadScatter
+        puntos={d.puntos}
+        onSelect={(p) => {
+          if (onSelect) onSelect({ codigo: p.codigo, descripcion: p.producto, inmovilizado: p.plata_en_riesgo });
+          else onNavegar?.("productos", `q:${p.codigo}`);
+        }}
+      />
       {/* el titular: la plata que cuesta no reponer */}
       <div className="rounded-[var(--radius-card)] border border-rojo/25 bg-crema sombra-papel">
         <div className="flex flex-wrap items-center gap-3 border-b border-linea bg-rojo/[0.04] px-4 py-3">
@@ -220,6 +228,7 @@ export default function Reponer({ onPreguntar, onNavegar }) {
           </div>
         </div>
       </div>
+      <LeadTruth data={viz?.lead_truth} />
     </div>
   );
 }

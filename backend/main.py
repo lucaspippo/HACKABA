@@ -2525,6 +2525,24 @@ def cobranza_registrar(req: CobranzaRegistrarRequest,
         raise HTTPException(status_code=422, detail=str(e))
 
 
+@app.get("/api/inventario/viz")
+def inventario_viz(u: dict = Depends(require_feature("inventario"))):
+    """Cuts of idle capital, rotation, expiry, seasonality, GMROI, aging and
+    lead-time truth. Cached like the other analyses; numbers still come from
+    core/, never from the model."""
+    from core import analisis_cache, stock_viz
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("stock_viz", lang, lambda: stock_viz.pack(lang))
+
+
+@app.get("/api/inventario/burn/{codigo}")
+def inventario_burn(codigo: int, u: dict = Depends(require_feature("inventario"))):
+    """60-day projected stock for one SKU: on-hand decaying at daily rate,
+    inbound PO as a step at the supplier lead."""
+    from core import stock_viz
+    return stock_viz.product_burn(codigo, _lang(u))
+
+
 @app.get("/api/reponer")
 def reponer_get(u: dict = Depends(require_feature("inventario"))):
     """QUÉ REPONER PRIMERO — el ranking, no un solo hallazgo.
