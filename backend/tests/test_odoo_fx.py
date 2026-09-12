@@ -18,6 +18,15 @@ def test_to_company_amount_uses_dated_rate_not_flat():
     assert early != late
 
 
+def test_to_company_amount_parses_odoo_datetime():
+    rates = odoo_fx.normalize_rates([
+        {"name": "2024-08-01", "currency_id": [2, "USD"], "inverse_company_rate": 950.0},
+        {"name": "2026-07-07", "currency_id": [2, "USD"], "inverse_company_rate": 1450.0},
+    ])
+    # sale.order.date_order is a datetime string; must still pick the June rate.
+    assert odoo_fx.to_company_amount(10, "USD", "2026-06-01 10:00:00", rates, "ARS") == 9500.0
+
+
 def test_to_company_amount_same_currency_unchanged():
     rates = odoo_fx.normalize_rates([
         {"name": "2026-07-07", "currency_id": [2, "USD"], "inverse_company_rate": 1450.0},
@@ -115,6 +124,7 @@ def test_fulfillment_partial_with_open_backorder():
     assert odoo_fx.fulfillment(10, 10) == "complete"
     assert odoo_fx.fulfillment(10, 4) == "partial"
     assert odoo_fx.fulfillment(10, 10, open_backorder=True) == "partial"
+    assert odoo_fx.fulfillment(10, 0, open_backorder=True) == "partial"
 
 
 def test_is_open_backorder_pending_only():

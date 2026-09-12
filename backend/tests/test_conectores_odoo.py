@@ -83,7 +83,7 @@ class _FakeModels:
                 return [
                     {"id": 100, "order_id": [10, "P00010"], "product_id": [1, "Office Chair Ergo"],
                      "product_template_id": [1, "Office Chair Ergo"], "name": "Office Chair Ergo",
-                     "product_qty": 20.0, "price_unit": 120.0, "qty_received": 0.0},
+                     "product_qty": 20.0, "price_unit": 120.0, "qty_received": 15.0},
                     {"id": 101, "order_id": [10, "P00010"], "product_id": [2, "Filing Cabinet"],
                      "product_template_id": [2, "Filing Cabinet"], "name": "Filing Cabinet",
                      "product_qty": 10.0, "price_unit": 140.0, "qty_received": 0.0},

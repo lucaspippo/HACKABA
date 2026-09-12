@@ -104,7 +104,10 @@ def to_company_amount(amount, currency: str | None, when,
     company = (company_currency or "ARS").upper()
     if cur == company:
         return value
-    day = parse_fecha(when) or datetime.date.max
+    day = parse_fecha(when)
+    if day is None and when not in (None, False, ""):
+        day = parse_fecha(str(when)[:10])
+    day = day or datetime.date.max
     applicable = [r for r in rates if r.get("currency") == cur and r["date"] <= day]
     if not applicable:
         applicable = [r for r in rates if r.get("currency") == cur]
@@ -301,7 +304,7 @@ def fulfillment(ordered: float, done: float, open_backorder: bool = False) -> st
         d = float(done or 0)
     except (TypeError, ValueError):
         return "none"
-    if d <= 0:
+    if d <= 0 and not open_backorder:
         return "none"
     if open_backorder or (o > 0 and d < o - 1e-6):
         return "partial"
