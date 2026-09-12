@@ -3015,6 +3015,8 @@ export const ES = {
   "tool.consultar_cruces.done": "Cruzó comprobantes",
   "tool.consultar_evolucion.running": "Mirando la evolución…",
   "tool.consultar_evolucion.done": "Miró la evolución",
+  "tool.consultar_compras.running": "Revisando compras…",
+  "tool.consultar_compras.done": "Revisó compras",
   "tool.estado_caja.running": "Mirando la caja…",
   "tool.estado_caja.done": "Miró la caja",
   "tool.crear_widget.running": "Armando un widget para tu panel…",
