@@ -98,6 +98,18 @@ def test_items_exponen_pipeline_y_stockout():
         assert isinstance(i["stockout_risk"], bool)
 
 
+def test_puntos_del_scatter_son_un_recorte_de_la_zona():
+    r = _r()
+    if not r["disponible"]:
+        return
+    assert r["puntos"]
+    assert len(r["puntos"]) <= min(80, r["total_en_zona"])
+    keys = {"codigo", "producto", "cobertura_dias", "lead_dias",
+            "plata_en_riesgo", "dias_para_negociar"}
+    for p in r["puntos"]:
+        assert keys <= set(p)
+
+
 def test_sin_ventas_no_inventa_un_ranking():
     from unittest.mock import patch
     with patch("core.analisis.rotacion", return_value={"disponible": False,
