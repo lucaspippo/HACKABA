@@ -88,6 +88,11 @@ def tenant_id():
     return _tenant.current_tenant_id()
 
 
+def _limpiar_proveedores() -> None:
+    from core import esquema
+    esquema.reemplazar_filas("proveedores", [])
+
+
 @pytest.fixture(autouse=True)
 def _setup(tenant_id, monkeypatch):
     monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
@@ -95,11 +100,13 @@ def _setup(tenant_id, monkeypatch):
     store.resetear_actual()
     limpiar_cuentas_db()
     limpiar_tabla_tenant("purchase_orders")
+    _limpiar_proveedores()
     yield
     odoo_connections_repo.delete(tenant_id)
     store.resetear_actual()
     limpiar_cuentas_db()
     limpiar_tabla_tenant("purchase_orders")
+    _limpiar_proveedores()
 
 
 def test_ingest_productos_primera_vez_todo_va_a_revision():
@@ -189,3 +196,187 @@ def test_ingest_ordenes_compra_segunda_vez_actualiza_sin_batch():
     assert r2["actualizados"] == 2
     assert r2["nuevos_para_revisar"] == 0
     assert r2["batch_id"] is None
+
+
+# --- C1: auto-upsert on re-sync must NOT overwrite dueño-edited,
+# non-Odoo-owned fields (final whole-branch review, round 1) -----------------
+
+def test_reingest_productos_no_pisa_costo_editado_por_el_dueño():
+    """Repro: ingest -> integrate (link) -> dueño edits costo_iva -> re-sync
+    the same linked product -> the dueño's cost must survive."""
+    r1 = odoo_ingest.ingest_productos(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    articulo = next(d for d in store.raw_actual() if d.get("source_id") == "1")
+    store.actualizar_articulo(articulo["codigo"], {"costo_iva": 77.0}, actor="dueño")
+
+    odoo_ingest.ingest_productos(actor="test")
+
+    articulo = next(d for d in store.raw_actual() if d.get("source_id") == "1")
+    assert articulo["costo_iva"] == 77.0
+    # Odoo-owned fields still refresh normally.
+    assert articulo["pvp"] == 100.0
+
+
+def test_reingest_proveedores_no_pisa_contacto_y_notas_editados_por_el_dueño():
+    """Repro: ingest -> integrate (link) -> dueño edits contacto/notas ->
+    re-sync the same linked vendor -> the dueño's edits must survive."""
+    from core import proveedores as proveedores_mod
+
+    r1 = odoo_ingest.ingest_proveedores(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    prov = next(p for p in proveedores_mod.listar() if p.get("source_id") == "3")
+    proveedores_mod.actualizar(prov["id"], {"contacto": "Juan Pérez", "notas": "Paga a 30 días"},
+                               actor="dueño")
+
+    odoo_ingest.ingest_proveedores(actor="test")
+
+    prov = next(p for p in proveedores_mod.listar() if p.get("source_id") == "3")
+    assert prov["contacto"] == "Juan Pérez"
+    assert prov["notas"] == "Paga a 30 días"
+    # Odoo-owned fields still refresh normally.
+    assert prov["cuit"] == "30-11111111-1"
+
+
+def test_reingest_clientes_no_pisa_saldo_y_limite_editados_por_el_dueño(tenant_id):
+    """Repro: ingest -> integrate (link) -> dueño edits balance/credit_limit
+    (via the native write path, e.g. a payment) -> re-sync the same linked
+    customer -> the dueño-owned accounting fields must survive."""
+    from core import staging
+    from core.db import customer_accounts_repo
+
+    r1 = odoo_ingest.ingest_clientes(actor="test")
+    staging.integrar(r1["batch_id"], actor="test")
+
+    cuenta = next(c for c in customer_accounts_repo.list_accounts(tenant_id) if c["source_id"] == "5")
+    cuenta["saldo"] = 1_234_000
+    cuenta["limite_credito"] = 5_000_000
+    customer_accounts_repo.upsert_account(tenant_id, cuenta)
+
+    odoo_ingest.ingest_clientes(actor="test")
+
+    cuenta = next(c for c in customer_accounts_repo.list_accounts(tenant_id) if c["source_id"] == "5")
+    assert cuenta["saldo"] == 1_234_000
+    assert cuenta["limite_credito"] == 5_000_000
+    # Odoo-owned fields still refresh normally.
+    assert cuenta["nombre"] == "Cliente Ya Vinculado"
+
+
+# --- I2: PO ingestion writes must leave an audit trail -----------------------
+
+def test_ingest_ordenes_compra_deja_rastro_de_auditoria():
+    from core.audit import AuditLog
+
+    r1 = odoo_ingest.ingest_ordenes_compra(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    antes = len(AuditLog().list())
+    odoo_ingest.ingest_ordenes_compra(actor="test")
+
+    eventos = AuditLog().list()
+    nuevos = eventos[antes:]
+    conector = [e for e in nuevos if e["accion"] == "upsert_ordenes_compra_conector"]
+    assert len(conector) == 1
+    assert conector[0]["despues"]["actualizadas"] == 2
+    assert sorted(conector[0]["despues"]["numeros"]) == ["P00010", "P00011"]
+
+
+# --- I5: the auto-upsert tier must skip a row missing its required field,
+# not write it through (same tolerance the staging tier already has) --------
+
+def test_ingest_productos_omite_vinculado_sin_descripcion(monkeypatch):
+    r1 = odoo_ingest.ingest_productos(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    # Simulate the linked product losing its name in Odoo before the next
+    # sync: a fresh fake whose "id": 1 row now carries an empty name.
+    def _fake_server_proxy_sin_nombre(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.productos[0]["name"] = ""
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy_sin_nombre)
+
+    r2 = odoo_ingest.ingest_productos(actor="test")
+    assert r2["omitidos_malformados"] == 1
+    # id 2 is also linked (from the first sync's staged batch) and unaffected
+    # by the malformed row, so it still updates normally.
+    assert r2["actualizados"] == 1
+    articulo = next(d for d in store.raw_actual() if d.get("source_id") == "1")
+    assert articulo["descripcion"] == "Producto Ya Vinculado"
+
+
+def test_ingest_proveedores_omite_vinculado_sin_nombre(monkeypatch):
+    from core import proveedores as proveedores_mod
+
+    r1 = odoo_ingest.ingest_proveedores(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    def _fake_server_proxy_sin_nombre(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.proveedores[0]["name"] = ""
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy_sin_nombre)
+
+    r2 = odoo_ingest.ingest_proveedores(actor="test")
+    assert r2["omitidos_malformados"] == 1
+    assert r2["actualizados"] == 1
+    prov = next(p for p in proveedores_mod.listar() if p.get("source_id") == "3")
+    assert prov["nombre"] == "Distribuidora del Sur"
+
+
+def test_ingest_clientes_omite_vinculado_sin_nombre(monkeypatch, tenant_id):
+    from core.db import customer_accounts_repo
+
+    r1 = odoo_ingest.ingest_clientes(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    def _fake_server_proxy_sin_nombre(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.clientes[0]["name"] = ""
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy_sin_nombre)
+
+    r2 = odoo_ingest.ingest_clientes(actor="test")
+    assert r2["omitidos_malformados"] == 1
+    assert r2["actualizados"] == 1
+    cuenta = next(c for c in customer_accounts_repo.list_accounts(tenant_id) if c["source_id"] == "5")
+    assert cuenta["nombre"] == "Cliente Ya Vinculado"
+
+
+def test_ingest_ordenes_compra_omite_vinculada_sin_numero(monkeypatch, tenant_id):
+    from core.db import purchase_orders_repo
+
+    r1 = odoo_ingest.ingest_ordenes_compra(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+
+    def _fake_server_proxy_sin_numero(url):
+        if url.endswith("/xmlrpc/2/common"):
+            return _FakeCommon()
+        fake = _FakeModels()
+        fake.ordenes[0]["name"] = ""
+        return fake
+
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy_sin_numero)
+
+    r2 = odoo_ingest.ingest_ordenes_compra(actor="test")
+    assert r2["omitidos_malformados"] == 1
+    assert r2["actualizados"] == 1
+    orden = purchase_orders_repo.find_by_number(tenant_id, "P00010")
+    assert orden is not None
