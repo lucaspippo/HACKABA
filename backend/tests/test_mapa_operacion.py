@@ -386,3 +386,22 @@ def test_el_resumen_titula_lo_que_importa(mapa):
     assert len(ts) == 4, "four big numbers up top, not a table"
     for t in ts:
         assert isinstance(t["valor"], str) and t["label"]
+
+
+def test_toda_prioridad_con_mapa_apunta_a_un_hallazgo_real():
+    """Home opens the map focused on `item.mapa`: if that id is not a finding
+    the map computes, the click lands on a neutral map — the exact dead end
+    the field exists to remove. Pin the contract from both sides."""
+    from core import priorities as _prio
+    from core import mapa_operacion as _mapa
+    familias_mapa = {h["id"].split(":")[0] for h in _mapa._hallazgos_calc("es")}
+    bandeja = _prio.inbox("es")
+    items = list(bandeja.get("act", [])) + list(bandeja.get("watch", []))
+    con_mapa = {i["id"]: i["mapa"] for i in items if i.get("mapa")}
+    # Only these three priorities are the same fact as a map finding.
+    assert con_mapa.items() <= {"dep_porvencer": "por_vencer",
+                                "venc_riesgo": "por_vencer",
+                                "dep_vencidos": "vencidos"}.items()
+    # And whenever one of them fires, its map finding exists to land on.
+    for pid, hid in con_mapa.items():
+        assert hid.split(":")[0] in familias_mapa, (pid, hid)
