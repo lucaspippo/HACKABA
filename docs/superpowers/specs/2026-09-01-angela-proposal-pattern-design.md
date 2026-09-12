@@ -177,6 +177,12 @@ card fields (`titulo`, `resumen`, `drill`, `propuesta`) are pre-existing
 Spanish; the standard applies to new code and forbids blanket-renaming
 existing identifiers as a side effect.
 
+Every value here is data, not prose — an order number, a person's name, a
+timestamp, a status enum. All display copy ("Aprobada por …", "Ver la orden")
+lives in the frontend locales, so this field needs no `backend/i18n.py` keys
+and the status can reuse the existing `ordenes.estado_*` strings the orders
+screen already renders.
+
 This is composed in `_compose`, i.e. inside the `analisis_cache` boundary
 alongside `confidence`, so it is computed once per request like every other
 derived card field.
@@ -288,7 +294,6 @@ Confirmed pre-existing against a stashed tree; not to be "fixed" by this work.
 | `backend/core/proposal_state.py` | new — resolver registry |
 | `backend/core/ordenes.py` | expose the origin lookup used by the resolver |
 | `backend/core/priorities.py` | attach `action_taken`; rank and badge changes |
-| `backend/i18n.py` | done-state labels |
 | `frontend/src/components/AngelaProposal.jsx` | new — the reusable component |
 | `frontend/src/components/CardNegocio.jsx` | drop private `Propuesta`, consume the new one, pass `actionTaken` |
 | `frontend/src/sections/Prioridades.jsx` | pass `actionTaken`; row badge |
