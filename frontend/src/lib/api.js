@@ -80,6 +80,23 @@ export const api = {
   // P38·B — el dueño aprueba la orden que Ángela dejó armada (queda en borrador).
   ordenCompraPreparar: (p) => post("/api/orden-compra/preparar", p),
   ordenesPreparadas: () => get("/api/ordenes-preparadas"),
+  ordenCompraCrear: (p) => post("/api/ordenes-compra", p),
+  ordenCompraEstado: (numero, estado) =>
+    post(`/api/ordenes-compra/${encodeURIComponent(numero)}/estado`, { estado }),
+  ubicaciones: () => get("/api/ubicaciones"),
+  ubicacionCrear: (p) => post("/api/ubicaciones", p),
+  ubicacionActualizar: (id, p) => post(`/api/ubicaciones/${encodeURIComponent(id)}/actualizar`, p),
+  ubicacionEliminar: (id) => post(`/api/ubicaciones/${encodeURIComponent(id)}/eliminar`, {}),
+  proveedores: () => get("/api/proveedores"),
+  proveedorCrear: (p) => post("/api/proveedores", p),
+  proveedorActualizar: (id, p) => post(`/api/proveedores/${encodeURIComponent(id)}/actualizar`, p),
+  proveedorEliminar: (id) => post(`/api/proveedores/${encodeURIComponent(id)}/eliminar`, {}),
+  lotes: () => get("/api/lotes"),
+  loteCrear: (p) => post("/api/lotes", p),
+  loteActualizar: (id, p) => post(`/api/lotes/${encodeURIComponent(id)}/actualizar`, p),
+  loteEliminar: (id) => post(`/api/lotes/${encodeURIComponent(id)}/eliminar`, {}),
+  articuloCrear: (p) => post("/api/articulos", p),
+  articuloActualizar: (codigo, p) => post(`/api/articulos/${codigo}/actualizar`, p),
   // P38·C — márgenes por grupo y por producto (mayorista + mostrador)
   margenes: () => get("/api/margenes"),
   margenes_detalle: (grupo) => get(`/api/margenes?grupo=${encodeURIComponent(grupo)}`),

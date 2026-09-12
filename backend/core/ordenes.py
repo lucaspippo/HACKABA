@@ -51,3 +51,51 @@ def preparar(*, producto: str, codigo: int | None, cantidad: float,
                   {"numero": orden["numero"], "proveedor": proveedor,
                    "producto": producto, "cantidad": cantidad, "origen": origen})
     return orden
+
+
+ESTADOS = ("borrador", "aprobada", "recibida", "cancelada")
+
+
+def crear_manual(*, proveedor: str, ubicacion: str, fecha: str, items: list[dict],
+                  actor: str, motivo: str = "") -> dict:
+    """La orden que el dueño arma a mano (no la que Ángela detecta): mismo
+    almacenamiento y mismo número correlativo que preparar(), origen distinto
+    para que quede trazable de dónde salió cada una."""
+    from core.db import purchase_orders_repo, tenant as _tenant
+    if not proveedor:
+        raise ValueError("proveedor_requerido")
+    if not items:
+        raise ValueError("items_requeridos")
+    tid = _tenant.current_tenant_id()
+    hoy = fechas.hoy()
+    n = purchase_orders_repo.count(tid)
+    orden = {
+        "numero": f"OC-{hoy.year}-{900 + n + 1:04d}",
+        "fecha": fecha or hoy.isoformat(),
+        "proveedor": proveedor,
+        "ubicacion_entrega": ubicacion,
+        "estado": "borrador",
+        "origen": "manual",
+        "motivo": motivo,
+        "preparada_por": actor,
+        "aprobada_por": actor,
+        "preparada": datetime.datetime.now().isoformat(timespec="seconds"),
+        "items": items,
+    }
+    purchase_orders_repo.create(tid, orden)
+    _audit.record(actor, "crear_orden_compra", None,
+                  {"numero": orden["numero"], "proveedor": proveedor, "items": items})
+    return orden
+
+
+def actualizar_estado(numero: str, estado: str, actor: str) -> dict:
+    if estado not in ESTADOS:
+        raise ValueError("estado_invalido")
+    from core.db import purchase_orders_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    orden = purchase_orders_repo.update_status(tid, numero, estado)
+    if orden is None:
+        raise KeyError(numero)
+    _audit.record(actor, "cambiar_estado_orden_compra", None,
+                  {"numero": numero, "estado": estado})
+    return orden

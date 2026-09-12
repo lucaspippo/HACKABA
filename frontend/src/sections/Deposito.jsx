@@ -131,9 +131,8 @@ export default function Deposito({ data, onPreguntar }) {
   const [wms, setWms] = useState(null);
   const [fotoAbierta, setFotoAbierta] = useState(false);
   const [vozAbierta, setVozAbierta] = useState(false);
-  // P44 — vencimientos/discrepancias y datos-a-corregir son dos tareas
-  // distintas (qué se vence vs. qué está mal cargado) que vivían apiladas en
-  // la misma pantalla, siempre las dos visibles. Separadas en pestañas.
+  // Vencimientos/discrepancias y datos-a-corregir son dos tareas distintas
+  // (qué se vence vs. qué está mal cargado): separadas en pestañas.
   const [tab, setTab] = useState("vencimientos");
 
   useEffect(() => {

@@ -4,7 +4,8 @@ import {
   LayoutDashboard, Boxes, Wallet, Banknote, Bell, Users, Upload, TrendingUp,
   HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
   Sparkles, Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
-  PanelLeftClose, PanelLeftOpen, ChevronRight,
+  PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
+  ShoppingCart,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -39,6 +40,10 @@ import CuentasCorrientes from "./sections/CuentasCorrientes";
 import Caja from "./sections/Caja";
 import Evolucion from "./sections/Evolucion";
 import Auditoria from "./sections/Auditoria";
+import Ubicaciones from "./sections/Ubicaciones";
+import Lotes from "./sections/Lotes";
+import Proveedores from "./sections/Proveedores";
+import OrdenesCompra from "./sections/OrdenesCompra";
 import MiDia from "../mobile/MiDia";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { tieneVistaHerramienta } from "../lib/roles";
@@ -78,22 +83,25 @@ const CATALOGO = {
   auditoria: { lk: "nav.auditoria", icon: ShieldCheck },
   admin_contexto: { lk: "nav.admin_contexto", icon: Globe },
   perfil: { lk: "nav.perfil", icon: UserCircle },
+  ubicaciones: { lk: "nav.ubicaciones", icon: MapPin },
+  lotes: { lk: "nav.lotes", icon: PackageSearch },
+  proveedores: { lk: "nav.proveedores", icon: Truck },
+  ordenes_compra: { lk: "nav.ordenes_compra", icon: ShoppingCart },
 };
 
-// P44 — los 4 grupos originales sonaban a narrativa de Ángela, no a áreas del
-// negocio: "La plata" mezclaba tesorería con cobranzas, "La operación" mezclaba
-// stock con equipo/oficina. Ahora son 7 grupos angostos, cada uno UNA sola
-// área reconocible (tesorería, cobranzas, inventario, equipo, sistema) —
-// "Alertas y oportunidades" queda aparte porque es genuinamente de Ángela
-// (una señal cruzada, no un módulo de ERP) y forzarla a una de las otras
-// áreas la volvería más confusa, no menos. "panel"/"mapa" siguen como hojas.
+// Grupos angostos por área reconocible (tesorería, cobranzas, inventario,
+// equipo, sistema) en vez de baldes mixtos ("La plata" mezclaba tesorería con
+// cobranzas; "La operación", stock con equipo/oficina). "Alertas y
+// oportunidades" queda aparte porque es una señal cruzada de Ángela, no un
+// módulo de ERP — forzarla a otra área la volvería más confusa, no menos.
 const GRUPOS_NAV = [
   { id: "panel", leaf: true },
   { id: "mapa", leaf: true },
   { id: "senales", lk: "nav.grupo_senales", icon: Radar, ids: ["alertas", "oportunidades", "evolucion"] },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
-  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito"] },
+  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito", "ubicaciones", "lotes"] },
+  { id: "compras", lk: "nav.grupo_compras", icon: ShoppingCart, ids: ["proveedores", "ordenes_compra"] },
   { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
   { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
 ];
@@ -121,7 +129,13 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // P39·2 — un empleado no aterriza en el foco de la fase (eso es del dueño):
   // aterriza en SU pantalla de trabajo.
   const vistaHerramienta = tieneVistaHerramienta(user);
-  const secciones = user.features.filter((f) => CATALOGO[f]);
+  // Ubicaciones/lotes/proveedores/órdenes de compra no son features propias:
+  // el backend las gatea con require_feature("inventario") igual que el resto
+  // del módulo, así que viajan con esa misma feature en vez de pedir 4 nuevas.
+  const featuresEfectivas = user.features.includes("inventario")
+    ? [...user.features, "ubicaciones", "lotes", "proveedores", "ordenes_compra"]
+    : user.features;
+  const secciones = featuresEfectivas.filter((f) => CATALOGO[f]);
   // La vista de trabajo del de a pie ("Mi día") es SUYA, no un módulo de la
   // matriz: en el celular aparece siempre (MobileApp la pone en el primer slot)
   // y en la compu se caía si su rol no tenía la feature "panel" — alguien de
@@ -137,9 +151,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     ? (secciones.includes("panel") ? "panel" : (secciones[0] || "perfil"))
     : (fase?.foco && user.features.includes(fase.foco) ? fase.foco : (secciones[0] || "perfil"));
   const [section, setSection] = useState(inicial);
-  // P43 — acordeón EXCLUSIVO: un solo grupo abierto a la vez, sincronizado
-  // con la sección activa (si Ángela o el command palette navegan adentro de
-  // un grupo distinto, ese grupo pasa a ser el abierto).
+  // Acordeón exclusivo: un solo grupo abierto a la vez, sincronizado con la
+  // sección activa (si Ángela o el command palette navegan a otro grupo, ese
+  // pasa a ser el abierto).
   const [grupoAbierto, setGrupoAbierto] = useState(() => grupoDe(inicial));
   const [highlight, setHighlight] = useState(null);
   const [consultaAngela, setConsultaAngela] = useState(null);
@@ -218,7 +232,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     }
     // "panel" para el de a pie es su vista de trabajo, no el Inicio del dueño:
     // se navega igual aunque no tenga esa feature (ver `secciones`, arriba).
-    if (destino && (user.features.includes(destino)
+    if (destino && (featuresEfectivas.includes(destino)
                     || (destino === "panel" && vistaHerramienta))) {
       setSection(destino);
       setHighlightRobusto(hl);
@@ -243,9 +257,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     if (grupoAbierto === g.id) { setGrupoAbierto(null); return; }
     navegar(g.ids[0], null);
   };
-  // P43 — Ctrl+K / Cmd+K abre el command palette desde cualquier pantalla,
-  // como el buscador que reemplaza (único precedente de shortcut global en
-  // el código: CerebroNegocio.jsx usa el mismo patrón con "/").
+  // Ctrl+K / Cmd+K abre el command palette desde cualquier pantalla (mismo
+  // patrón de shortcut global que CerebroNegocio.jsx usa con "/").
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -283,7 +296,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
         onNavegar={navegar}
         onPreguntar={preguntar}
       />
-      {/* SIDEBAR — P43: lista plana + acordeón exclusivo, colapsable a riel de íconos. */}
       <aside className={`flex shrink-0 flex-col border-r border-linea bg-crema/70 transition-[width] duration-200 ${sidebarColapsado ? "w-16" : "w-64"}`}>
         <div className={`flex items-center border-b border-linea py-5 ${sidebarColapsado ? "justify-center px-2" : "justify-between px-5"}`}>
           {!sidebarColapsado && (
@@ -476,6 +488,10 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "auditoria" && <Auditoria />}
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
+                {section === "ubicaciones" && <Ubicaciones />}
+                {section === "lotes" && <Lotes onNavegar={navegar} />}
+                {section === "proveedores" && <Proveedores />}
+                {section === "ordenes_compra" && <OrdenesCompra />}
                 </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
@@ -529,10 +545,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   );
 }
 
-// P43 — una fila del sidebar, para hoja o para padre de grupo. En modo riel
-// (colapsado) esconde el label y el badge se reduce a un puntito; un tooltip
-// propio (no sólo `title`) lo compensa, porque en ese modo no hay texto en
-// pantalla que lo reemplace.
+// En modo riel (colapsado) esconde el label y el badge se reduce a un
+// puntito; un tooltip propio (no sólo `title`) lo compensa, porque en ese
+// modo no hay texto en pantalla que lo reemplace.
 function ItemNav({ icon: Icon, label, activo, colapsado, onClick, badge, dot, chevron, chevronAbierto }) {
   // `position: fixed` (medido con getBoundingClientRect) en vez de un
   // `absolute` normal: el <nav> del sidebar tiene overflow-y-auto, y por regla

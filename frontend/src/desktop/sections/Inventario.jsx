@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Treemap, Tooltip } from "recharts";
-import { Search, Sparkles, Lock, X } from "lucide-react";
+import { Search, Sparkles, Lock, X, Plus, Pencil } from "lucide-react";
+import { toast } from "../../lib/toastStore";
 import AngelaMark from "../../components/AngelaMark";
 import AngelaSays from "../../components/AngelaSays";
 import { useCountUp } from "../../lib/useCountUp";
@@ -56,6 +57,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
   const [grupoSel, setGrupoSel] = useState("fantasmas");
   const [detalle, setDetalle] = useState(null); // producto seleccionado (modal)
   const [tablaFiltro, setTablaFiltro] = useState(null); // filtro pedido desde afuera
+  const [reloadKey, setReloadKey] = useState(0); // fuerza refetch de Panorama tras crear/editar un producto
   const vista = useVista();
   const foco = useFoco();
 
@@ -112,7 +114,7 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       </div>
 
       {sub === "foco" && <FocoView foco={foco} onSelect={setDetalle} onPreguntar={onPreguntar} onSalir={() => { focoStore.clear(); setSub("panorama"); }} />}
-      {sub === "panorama" && <Panorama data={data} onSelect={setDetalle} onNavegar={onNavegar} tablaFiltro={tablaFiltro} />}
+      {sub === "panorama" && <Panorama key={reloadKey} data={data} onSelect={setDetalle} onNavegar={onNavegar} tablaFiltro={tablaFiltro} />}
       {sub === "margenes" && <Margenes onPreguntar={onPreguntar} />}
       {sub === "reponer" && <Reponer onPreguntar={onPreguntar} />}
       {sub === "problemas" && (
@@ -120,7 +122,10 @@ export default function Inventario({ data, highlight, onPreguntar, onNavegar }) 
       )}
       {pestActiva && <PestanaCustom pestana={pestActiva} onSelect={setDetalle} />}
 
-      {detalle && <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar} />}
+      {detalle && (
+        <ProductoDetalle p={detalle} onClose={() => setDetalle(null)} onPreguntar={onPreguntar}
+          onGuardado={() => { setDetalle(null); setReloadKey((k) => k + 1); }} />
+      )}
     </div>
   );
 }
@@ -506,10 +511,12 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todos");
   const [errSel, setErrSel] = useState("todos"); // sub-filtro dentro de "Datos a corregir"
+  const [crearAbierto, setCrearAbierto] = useState(false);
   const vista = useVista();
   const margen = (p) => (p.pvp && p.costo_iva ? Math.round(((p.pvp - p.costo_iva) / p.pvp) * 100) : null);
 
-  useEffect(() => { api.articulos().then((r) => setItems(r.items)).catch(() => {}); }, []);
+  const cargarItems = () => api.articulos().then((r) => setItems(r.items)).catch(() => {});
+  useEffect(() => { cargarItems(); }, []);
   // Navegación guiada ("mostrame las balanzas"): activa el filtro desde afuera.
   useEffect(() => { if (filtroInicial) setFiltro(filtroInicial); }, [filtroInicial]);
 
@@ -585,7 +592,15 @@ function TablaCompleta({ onSelect, onNavegar, filtroInicial }) {
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("inventario.tabla_buscar")}
             className="w-64 rounded-full border border-linea bg-papel py-2 pl-9 pr-3 text-[0.88rem] outline-none focus:border-tinta/40" />
         </div>
+        <button onClick={() => setCrearAbierto(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-2 text-[0.86rem] font-semibold text-crema">
+          <Plus size={15} /> {t("inventario.nuevo_producto")}
+        </button>
       </div>
+      {crearAbierto && (
+        <ModalArticulo onClose={() => setCrearAbierto(false)}
+          onGuardado={() => { setCrearAbierto(false); cargarItems(); }} />
+      )}
       <div className="flex flex-wrap gap-2 border-b border-linea px-4 py-2.5">
         {FILTROS.map((f) => (
           <button key={f.id} onClick={() => { setFiltro(f.id); setErrSel("todos"); }}
@@ -774,9 +789,15 @@ function Leyenda({ color, label, value }) {
 }
 
 /* Modal de detalle de un producto */
-function ProductoDetalle({ p, onClose, onPreguntar }) {
+function ProductoDetalle({ p, onClose, onPreguntar, onGuardado }) {
   const t = useT();
+  const [editando, setEditando] = useState(false);
   const e = ESTADO_CAL[p.estado_calidad] || ESTADO_CAL.ok;
+
+  if (editando) {
+    return <ModalArticulo inicial={p} onClose={() => setEditando(false)} onGuardado={onGuardado} />;
+  }
+
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-tinta/40 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
@@ -785,7 +806,12 @@ function ProductoDetalle({ p, onClose, onPreguntar }) {
             <p className="font-display text-[1.2rem] font-bold leading-tight">{p.descripcion || p.name}</p>
             <p className="text-[0.88rem] text-tinta-suave">{t("inventario.det_codigo", { codigo: p.codigo })}</p>
           </div>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <div className="flex shrink-0 items-center gap-3">
+            {onGuardado && (
+              <button onClick={() => setEditando(true)} className="text-tinta-suave hover:text-tinta"><Pencil size={18} /></button>
+            )}
+            <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          </div>
         </div>
         {p.estado_calidad && (
           <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[0.88rem] font-semibold ${e.cls}`}>{t(e.lk)}</span>
@@ -813,6 +839,83 @@ function ProductoDetalle({ p, onClose, onPreguntar }) {
         >
           <AngelaMark size={18} /> {t("inventario.det_preguntar")}
         </button>
+      </div>
+    </div>
+  );
+}
+
+const CAMPOS_ARTICULO = [
+  ["codigo", "inventario.form_codigo", "number"],
+  ["descripcion", "inventario.form_descripcion", "text"],
+  ["tipo", "inventario.form_categoria", "text"],
+  ["proveedor", "inventario.form_proveedor", "text"],
+  ["stock", "inventario.form_stock", "number"],
+  ["costo_iva", "inventario.form_costo", "number"],
+  ["pvp", "inventario.form_pvp", "number"],
+];
+
+function ModalArticulo({ inicial, onClose, onGuardado }) {
+  const t = useT();
+  const [form, setForm] = useState({
+    codigo: inicial?.codigo ?? "", descripcion: inicial?.descripcion || "",
+    tipo: inicial?.tipo || "", proveedor: inicial?.proveedor || "",
+    stock: inicial?.stock ?? "", costo_iva: inicial?.costo_iva ?? "", pvp: inicial?.pvp ?? "",
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const guardar = async () => {
+    setGuardando(true);
+    setError(null);
+    const payload = {
+      ...form,
+      codigo: Number(form.codigo),
+      stock: form.stock === "" ? 0 : Number(form.stock),
+      costo_iva: form.costo_iva === "" ? null : Number(form.costo_iva),
+      pvp: form.pvp === "" ? null : Number(form.pvp),
+    };
+    try {
+      if (inicial) {
+        const { codigo, ...cambios } = payload;
+        await api.articuloActualizar(inicial.codigo, cambios);
+      } else {
+        await api.articuloCrear(payload);
+      }
+      toast(t(inicial ? "inventario.producto_actualizado" : "inventario.producto_creado"));
+      onGuardado();
+    } catch (e) {
+      setError(e.criollo || t("inventario.form_error"));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onClose}>
+      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
+        <div className="flex items-start justify-between">
+          <h2 className="font-display text-xl font-bold">{t(inicial ? "inventario.form_editar" : "inventario.nuevo_producto")}</h2>
+          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+        </div>
+        {CAMPOS_ARTICULO.map(([campo, lk, tipo]) => (
+          <div key={campo}>
+            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <input type={tipo} value={form[campo]} disabled={campo === "codigo" && !!inicial}
+              onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
+              autoFocus={campo === "codigo"}
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40 disabled:opacity-60" />
+          </div>
+        ))}
+        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+            {t("inventario.form_cancelar")}
+          </button>
+          <button onClick={guardar} disabled={!form.codigo || !form.descripcion.trim() || guardando}
+            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            {t("inventario.form_guardar")}
+          </button>
+        </div>
       </div>
     </div>
   );
