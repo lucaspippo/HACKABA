@@ -200,3 +200,14 @@ def test_capture_off_refuses_recordar_too():
     result, _ = angela._run_tool("recordar", {"clave": "tono", "valor": "informal"})
     assert result["ok"] is False
     assert memoria.get("emilio")["preferencias"] == {}
+
+
+# --- provenance: who taught it, when ------------------------------------------
+
+def test_resumen_pieza_carries_who_taught_it():
+    pieza = conocimiento.crear(
+        texto="Regla con autor", tipo="contexto", ambito="global",
+        nodo="caja", efecto="contexto_para_angela",
+        origen={"quien": "aldo", "cuando": "2026-09-10"})
+    resumen = conocimiento.resumen_pieza(pieza)
+    assert resumen["quien"] == "aldo"
