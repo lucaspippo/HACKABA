@@ -246,7 +246,8 @@ def _card_dormido(lang, ctx) -> dict | None:
                           monto=_pesos(rot["por_estado"]["dormido"], lang)),
                        _t("core.opn.dormido_p2", lang, top5=_pesos(top5, lang))],
             "grafico": grafico,
-            "involucrados": [{"nombre": x["producto"], "monto": x["inmovilizado"],
+            "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                              "nombre": x["producto"], "monto": x["inmovilizado"],
                               "detalle": (_t("core.opn.dormido_dias", lang,
                                              dias=int(x["dias_rotacion"]))
                                           if x.get("dias_rotacion")
@@ -301,7 +302,8 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
             continue  # su reposición NO cae antes de la lista siguiente
         monto_item = faltante_u * a["costo_iva"]
         compra += monto_item
-        items.append({"nombre": a["descripcion"], "monto": round(monto_item, 2),
+        items.append({"id": a.get("codigo"), "kind": "product",
+                      "nombre": a["descripcion"], "monto": round(monto_item, 2),
                       "detalle": _t("core.opn.ventana_cob", lang, dias=int(cob))})
     if compra <= 0:
         return None
@@ -615,7 +617,8 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
         "drill": {
             "porque": porque,
             "grafico": grafico,
-            "involucrados": [{"nombre": p, "monto": None,
+            "involucrados": [{"id": _a.get("codigo"), "kind": "product",
+                              "nombre": p, "monto": None,
                               "detalle": _t("core.opn.qi_i", lang, dias=int(c),
                                             pos=ps)}
                              for c, ps, p, _a, _r in cands[1:6]],
@@ -802,7 +805,8 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
             if extra_mes <= 0:
                 continue
             ganancia_total += extra_mes
-            bajos.append({"nombre": a["descripcion"], "monto": round(extra_mes, 2),
+            bajos.append({"id": a.get("codigo"), "kind": "product",
+                          "nombre": a["descripcion"], "monto": round(extra_mes, 2),
                           "detalle": _t("core.opn.margen_i", lang, m=f"{m:.1f}",
                                         prom=f"{prom:.1f}",
                                         cat=i18n.categoria(cat, lang))})
