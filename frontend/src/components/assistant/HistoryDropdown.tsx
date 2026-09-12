@@ -1,81 +1,24 @@
 import { useMemo, useRef, useState } from "react";
-import { useAui, useAuiState } from "@assistant-ui/react";
-import { History, Plus, Search } from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { useAui } from "@assistant-ui/react";
+import { History, Search } from "lucide-react";
 import IconButton from "./IconButton";
+import { groupByDay, useVisibleThreads } from "./threads";
 import { useT } from "../../lib/i18n";
 
-// Reads the thread list the runtime already maintains (persisted in
-// localStorage via chatRuntimeProvider) and groups it by day — same
-// pattern as polfin (components/assistant/chat-toolbar.tsx), styled to match
-// this app.
-function useVisibleThreads(untitled) {
-  const threadItems = useAuiState((s) => s.threads.threadItems);
-  return useMemo(
-    () =>
-      threadItems
-        .filter((t) => t.remoteId && t.status === "regular")
-        .map((t) => ({
-          remoteId: t.remoteId,
-          title: t.title?.trim() || untitled,
-          lastMessageAt: t.lastMessageAt ?? new Date(),
-        }))
-        .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime()),
-    [threadItems, untitled]
-  );
-}
-
-function isSameDay(a, b) {
-  return a.toDateString() === b.toDateString();
-}
-
-function groupByDay(threads, labels) {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const groups = [
-    { label: labels.today, items: [] },
-    { label: labels.yesterday, items: [] },
-    { label: labels.older, items: [] },
-  ];
-  for (const t of threads) {
-    if (isSameDay(t.lastMessageAt, today)) groups[0].items.push(t);
-    else if (isSameDay(t.lastMessageAt, yesterday)) groups[1].items.push(t);
-    else groups[2].items.push(t);
-  }
-  return groups.filter((g) => g.items.length > 0);
-}
-
-export function useActiveThreadTitle(fallback = "Ángela") {
-  return useAuiState((s) => s.threadListItem.title)?.trim() || fallback;
-}
-
-export function NewChatButton({ className = "" }) {
-  const aui = useAui();
-  const t = useT();
-  return (
-    <IconButton
-      label={t("chat.control.new_thread")}
-      onClick={() => aui.threads.switchToNewThread()}
-      className={className}
-    >
-      <Plus size={16} />
-    </IconButton>
-  );
-}
-
-export function HistoryDropdown() {
+export default function HistoryDropdown() {
   const aui = useAui();
   const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const inputRef = useRef(null);
-  const triggerRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const threads = useVisibleThreads(t("chat.history.untitled"));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return threads;
-    return threads.filter((t) => t.title.toLowerCase().includes(q));
+    return threads.filter((thread) => thread.title.toLowerCase().includes(q));
   }, [threads, query]);
 
   const groups = useMemo(
@@ -85,7 +28,7 @@ export function HistoryDropdown() {
         yesterday: t("chat.history.yesterday"),
         older: t("chat.history.older"),
       }),
-    [filtered, t]
+    [filtered, t],
   );
 
   const openMenu = () => {
@@ -95,7 +38,7 @@ export function HistoryDropdown() {
 
   // Escape closes the dropdown before it can reach the dock, which closes on
   // Escape too; the innermost overlay wins.
-  const onKeyDown = (event) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Escape" || !open) return;
     event.stopPropagation();
     setOpen(false);
@@ -104,11 +47,7 @@ export function HistoryDropdown() {
 
   return (
     <div className="relative" onKeyDown={onKeyDown}>
-      <IconButton
-        label={t("chat.control.history")}
-        onClick={openMenu}
-        buttonRef={triggerRef}
-      >
+      <IconButton label={t("chat.control.history")} onClick={openMenu} buttonRef={triggerRef}>
         <History size={16} />
       </IconButton>
       {open && (
@@ -127,19 +66,24 @@ export function HistoryDropdown() {
             </div>
             <div className="max-h-80 overflow-y-auto">
               {groups.length === 0 && (
-                <p className="px-3 py-4 text-center text-[0.78rem] text-tinta-suave">{t("chat.history.empty")}</p>
+                <p className="px-3 py-4 text-center text-[0.78rem] text-tinta-suave">
+                  {t("chat.history.empty")}
+                </p>
               )}
-              {groups.map((g) => (
-                <div key={g.label} className="mb-2 last:mb-0">
+              {groups.map((group) => (
+                <div key={group.label} className="mb-2 last:mb-0">
                   <div className="px-2 pb-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave/80">
-                    {g.label}
+                    {group.label}
                   </div>
                   <div className="flex flex-col gap-0.5">
-                    {g.items.map((thread) => (
+                    {group.items.map((thread) => (
                       <button
                         key={thread.remoteId}
                         type="button"
-                        onClick={() => { setOpen(false); aui.threads.switchToThread(thread.remoteId); }}
+                        onClick={() => {
+                          setOpen(false);
+                          aui.threads.switchToThread(thread.remoteId);
+                        }}
                         className="w-full truncate rounded-xl px-3 py-1.5 text-left text-[0.82rem] text-tinta hover:bg-papel"
                       >
                         {thread.title}
