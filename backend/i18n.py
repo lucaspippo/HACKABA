@@ -1755,6 +1755,14 @@ CATALOGO: dict[str, dict[str, str]] = {
     "escena.canal_reporte": {"es": "reporte", "en": "report"},
     "escena.rel_dijo": {"es": "lo dijo por {canal}", "en": "said it over {canal}"},
     "escena.rel_menciona": {"es": "habla de", "en": "is about"},
+    # antes las dos decían «habla de» y no explicaban nada: ahora cada una dice
+    # QUÉ aporta esa nota — qué llegó y de quién
+    "escena.rel_que_llego": {"es": "qué llegó roto", "en": "what arrived broken"},
+    "escena.rel_de_quien": {"es": "de qué proveedor", "en": "from which supplier"},
+    "escena.rel_arma": {"es": "arma el reclamo", "en": "builds the claim"},
+    "escena.rel_envia": {"es": "se envía por {canal}", "en": "sent over {canal}"},
+    "escena.envio_titulo": {"es": "Reclamo enviado", "en": "Claim sent"},
+    "escena.envio_sub": {"es": "a {destinatario}", "en": "to {destinatario}"},
     "escena.rel_provee": {"es": "se lo provee", "en": "supplies it"},
     "escena.rel_ordena": {"es": "es de esta orden", "en": "from this order"},
     # corta a propósito: el detalle (qué pide, por dónde, en cuántos días) vive

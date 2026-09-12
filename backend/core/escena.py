@@ -156,33 +156,32 @@ def reclamo(lang: str = "es") -> dict:
     # para que ni el post-it (150 de ancho) ni la tarjeta de regla (170) se
     # toquen con el vecino.
     nodos = [
-        _nodo("persona", "persona", 92, 168,
+        _nodo("persona", "persona", 96, 176,
               nombre=_nombre_de(nota.get("autor")),
               rol=_rol_de(nota.get("autor"))),
-        _nodo("nota", "nota", 392, 150,
+        _nodo("nota", "nota", 392, 158,
               texto=notas.texto_en(nota, lang),
               canal=nota.get("canal"), autor=nota.get("autor"),
               fecha=nota.get("fecha")),
-        _nodo("producto", "producto", 690, 92,
+        _nodo("producto", "producto", 706, 142,
               nombre=producto_nombre, lote=(lote or {}).get("lote")),
-        _nodo("proveedor", "proveedor", 660, 282, nombre=PROVEEDOR_CASO),
-        _nodo("regla", "regla", 878, 210,
+        _nodo("proveedor", "proveedor", 404, 400, nombre=PROVEEDOR_CASO),
+        _nodo("regla", "regla", 880, 250,
               texto=regla_caso.get("texto"),
               requisitos=_requisitos_leibles(regla_caso, lang),
               canal=r_caso.get("canal"), plazo_dias=r_caso.get("plazo_dias"),
               quien=_nombre_de(o_caso.get("quien")), cuando=o_caso.get("cuando")),
-        _nodo("orden", "orden", 330, 330,
+        _nodo("orden", "orden", 150, 396,
               numero=(orden or {}).get("numero"),
               fecha=(orden or {}).get("fecha")),
-        # --- abajo del separador: el contraste ---
-        _nodo("proveedor_b", "proveedor", 660, 482, nombre=PROVEEDOR_CONTRASTE,
-              apagado=True),
-        _nodo("regla_b", "regla", 878, 482,
-              texto=regla_otro.get("texto"),
-              requisitos=_requisitos_leibles(regla_otro, lang),
-              canal=r_otro.get("canal"), plazo_dias=r_otro.get("plazo_dias"),
-              quien=_nombre_de(o_otro.get("quien")), cuando=o_otro.get("cuando"),
-              apagado=True),
+        # EL ÚLTIMO ESLABÓN: el reclamo SALE. Sin esto la cadena terminaba
+        # en la regla y parecía que el sistema entrega un informe. El producto
+        # se vende justamente por lo contrario — PRODUCT.md, The Action
+        # Principle: un proceso que termina en un informe está incompleto.
+        _nodo("envio", "envio", 726, 452,
+              canal=r_caso.get("canal"),
+              destinatario=PROVEEDOR_CASO,
+              adjuntos=_requisitos_leibles(regla_caso, lang)),
     ]
 
     # --- las aristas, en el ORDEN en que se trazan -----------------------
@@ -193,9 +192,9 @@ def reclamo(lang: str = "es") -> dict:
          "etiqueta": _t("escena.rel_dijo", lang, canal=_canal_leible(nota.get("canal"), lang)),
          "curva": -0.16},
         {"de": "nota", "a": "producto", "rel": "menciona",
-         "etiqueta": _t("escena.rel_menciona", lang), "curva": -0.26},
+         "etiqueta": _t("escena.rel_que_llego", lang), "curva": -0.26},
         {"de": "nota", "a": "proveedor", "rel": "menciona",
-         "etiqueta": _t("escena.rel_menciona", lang), "curva": 0.22},
+         "etiqueta": _t("escena.rel_de_quien", lang), "curva": 0.24},
         {"de": "proveedor", "a": "producto", "rel": "provee",
          "etiqueta": _t("escena.rel_provee", lang), "curva": 0.3},
         {"de": "proveedor", "a": "orden", "rel": "ordena",
@@ -203,10 +202,14 @@ def reclamo(lang: str = "es") -> dict:
         {"de": "regla", "a": "proveedor", "rel": "exige",
          "etiqueta": _t("escena.rel_exige", lang),
          "curva": -0.2, "fuerte": True},
-        # el contraste, fuera de la secuencia
-        {"de": "regla_b", "a": "proveedor_b", "rel": "exige",
-         "etiqueta": _t("escena.rel_exige", lang),
-         "curva": 0.0, "apagado": True},
+        # y el cierre: el reclamo armado sale al proveedor, por donde ese
+        # proveedor pide y con lo que ese proveedor pide
+        {"de": "regla", "a": "envio", "rel": "arma",
+         "etiqueta": _t("escena.rel_arma", lang), "curva": 0.2},
+        {"de": "envio", "a": "proveedor", "rel": "envia",
+         "etiqueta": _t("escena.rel_envia", lang,
+                        canal=_canal_leible(r_caso.get("canal"), lang)),
+         "curva": 0.26, "fuerte": True},
     ]
 
     # qué tiene y qué falta, para el encabezado
@@ -224,8 +227,7 @@ def reclamo(lang: str = "es") -> dict:
         "disponible": True,
         "id": "reclamo",
         "titulo": _t("escena.titulo", lang, proveedor=PROVEEDOR_CASO),
-        "lienzo": {"ancho": ANCHO, "alto": ALTO, "separador": Y_SEPARADOR},
-        "separador_texto": _t("escena.separador", lang),
+        "lienzo": {"ancho": ANCHO, "alto": ALTO},
         "nodos": nodos,
         "aristas": aristas,
         "plazo": el_plazo,

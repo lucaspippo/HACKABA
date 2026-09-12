@@ -96,3 +96,36 @@ def precalentar() -> None:
             _prio.inbox(lang, None)
         except Exception:  # noqa: BLE001
             pass
+        # LO QUE USA ÁNGELA CUANDO LE PREGUNTAN DE VERDAD.
+        # Medido con un proceso ya precalentado, el tiempo que tardaba cada
+        # herramienta EN CALIENTE: consultar_cruces 2,0 s · capital_recuperable
+        # 1,4 s · consultar_evolucion 0,98 s · cuentas_corrientes 0,81 s ·
+        # consultar_deposito 0,70 s. Eran segundos de reloj que no los ponía el
+        # modelo: los poníamos nosotros recomputando en la tool lo que la
+        # pantalla equivalente ya leía del cache. Las tools ahora pasan por
+        # estas mismas llaves (ver angela._run_tool) y acá se llenan al
+        # arrancar, así la PRIMERA pregunta del jurado ya las encuentra hechas.
+        for llave, hacer in (
+            ("cruces", lambda l=lang: __import__(
+                "core.cruces", fromlist=["cards"]).cards(l)),
+            ("oportunidades", lambda l=lang: __import__(
+                "core.oportunidades_neg", fromlist=["cards"]).cards(l)),
+            ("cuentas_panorama", lambda: _panorama_cuentas()),
+            ("deposito_resumen", lambda: _resumen_deposito()),
+        ):
+            try:
+                get_o_computar(llave, lang, hacer)
+            except Exception:  # noqa: BLE001 — el precalc nunca rompe el arranque
+                pass
+
+
+def _panorama_cuentas() -> dict:
+    """El mismo compuesto que arma la tool `cuentas_corrientes` sin cliente."""
+    from . import cuentas
+    return {"totales": cuentas.totales(), "clientes": cuentas.listar(),
+            "morosos": cuentas.morosos(), "alertas": cuentas.alertas()}
+
+
+def _resumen_deposito() -> dict:
+    from . import deposito
+    return deposito.resumen()

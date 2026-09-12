@@ -91,9 +91,22 @@ def test_evolucion_pasa_por_el_cache(h):
 
 
 def test_lifespan_precalienta():
-    """Con el ciclo de vida real del server (TestClient como context manager),
-    el cache queda poblado ANTES del primer request."""
+    """Con el ciclo de vida real del server, el arranque dispara el precálculo.
+
+    OJO CON EL CONTRATO: antes esto corría DENTRO del lifespan y el cache
+    estaba poblado antes del primer request. Con el tenant del demo eso tardaba
+    ~70 s en los que el server no aceptaba una sola request — reiniciar durante
+    una demo dejaba todo muerto más de un minuto. Ahora corre en un hilo: el
+    server abre al instante y lo que llegue mientras tanto se computa
+    on-demand, que es exactamente lo que pasaba sin precálculo.
+
+    Así que lo que se verifica es que el precálculo EFECTIVAMENTE corre, no que
+    ya terminó al salir del `with`: para eso hay que esperar al hilo.
+    """
     analisis_cache.limpiar()
     with TestClient(main.app):
+        assert main.PRECALC_THREAD is not None, "el arranque no lanzó el precálculo"
+        main.PRECALC_THREAD.join(timeout=180)
+        assert not main.PRECALC_THREAD.is_alive(), "el precálculo no terminó"
         assert len(analisis_cache._cache) >= 4   # analisis+evolucion × es+en
     analisis_cache.limpiar()

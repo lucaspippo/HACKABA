@@ -71,6 +71,12 @@ def _admin_de(token: str) -> dict:
     return u
 
 
+# El hilo que precalienta el cache al arrancar. Se guarda para que los tests
+# puedan esperarlo: el precálculo dejó de ser síncrono (ver el lifespan), así
+# que "está caliente" ya no se puede afirmar sin unirse al hilo primero.
+PRECALC_THREAD = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     auth.cargar_o_generar_credenciales()
@@ -105,11 +111,31 @@ async def lifespan(app: FastAPI):
               f"generadas.", flush=True)
     # P11·B4: precálculo de análisis al arrancar — la primera entrada a
     # Oportunidades/Alertas ya sale del cache (clave con YC en la URL pública).
-    try:
-        from core import analisis_cache
-        analisis_cache.precalentar()
-    except Exception:
-        pass  # sin precalc el endpoint computa on-demand: nunca rompe el arranque
+    #
+    # EN UN HILO, Y NO EN LÍNEA. Medido: precalentar() tarda ~70 s con el
+    # tenant del demo. Adentro del lifespan eso son setenta segundos en los que
+    # el server NO acepta una sola request — o sea que reiniciar durante el
+    # evento dejaba la demo muerta más de un minuto. Ahora abre al instante:
+    # lo que llegue mientras tanto se computa on-demand (que es exactamente lo
+    # que pasaba sin precalc) y a los ~70 s ya está todo caliente. Es seguro:
+    # get_o_computar computa FUERA del lock y estos análisis son funciones
+    # puras, así que una carrera entre el hilo y un request da el mismo valor.
+    def _precalentar_en_segundo_plano() -> None:
+        try:
+            from core import analisis_cache
+            t0 = _time.monotonic()
+            analisis_cache.precalentar()
+            print(f"[polpilot] precalentado en {_time.monotonic() - t0:.1f}s",
+                  flush=True)
+        except Exception as e:  # noqa: BLE001 — nunca rompe el arranque
+            print(f"[polpilot] precalc falló (se computa on-demand): {e}", flush=True)
+
+    import threading as _threading
+    import time as _time
+    global PRECALC_THREAD
+    PRECALC_THREAD = _threading.Thread(target=_precalentar_en_segundo_plano,
+                                       name="polpilot-precalc", daemon=True)
+    PRECALC_THREAD.start()
     # The MCP server (/mcp) needs its task group alive for the whole process
     # (StreamableHTTPSessionManager.run()) — nested here so it shares the
     # rest of the app's startup/shutdown lifecycle.
@@ -3307,6 +3333,24 @@ def escena_reclamo(u: dict = Depends(require_feature("mapa"))):
     lang = _lang(u)
     return analisis_cache.get_o_computar(
         "escena_reclamo", lang, lambda: escena.reclamo(lang))
+
+
+@app.get("/api/cerebro/tools-nodos")
+def cerebro_tools_nodos(_u: dict = Depends(require_feature("mapa"))):
+    """QUÉ PARTE DEL CEREBRO TOCA CADA HERRAMIENTA.
+
+    Lo usa la pantalla del grafo para encender el camino cuando la pregunta NO
+    es la del demo: Ángela contesta de verdad, el stream va diciendo qué
+    herramienta corre, y con este mapa se iluminan los nodos que esa
+    herramienta efectivamente consultó.
+
+    Va por la API y no copiado en el frontend a propósito: el mismo diccionario
+    que recorta las herramientas por tema es el que dibuja el camino, así no
+    hay dos versiones de la verdad que se desincronicen.
+
+    Es una constante: ni toca datos del tenant ni depende del idioma."""
+    from core import temas
+    return {"nodos_por_tool": {k: list(v) for k, v in temas.NODOS_POR_TOOL.items()}}
 
 
 @app.get("/api/evals")

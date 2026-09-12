@@ -337,6 +337,7 @@ export const EN = {
   "cerebro.resp_2": "I already have {tiene}. Missing {falta}.",
   "cerebro.resp_3": "I put it together. Shall I send it?",
   "cerebro.resp_otra": "I do not have a path for that yet. Try the Campo Alegre return.",
+  "cerebro.resp_error": "I could not answer that right now. Try again in a moment.",
   "cerebro.tab_mapa": "Map",
   "cerebro.tab_cerebro": "Brain",
   "cerebro.tab_mapa_ay": "The eight sources and their data cuts",

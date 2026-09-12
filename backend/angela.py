@@ -2010,9 +2010,11 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
             return (c or {"encontrado": False, "cliente": cli}), None
         # B12: los totales vienen YA calculados por el core — el modelo los
         # repite textuales, nunca suma la lista (números idénticos en cámara).
-        return {"totales": cuentas.totales(),
-                "clientes": cuentas.listar(), "morosos": cuentas.morosos(),
-                "alertas": cuentas.alertas()}, \
+        from core import analisis_cache as _ac
+        return _ac.get_o_computar(
+            "cuentas_panorama", _idioma_actual(),
+            lambda: {"totales": cuentas.totales(), "clientes": cuentas.listar(),
+                     "morosos": cuentas.morosos(), "alertas": cuentas.alertas()}), \
                {"type": "navigate", "section": "cuentas", "highlight": "morosos"}
     if name == "scoring_credito":
         return cuentas.scoring_venta(args.get("cliente", ""), float(args.get("monto") or 0),
@@ -2037,13 +2039,20 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
             return {"vencidos": deposito.vencidos()}, None
         if modo == "discrepancias":
             return {"discrepancias": deposito.discrepancias()}, None
-        return deposito.resumen(), None
+        from core import analisis_cache as _ac
+        return _ac.get_o_computar("deposito_resumen", _idioma_actual(),
+                                  deposito.resumen), None
     # P·cruces — los hallazgos de 3+ dominios del cerebro. El código los detecta
     # y calcula; Ángela sólo los cuenta. Van con `dominios` y `porque` armados:
     # si el modelo quisiera improvisar un cruce, acá tiene el set cerrado.
     if name == "consultar_cruces":
-        from core import cruces as _cruces
-        todos = _cruces.cards(_idioma_actual())
+        # Por el cache, igual que el endpoint. `cards()` es funcion pura de
+        # (datos, idioma, hoy) y tardaba 2,0 s EN CALIENTE porque la tool
+        # llamaba al core derecho mientras la pantalla equivalente leia del
+        # cache: dos caminos al mismo calculo, uno pagandolo siempre.
+        from core import analisis_cache as _ac, cruces as _cruces
+        _lang = _idioma_actual()
+        todos = _ac.get_o_computar("cruces", _lang, lambda: _cruces.cards(_lang))
         pedido = (args.get("id") or "").strip()
         if pedido:
             uno = next((c for c in todos if c["id"] == pedido), None)
@@ -2126,7 +2135,13 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
 
     # Evolución (histórico deflactado). La serie va recortada para no quemar tokens.
     if name == "consultar_evolucion":
-        p = evolucion.panorama(_idioma_actual())
+        # La llave "evolucion" YA la precalienta el arranque; la tool la
+        # ignoraba y recomputaba. Se copia antes de recortar la serie: el
+        # valor cacheado es compartido y no se toca.
+        from core import analisis_cache as _ac
+        _lang = _idioma_actual()
+        p = dict(_ac.get_o_computar("evolucion", _lang,
+                                    lambda: evolucion.panorama(_lang)))
         if p.get("serie"):
             p["serie"] = p["serie"][-12:]
         accion = {"type": "navigate", "section": "evolucion"} if p.get("hay_datos") else None
@@ -2632,9 +2647,27 @@ def _prepare_turn(message, history, role, name, features, language):
         + _contexto_externo() + who
     )
 
-    model = config.modelo_para()
-    available_tools = _with_tool_cache_control(
-        tools_para(_features_actuales(), _settings.get("knowledge_capture", True)))
+    # CAPA 1 — el rol: qué tiene permitido ver esta persona.
+    permitidas = tools_para(_features_actuales(),
+                            _settings.get("knowledge_capture", True))
+    # CAPA 2 — el tema: de 50 definiciones viajan las que tienen que ver con lo
+    # que se preguntó. Misma mecánica que la capa 1, otra llave.
+    #
+    # EL COSTADO INCÓMODO, escrito para que nadie lo redescubra: el bloque de
+    # tools lleva el breakpoint de cache (_with_tool_cache_control), así que
+    # mientras el array era idéntico en todos los requests se leía cacheado.
+    # Variarlo por pregunta rompe esa reutilización. A cambio se mandan ~3-5k
+    # tokens en vez de ~11k y —lo que de verdad pesa— el modelo elige entre 18
+    # y no entre 50, que es donde se ahorran RONDAS de tool-use, y cada ronda
+    # es una llamada entera. Por eso va prendido; por eso también se apaga con
+    # POLPILOT_TOOLS_POR_TEMA=0 sin tocar código si en vivo mide peor.
+    from core import temas as _temas
+    los_temas = _temas.temas_de(message)
+    if config.TOOLS_POR_TEMA and los_temas:
+        permitidas = _temas.tools_del_tema(permitidas, message)
+    # El mismo tema elige el modelo: mover la app no razona, analizar sí.
+    model = config.modelo_para(temas_pedidos=los_temas)
+    available_tools = _with_tool_cache_control(permitidas)
 
     messages: list[dict] = []
     for turn in (history or [])[-6:]:

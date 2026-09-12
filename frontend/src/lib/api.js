@@ -269,6 +269,10 @@ export const api = {
   // panel never re-measures.
   // La escena del reclamo: ocho nodos ya colocados por el backend.
   escenaReclamo: () => get("/api/escena/reclamo"),
+  // Qué tipos de nodo toca cada herramienta: con esto la pantalla del grafo
+  // enciende el camino de una respuesta REAL de Ángela (la que no es la del
+  // demo) con lo que efectivamente consultó.
+  cerebroToolsNodos: () => get("/api/cerebro/tools-nodos"),
   evals: () => get("/api/evals"),
   // THE OPERATION MAP — the physical chain (origin → warehouse → destination)
   // plus the context layer no ERP captures. Additive: neither the sources
