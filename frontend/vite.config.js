@@ -22,6 +22,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    setupFiles: ["./vitest.setup.js"],
     include: ["src/**/*.test.{ts,tsx}"],
   },
 });
