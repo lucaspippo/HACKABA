@@ -3880,6 +3880,38 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Lectura frágil: {assumptions} supuesto(s) y {alternatives} explicación(es) alternativa(s).",
         "en": "Fragile reading: {assumptions} assumption(s) and {alternatives} alternative explanation(s).",
     },
+
+    # --- core/app_events.py · what someone DID in the interface, narrated to
+    # Ángela on her next turn. Rendered at drain time, in the language of the
+    # conversation that reads it — not the one it was recorded in.
+    "core.app_events.finding_dismissed": {
+        "es": "{who} descartó el hallazgo «{title}» desde las tarjetas.",
+        "en": "{who} dismissed the finding “{title}” from the cards.",
+    },
+    "core.app_events.finding_accepted": {
+        "es": "{who} aceptó el hallazgo «{title}» desde las tarjetas.",
+        "en": "{who} accepted the finding “{title}” from the cards.",
+    },
+    "core.app_events.finding_already_knew": {
+        "es": "{who} dijo que ya sabía lo del hallazgo «{title}».",
+        "en": "{who} said they already knew about the finding “{title}”.",
+    },
+    "core.app_events.finding_feedback_other": {
+        "es": "{who} marcó el hallazgo «{title}» como «{action}».",
+        "en": "{who} marked the finding “{title}” as “{action}”.",
+    },
+    "core.app_events.rule_taught": {
+        "es": "{who} te enseñó una regla desde un hallazgo ({effect} en {node}): «{text}».",
+        "en": "{who} taught you a rule from a finding ({effect} on {node}): “{text}”.",
+    },
+    "core.app_events.view_pref_set": {
+        "es": "{who} cambió a mano la preferencia de vista «{key}».",
+        "en": "{who} changed the view preference “{key}” by hand.",
+    },
+    "core.app_events.view_pref_removed": {
+        "es": "{who} sacó a mano la preferencia de vista «{key}».",
+        "en": "{who} removed the view preference “{key}” by hand.",
+    },
 }
 
 

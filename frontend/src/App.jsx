@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
+import Showcase from "./components/assistant/tools/Showcase";
 import AngelaMark from "./components/AngelaMark";
 import Login from "./components/Login";
 import MobileApp from "./mobile/MobileApp";
@@ -28,6 +29,7 @@ const dataSinInventario = () => ({
 
 // Un cerebro, dos superficies, login real por usuario.
 export default function App() {
+  const location = useLocation();
   const t = useT();
   const session = useSession();
   const isDesktop = useIsDesktop();
@@ -101,6 +103,11 @@ export default function App() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, session]);
+
+  // /showcase renders the tool presenters from saved fixtures. It sits BEFORE
+  // the session gate on purpose: its whole value is needing no login, no
+  // backend and no API key (see Showcase.tsx).
+  if (location.pathname === "/showcase") return <Showcase />;
 
   // Sin sesión → autologin del demo si aplica (B8); si no, login.
   if (!session?.usuario) {
