@@ -1382,8 +1382,10 @@ CATALOGO: dict[str, dict[str, str]] = {
                             "en": "Worst: {peor}, {dias} days without paying."},
     "core.opn.morosos_chat": {"es": "ayudame a cobrarles a los morosos",
                                "en": "help me collect from the overdue customers"},
-    "core.opn.morosos_p1": {"es": "{n} clientes en mora suman {total} vencidos.",
-                             "en": "{n} overdue customers add up to {total} past due."},
+    # No {total}: the overdue sum is `overdue_total`'s own value. This exact
+    # line, next to that chip, is the duplication the owner reported.
+    "core.opn.morosos_p1": {"es": "{n} clientes tienen saldo vencido sin pagar.",
+                             "en": "{n} customers are carrying an unpaid overdue balance."},
     "core.opn.morosos_p2": {"es": "{peor} lleva {dias} días sin pagar cuando su promedio histórico es {prom} — el desvío es la señal.",
                              "en": "{peor} is {dias} days without paying vs a {prom}-day historical average — the deviation is the signal."},
     "core.opn.morosos_p2_lbl": {"es": "Días sin pagar vs. su promedio histórico ({peor})",
@@ -1493,6 +1495,12 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.qi_q2": {"es": "Cada semana sin él en la góndola son ~{semanal} que no facturás.",
                         "en": "Every week without it on the shelf is ~{semanal} you don't bill."},
     "core.opn.qi_i": {"es": "se agota en {dias} días (#{pos} por facturación)", "en": "runs out in {dias} days (#{pos} by revenue)"},
+    # The heading over the OTHER items about to run out. `qi_i` cannot serve
+    # here: it names one product's coverage and rank, and the rows below are
+    # the runners-up — the excluded leader's figures would head someone
+    # else's list.
+    "core.opn.stockout_items_lbl": {"es": "Otros productos por quebrar",
+                                     "en": "Other items about to run out"},
     "core.opn.qi_s1": {"es": "Supuesto: ritmo de venta estable (promedio de los últimos 12 meses).",
                         "en": "Assumption: stable sales pace (12-month average)."},
     "core.opn.stockout_count_ev": {"es": "Productos por quebrar", "en": "Products about to stock out"},
@@ -1914,9 +1922,11 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.caja_r": {
         "es": "Faltó en el {pct}% de los cierres de {dia} (vs {pct_resto}% el resto), {total} acumulado en {n} cierres.",
         "en": "Came up short in {pct}% of {dia} closes (vs {pct_resto}% the rest of the week), {total} accumulated over {n} closes."},
+    # No {total}/{n} here on purpose: the accumulated shortfall is
+    # `shortfall_total`'s own value, the very next evidence item.
     "core.pat.caja_r_lbl": {
-        "es": "Faltante los {dia} vs. el resto de la semana ({total} en {n} cierres)",
-        "en": "Shortfall rate on {dia}s vs. the rest of the week ({total} across {n} closes)"},
+        "es": "Faltante los {dia} vs. el resto de la semana",
+        "en": "Shortfall rate on {dia}s vs. the rest of the week"},
     "core.pat.caja_chat": {
         "es": "¿Por qué falta tanto la caja los días {dia}?",
         "en": "Why does the till come up short so often on {dia}s?"},
@@ -2013,8 +2023,10 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "{m}% margin vs {cat}'s {prom}% average"},
     # P38·C — el hallazgo de margen NOMBRA al producto (un conteo no mueve a
     # nadie; "estás vendiendo X al 12% cuando su grupo deja 21%" sí).
-    "core.opn.margen_t2": {"es": "Estás vendiendo {producto} con {m}% de margen",
-                            "en": "You're selling {producto} at a {m}% margin"},
+    # No {m} here: the margin percentage is `margin_gap_pct`'s own value,
+    # rendered as its evidence chip right below the title.
+    "core.opn.margen_t2": {"es": "Estás vendiendo {producto} con margen bajo",
+                            "en": "You're selling {producto} at a low margin"},
     "core.opn.margen_r2": {"es": "Muy por debajo del {prom}% promedio de {cat}. Hay {n} más en la misma situación.",
                             "en": "Way below the {prom}% average for {cat}. There are {n} more in the same spot."},
     "core.opn.margen_r2_solo": {"es": "Muy por debajo del {prom}% promedio de {cat}. ¿Revisamos el precio?",
@@ -3455,9 +3467,11 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.atraso_r_lbl": {
         "es": "Días sin pagar vs. su promedio",
         "en": "Days unpaid vs. their average"},
+    # No {dias}/{prom}: both are `days_overdue`'s value and baseline, shown
+    # as its evidence chip immediately below.
     "core.prio.atraso_p": {
-        "es": "{nombre} lleva {dias} días; su promedio era {prom}.",
-        "en": "{nombre} is at {dias} days; their average was {prom}."},
+        "es": "{nombre} está pagando más lento que su propio histórico.",
+        "en": "{nombre} is paying more slowly than their own track record."},
     "core.prio.atraso_chat": {
         "es": "¿Qué hago con {nombre}, que se atrasó de más?",
         "en": "What should I do about {nombre}, who is later than usual?"},
@@ -3679,8 +3693,11 @@ CATALOGO: dict[str, dict[str, str]] = {
                            "en": "Why does today's till look unusual?"},
     "core.prio.caja_g": {"es": "Total de caja, últimos cierres", "en": "Cash total, recent closes"},
     "core.prio.caja_hoy": {"es": "Hoy", "en": "Today"},
-    "core.prio.caja_p": {"es": "El cierre de hoy ({total}) se desvía {pct}% del promedio de los últimos cierres ({prom}).",
-                         "en": "Today's close ({total}) deviates {pct}% from the recent average ({prom})."},
+    # States the observation only: the total, the average it is measured
+    # against and the gap between them are `cash_today`'s value, baseline and
+    # deviation, rendered as chips right below this line.
+    "core.prio.caja_p": {"es": "El cierre de hoy se despegó del promedio de los últimos cierres.",
+                         "en": "Today's close pulled away from the average of the recent closes."},
     "core.prio.caja_s": {"es": "Promedio de los últimos cierres con caja positiva.",
                          "en": "Average of recent closes with a positive cash total."},
     "core.prio.caida_chat": {"es": "Explícame la caída interanual de la venta real.",

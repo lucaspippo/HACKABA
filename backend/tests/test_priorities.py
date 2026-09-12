@@ -487,3 +487,110 @@ def test_no_card_anywhere_still_emits_a_drill():
     inbox = priorities.inbox("es", None)
     for c in inbox["act"] + inbox["watch"]:
         assert "drill" not in c, f"{c['id']} still emits the legacy drill"
+
+
+# --- the duplication guard ---------------------------------------------------
+
+_DEMO_INBOX = None
+
+
+def _demo_inbox():
+    """The real demo dataset's inbox, fetched once per module.
+
+    Same subprocess pattern (and cache) as `test_priorities_drill._demo_inbox`:
+    this suite's fixture pins the `piloto` tenant over a near-empty scratch
+    dataset, so an in-process `inbox()` carries almost no cards and a payload
+    walk would pass vacuously.
+    """
+    global _DEMO_INBOX
+    if _DEMO_INBOX is None:
+        _DEMO_INBOX = _en_demo(
+            "__import__('core.priorities', fromlist=['x']).inbox('es', "
+            "['alertas','oportunidades','cuentas','inventario','deposito',"
+            "'finanzas','caja','evolucion'])")
+    return _DEMO_INBOX
+
+
+def _formatted(value, unit) -> str:
+    """The figure exactly as the backend renders it, so a substring match
+    against server-rendered copy is meaningful: `i18n.pesos` for money, the
+    inbox's own `_num` for everything else."""
+    import i18n
+    if unit == "ars":
+        return i18n.pesos(value, "es")
+    return priorities._num(value, "es")
+
+
+# Cards whose `pattern` still re-quotes a primary metric's figure. The three
+# worst — cobrar_morosos, moroso_atraso and caja_inusual, the ones whose copy
+# restated value AND baseline AND deviation — were reworded in this wave; the
+# rest were reviewed and recorded as follow-ups rather than fixed blind, since
+# the spec does allow a narrative pattern to carry figures
+# (`core.opn.qi_q1b` is its blessed model).
+#
+# This list may only ever SHRINK. A new (card, evidence) pair appearing here
+# is the defect coming back, and the assertion below is what catches it.
+_PATTERN_RESTATEMENT_DEBT = frozenset({
+    ("venc_riesgo", "at_risk_value"),
+    ("dep_vencidos", "expired_lots_value"),
+    ("dep_discrep", "discrepancy_count"),
+    ("despertar_dormido", "dormant_value"),
+    ("pago_semana", "payables_week_total"),
+    ("cheques", "checks_total"),
+    ("estrella_caida", "revenue_decline_streak"),
+})
+
+
+def test_no_metric_figure_is_restated_in_surrounding_copy():
+    """No metric's own figure may be re-printed in the prose around it.
+
+    This defect has now recurred FOUR times in four different syntactic
+    forms, which is why this guard is deliberately broad:
+
+      1. a metric's label interpolating its own value;
+      2. the same, but built through a local variable or an f-string, so a
+         key-text review missed it;
+      3. a metric's label interpolating a SIBLING evidence item's value —
+         each label passed the "not its own value" rule in isolation;
+      4. a record's `detail` restating the metric's value the row hangs off.
+
+    Plus the original, product-owner-reported form: a `pattern` re-quoting
+    the value of the primary metric rendered as a chip right below it.
+
+    The insight contract exists so each fact is stated ONCE, in the field
+    that owns it. Structure — not prose review — has to enforce that, so
+    this walks the real demo payload rather than a fixture.
+
+    `pattern` is checked only against PRIMARY evidence, minus the recorded
+    `_PATTERN_RESTATEMENT_DEBT`: the spec explicitly blesses a narrative
+    pattern that weaves in supporting context (`core.opn.qi_q1b` is its
+    model). What it does not bless is a pattern re-reading the load-bearing
+    chip printed immediately underneath it.
+    """
+    d = _demo_inbox()
+    problems = []
+    for card in d["act"] + d["watch"]:
+        ins = card.get("insight") or {}
+        evidence = ins.get("evidence") or []
+        pattern = ((ins.get("pattern") or {}).get("label") or "")
+        for e in evidence:
+            if e.get("value") is None:
+                continue
+            figure = _formatted(e["value"], e.get("unit"))
+            if not figure:
+                continue
+            where = [("its own label", e.get("label") or "")]
+            where += [(f"sibling evidence {s['id']}'s label", s.get("label") or "")
+                      for s in evidence if s is not e]
+            where += [(f"its record {r.get('name')!r}'s detail", r.get("detail") or "")
+                      for r in (e.get("records") or [])]
+            if e.get("weight") == "primary" and \
+                    (card["id"], e["id"]) not in _PATTERN_RESTATEMENT_DEBT:
+                where.append(("the insight's pattern", pattern))
+            for place, text in where:
+                if figure in text:
+                    problems.append(
+                        f"{card['id']} · {e['id']} = {figure} is restated in "
+                        f"{place}: {text!r}")
+    assert not problems, "figures restated instead of stated once:\n" + \
+        "\n".join(f"  · {p}" for p in problems)

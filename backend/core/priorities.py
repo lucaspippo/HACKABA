@@ -551,8 +551,7 @@ def _alerts_cuentas(lang) -> list[dict]:
                 risk=ins.risk(_t("core.prio.mora_risk", lang),
                               exposure=al["impacto_pesos"]),
                 recommendation=ins.recommendation(
-                    _t("core.prio.morosos_t", lang), navigate="cuentas",
-                    chat=_t("core.prio.morosos_chat", lang)),
+                    navigate="cuentas", chat=_t("core.prio.morosos_chat", lang)),
             ),
         ))
     atrasados = [c for c in cuentas.listar()
@@ -571,9 +570,7 @@ def _alerts_cuentas(lang) -> list[dict]:
             navegar="cuentas",
             accion_chat=_t("core.prio.atraso_chat", lang, nombre=d["nombre"]),
             insight=ins.build(
-                pattern=ins.pattern(_t("core.prio.atraso_p", lang, nombre=d["nombre"],
-                                       dias=_num(d["dias_sin_pagar"], lang),
-                                       prom=_num(prom, lang)),
+                pattern=ins.pattern(_t("core.prio.atraso_p", lang, nombre=d["nombre"]),
                                     scope={"kind": "client", "count": 1}),
                 hypothesis=ins.hypothesis(_t("core.prio.atraso_hyp", lang,
                                              nombre=d["nombre"])),
@@ -585,10 +582,13 @@ def _alerts_cuentas(lang) -> list[dict]:
                                          "label": _t("core.method.prom_pago", lang)},
                                method={"key": "core.method.dias_mora",
                                        "label": _t("core.method.dias_mora", lang)},
+                               # No `detail`: the only thing it could say is the
+                               # day count this metric already carries. The
+                               # row's `amount` (the saldo) is the fact the
+                               # metric does not show.
                                records=[ins.record(kind="client", id=d.get("id"),
-                                                   name=d["nombre"], amount=d.get("saldo"),
-                                                   detail=_t("core.prio.atraso_i", lang,
-                                                             dias=d["dias_sin_pagar"]))]),
+                                                   name=d["nombre"],
+                                                   amount=d.get("saldo"))]),
                 ],
                 assumptions=[ins.assumption(_t("core.prio.mora_sup", lang),
                                             if_wrong=_t("core.prio.mora_sup_if", lang))],
@@ -596,7 +596,6 @@ def _alerts_cuentas(lang) -> list[dict]:
                 falsifiers=[ins.caveat(_t("core.prio.atraso_fals", lang))],
                 risk=ins.risk(_t("core.prio.mora_risk", lang), exposure=d.get("saldo")),
                 recommendation=ins.recommendation(
-                    _t("core.prio.atraso_t", lang, nombre=d["nombre"]),
                     navigate="cuentas",
                     chat=_t("core.prio.atraso_chat", lang, nombre=d["nombre"])),
             ),
@@ -644,8 +643,7 @@ def _alerts_ventas(lang) -> list[dict]:
             ],
             risk=ins.risk(_t("core.prio.quiebre_risk", lang)),
             recommendation=ins.recommendation(
-                _t("core.prio.quiebre_t", lang), navigate="inventario",
-                chat=_t("core.prio.quiebre_chat", lang)),
+                navigate="inventario", chat=_t("core.prio.quiebre_chat", lang)),
         ),
     )]
 
@@ -698,7 +696,7 @@ def _alerts_pagos(lang) -> list[dict]:
                 risk=ins.risk(_t("core.prio.pago_vencido_risk", lang),
                               exposure=pv["vencidos_total"]),
                 recommendation=ins.recommendation(
-                    _t("core.prio.pago_vencido_t", lang), navigate="finanzas",
+                    navigate="finanzas",
                     chat=_t("core.prio.pago_vencido_chat", lang)),
             ),
         ))
@@ -744,7 +742,7 @@ def _alerts_pagos(lang) -> list[dict]:
                 risk=ins.risk(_t("core.prio.pago_semana_risk", lang),
                               exposure=pv["por_pagar_semana"]),
                 recommendation=ins.recommendation(
-                    _t("core.prio.pago_semana_t", lang), navigate="finanzas",
+                    navigate="finanzas",
                     chat=_t("core.prio.pago_semana_chat", lang)),
             ),
         ))
@@ -788,8 +786,7 @@ def _alerts_pagos(lang) -> list[dict]:
                 ],
                 risk=ins.risk(_t("core.prio.cheques_risk", lang), exposure=pv["cheques_total"]),
                 recommendation=ins.recommendation(
-                    _t("core.prio.cheques_t", lang), navigate="finanzas",
-                    chat=_t("core.prio.cheques_chat", lang)),
+                    navigate="finanzas", chat=_t("core.prio.cheques_chat", lang)),
             ),
         ))
     return out
@@ -838,7 +835,7 @@ def _alerts_deposito(lang) -> list[dict]:
                 assumptions=[ins.assumption(_t("core.prio.dep_vencidos_s", lang))],
                 risk=ins.risk(_t("core.prio.dep_vencidos_risk", lang), exposure=total_valor),
                 recommendation=ins.recommendation(
-                    _t("core.prio.dep_vencidos_t", lang), navigate="deposito",
+                    navigate="deposito",
                     chat=_t("core.prio.dep_vencidos_chat", lang)),
             ),
         ))
@@ -881,7 +878,7 @@ def _alerts_deposito(lang) -> list[dict]:
                 assumptions=[ins.assumption(_t("core.prio.dep_vencidos_s", lang))],
                 risk=ins.risk(_t("core.prio.dep_porvencer_risk", lang), exposure=total_valor),
                 recommendation=ins.recommendation(
-                    _t("core.prio.dep_porvencer_t", lang), navigate="deposito",
+                    navigate="deposito",
                     chat=_t("core.prio.dep_porvencer_chat", lang)),
             ),
         ))
@@ -917,7 +914,7 @@ def _alerts_deposito(lang) -> list[dict]:
                                 method=metodo),
                 ],
                 recommendation=ins.recommendation(
-                    _t("core.prio.dep_discrep_t", lang), navigate="deposito",
+                    navigate="deposito",
                     chat=_t("core.prio.dep_discrep_chat", lang)),
             ),
         ))
@@ -967,7 +964,6 @@ def _alerts_deposito(lang) -> list[dict]:
                 risk=ins.risk(_t("core.prio.venc_riesgo_risk", lang),
                               exposure=venc.get("total_en_riesgo")),
                 recommendation=ins.recommendation(
-                    _t("core.prio.venc_riesgo_t", lang, n=_num(venc["lotes_en_riesgo"], lang)),
                     navigate="deposito",
                     chat=_t("core.prio.venc_riesgo_chat", lang)),
             ),
@@ -1024,7 +1020,7 @@ def _alerts_inventario(lang) -> list[dict]:
                            method=chart_metodo),
             ],
             recommendation=ins.recommendation(
-                _t("core.prio.costo_viejo_t", lang), navigate="inventario",
+                navigate="inventario",
                 chat=_t("core.prio.costo_viejo_chat", lang)),
         ),
     )]
@@ -1062,8 +1058,7 @@ def _alerts_caja(lang) -> list[dict]:
         # `fecha`, not guaranteed unique) and Caja.jsx has no per-row list
         # UI to land on. The chart is this card's whole proof.
         insight=ins.build(
-            pattern=ins.pattern(_t("core.prio.caja_p", lang, total=_pesos(tot, lang),
-                                   prom=_pesos(prom, lang), pct=round(desvio * 100))),
+            pattern=ins.pattern(_t("core.prio.caja_p", lang)),
             hypothesis=ins.hypothesis(_t("core.prio.caja_hyp", lang)),
             evidence=[
                 ins.metric("cash_today", label=_t("core.prio.cash_today_ev", lang), value=tot, unit="ars",
@@ -1075,8 +1070,7 @@ def _alerts_caja(lang) -> list[dict]:
             ],
             assumptions=[ins.assumption(_t("core.prio.caja_s", lang))],
             recommendation=ins.recommendation(
-                _t("core.prio.caja_t", lang), navigate="caja",
-                chat=_t("core.prio.caja_chat", lang)),
+                navigate="caja", chat=_t("core.prio.caja_chat", lang)),
         ),
     )]
 
@@ -1101,11 +1095,14 @@ def _alerts_evolucion(lang) -> list[dict]:
         # The year-over-year figure and the chart are this card's proof.
         evidence = []
         if inter.get("variacion_real_pct") is not None:
+            # No baseline: this value already IS the year-over-year
+            # comparison (a percentage), so pairing it with last year's
+            # revenue in pesos made `deviation` divide a percentage by an
+            # amount — a meaningless trend chip. The IPC note travels as the
+            # card's assumption, where it belongs.
             evidence.append(ins.metric(
                 "yoy_change", label=_t("core.prio.yoy_change_lbl", lang),
                 value=inter["variacion_real_pct"], unit="pct", weight="primary",
-                baseline={"value": inter.get("real_anterior"),
-                          "label": _t("core.prio.caida_s", lang)},
                 method=change_metodo))
         if grafico:
             evidence.append(ins.series("yoy_series", label=_t("core.prio.caida_g", lang),
@@ -1128,8 +1125,7 @@ def _alerts_evolucion(lang) -> list[dict]:
                 evidence=evidence,
                 assumptions=[ins.assumption(_t("core.prio.caida_s", lang))],
                 recommendation=ins.recommendation(
-                    a["titulo"], navigate="evolucion",
-                    chat=_t("core.prio.caida_chat", lang)),
+                    navigate="evolucion", chat=_t("core.prio.caida_chat", lang)),
             ),
         ))
     return out
@@ -1163,7 +1159,7 @@ def _alerts_pico(lang) -> list[dict]:
                            method=metodo),
             ],
             recommendation=ins.recommendation(
-                _t("core.prio.pico_t", lang), navigate="evolucion",
+                navigate="evolucion",
                 chat=_t("core.prio.pico_chat", lang, cat=pico.get("categoria") or "")),
         ),
     )]

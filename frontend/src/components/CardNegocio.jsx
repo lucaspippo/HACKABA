@@ -312,7 +312,11 @@ function EvidenceItem({ item, onVerInvolucrado }) {
   const lang = useLang();
   const formatted = formatValue(item.value, item.unit, lang);
   const unitKey = UNIT_KEY[item.unit];
+  // `pct` and `×` are symbols, not words, so they are special-cased here
+  // instead of going through UNIT_KEY. `×` sits BEFORE the number, matching
+  // how the card header already prints a multiplier ("×1,8").
   const shown = formatted && (item.unit === "pct" ? `${formatted}%`
+    : item.unit === "×" ? `×${formatted}`
     : unitKey ? `${formatted} ${t(unitKey)}` : formatted);
   const dev = item.deviation;
   const DevIcon = dev?.direction === "down" ? TrendingDown : TrendingUp;
@@ -470,6 +474,18 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
     detail: rawProposal.detail ?? rawProposal.detalle,
   };
   const dataBadge = <ConfidenceBadge confidence={confidence?.data} axis="data" />;
+  // Every card's `titulo` already states the move in the owner's language,
+  // so builders only author `recommendation.label` when the move is
+  // genuinely DIFFERENT from the title. Falling back keeps this section
+  // headed without printing the same sentence twice in one panel.
+  const move = recommendation?.label || titulo;
+  // On nine cards `risk.exposure`, `monto` and the primary metric are
+  // literally the same expression, so the panel printed one figure three
+  // times. Compare the RAW numbers the backend ships — never the formatted
+  // strings, which Python and Intl render differently — so this can only
+  // ever hide a figure that really is the header figure.
+  const showExposure = risk?.exposure != null &&
+    !(monto != null && Number(risk.exposure) === Number(monto));
 
   // Every caller passes an inline arrow for `onCerrar`, so its identity
   // changes on each render. Depending on it would re-run this effect —
@@ -566,7 +582,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             Risk and recommendation are causally paired — risk is typically one
             short line, too light to earn its own section header — so they
             share this section instead of each getting one. */}
-        {(risk?.label || recommendation?.label || proposal || actionTaken) && (
+        {(risk?.label || move || proposal || actionTaken) && (
           <DrillSection title={t("cardneg.drill_recommend")}>
             {risk?.label && (
               <p className={`rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
@@ -575,13 +591,13 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                   : "bg-papel-hondo/50 text-tinta"
               }`}>
                 {risk.label}
-                {risk.exposure != null && (
+                {showExposure && (
                   <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
                 )}
               </p>
             )}
-            {recommendation?.label && (
-              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
+            {move && (
+              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{move}</p>
             )}
             {recommendation?.detail && (
               <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">{recommendation.detail}</p>

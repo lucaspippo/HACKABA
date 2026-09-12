@@ -201,7 +201,7 @@ def _unnoticed_combo_card(lang) -> dict | None:
         assumptions=[ins.assumption(_t("core.pat.combo_s1", lang))],
         alternatives=[ins.caveat(_t("core.pat.combo_alt1", lang))],
         recommendation=ins.recommendation(
-            _t("core.pat.combo_t", lang, a=anchor_name, b=partner_name), navigate="cuentas",
+            navigate="cuentas",
             chat=_t("core.pat.combo_chat", lang, a=anchor_name, b=partner_name)),
     )
     return {
@@ -276,9 +276,10 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
             scope={"kind": "weekday", "count": 1}),
         hypothesis=ins.hypothesis(_t("core.pat.caja_hyp", lang, dia=weekday_name)),
         evidence=[
+            # No `total=`/`n=`: the accumulated shortfall is
+            # `shortfall_total`'s own value, the very next evidence item.
             ins.metric("shortfall_rate",
-                       label=_t("core.pat.caja_r_lbl", lang, dia=weekday_name,
-                                total=_money(total, lang), n=len(diffs)),
+                       label=_t("core.pat.caja_r_lbl", lang, dia=weekday_name),
                        value=pct, unit="pct",
                        baseline={"value": pct_rest,
                                  "label": _t("core.pat.caja_baseline", lang)},
@@ -302,7 +303,7 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
         assumptions=[ins.assumption(_t("core.pat.caja_s1", lang))],
         alternatives=[ins.caveat(_t("core.pat.caja_alt1", lang, dia=weekday_name))],
         recommendation=ins.recommendation(
-            _t("core.pat.caja_t", lang, dia=weekday_name), navigate="caja",
+            navigate="caja",
             chat=_t("core.pat.caja_chat", lang, dia=weekday_name)),
     )
     return {
