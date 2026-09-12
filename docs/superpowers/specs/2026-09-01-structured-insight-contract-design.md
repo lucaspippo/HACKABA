@@ -36,9 +36,8 @@ The consequences are not only cosmetic:
   explain how any metric was computed.
 - Ángela's `listar_prioridades` tool (`backend/angela.py:1950-1966`) returns a
   *slimmed* card with no reasoning at all, so the richest part of the
-  deterministic core never reaches the agent. This spec makes structured
-  evidence *available* to expose but does not expose it — see "Deferred:
-  exposing evidence to Ángela".
+  deterministic core never reaches the agent — it sees eight display fields and
+  must talk about "why" from prose it was never given.
 - Confidence is a single coarse level (`core/confidence.py`) that mixes a data
   signal (chart points) with a hypothesis signal (assumption count) into one
   number, so a finding backed by twelve months of data but resting on three
@@ -414,20 +413,44 @@ not styling.
 
 ## Ángela and MCP
 
-**No new tool in this pass.** `listar_prioridades` keeps its current shape and
-its `_slim` projection (`angela.py:1950-1966`), gaining only `deadline.urgency`
-and `risk.level` — two scalars, so Ángela can speak about urgency without
-inventing it. `explicar_prioridad(id)` was considered and deliberately not
-added; see "Deferred" below.
+**No new tool.** `explicar_prioridad(id)` was considered and deliberately not
+added. `listar_prioridades` keeps its name, its empty input schema and its
+permission special-case (`angela.py:124-134`); only its `_slim` projection
+(`:1957-1959`) widens. `mcp_server.py` needs no change — the tool is already in
+`READ_ONLY_TOOLS` (`:44-53`) and its schema is unchanged, so MCP clients pick
+the richer payload up for free.
 
-`mcp_server.py` needs no change: `listar_prioridades` is already in
-`READ_ONLY_TOOLS` (`:44-53`) and its schema is unchanged.
+### What `_slim` carries
+
+`_slim` is a dict comprehension over a fixed key tuple, so widening it is a
+one-line change. The constraint is not code, it is **context**: roughly twenty
+cards each carrying a full chart series and a record list is a large payload on
+every "¿qué hago ahora?", a question that mostly needs titles.
+
+So the projection carries the **reasoning** and drops the **bulk**:
+
+| Included | Excluded |
+|---|---|
+| `pattern.label` | `evidence[].chart` — series points are for rendering, not reasoning |
+| `hypothesis.label` | `evidence[].records` beyond the first 3 per item, with a `records_total` count |
+| `evidence[]` where `weight == "primary"`: `label`, `value`, `unit`, `baseline`, `deviation`, `method.label` | `evidence[]` where `weight == "supporting"` |
+| `assumptions[].label`, `alternatives[].label`, `falsifiers[].label` | `assumptions[].if_wrong` |
+| `confidence.data.level`, `confidence.hypothesis.level` | `confidence.*.signals` |
+| `risk.level`, `risk.exposure`, `deadline.urgency`, `deadline.date`, `owner.suggested` | `recommendation` — already present as `titulo` / `accion_chat` |
+
+This is a **projection, not a second computation**: it selects from the
+finished insight and never recomputes or reformats a value, so the
+deterministic invariant holds and Ángela still cites rather than derives.
+
+`weight == "primary"` earning inclusion is the point of the field: a builder
+declaring an evidence item primary is declaring it load-bearing for the
+conclusion, which is exactly what the agent needs and the supporting items are
+not.
 
 The prompt rule is unchanged: Ángela cites, never re-ranks, never computes.
 
-The consequence, stated plainly: the structured evidence this spec builds does
-**not** reach the agent in this pass. The contract makes it possible; exposing
-it is a separate decision.
+If the trimmed projection proves too thin in practice, the escape hatch is the
+rejected `explicar_prioridad(id)` tool, recorded below.
 
 ## Testing
 
@@ -449,6 +472,10 @@ Backend (`cd backend && python -m pytest`; restore seeds afterward with
   evidence item", a stronger claim.
 - A contract test asserting **no card anywhere still emits `drill`** — the
   cutover's completeness check across all ~25 builders.
+- `angela._slim` — carries `primary` evidence and drops `supporting`; drops
+  `chart` entirely; caps `records` at 3 while reporting `records_total`. Plus a
+  guard that the projection **only selects**: every value it emits is identical
+  to the one in the source insight, never reformatted.
 - `test_api.py:163-169` asserts `badge == len(act)`, which already contradicts
   `badge_of`'s semantics (`priorities.py:256-259`) and breaks the day a fixture
   card has `action_taken`. Pre-existing and unrelated, but fixed here rather
@@ -491,30 +518,26 @@ Two things the implementing session must know:
 `insight.owner` and `insight.deadline` are shaped so assignment and tracking
 layer on top without reshaping them.
 
-## Deferred: exposing evidence to Ángela
+## Rejected: `explicar_prioridad(id)`
 
-Also recorded rather than built. Once the contract is real and the UI proves
-the shape, the agent should be able to reason over evidence instead of prose.
-Two options, with the trade-off already mapped:
+A second tool returning one card's complete insight, while `listar_prioridades`
+stayed slim. It matches how the owner actually talks ("¿qué hago ahora?" then
+"¿por qué esa?") and keeps the common call cheapest.
 
-1. **A second tool, `explicar_prioridad(id)`**, returning one card's complete
-   insight while `listar_prioridades` stays slim. Matches how the owner talks
-   ("¿qué hago ahora?" then "¿por qué esa?") and keeps the common call cheap.
-   Needs an entry in `TOOL_FEATURE` or the same special case as
-   `listar_prioridades` (`angela.py:124-134`), plus `READ_ONLY_TOOLS`
-   (`mcp_server.py:44-53`) to expose it over MCP.
-2. **Widening `_slim`** to carry the full insight. Simpler — no new tool, no
-   permission wiring — but every "¿qué hago ahora?" then ships twenty full
-   insights, which is a large payload for a question that only needs titles.
+Rejected because the trimmed `_slim` projection above already carries the
+reasoning at acceptable cost, and a second tool adds a name, an input schema,
+permission wiring (`TOOL_FEATURE` or a special case) and a `READ_ONLY_TOOLS`
+entry to buy an optimisation that is not yet needed.
 
-Whichever is chosen, the deterministic invariant is what makes it safe:
-evidence reaches the model as typed data with baselines and methods, so it
-narrates and cites rather than re-deriving numbers from prose.
+Recorded rather than deleted: it is the escape hatch if the trimmed projection
+turns out too thin, or if chart series or full record lists are later needed in
+the agent's reasoning.
 
 ## Out of scope
 
 - Any stored state (see "Deferred: action workflow and insight lifecycle").
-- Any new Ángela or MCP tool; `listar_prioridades` keeps its schema.
+- Any new Ángela or MCP tool; `listar_prioridades` keeps its name and schema,
+  and only its `_slim` projection widens.
 - Renaming card-envelope fields (`titulo`, `resumen`, `tono`, `origen`,
   `propuesta`) — only `drill` is replaced.
 - Changes to ranking, merge *policy*, `recuperable`, or `autonomia`.
@@ -533,7 +556,7 @@ narrates and cites rather than re-deriving numbers from prose.
 | `backend/core/patrones.py` | 2 builders emit `insight` |
 | `backend/core/piso.py` | `propuestas()` emits `insight` |
 | `backend/i18n.py` | new `method`/`alternatives`/`falsifiers` keys; i18n-direction TODO |
-| `backend/angela.py` | `_slim` gains `deadline.urgency` and `risk.level`; no new tool |
+| `backend/angela.py` | `_slim` widens to the trimmed insight projection; no new tool |
 | `frontend/src/components/CardNegocio.jsx` | `DrillNegocio` restructured around the insight |
 | `frontend/src/sections/Prioridades.jsx` | `drillProps`; deadline chip on `WorkRow` |
 | `frontend/src/mobile/InsightsMobile.jsx` | `rowOf` maps the new shape |
