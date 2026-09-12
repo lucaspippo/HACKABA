@@ -207,6 +207,9 @@ def _mes_nombre(numero: int, lang: str) -> str:
 # para cualquier respuesta útil de Ángela y frena desvíos carísimos.
 MAX_TOKENS = int(os.environ.get("POLPILOT_MAX_TOKENS", "1024"))
 MAX_TOOL_TURNS = 5
+# The window the context meter fills. Not reported by the API, so it is
+# configuration: set it per model when the deployed model's window differs.
+CONTEXT_WINDOW = int(os.environ.get("POLPILOT_CONTEXT_WINDOW", "200000"))
 
 
 def _resumen_para_prompt() -> str:
@@ -3385,6 +3388,59 @@ def _log_model_call(entry: str, model: str, resp, started: float,
         print(f"[angela/{entry}] usage log failed: {e}", flush=True)
 
 
+# Measured once per (model, system, tool set) and reused: the split only
+# changes when the role's features change, and a per-turn count would add a
+# round trip to every question.
+_PREFIX_TOKENS: dict[str, tuple[int, int]] = {}
+
+_PROBE = [{"role": "user", "content": "."}]
+
+
+def _prefix_tokens(client, model: str, system, tools: list[dict]) -> tuple[int, int]:
+    """Tokens the system prompt and the tool schemas occupy, measured.
+
+    The meter shows what the context is spent on, so the split has to be real:
+    every number in this product comes from a calculation, and an estimate
+    dressed up as a measurement is the failure that matters here. A one-token
+    probe message is counted in all three calls and cancels out.
+    """
+    key = f"{model}:{hash(json.dumps(system, ensure_ascii=False, default=str))}:{len(tools)}"
+    cached = _PREFIX_TOKENS.get(key)
+    if cached:
+        return cached
+
+    def count(**kwargs) -> int:
+        return int(client.messages.count_tokens(
+            model=model, messages=_PROBE, **kwargs).input_tokens)
+
+    base = count()
+    with_system = count(system=system)
+    with_tools = count(system=system, tools=tools) if tools else with_system
+    measured = (max(0, with_system - base), max(0, with_tools - with_system))
+    _PREFIX_TOKENS[key] = measured
+    return measured
+
+
+def _usage_report(resp, system_tokens: int, tools_tokens: int) -> dict | None:
+    """The context breakdown for one turn, or None when it cannot be measured.
+
+    None is not zero: the meter hides rather than claiming an empty context.
+    """
+    usage = getattr(resp, "usage", None)
+    if usage is None:
+        return None
+    read = lambda field: int(getattr(usage, field, 0) or 0)  # noqa: E731
+    total_input = read("input_tokens") + read("cache_read_input_tokens")         + read("cache_creation_input_tokens")
+    if total_input <= 0:
+        return None
+    return {
+        "system": system_tokens,
+        "tools": tools_tokens,
+        "messages": max(0, total_input - system_tokens - tools_tokens),
+        "context_window": CONTEXT_WINDOW,
+    }
+
+
 def _system_blocks(per_request: str) -> list[dict] | str:
     """SYSTEM_PROMPT carrying the cache breakpoint, then per-request text
     behind it.
@@ -3580,7 +3636,15 @@ def stream_response(
 
     tools_used: list[str] = []
     actions: list[dict] = []
+    usage: dict | None = None
     try:
+        # A failure here must cost the turn nothing: the meter simply hides.
+        try:
+            system_tokens, tools_tokens = _prefix_tokens(
+                client, model, system, available_tools)
+        except Exception as e:  # noqa: BLE001
+            print(f"[angela/stream] prefix count failed: {e}", flush=True)
+            system_tokens = tools_tokens = 0
         for round_index in range(MAX_TOOL_TURNS):
             started = time.monotonic()
             with client.messages.stream(
@@ -3595,6 +3659,7 @@ def stream_response(
                 resp = stream.get_final_message()
             _log_model_call("stream", model, resp, started, round_index,
                             len(available_tools))
+            usage = _usage_report(resp, system_tokens, tools_tokens) or usage
 
             if resp.stop_reason == "tool_use":
                 messages.append({"role": "assistant", "content": resp.content})
@@ -3624,7 +3689,7 @@ def stream_response(
 
             yield {"type": "done", "result": {
                 "mode": "claude", "tools_used": tools_used,
-                "actions": actions, "options": []}}
+                "actions": actions, "options": [], "usage": usage}}
             return
 
         # Every round went on tool calls. Say so, then ask once more with tools
@@ -3647,11 +3712,12 @@ def stream_response(
                 resp = stream.get_final_message()
             _log_model_call("stream", model, resp, started, MAX_TOOL_TURNS,
                             len(available_tools))
+            usage = _usage_report(resp, system_tokens, tools_tokens) or usage
         except Exception as e:  # noqa: BLE001 — the notice already went out
             print(f"[angela/stream] final no-tools round failed: {e}", flush=True)
         yield {"type": "done", "result": {
             "mode": "claude", "tools_used": tools_used,
-            "actions": actions, "options": []}}
+            "actions": actions, "options": [], "usage": usage}}
     except Exception as e:  # noqa: BLE001
         # The technical detail is logged, never shipped: it leaks internals.
         print(f"[angela/stream] failed after tools={tools_used}: {e}", flush=True)
