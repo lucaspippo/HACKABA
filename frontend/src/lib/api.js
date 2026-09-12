@@ -116,6 +116,17 @@ export const api = {
     if (!res.ok) throw _error(path, res);
     return res.blob();
   },
+  // El PDF de un documento se pide con el documento en el cuerpo (la copia con
+  // los cambios del usuario vive en el cliente), así que no alcanza el GET.
+  blobPost: async (path, body) => {
+    const res = await fetch(apiUrl(path), {
+      method: "POST",
+      headers: { ..._headers(), "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw _error(path, res);
+    return res.blob();
+  },
   grupo: (nombre, limit) =>
     get(`/api/grupo/${nombre}${limit ? `?limit=${limit}` : ""}`),
   buscar: (q) => get(`/api/buscar?q=${encodeURIComponent(q)}`),
@@ -278,6 +289,10 @@ export const api = {
     return res.blob();
   },
   documentosListado: () => get("/api/documentos/listado"),
+  carpetaPedidos: () => get("/api/carpeta"),
+  carpeta: (numero) => get(`/api/carpeta/${encodeURIComponent(numero)}`),
+  carpetaDocumento: (numero, docId) =>
+    get(`/api/carpeta/${encodeURIComponent(numero)}/${encodeURIComponent(docId)}`),
   cuentas: () => get("/api/cuentas"),
   cuentaCobro: (id, monto) => post(`/api/cuentas/${id}/cobro`, { monto }),
   cuentaRecordatorio: (id) => get(`/api/cuentas/${id}/recordatorio`),

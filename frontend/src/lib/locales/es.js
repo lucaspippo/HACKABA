@@ -825,6 +825,8 @@ export const ES = {
   "evolucion.grafico_nota": "La línea punteada es lo que dicen los tickets; la llena es lo que valen esos pesos hoy ({base}).",
 
   // --- cobranzas (vista vendedor) ---
+  "cobranzas.sug_si": "Preparalo",
+  "cobranzas.sug_no": "Ahora no",
   "cobranzas.titulo": "Cobranzas",
   "cobranzas.subtitulo": "A quién cobrarle hoy y cuánto podés financiarle.",
   "cobranzas.angela_intro": "Para mostrarte tus cobranzas del día y el límite de crédito de cada cliente necesito el Excel de cuentas corrientes que hoy maneja el dueño. Apenas lo carguen, esto se llena solo y te ordeno a quién apretar primero. Vos vas a manejar todas tus cobranzas desde acá, sin pelear con planillas.",
@@ -2118,6 +2120,24 @@ export const ES = {
   "staging.faltan": "Resolvé las {n} observaciones que faltan para poder integrar.",
 
   // --- documentos ---
+  "carpeta.titulo": "La carpeta del pedido",
+  "carpeta.sub": "Los papeles de una entrega, ya completados con lo que el sistema sabe. Cada casillero dice de dónde salió.",
+  "carpeta.pedidos": "Entregas",
+  "carpeta.sin_pedidos": "No hay entregas cargadas todavía.",
+  "carpeta.falta_n": "faltan {n}",
+  "carpeta.completo": "completo",
+  "carpeta.de": "de",
+  "carpeta.falta": "falta",
+  "carpeta.que_falta": "Falta: {campos}",
+  "carpeta.control": "Control cruzado",
+  "carpeta.control_ok": "Los números coinciden en los dos documentos.",
+  "carpeta.control_mal": "Hay un número que no coincide.",
+  "carpeta.descargar": "Descargar PDF",
+  "carpeta.bajando": "Generando…",
+  "carpeta.error_pdf": "No pude generar el PDF.",
+  "carpeta.renglones": "Renglones",
+  "carpeta.tab_carpeta": "Carpeta del pedido",
+  "carpeta.tab_generados": "Generados",
   "documentos.titulo": "Documentos",
   "documentos.vacio_1": "Pedile uno a Ángela y lo armo desde tus datos:",
   "documentos.vacio_ej1": "\"armame una orden de pedido\"",
