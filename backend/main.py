@@ -3292,6 +3292,23 @@ def grafo_get(sin_notas: str = "", u: dict = Depends(require_feature("mapa"))):
     return analisis_cache.get_o_computar("grafo", lang, lambda: grafo.completo(lang))
 
 
+@app.get("/api/escena/reclamo")
+def escena_reclamo(u: dict = Depends(require_feature("mapa"))):
+    """LA ESCENA DEL RECLAMO — ocho nodos ya colocados.
+
+    No es el grafo: es el mismo caso que `cruces._cruce_reclamo_devolucion`
+    detecta, acomodado en un lienzo fijo para que se lea de izquierda a
+    derecha. Con ocho nodos un layout de fuerzas los amontona; acá la posición
+    se decide y significa algo (ver core/escena.py).
+
+    Cacheado como el resto: la transición desde el mapa tiene que ser
+    instantánea y esto se paga en el arranque."""
+    from core import analisis_cache, escena
+    lang = _lang(u)
+    return analisis_cache.get_o_computar(
+        "escena_reclamo", lang, lambda: escena.reclamo(lang))
+
+
 @app.get("/api/evals")
 def evals_get(_u: dict = Depends(require_feature("mapa"))):
     """THE LAST RECORDED EVAL RUN — how often the engine is right, measured.
