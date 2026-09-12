@@ -430,14 +430,76 @@ def expansion(lang: str = "es") -> dict:
     }
 
 
-def expansion_proveedor(lang: str = "es") -> dict:
-    """LAS REGLAS DE ESTE PROVEEDOR, colgando del rombo.
+# Los requisitos, en la version CORTA. El nombre completo —«foto del lote»,
+# «numero de remito»— es el que va en la tarjeta grande del caso, donde hay
+# lugar. Adentro de una tarjeta de 190px son dos renglones de mas.
+_REQ_CORTO = {"foto_lote": {"es": "foto", "en": "photo"},
+              "numero_remito": {"es": "remito", "en": "delivery note"}}
 
-    La respuesta cita UNA regla. Pero el negocio le enseño CUATRO cosas sobre
-    Lacteos Campo Alegre, y que se vean juntas cambia lo que se entiende: no es
-    que alguien cargo un dato suelto para que el demo funcione — hay un cuerpo
-    de conocimiento sobre cada proveedor, y la respuesta uso la que
-    correspondia. Son cuatro, asi que entran de una y no hace falta agrupar.
+
+def _resumen_regla(p: dict, lang: str) -> str:
+    """La regla en un renglon, para que entre ADENTRO de la tarjeta.
+
+    El texto completo es un parrafo —«A Lacteos Campo Alegre el reclamo va por
+    mail, con foto del lote y el numero de remito. Cinco dias de plazo.»— y al
+    costado de una caja chica se pisa con las lineas y no se sabe de cual
+    tarjeta es. Adentro entra un renglon, asi que se resume.
+
+    Tres recortes, en orden:
+
+    1. EL NOMBRE DEL PROVEEDOR SE VA. La expansion ya dice de quien habla en su
+       titulo; repetirlo en las cuatro tarjetas gasta media tarjeta en decir
+       cuatro veces lo mismo.
+    2. Para la regla de reclamo el resumen NO se recorta del texto: se arma con
+       los `params`, los mismos que usa el motor. Asi dice lo que la regla
+       HACE, no las primeras palabras de como alguien la escribio.
+    3. Para el resto, la primera oracion: lo que va despues del «:» o del
+       primer punto es el motivo, y el motivo no es lo que hay que leer de un
+       vistazo. El texto entero igual esta a un clic, en el panel de la cita.
+    """
+    rec = (p.get("params") or {}).get("reclamo") or {}
+    if rec:
+        reqs = [_REQ_CORTO.get(r, {}).get(lang, r.replace("_", " "))
+                for r in (rec.get("requisitos") or [])]
+        y = _t("escena.y", lang)      # ya trae los espacios
+        if len(reqs) > 1:
+            legible = ", ".join(reqs[:-1]) + y + reqs[-1]
+        else:
+            legible = reqs[0] if reqs else ""
+        canal = _canal_leible(rec.get("canal"), lang)
+        txt = _t("escena.regla_reclamo", lang, canal=canal, requisitos=legible)
+        dias = rec.get("plazo_dias")
+        return f"{txt} · {dias} " + _t("escena.dias", lang) if dias else txt
+
+    texto = (p.get("texto") or "").strip()
+    ent = (p.get("entidad") or "").strip()
+    # el nombre del proveedor, entero o sin la primera palabra: «Lacteos Campo
+    # Alegre» aparece tambien como «Campo Alegre», con o sin preposicion.
+    variantes = [v for v in (ent, ent.split(" ", 1)[-1] if " " in ent else "") if v]
+    for v in sorted(variantes, key=len, reverse=True):
+        texto = re.sub(rf"^(a |A )?{re.escape(v)}\s*", "", texto)
+    for corte in (":", "."):
+        if corte in texto:
+            texto = texto.split(corte)[0].strip()
+            break
+    return texto[:1].lower() + texto[1:] if texto else ""
+
+
+def expansion_proveedor(lang: str = "es") -> dict:
+    """LO QUE EL EQUIPO LE ENSEÑO SOBRE ESTE PROVEEDOR.
+
+    Una frase tiene que quedar clara al abrirla: «esto es lo que el equipo le
+    enseño sobre este proveedor, y la respuesta uso una de estas».
+
+    Por eso cada pieza es una TARJETA con la forma de la regla del caso —hoja
+    amarilla con la esquina plegada— y no un rectangulo gris: son piezas de
+    conocimiento y tienen que parecerlo. El texto va ADENTRO y resumido. Y la
+    que se uso para contestar viene marcada: sin eso la expansion muestra
+    cuatro cosas y no significa ninguna.
+
+    En GRILLA de dos columnas pegada debajo del rombo, no apiladas en vertical:
+    cuatro tarjetas una debajo de la otra se van a 350px de alto, se alejan del
+    proveedor y obligan a alejar tanto el lienzo que el caso queda ilegible.
     """
     from . import grafo as _grafo
 
@@ -449,40 +511,69 @@ def expansion_proveedor(lang: str = "es") -> dict:
     if not pid:
         return {}
 
-    reglas = []
+    ids = set()
     for a in g["aristas"]:
         otro = (a["target"] if a["source"] == pid
                 else a["source"] if a["target"] == pid else None)
         if otro and nodos_g.get(otro, {}).get("tipo") == "conocimiento":
-            reglas.append({"id": otro, "tipo": "conocimiento",
-                           "nombre": nodos_g[otro].get("nombre") or otro})
-    if not reglas:
+            ids.add(otro.split(":", 1)[-1])
+    if not ids:
         return {}
-    reglas.sort(key=lambda r: r["id"])
-    reglas = reglas[:5]
 
-    # DEBAJO del rombo, fuera del lienzo base. Pegado al proveedor caia sobre
-    # el propio rombo y sobre la orden de compra (verificado: 3 choques). El
-    # lienzo se agranda al abrir igual, asi que hay lugar abajo y ahi no hay
-    # nada que pisar.
-    x, y0 = 540, 600
-    for i, r in enumerate(reglas):
-        r["x"], r["y"] = x, y0 + i * _ALTO_CHIP
-    grupos = [{"rel": _t("escena.rel_le_enseñaron", lang), "x": x, "y": y0 - 62,
-               "nodos": reglas}]
+    regla_usada = _regla_de(PROVEEDOR_CASO) or {}
+    usada_id = regla_usada.get("id")
+    piezas = []
+    for p in conocimiento.listar():
+        if p.get("id") not in ids:
+            continue
+        piezas.append({
+            "id": f"conocimiento:{p['id']}",
+            "tipo": "conocimiento",
+            "nombre": _resumen_regla(p, lang),
+            # LA QUE SE USO. Es lo que hace que la expansion signifique algo.
+            "usada": p.get("id") == usada_id,
+            # quien/cuando viven bajo `origen`, no en la raiz de la pieza. En
+            # la raiz dan None y la tarjeta se queda sin la linea que la vuelve
+            # memoria y no configuracion. (La API los aplana en
+            # main._con_procedencia; aca se lee el dict crudo.)
+            "quien": _nombre_de((p.get("origen") or {}).get("quien")),
+            "cuando": (p.get("origen") or {}).get("cuando"),
+        })
+    if not piezas:
+        return {}
+    # la usada primero: es la que hay que mirar
+    piezas.sort(key=lambda x: (not x["usada"], x["nombre"]))
+    piezas = piezas[:4]
 
-    ancho_chip = lambda n: max(112.0, len(n) * 5.75 + 46)
-    x0 = min([0] + [r["x"] - ancho_chip(r["nombre"]) / 2 for r in reglas])
-    x1 = max([ANCHO] + [r["x"] + ancho_chip(r["nombre"]) / 2 for r in reglas])
-    y1 = max([ALTO] + [r["y"] + 46 for r in reglas])
+    # --- la grilla, pegada debajo del rombo (404,400) -------------------
+    ANCHO_T, ALTO_T, SEP = 186, 86, 20
+    cols = 2 if len(piezas) > 2 else len(piezas)
+    filas = (len(piezas) + cols - 1) // cols
+    x0 = 404 - (cols * ANCHO_T + (cols - 1) * SEP) / 2
+    # y0: donde empieza la primera fila. Hay que dejar lugar para DOS cosas
+    # arriba de la tarjeta —la etiqueta del racimo y el cartel «la que usé»,
+    # que cuelga por fuera del borde— o se pisan entre ellas: lo encontro
+    # scripts/revisar_escena.py, no la pantalla.
+    y0 = 588
+    for i, p in enumerate(piezas):
+        c, r = i % cols, i // cols
+        p["x"] = round(x0 + c * (ANCHO_T + SEP) + ANCHO_T / 2)
+        p["y"] = round(y0 + r * (ALTO_T + SEP) + ALTO_T / 2)
+
+    grupos = [{"rel": _t("escena.rel_le_enseñaron", lang),
+               "x": 404, "y": y0 - 48, "nodos": piezas}]
+
+    x1 = x0 + cols * ANCHO_T + (cols - 1) * SEP
+    y1 = y0 + filas * ALTO_T + (filas - 1) * SEP
     m_ = 46
     return {
         "desde": "proveedor",
+        "forma": "tarjeta",
         "titulo": _t("escena.expansion_prov", lang, proveedor=PROVEEDOR_CASO),
         "grupos": grupos,
-        "lienzo_abierto": [x0 - m_, -m_, (x1 - x0) + m_ * 2, y1 + m_ * 2],
+        "lienzo_abierto": [min(0, x0) - m_, -m_,
+                           max(ANCHO, x1) - min(0, x0) + m_ * 2, y1 + m_ * 2],
     }
-
 
 def _origen_de(regla: dict) -> str | None:
     """La pieza que cuenta de donde salio esta regla, si la hay.

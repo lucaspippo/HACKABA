@@ -51,6 +51,9 @@ def ANCHO_CHIP(nombre: str) -> float:
 # Alto de un nodo de expansion: la forma (~52) + el nombre debajo (~16) + aire.
 ALTO_NODO_EXP = 76
 
+# La tarjeta de regla de la expansion del proveedor (T_ANCHO/T_ALTO alla).
+ANCHO_TARJETA, ALTO_TARJETA = 190, 92
+
 
 def punto_medio(a, b, k):
     """La misma formula que `curva()` en el frontend."""
@@ -104,7 +107,18 @@ def main() -> None:
         for gr in exp.get("grupos", []):
             cajas.append((f"rel:{cual}:«{gr['rel']}»",
                           rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
+            tarjeta = exp.get("forma") == "tarjeta"
             for m in gr["nodos"]:
+                if tarjeta:
+                    # una tarjeta de regla: el texto va ADENTRO, asi que la
+                    # caja es la tarjeta y no depende del largo del nombre.
+                    # +11 de alto por la etiqueta «la que usé» de la usada,
+                    # que cuelga por fuera del borde de arriba.
+                    extra = 22 if m.get("usada") else 0
+                    cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
+                                  rect(m["x"], m["y"] - extra / 2,
+                                       ANCHO_TARJETA, ALTO_TARJETA + extra)))
+                    continue
                 # centrado en la forma, que esta arriba del nombre
                 cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
                               rect(m["x"], m["y"] + 12, ANCHO_CHIP(m["nombre"]),

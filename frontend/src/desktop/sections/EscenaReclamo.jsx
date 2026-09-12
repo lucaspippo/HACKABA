@@ -430,8 +430,84 @@ function FormaExp({ tipo, x, y, color }) {
     <circle cx={x} cy={y} r={R_EXP} fill="none" stroke={borde} strokeWidth="1.4" /></>;
 }
 
+// ---------------------------------------------------------------------------
+// LA EXPANSION DEL PROVEEDOR: lo que el equipo le enseño sobre el.
+//
+// Tiene que decir UNA frase al abrirse: «esto es lo que el equipo le enseño
+// sobre este proveedor, y la respuesta uso una de estas».
+//
+// La version anterior no decia nada de eso. Eran cajas grises identicas
+// apiladas en vertical, con el parrafo entero de cada regla puesto AL COSTADO:
+// los parrafos se pisaban con las lineas, arrancaban a alturas distintas de su
+// caja, y no habia forma de saber cual texto era de cual. Cuatro rectangulos
+// anonimos no se leen como conocimiento, se leen como filas de una tabla.
+//
+// Cuatro decisiones, y ninguna es cosmetica:
+//
+//   1. FORMA DE REGLA. La misma hoja amarilla con la esquina plegada que la
+//      regla del caso. Son piezas de conocimiento y tienen que parecerlo: el
+//      jurado ya vio esa forma treinta segundos antes, en la respuesta.
+//   2. EL TEXTO ADENTRO, y resumido (core/escena._resumen_regla). Adentro de
+//      la tarjeta no hay ambiguedad posible sobre de quien es el texto.
+//   3. LA QUE SE USO, MARCADA. Sin eso la expansion muestra cuatro cosas y no
+//      significa ninguna. Se marca con TINTA —el neutro mas oscuro, que en
+//      DESIGN.md es el relleno de la accion confiada— y no con rojo, oro ni
+//      salvia, que ya quieren decir otra cosa, ni con el azul de Angela, que
+//      esta reservado.
+//   4. GRILLA DE DOS COLUMNAS pegada debajo del rombo, no una pila vertical:
+//      cuatro tarjetas en columna se van a 350px de alto y obligan a alejar
+//      tanto el lienzo que el caso queda ilegible.
+const T_ANCHO = 190, T_ALTO = 92, T_PLIEGUE = 16;
+
+function TarjetaConocimiento({ n }) {
+  const x0 = n.x - T_ANCHO / 2, y0 = n.y - T_ALTO / 2;
+  const usada = !!n.usada;
+  const d = `M ${x0 + T_PLIEGUE} ${y0} H ${x0 + T_ANCHO} V ${y0 + T_ALTO} H ${x0} V ${y0 + T_PLIEGUE} Z`;
+  return (
+    <g>
+      {usada && (
+        // el halo: la tarjeta usada tiene que encontrarse sin leer nada
+        <path d={d} fill="none" stroke={TINTA} strokeWidth="7" opacity=".13"
+              transform="translate(0 1)" />
+      )}
+      <path d={d} fill={usada ? AMARILLO : "#f0e2b4"} />
+      <path d={`M ${x0 + T_PLIEGUE} ${y0} L ${x0} ${y0 + T_PLIEGUE} L ${x0 + T_PLIEGUE} ${y0 + T_PLIEGUE} Z`}
+            fill="rgba(15,17,19,.28)" />
+      <path d={d} fill="none" stroke={usada ? TINTA : "rgba(33,32,29,.3)"}
+            strokeWidth={usada ? 2.1 : 1.3} />
+      <foreignObject x={x0 + 11} y={y0 + 9} width={T_ANCHO - 22} height={T_ALTO - 32}>
+        <div xmlns="http://www.w3.org/1999/xhtml"
+             style={{ font: `${usada ? 700 : 600} 12.5px/1.28 'Hanken Grotesk',system-ui,sans-serif`,
+                      color: "#1a1a18" }}>
+          {n.nombre}
+        </div>
+      </foreignObject>
+      {/* quien la enseño y cuando: es lo que la vuelve memoria y no configuracion */}
+      {n.quien && (
+        <text x={x0 + 11} y={y0 + T_ALTO - 9} fill="rgba(26,26,24,.7)" fontSize="10.5">
+          se lo enseñó {n.quien} · {(n.cuando || "").slice(8, 10)}/{(n.cuando || "").slice(5, 7)}
+        </text>
+      )}
+      {usada && (
+        // la etiqueta cuelga del borde de arriba, fuera de la tarjeta, para no
+        // comerle renglones al texto
+        <g transform={`translate(${x0 + T_ANCHO - 4} ${y0 - 9})`}>
+          <rect x="-96" y="-11" width="96" height="19" rx="9.5" fill={TINTA} />
+          <text x="-48" y="2.5" textAnchor="middle" fill="#fbfbfa"
+                fontSize="10.5" fontWeight="700" letterSpacing=".02em">
+            la que usé para esto
+          </text>
+        </g>
+      )}
+    </g>
+  );
+}
+
 function Expansion({ datos, desde, visible }) {
   const grupos = datos?.grupos || [];
+  // `forma: "tarjeta"` lo manda el backend para la expansion del proveedor:
+  // ahi cada nodo es una regla y se dibuja como tal.
+  const tarjeta = datos?.forma === "tarjeta";
   if (!grupos.length || !desde) return null;
   let orden = 0;
   return (
@@ -452,8 +528,17 @@ function Expansion({ datos, desde, visible }) {
             // forma y termina en flecha.
             const dx = n.x - desde.x, dy = n.y - desde.y;
             const largo = Math.hypot(dx, dy) || 1;
-            const fx = n.x - (dx / largo) * (R_EXP + 9);
-            const fy = n.y - (dy / largo) * (R_EXP + 9);
+            // donde frena la linea: al borde de la forma. Una tarjeta es mucho
+            // mas grande que un disco, asi que se corta contra su rectangulo y
+            // no contra un radio — si no, la flecha termina adentro del texto.
+            let rec;
+            if (tarjeta) {
+              const ex = T_ANCHO / 2 + 8, ey = T_ALTO / 2 + 8;
+              rec = Math.min(Math.abs(dx) > 0.5 ? ex / Math.abs(dx / largo) : 1e9,
+                             Math.abs(dy) > 0.5 ? ey / Math.abs(dy / largo) : 1e9);
+            } else rec = R_EXP + 9;
+            const fx = n.x - (dx / largo) * rec;
+            const fy = n.y - (dy / largo) * rec;
             const cxq = (desde.x + fx) / 2 - dy * 0.07;
             const cyq = (desde.y + fy) / 2 + dx * 0.07;
             return (
@@ -463,9 +548,11 @@ function Expansion({ datos, desde, visible }) {
                 <path d={`M ${desde.x} ${desde.y} Q ${cxq} ${cyq} ${fx} ${fy}`}
                       fill="none" stroke={color} strokeWidth="2.2" opacity=".62"
                       markerEnd="url(#punta-exp)" />
-                <FormaExp tipo={n.tipo} x={n.x} y={n.y} color={color} />
-                <text x={n.x} y={n.y + R_EXP + 17} textAnchor="middle"
-                      fill={TINTA} fontSize="11.5" fontWeight="600">{n.nombre}</text>
+                {tarjeta ? <TarjetaConocimiento n={n} /> : <>
+                  <FormaExp tipo={n.tipo} x={n.x} y={n.y} color={color} />
+                  <text x={n.x} y={n.y + R_EXP + 17} textAnchor="middle"
+                        fill={TINTA} fontSize="11.5" fontWeight="600">{n.nombre}</text>
+                </>}
               </g>
             );
           })}

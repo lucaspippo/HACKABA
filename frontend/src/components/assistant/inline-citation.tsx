@@ -1,8 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { PreviewCard } from "@base-ui/react/preview-card";
+import { Popover } from "@base-ui/react/popover";
 import { cn } from "@/lib/utils";
 import { floating, mono } from "./surfaces";
 
@@ -13,6 +12,31 @@ export interface Source {
   detail?: string;
 }
 
+/**
+ * Una cita al lado de una frase de Ángela: se toca y se ve de dónde salió.
+ *
+ * ABRE CON CLIC, Y ESO NO ES UN DETALLE.
+ *
+ * Esto usaba `PreviewCard`, que es un HOVER card: no tiene manejador de clic.
+ * Medido en el navegador contra el deploy, con la respuesta del demo abierta:
+ * al pasar el mouse por encima el panel aparecía —existía en el DOM, entero
+ * dentro de la pantalla, en (1110,169) de 205×266— y al hacer CLIC no pasaba
+ * absolutamente nada. Con el dedo, donde no hay hover, nunca pasaba nada.
+ *
+ * Y este es el momento del pitch donde se prueba que la regla se aprendió y no
+ * se inventó. Una cita que sólo se abre si el mouse se queda quieto encima es
+ * una cita decorativa.
+ *
+ * `Popover` es el primitivo que corresponde: abre con clic (y con Enter y con
+ * Espacio, porque el trigger es un botón de verdad), cierra con Escape o
+ * tocando afuera, y reposiciona solo cuando no entra —que es lo que pasa en el
+ * panel angosto del grafo, de 300px. El hover se mantiene como atajo opcional,
+ * con retardo, pero ya no es la única forma de abrirlo.
+ *
+ * El estado abierto se lee del atributo `data-popup-open` que pone Base UI, no
+ * de un `useState` nuestro: un `open` controlado sin `triggerId` es justamente
+ * la otra forma de que esto no se vea.
+ */
 export function Citation({
   label,
   ariaLabel,
@@ -24,31 +48,31 @@ export function Citation({
   source: Source;
   tone?: "neutral" | "knowledge";
 }) {
-  const [open, setOpen] = useState(false);
   return (
-    <PreviewCard.Root open={open} onOpenChange={setOpen}>
-      <PreviewCard.Trigger
-        delay={0}
+    <Popover.Root>
+      <Popover.Trigger
+        openOnHover
+        delay={140}
+        closeDelay={120}
         render={<button type="button" aria-label={ariaLabel} />}
         className={cn(
-          "mx-0.5 inline-flex h-4 min-w-4 translate-y-[-2px] cursor-default items-center justify-center rounded-[5px] px-1 align-middle font-mono text-xs font-medium tabular-nums transition-colors",
+          // El blanco del toque es más grande que el ícono: 15×13px medidos en
+          // producción es un objetivo que se falla con el dedo, y en el
+          // escenario se toca con el dedo o con el mouse apurado.
+          "mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-2px] cursor-pointer items-center justify-center rounded-[5px] px-1 align-middle font-mono text-xs font-medium tabular-nums transition-colors",
           tone === "knowledge"
-            ? open
-              ? "bg-oro-tinta text-crema"
-              : "bg-oro/15 text-oro-tinta hover:bg-oro/25"
-            : open
-              ? "bg-foreground text-background"
-              : "bg-foreground/[0.06] text-foreground/45 hover:text-foreground/90",
+            ? "bg-oro/15 text-oro-tinta hover:bg-oro/30 data-[popup-open]:bg-oro-tinta data-[popup-open]:text-crema"
+            : "bg-foreground/[0.06] text-foreground/45 hover:text-foreground/90 data-[popup-open]:bg-foreground data-[popup-open]:text-background",
         )}
       >
         {label}
-      </PreviewCard.Trigger>
-      <PreviewCard.Portal>
-        <PreviewCard.Positioner side="top" sideOffset={8}>
-          <PreviewCard.Popup
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Positioner side="top" sideOffset={8} collisionPadding={12}>
+          <Popover.Popup
             className={cn(
               floating,
-              "z-50 w-64 origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
+              "z-50 w-64 max-w-[min(16rem,calc(100vw-24px))] origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
               "transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
               "data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0",
               "data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0",
@@ -69,9 +93,9 @@ export function Citation({
                 {source.detail}
               </p>
             )}
-          </PreviewCard.Popup>
-        </PreviewCard.Positioner>
-      </PreviewCard.Portal>
-    </PreviewCard.Root>
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
