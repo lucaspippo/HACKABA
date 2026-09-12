@@ -1074,10 +1074,47 @@ Every new `method.label`, `alternatives` and `falsifiers` string is new copy and
 Replace the `morosos`/`moroso_atraso`/`quiebre` tests in `backend/tests/test_priorities_drill.py`:
 
 ```python
+import json
+import os
+import subprocess
+import sys
+
+_DEMO_INBOX = None
+
+
+def _demo_inbox():
+    """The real demo dataset's inbox, fetched once per module.
+
+    This suite's fixture pins tenant `piloto` over a near-empty scratch dataset
+    (tests/conftest.py), so an in-process `inbox()` returns almost no cards and
+    every per-card assertion below would pass vacuously or skip. Card-shape
+    assertions only mean anything against the seeded dataset, so this follows
+    the repo's established subprocess pattern (test_priorities.py::_en_demo).
+    Fetched once and cached — the subprocess costs seconds and every test here
+    reads the same payload.
+    """
+    global _DEMO_INBOX
+    if _DEMO_INBOX is None:
+        backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_demo = os.path.join(os.path.dirname(backend), "data-demo")
+        env = {**os.environ, "POLPILOT_TENANT": "demo",
+               "POLPILOT_DATA_DIR": data_demo,
+               "POLPILOT_DEMO_TODAY": "2026-07-07", "PYTHONIOENCODING": "utf-8"}
+        env.pop("ANTHROPIC_API_KEY", None)
+        expr = ("__import__('core.priorities', fromlist=['x']).inbox('es', "
+                "['alertas','oportunidades','cuentas','inventario','deposito',"
+                "'finanzas','caja','evolucion'])")
+        r = subprocess.run(
+            [sys.executable, "-c", f"import json; print(json.dumps({expr}))"],
+            cwd=backend, env=env, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, r.stderr[-800:]
+        _DEMO_INBOX = json.loads(r.stdout.strip().splitlines()[-1])
+    return _DEMO_INBOX
+
+
 def _card(cid):
-    from core import priorities
-    inbox = priorities.inbox("es", None)
-    return next((c for c in inbox["act"] + inbox["watch"] if c["id"] == cid), None)
+    d = _demo_inbox()
+    return next((c for c in d["act"] + d["watch"] if c["id"] == cid), None)
 
 
 def test_moroso_atraso_states_the_deviation_as_a_metric():
@@ -1107,9 +1144,8 @@ def test_stockout_card_lists_products_as_records():
 
 
 def test_no_alert_card_emits_an_empty_pattern():
-    from core import priorities
-    inbox = priorities.inbox("es", None)
-    for c in inbox["act"] + inbox["watch"]:
+    d = _demo_inbox()
+    for c in d["act"] + d["watch"]:
         assert c["insight"]["pattern"] and c["insight"]["pattern"]["label"], c["id"]
 ```
 
@@ -1580,9 +1616,8 @@ def test_restock_card_keeps_its_day_counts_as_supporting_metrics():
 
 
 def test_no_card_anywhere_still_carries_metrics_on_the_insight():
-    from core import priorities
-    inbox = priorities.inbox("es", None)
-    for c in inbox["act"] + inbox["watch"]:
+    d = _demo_inbox()
+    for c in d["act"] + d["watch"]:
         assert "metrics" not in c["insight"], c["id"]
 ```
 
