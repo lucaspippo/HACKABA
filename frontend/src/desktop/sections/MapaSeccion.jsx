@@ -1,85 +1,104 @@
-// "El mapa de tu negocio" tiene dos formas de mirarse, y este archivo es lo
-// único que sabe que existen las dos.
+// "El mapa de tu negocio" now has three ways of being looked at, and this
+// file is the only thing that knows all three exist.
 //
-//   Mapa    — el árbol de las 8 fuentes y sus cortes (MapaNegocio.jsx, intacto).
-//   Cerebro — las entidades individuales y sus cruces (CerebroNegocio.jsx).
+//   Operación — the physical chain: where goods come from, where they are,
+//               where they go (MapaOperacion.jsx). The DEFAULT view: it is
+//               the one that answers "what is happening right now".
+//   Fuentes   — the tree of the 8 sources and their cuts (MapaNegocio.jsx,
+//               untouched).
+//   Cerebro   — the individual entities and their crossings
+//               (CerebroNegocio.jsx, untouched).
 //
-// Deliberadamente delgado: es un switch, no un contenedor con lógica. Cada
-// vista carga SUS datos y mantiene SU estado. Un error en el cerebro no puede
-// arrastrar al mapa — van en ErrorBoundaries separados y montados por turno.
+// Deliberately thin: it is a switch, not a container with logic. Each view
+// loads ITS data and keeps ITS state, in separate ErrorBoundaries mounted in
+// turn — an error in the brain cannot drag down the map.
 //
-// Sobre unificar las dos en una sola (el grafo denso en el centro, rodeado por
-// las 8 fuentes): este archivo es el lugar donde eso pasaría. Hoy el toggle
-// desmonta una y monta la otra; una versión unificada renderizaría las dos
-// capas juntas acá. Nada de lo que hay adentro de cada vista lo impide.
+// The door to the sources goes ON TOP and with a name of its own ("Lo que sé
+// de tu negocio"). At the bottom, as «see the full source crossing», it read
+// like a second operation map and nobody opened it. It is not another map:
+// it is where the numbers on THIS one come from.
 import { useState } from "react";
-import { Waypoints, Braces } from "lucide-react";
+import { ArrowLeft, Braces, Route, Waypoints } from "lucide-react";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import MapaNegocio from "./MapaNegocio";
 import CerebroNegocio from "./CerebroNegocio";
+import MapaOperacion from "./MapaOperacion";
 import { useT } from "../../lib/i18n";
 
-// Nota: el motor de fuerzas pesa ~300 kB y se intentó cargarlo con React.lazy
-// para que solo lo pague quien abre el cerebro. No va: con Vite, el Suspense
-// no resuelve nunca aunque los chunks bajen con 200 (interop del UMD de
-// react-force-graph). Import estático — en una demo que se graba, 300 kB
-// cuestan menos que una pantalla que se queda cargando para siempre.
+// The choice survives leaving and returning to the section (not a reload):
+// same discipline as the rest of the map (P32 · session cache).
+let _vistaElegida = "operacion";
 
-const VISTAS = [
-  { id: "mapa", icon: Waypoints, lk: "cerebro.tab_mapa", ay: "cerebro.tab_mapa_ay" },
-  { id: "cerebro", icon: Braces, lk: "cerebro.tab_cerebro", ay: "cerebro.tab_cerebro_ay" },
-];
-
-// La elección sobrevive a salir y volver a la sección (pero no a recargar):
-// misma disciplina que el resto del mapa (P32 · cache de sesión).
-let _vistaElegida = "mapa";
-
-export default function MapaSeccion({ onNavegar, onPreguntar, onInsight }) {
+// `highlight` is a finding id: a Home card sends here and the map must open
+// ALREADY on that finding, path lit and panel open — not on a neutral map
+// where you have to hunt for what to tap.
+export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
+                                      highlight = null }) {
   const t = useT();
   const [vista, setVista] = useState(_vistaElegida);
 
-  const cambiar = (id) => {
+  const ir = (id) => {
     if (id === vista) return;
     _vistaElegida = id;
-    // el panel de Ángela es del MAPA: al irse a la otra vista se limpia solo,
-    // si no queda un insight huérfano flotando en el aside.
-    if (id !== "mapa") onInsight?.(null);
+    // The Ángela panel belongs to the sources map: leaving it clears the
+    // insight, or an orphan floats in the aside.
+    if (id !== "fuentes") onInsight?.(null);
     setVista(id);
   };
 
-  const activa = VISTAS.find((v) => v.id === vista);
+  if (vista === "operacion") {
+    return (
+      <div className="space-y-3">
+        <div className="flex justify-end">
+          <button onClick={() => ir("fuentes")}
+                  className="flex min-h-[44px] items-center gap-2.5 rounded-full border
+                             border-violeta/30 bg-violeta-suave/50 px-4 text-left
+                             transition-colors hover:bg-violeta-suave">
+            <Waypoints className="size-4 shrink-0 text-violeta" />
+            <span className="min-w-0">
+              <span className="block text-[13px] font-semibold leading-tight text-violeta">
+                {t("mapaop.saber")}
+              </span>
+              <span className="block text-[11px] leading-tight text-tinta-suave">
+                {t("mapaop.saber_sub")}
+              </span>
+            </span>
+          </button>
+        </div>
+        <ErrorBoundary key="vista:operacion" seccion="mapa"
+                       onInicio={() => onNavegar?.("panel", null)}>
+          <MapaOperacion onPreguntar={onPreguntar} focoInicial={highlight} />
+        </ErrorBoundary>
+      </div>
+    );
+  }
 
+  const esCerebro = vista === "cerebro";
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex rounded-full border border-linea bg-papel-hondo p-0.5">
-          {VISTAS.map((v) => {
-            const on = v.id === vista;
-            const Icono = v.icon;
-            return (
-              <button key={v.id} onClick={() => cambiar(v.id)}
-                aria-pressed={on}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-lg font-medium
-                            transition-colors ${on
-                    ? "bg-crema text-tinta shadow-[0_1px_2px_rgba(33,32,29,.08)]"
-                    : "text-tinta-suave hover:text-tinta"}`}>
-                <Icono className="size-3.5" />
-                {t(v.lk)}
-              </button>
-            );
-          })}
-        </div>
-        <span className="text-base text-tinta-suave">{t(activa.ay)}</span>
+        <button onClick={() => ir("operacion")}
+                className="flex min-h-[44px] items-center gap-1.5 rounded-full border
+                           border-linea px-3.5 text-[13px] font-medium text-tinta-suave
+                           transition-colors hover:text-tinta">
+          <ArrowLeft className="size-3.5" />
+          {t("mapaop.volver_operacion")}
+        </button>
+        <button onClick={() => ir(esCerebro ? "fuentes" : "cerebro")}
+                className="flex min-h-[44px] items-center gap-1.5 text-[13px] font-medium
+                           text-tinta-suave transition-colors hover:text-tinta">
+          {esCerebro ? <Route className="size-4" /> : <Braces className="size-4" />}
+          {esCerebro ? t("mapaop.volver_fuentes") : t("mapaop.ver_cerebro")}
+        </button>
       </div>
 
-      {/* montadas por turno y con boundary propio: una no puede tirar a la otra */}
-      {vista === "mapa" && (
-        <ErrorBoundary key="vista:mapa" seccion="mapa" onInicio={() => onNavegar?.("panel", null)}>
+      {vista === "fuentes" && (
+        <ErrorBoundary key="vista:fuentes" seccion="mapa" onInicio={() => ir("operacion")}>
           <MapaNegocio onNavegar={onNavegar} onPreguntar={onPreguntar} onInsight={onInsight} />
         </ErrorBoundary>
       )}
-      {vista === "cerebro" && (
-        <ErrorBoundary key="vista:cerebro" seccion="mapa" onInicio={() => cambiar("mapa")}>
+      {esCerebro && (
+        <ErrorBoundary key="vista:cerebro" seccion="mapa" onInicio={() => ir("operacion")}>
           <CerebroNegocio onNavegar={onNavegar} onPreguntar={onPreguntar} />
         </ErrorBoundary>
       )}

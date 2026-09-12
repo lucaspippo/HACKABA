@@ -3912,6 +3912,564 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "{who} sacó a mano la preferencia de vista «{key}».",
         "en": "{who} removed the view preference “{key}” by hand.",
     },
+
+    # --- core/mapa_operacion.py · the operation map -------------------------
+    # The node contract ships every user-facing string pre-written per
+    # language (the screen iterates, it never composes), so the whole surface
+    # lives here. Singular/plural variants are separate keys on purpose:
+    # t() interpolates, it does not pluralize.
+    "mapaop.capa_origen": {"es": "De dónde viene", "en": "Where it comes from"},
+    "mapaop.capa_origen_det": {
+        "es": "Los proveedores y lo que ya está pedido y todavía no llegó.",
+        "en": "Suppliers, and what is already ordered and not here yet.",
+    },
+    "mapaop.capa_centro": {"es": "Dónde está", "en": "Where it is"},
+    "mapaop.capa_centro_det": {
+        "es": "El depósito por dentro: cada zona con lo que tiene guardado.",
+        "en": "Inside the warehouse: each zone with what it holds.",
+    },
+    "mapaop.capa_destino": {"es": "Adónde va", "en": "Where it goes"},
+    "mapaop.capa_destino_det": {
+        "es": "Los camiones, las bocas y los clientes que esperan.",
+        "en": "The trucks, the branches and the customers waiting.",
+    },
+    "mapaop.hub_nombre": {"es": "Depósito Central", "en": "Central Warehouse"},
+    "mapaop.hub_sub": {"es": "Casa Central", "en": "Casa Central"},
+    "mapaop.grupo_pasillos": {"es": "Pasillos y racks", "en": "Aisles & racks"},
+    # -- metric labels
+    "mapaop.m_partidas": {"es": "partidas", "en": "lots"},
+    "mapaop.m_zonas": {"es": "Zonas", "en": "Zones"},
+    "mapaop.m_vencen_dias": {"es": "Vencen en {dias} días",
+                             "en": "Expire within {dias} days"},
+    "mapaop.m_unidades": {"es": "Unidades", "en": "Units"},
+    "mapaop.m_ocupacion": {"es": "Ocupación", "en": "Occupancy"},
+    "mapaop.m_recepciones": {"es": "recepciones", "en": "receipts"},
+    "mapaop.m_bultos": {"es": "bultos", "en": "packages"},
+    "mapaop.m_bultos_cap": {"es": "Bultos", "en": "Packages"},
+    "mapaop.m_llega": {"es": "Llega", "en": "Arrives"},
+    "mapaop.m_prevista": {"es": "Prevista", "en": "Due"},
+    "mapaop.m_pedidos": {"es": "pedidos", "en": "orders"},
+    "mapaop.m_movimientos": {"es": "movimientos", "en": "movements"},
+    "mapaop.m_movimientos_cap": {"es": "Movimientos", "en": "Movements"},
+    "mapaop.m_reposiciones": {"es": "reposiciones", "en": "restocks"},
+    "mapaop.m_locales": {"es": "Locales", "en": "Stores"},
+    "mapaop.m_por_cobrar": {"es": "por cobrar", "en": "receivable"},
+    "mapaop.m_de_saldo": {"es": "de saldo", "en": "balance"},
+    "mapaop.m_avisos": {"es": "avisos", "en": "heads-ups"},
+    "mapaop.m_avisos_semana": {"es": "avisos esta semana",
+                               "en": "heads-ups this week"},
+    "mapaop.m_reglas": {"es": "reglas", "en": "rules"},
+    "mapaop.m_devoluciones": {"es": "devoluciones", "en": "write-backs"},
+    # -- zone badges and traffic-light reasons
+    "mapaop.b_en_orden": {"es": "{n} en orden", "en": "{n} in order"},
+    "mapaop.b_por_vencer": {"es": "{n} por vencer", "en": "{n} expiring soon"},
+    "mapaop.b_vencidas": {"es": "{n} vencidas", "en": "{n} expired"},
+    "mapaop.b_avisos_uno": {"es": "{n} aviso del equipo",
+                            "en": "{n} team heads-up"},
+    "mapaop.b_avisos_varios": {"es": "{n} avisos del equipo",
+                               "en": "{n} team heads-ups"},
+    "mapaop.b_bultos_en_camino": {"es": "{n} bultos en camino",
+                                  "en": "{n} packages on the way"},
+    "mapaop.b_lleva_dias": {"es": "lleva {n} días",
+                            "en": "{n} days and counting"},
+    "mapaop.b_excede": {"es": "{n} más de lo que el dueño toleró",
+                        "en": "{n} past what the owner allowed"},
+    "mapaop.z_sub_agrupada": {"es": "{n} ubicaciones · {motivo}",
+                              "en": "{n} locations · {motivo}"},
+    "mapaop.z_sub_propia": {"es": "Ocupación {pct}% · {motivo}",
+                            "en": "Occupancy {pct}% · {motivo}"},
+    "mapaop.motivo_vencidas": {"es": "hay partidas vencidas",
+                               "en": "there are expired lots"},
+    "mapaop.motivo_llena_en_camino": {
+        "es": "está llena y hay mercadería en camino",
+        "en": "it is full and goods are on the way",
+    },
+    "mapaop.motivo_vence_pronto": {"es": "vence algo pronto",
+                                   "en": "something expires soon"},
+    "mapaop.motivo_al_tope": {"es": "está al tope", "en": "it is at capacity"},
+    "mapaop.motivo_sin_novedades": {"es": "sin novedades", "en": "nothing new"},
+    # -- edge labels
+    "mapaop.a_partidas": {"es": "{n} partidas", "en": "{n} lots"},
+    "mapaop.a_pedidos": {"es": "{n} pedidos", "en": "{n} orders"},
+    "mapaop.a_recepciones": {"es": "{n} recepciones", "en": "{n} receipts"},
+    "mapaop.a_bultos": {"es": "{n} bultos", "en": "{n} packages"},
+    "mapaop.a_sin_confirmar": {"es": "{n} bultos sin confirmar",
+                               "en": "{n} packages unconfirmed"},
+    "mapaop.a_reposiciones": {"es": "{n} reposiciones", "en": "{n} restocks"},
+    "mapaop.a_mismo_predio": {"es": "mismo predio", "en": "same premises"},
+    # -- origin column
+    "mapaop.prov_sub": {"es": "Última entrega {dia}",
+                        "en": "Last delivery {dia}"},
+    "mapaop.prov_otros": {"es": "Otros proveedores", "en": "Other suppliers"},
+    "mapaop.prov_otros_sub": {"es": "{n} proveedores", "en": "{n} suppliers"},
+    # -- destination column
+    "mapaop.por_salir": {"es": "Pedidos sin salir", "en": "Orders not yet out"},
+    "mapaop.por_salir_sub": {"es": "{n} camiones cargando",
+                             "en": "{n} trucks loading"},
+    "mapaop.mostrador": {"es": "Mostrador", "en": "Front counter"},
+    "mapaop.mostrador_sub": {"es": "Mismo predio · sin traslado",
+                             "en": "Same premises · no transfer"},
+    "mapaop.sucursales": {"es": "Sucursales", "en": "Branches"},
+    "mapaop.sucursales_sub": {"es": "{n} locales propios",
+                              "en": "{n} own stores"},
+    "mapaop.canal_sub": {"es": "{n} comercios", "en": "{n} shops"},
+    "mapaop.canal_grupo_autoservicios": {"es": "Autoservicios y súper",
+                                         "en": "Self-service & supermarkets"},
+    "mapaop.canal_grupo_gastronomia": {"es": "Gastronomía y hotelería",
+                                       "en": "Food service & hotels"},
+    "mapaop.canal_grupo_despensas": {"es": "Despensas y kioscos",
+                                     "en": "Corner stores & kiosks"},
+    "mapaop.canal_grupo_otros": {"es": "Otros comercios", "en": "Other shops"},
+    "mapaop.cobranza": {"es": "Cuentas por cobrar",
+                        "en": "Accounts receivable"},
+    "mapaop.cobranza_sub": {"es": "{n} clientes con saldo",
+                            "en": "{n} customers with balances"},
+    "mapaop.criterio_sub": {
+        "es": "el sistema dice {a} días · el dueño le dio {b}",
+        "en": "the system says {a} days · the owner gave {b}",
+    },
+    # -- context layer
+    "mapaop.canales_titulo": {"es": "Lo que entra desde afuera",
+                              "en": "What comes in from outside"},
+    "mapaop.canales_sub": {
+        "es": "{a} de {b} entraron por un canal que el ERP no ve",
+        "en": "{a} of {b} came in through a channel the ERP never sees",
+    },
+    "mapaop.equipo_titulo": {"es": "El equipo", "en": "The team"},
+    "mapaop.equipo_sub": {"es": "{p} personas · {c} avisaron algo",
+                          "en": "{p} people · {c} flagged something"},
+    "mapaop.equipo_pie": {
+        "es": "{a} avisos esta semana · {t} tareas pendientes",
+        "en": "{a} heads-ups this week · {t} open tasks",
+    },
+    "mapaop.reglas_titulo": {"es": "Reglas de tu casa",
+                             "en": "Your house rules"},
+    "mapaop.reglas_sub": {"es": "{t} aprendidas · {a} aplicaciones",
+                          "en": "{t} learned · {a} applications"},
+    "mapaop.devuelve_titulo": {"es": "Vuelve a", "en": "Returns to"},
+    "mapaop.devuelve_via": {"es": "por export de CSV", "en": "via CSV export"},
+    "mapaop.devuelve_sub": {"es": "{n} devoluciones en {d} días",
+                            "en": "{n} write-backs in {d} days"},
+    "mapaop.devuelve_vacio": {
+        "es": "nada volvió al sistema todavía",
+        "en": "nothing has gone back to the system yet",
+    },
+    # -- channel names
+    "mapaop.canal_whatsapp": {"es": "WhatsApp", "en": "WhatsApp"},
+    "mapaop.canal_email": {"es": "Mail", "en": "Email"},
+    "mapaop.canal_foto": {"es": "Foto", "en": "Photo"},
+    "mapaop.canal_voz": {"es": "Audio", "en": "Voice"},
+    "mapaop.canal_chat": {"es": "Chat", "en": "Chat"},
+    "mapaop.canal_reporte": {"es": "Reporte", "en": "Report"},
+    # -- audit actions as a person reads them
+    "mapaop.acc_integrar_staging": {"es": "datos integrados",
+                                    "en": "data integrated"},
+    "mapaop.acc_confirmar_remito": {"es": "recepción registrada",
+                                    "en": "receipt recorded"},
+    "mapaop.acc_confirmar_factura": {"es": "compra cargada",
+                                     "en": "purchase loaded"},
+    "mapaop.acc_confirmar_orden_compra": {"es": "orden cerrada",
+                                          "en": "order closed"},
+    "mapaop.acc_aplicar_correccion": {"es": "corrección aplicada",
+                                      "en": "correction applied"},
+    "mapaop.acc_movimiento": {"es": "movimiento cargado",
+                              "en": "movement loaded"},
+    "mapaop.acc_validacion_montos_ventas": {"es": "montos validados",
+                                            "en": "amounts validated"},
+    "mapaop.acc_reportar_faltante": {"es": "faltante reportado",
+                                     "en": "shortage reported"},
+    "mapaop.acc_cargar_remito": {"es": "remito cargado",
+                                 "en": "delivery note loaded"},
+    "mapaop.acc_confirmar_movimiento": {"es": "movimiento confirmado",
+                                        "en": "movement confirmed"},
+    "mapaop.acc_aplicar_propuesta": {"es": "propuesta aplicada",
+                                     "en": "proposal applied"},
+    # -- the four headline numbers
+    "mapaop.titular_vencen": {"es": "Vencen en {dias} días",
+                              "en": "Expiring within {dias} days"},
+    "mapaop.titular_vencen_pie": {
+        "es": "plata que se tira si no sale",
+        "en": "money in the bin if it does not move",
+    },
+    "mapaop.titular_sin_confirmar": {"es": "Bultos sin confirmar",
+                                     "en": "Unconfirmed packages"},
+    "mapaop.titular_sin_confirmar_pie": {
+        "es": "{n} pedidos salieron y nadie avisó",
+        "en": "{n} orders left and nobody reported back",
+    },
+    "mapaop.titular_sin_salir": {"es": "Pedidos sin salir",
+                                 "en": "Orders not yet out"},
+    "mapaop.titular_sin_salir_pie": {
+        "es": "esperando en la playa de carga",
+        "en": "waiting on the loading dock",
+    },
+    "mapaop.titular_cobrar": {"es": "Por cobrar", "en": "Receivable"},
+    "mapaop.titular_cobrar_pie": {"es": "{cliente} lleva {dias} días",
+                                  "en": "{cliente} is {dias} days in"},
+    "mapaop.titular_cobrar_pie_neutro": {"es": "en cuenta corriente",
+                                         "en": "on account"},
+    # -- finding: the saturated zone (the pitch crossing)
+    "mapaop.veces_una": {"es": "una vez", "en": "once"},
+    "mapaop.veces_n": {"es": "{n} veces", "en": "{n} times"},
+    "mapaop.saturada_titulo": {
+        "es": "El depósito avisó {veces} que {zona} está llena{cola}",
+        "en": "The warehouse flagged {veces} that {zona} is full{cola}",
+    },
+    "mapaop.saturada_cola_ninguna": {"es": ".", "en": "."},
+    "mapaop.saturada_cola_una": {
+        "es": " — y hay una orden de compra abierta que llega justo ahí.",
+        "en": " — and there is an open purchase order arriving exactly there.",
+    },
+    "mapaop.saturada_cola_varias": {
+        "es": " — y hay {n} órdenes abiertas que llegan justo ahí.",
+        "en": " — and there are {n} open orders arriving exactly there.",
+    },
+    "mapaop.saturada_chip": {"es": "{zona} llena", "en": "{zona} full"},
+    "mapaop.saturada_chip_orden": {
+        "es": "{zona} llena · {numero} llega ahí",
+        "en": "{zona} full · {numero} lands there",
+    },
+    "mapaop.saturada_avisos_uno": {
+        "es": "{n} aviso del equipo ({quienes}) sobre {zona}.",
+        "en": "{n} heads-up from the team ({quienes}) about {zona}.",
+    },
+    "mapaop.saturada_avisos_varios": {
+        "es": "{n} avisos del equipo ({quienes}) sobre {zona}.",
+        "en": "{n} heads-ups from the team ({quienes}) about {zona}.",
+    },
+    "mapaop.saturada_partidas": {
+        "es": "Hoy hay {n} partidas cargadas en esa zona: es la más ocupada "
+              "del depósito.",
+        "en": "Today there are {n} lots loaded in that zone: it is the "
+              "fullest in the warehouse.",
+    },
+    "mapaop.saturada_orden": {
+        "es": "La orden {numero} de {proveedor} sigue abierta y suma {bultos} "
+              "bultos a esa misma zona.",
+        "en": "Order {numero} from {proveedor} is still open and adds "
+              "{bultos} packages to that same zone.",
+    },
+    "mapaop.saturada_lote": {
+        "es": "Y ahí adentro hay un lote por vencer: {producto} ({lote}), "
+              "en {dias} días.",
+        "en": "And inside it there is a lot about to expire: {producto} "
+              "({lote}), in {dias} days.",
+    },
+    "mapaop.saturada_alternativa": {
+        "es": "Sale primero {producto} ({lote}) y la entrega se reprograma.",
+        "en": "{producto} ({lote}) goes out first and the delivery is "
+              "rescheduled.",
+    },
+    # -- finding: in transit
+    "mapaop.transito_titulo": {
+        "es": "{n} bultos salieron y nadie confirmó la entrega",
+        "en": "{n} packages left and nobody confirmed delivery",
+    },
+    "mapaop.transito_chip": {"es": "{n} bultos · nadie confirmó",
+                             "en": "{n} packages · unconfirmed"},
+    "mapaop.transito_det": {
+        "es": "{pedido} · {cliente} · {camion} · {bultos} bultos · "
+              "prevista {dia}",
+        "en": "{pedido} · {cliente} · {camion} · {bultos} packages · "
+              "due {dia}",
+    },
+    # -- finding: expiring
+    "mapaop.vencer_titulo_varias": {
+        "es": "{n} partidas vencen en los próximos {dias} días",
+        "en": "{n} lots expire within the next {dias} days",
+    },
+    "mapaop.vencer_titulo_una": {"es": "Una partida vence en {dias} días",
+                                 "en": "One lot expires in {dias} days"},
+    "mapaop.vencer_chip": {"es": "{producto} · vence en {dias} días",
+                           "en": "{producto} · expires in {dias} days"},
+    "mapaop.vencer_det": {
+        "es": "{producto} ({lote}) · {cantidad} · {zona} · en {dias} días",
+        "en": "{producto} ({lote}) · {cantidad} · {zona} · in {dias} days",
+    },
+    "mapaop.vencer_alternativa": {
+        "es": "El más urgente es {producto} en {zona}: {dias} días.",
+        "en": "The most urgent is {producto} in {zona}: {dias} days.",
+    },
+    # -- finding: already expired
+    "mapaop.vencidos_titulo_varias": {
+        "es": "{n} partidas ya vencidas siguen ocupando lugar",
+        "en": "{n} already-expired lots are still taking up space",
+    },
+    "mapaop.vencidos_titulo_una": {
+        "es": "Una partida ya vencida sigue ocupando lugar",
+        "en": "One already-expired lot is still taking up space",
+    },
+    "mapaop.vencidos_det": {
+        "es": "{producto} ({lote}) · {cantidad} · {zona} · venció el {dia}",
+        "en": "{producto} ({lote}) · {cantidad} · {zona} · expired on {dia}",
+    },
+    "mapaop.vencidos_alternativa": {
+        "es": "Sacarlas de la estantería libera el espacio que hoy falta.",
+        "en": "Pulling them off the shelf frees the space missing today.",
+    },
+    # -- finding: order with no landing zone
+    "mapaop.sin_destino_titulo": {
+        "es": "{numero} no dice en qué zona se va a guardar",
+        "en": "{numero} does not say which zone it will land in",
+    },
+    "mapaop.sin_destino_det": {
+        "es": "{proveedor} · {bultos} bultos · ninguno de sus productos "
+              "tiene ubicación cargada en el depósito.",
+        "en": "{proveedor} · {bultos} packages · none of its products has a "
+              "warehouse location loaded.",
+    },
+    # -- finding: collections and the house term
+    "mapaop.cobranza_titulo": {"es": "{cliente} · {dias} días sin pagar",
+                               "en": "{cliente} · {dias} days unpaid"},
+    "mapaop.cobranza_det_debe": {"es": "Debe ${saldo}.",
+                                 "en": "Owes ${saldo}."},
+    "mapaop.cobranza_det_plazos": {
+        "es": "El sistema la marca morosa a los {a} días; el criterio de la "
+              "casa le da {b}.",
+        "en": "The system flags it late at {a} days; the house criterion "
+              "gives it {b}.",
+    },
+    "mapaop.cobranza_det_excede": {
+        "es": "Con ese criterio igual está {n} días excedida.",
+        "en": "Even by that criterion it is {n} days over.",
+    },
+    "mapaop.cobranza_det_regla": {"es": "La regla dice: «{regla}»",
+                                  "en": "The rule says: “{regla}”"},
+    # -- finding: waiting on the dock
+    "mapaop.sin_salir_titulo": {"es": "{n} pedidos sin salir",
+                                "en": "{n} orders not yet out"},
+    "mapaop.sin_salir_det": {
+        "es": "{pedido} · {cliente} · {bultos} bultos · {camion}",
+        "en": "{pedido} · {cliente} · {bultos} packages · {camion}",
+    },
+    # -- action verbs (what Ángela is asked to prepare)
+    "mapaop.verbo_reprogramar_orden": {"es": "reprogramar la orden",
+                                       "en": "reschedule order"},
+    "mapaop.verbo_confirmar_entrega": {"es": "confirmar la entrega",
+                                       "en": "confirm delivery"},
+    "mapaop.verbo_liberar_lote": {"es": "liberar el lote",
+                                  "en": "move out lot"},
+    "mapaop.verbo_llamar_cliente": {"es": "preparar el llamado a",
+                                    "en": "prepare the call to"},
+    "mapaop.verbo_despachar": {"es": "despachar", "en": "dispatch"},
+    "mapaop.verbo_revisar_zona": {"es": "revisar", "en": "review"},
+    "mapaop.verbo_asignar_zona": {"es": "asignarle zona a",
+                                  "en": "assign a zone to"},
+    "mapaop.verbo_dar_de_baja": {"es": "dar de baja", "en": "write off"},
+    # -- panel buttons and questions
+    "mapaop.boton_preguntar": {"es": "Preguntarle a Ángela",
+                               "en": "Ask Ángela"},
+    "mapaop.boton_preparar": {
+        "es": "Pedirle a Ángela que prepare: {verbo} {numero}",
+        "en": "Ask Ángela to prepare: {verbo} {numero}",
+    },
+    "mapaop.pregunta_preparar": {
+        "es": "Ángela, {verbo} {numero}. Prepará la propuesta y mostrámela "
+              "antes de aplicar nada.",
+        "en": "Ángela, {verbo} {numero}. Prepare the proposal and show it to "
+              "me before applying anything.",
+    },
+    "mapaop.pregunta_nodo": {"es": "¿Qué está pasando con {nombre}?",
+                             "en": "What is going on with {nombre}?"},
+    # -- panel sentences (what is going on / where it came from)
+    "mapaop.qp_ocupacion": {"es": "Ocupación {pct}%.",
+                            "en": "Occupancy {pct}%."},
+    "mapaop.qp_ocupacion_tope": {
+        "es": "Ocupación {pct}% — la más cargada del depósito.",
+        "en": "Occupancy {pct}% — the fullest in the warehouse.",
+    },
+    "mapaop.qp_avisos_uno": {"es": "El equipo avisó una vez esta semana.",
+                             "en": "The team flagged it once this week."},
+    "mapaop.qp_avisos_varios": {
+        "es": "El equipo avisó {n} veces esta semana.",
+        "en": "The team flagged it {n} times this week.",
+    },
+    "mapaop.qp_orden_llega": {
+        "es": "Y la {numero} con {bultos} bultos llega justo acá el {dia}.",
+        "en": "And {numero} with {bultos} packages lands right here "
+              "on {dia}.",
+    },
+    "mapaop.dd_orden": {"es": "{bultos} bultos · llega el {dia}",
+                        "en": "{bultos} packages · arrives {dia}"},
+    "mapaop.qp_sin_novedades": {
+        "es": "Sin novedades: nada vence pronto y nadie avisó nada.",
+        "en": "Nothing new: nothing expires soon and nobody flagged "
+              "anything.",
+    },
+    "mapaop.qp_pedido_salio": {
+        "es": "Salió con {bultos} bultos en {camion} para {cliente}, "
+              "previsto el {dia}.",
+        "en": "Left with {bultos} packages on {camion} for {cliente}, "
+              "due {dia}.",
+    },
+    "mapaop.qp_pedido_sin_confirmar": {
+        "es": "Nadie confirmó la entrega: esos bultos no están en ningún "
+              "lado.",
+        "en": "Nobody confirmed the delivery: those packages are nowhere.",
+    },
+    "mapaop.dd_pedido": {"es": "{n} partidas · estado «{estado}»",
+                         "en": "{n} lots · status “{estado}”"},
+    "mapaop.qp_orden": {
+        "es": "{bultos} bultos de {proveedor}, llegan el {dia}.",
+        "en": "{bultos} packages from {proveedor}, arriving {dia}.",
+    },
+    "mapaop.qp_orden_zona": {"es": "Van a {zona}.", "en": "They go to {zona}."},
+    "mapaop.qp_orden_zona_llena": {
+        "es": "Y esa zona hoy está al 100%: no hay dónde bajarlos.",
+        "en": "And that zone is at 100% today: there is nowhere to unload "
+              "them.",
+    },
+    "mapaop.dd_orden_items": {"es": "{n} ítems · estado «{estado}»",
+                              "en": "{n} items · status “{estado}”"},
+    "mapaop.qp_cob_debe": {
+        "es": "Debe ${saldo} y lleva {dias} días sin pagar.",
+        "en": "Owes ${saldo} and is {dias} days unpaid.",
+    },
+    "mapaop.dd_regla": {"es": "Regla de la casa", "en": "House rule"},
+    "mapaop.qp_cob_total": {
+        "es": "${total} por cobrar en {n} clientes.",
+        "en": "${total} receivable across {n} customers.",
+    },
+    "mapaop.qp_cob_caso": {
+        "es": "El caso que hay que llamar hoy: {cliente}, {dias} días.",
+        "en": "The call to make today: {cliente}, {dias} days.",
+    },
+    "mapaop.qp_prov_avisos_uno": {
+        "es": "El equipo dejó {n} aviso sobre este proveedor.",
+        "en": "The team left {n} heads-up about this supplier.",
+    },
+    "mapaop.qp_prov_avisos_varios": {
+        "es": "El equipo dejó {n} avisos sobre este proveedor.",
+        "en": "The team left {n} heads-ups about this supplier.",
+    },
+    "mapaop.qp_equipo": {
+        "es": "{p} personas, {c} dejaron algún aviso.",
+        "en": "{p} people, {c} left a heads-up.",
+    },
+    "mapaop.qp_equipo_tareas": {
+        "es": "{a} avisos esta semana · {t} tareas pendientes.",
+        "en": "{a} heads-ups this week · {t} open tasks.",
+    },
+    "mapaop.qp_equipo_tareas_una": {
+        "es": "{a} avisos esta semana · {t} tarea pendiente.",
+        "en": "{a} heads-ups this week · {t} open task.",
+    },
+    "mapaop.qp_reglas": {
+        "es": "{t} reglas aprendidas, {a} veces aplicadas.",
+        "en": "{t} rules learned, applied {a} times.",
+    },
+    "mapaop.qp_reglas_origen": {
+        "es": "Nadie las configuró: aparecieron porque alguien corrigió al "
+              "sistema.",
+        "en": "Nobody configured them: they appeared because someone "
+              "corrected the system.",
+    },
+    "mapaop.qp_canales": {
+        "es": "{a} de {b} avisos entraron por un canal que el ERP no ve.",
+        "en": "{a} of {b} heads-ups came in through a channel the ERP "
+              "never sees.",
+    },
+    "mapaop.qp_devuelve": {
+        "es": "{n} devoluciones al sistema en {d} días.",
+        "en": "{n} write-backs to the system in {d} days.",
+    },
+    "mapaop.qp_devuelve_vacio": {
+        "es": "Nada volvió al sistema todavía: el ciclo no cerró.",
+        "en": "Nothing has gone back yet: the loop has not closed.",
+    },
+    # -- listing titles
+    "mapaop.lst_canal": {"es": "Lo que entró por {canal}",
+                         "en": "What came in via {canal}"},
+    "mapaop.lst_canales": {"es": "Todo lo que entró de afuera",
+                           "en": "Everything that came in from outside"},
+    "mapaop.lst_equipo": {"es": "Quién es quién, y quién avisó algo",
+                          "en": "Who is who, and who flagged something"},
+    "mapaop.lst_reglas": {"es": "El criterio de la casa, y dónde se aplica",
+                          "en": "The house criterion, and where it applies"},
+    "mapaop.lst_devuelve": {"es": "Lo que efectivamente volvió al sistema",
+                            "en": "What actually went back to the system"},
+    "mapaop.lst_cobranza": {"es": "Quién debe, y desde cuándo",
+                            "en": "Who owes, and since when"},
+    "mapaop.lst_deposito": {"es": "Las zonas del depósito",
+                            "en": "The warehouse zones"},
+    "mapaop.lst_zona": {"es": "Lo que hay guardado",
+                        "en": "What is stored here"},
+    "mapaop.lst_prov_otros": {"es": "Los proveedores agrupados",
+                              "en": "The grouped suppliers"},
+    "mapaop.lst_recepciones": {"es": "Últimas recepciones",
+                               "en": "Latest receipts"},
+    "mapaop.lst_orden": {"es": "Lo que trae la orden",
+                         "en": "What the order brings"},
+    "mapaop.lst_pedidos": {"es": "Pedido por pedido", "en": "Order by order"},
+    "mapaop.lst_locales": {"es": "Los locales", "en": "The stores"},
+    "mapaop.lst_detalle": {"es": "Ver el detalle", "en": "See the detail"},
+    # -- source citations (the "where this number came from" footnote)
+    "mapaop.fte_notas": {
+        "es": "avisos que dejó el equipo por voz, chat o reporte",
+        "en": "heads-ups the team left by voice, chat or report",
+    },
+    "mapaop.fte_equipo": {
+        "es": "las personas del equipo y los avisos que dejaron",
+        "en": "the team and the heads-ups they left",
+    },
+    "mapaop.fte_reglas": {
+        "es": "reglas que el sistema aprendió de cómo se trabaja acá",
+        "en": "rules the system learned from how work gets done here",
+    },
+    "mapaop.fte_auditoria": {
+        "es": "cada aprobación queda registrada con quién y cuándo",
+        "en": "every approval is recorded with who and when",
+    },
+    "mapaop.fte_cuentas": {"es": "los saldos de cuenta corriente",
+                           "en": "the running-account balances"},
+    "mapaop.fte_deposito": {"es": "una fila por partida guardada",
+                            "en": "one row per stored lot"},
+    "mapaop.fte_zona": {"es": "las ubicaciones del depósito",
+                        "en": "the warehouse locations"},
+    "mapaop.fte_proveedor": {
+        "es": "cruzado con el depósito para saber dónde quedó",
+        "en": "crossed with the warehouse to know where it landed",
+    },
+    "mapaop.fte_prov_otros": {"es": "los proveedores que menos entregan",
+                              "en": "the suppliers that deliver least"},
+    "mapaop.fte_orden": {
+        "es": "los ítems de la orden, cruzados con dónde vive cada código",
+        "en": "the order's items, crossed with where each code lives",
+    },
+    "mapaop.fte_pedido_transito": {
+        "es": "un pedido en estado «en camino»",
+        "en": "one order in “on the road” state",
+    },
+    "mapaop.fte_pedidos_transito": {
+        "es": "pedidos en estado «en camino»",
+        "en": "orders in “on the road” state",
+    },
+    "mapaop.fte_pendientes": {
+        "es": "pedidos en estado «pendiente»",
+        "en": "orders in “pending” state",
+    },
+    "mapaop.fte_por_vencer": {
+        "es": "partidas con vencimiento dentro del horizonte",
+        "en": "lots expiring within the horizon",
+    },
+    "mapaop.fte_mostrador": {
+        "es": "los movimientos de los últimos doce meses",
+        "en": "the last twelve months of movements",
+    },
+    "mapaop.fte_sucursales": {
+        "es": "lo que se mandó a los locales propios en doce meses",
+        "en": "what went to own stores in twelve months",
+    },
+    "mapaop.fte_canal": {"es": "los pedidos de reparto",
+                         "en": "the delivery orders"},
+    # -- misc
+    "mapaop.sin_fecha": {"es": "sin fecha", "en": "no date"},
+    "mapaop.sin_ubicacion": {"es": "sin ubicación", "en": "no location"},
+    "mapaop.el_equipo": {"es": "el equipo", "en": "the team"},
+    "mapaop.alguien_del_equipo": {"es": "alguien del equipo",
+                                  "en": "someone on the team"},
+    "mapaop.conj_y": {"es": " y ", "en": " and "},
+    "mapaop.dias_n": {"es": "{n} días", "en": "{n} days"},
 }
 
 

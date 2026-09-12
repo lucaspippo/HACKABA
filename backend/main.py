@@ -2953,6 +2953,33 @@ def grafo_get(u: dict = Depends(require_feature("mapa"))):
     return analisis_cache.get_o_computar("grafo", lang, lambda: grafo.completo(lang))
 
 
+@app.get("/api/mapa-operacion")
+def mapa_operacion_get(u: dict = Depends(require_feature("mapa"))):
+    """THE OPERATION MAP — the physical chain: where goods come from, where
+    they are and where they go, plus the context layer no ERP captures (team
+    heads-ups, house rules, what returns to the system).
+
+    Additive: neither the sources map (/api/grafo's tree) nor the brain
+    consume this. No canonical number is born here — core/mapa_operacion.py
+    reads deposito/recepciones/logistica/ordenes_compra and crosses what
+    cuentas, conocimiento and the audit log already decided. Cached per
+    language like every analysis (core/analisis_cache)."""
+    from core import mapa_operacion
+    return mapa_operacion.mapa(_lang(u))
+
+
+@app.get("/api/mapa-operacion/nodo/{nid}")
+def mapa_operacion_nodo(nid: str, u: dict = Depends(require_feature("mapa"))):
+    """One node's panel: what is going on, where it came from, what can be
+    done, and — folded at the bottom — the row listing. Read-only; the
+    "do it" button asks Ángela through the normal propose→approve rail."""
+    from core import mapa_operacion
+    d = mapa_operacion.detalle(nid, _lang(u))
+    if d is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return d
+
+
 @app.get("/api/analisis")
 def analisis_completo(u: dict = Depends(require_feature("oportunidades"))):
     """Los cruces (P7): rotación×inmovilizado, estacionalidad decenal, push/pull
