@@ -48,6 +48,7 @@ MODULOS = {
     "cobranzas": "Cobranzas",
     "auditoria": "Registro de auditoría",
     "conectores": "Conectores",
+    "whatsapp_bot": "Bot de WhatsApp (ventas)",
     "administracion": "Administración",
     "deposito": "Depósito",
     "logistica": "Logística y reparto",
@@ -105,7 +106,8 @@ _SEED_HORIZONTE = {
         "features": [
             "panel", "mapa", "inventario", "saneamiento", "finanzas", "cuentas", "caja", "deposito",
             "logistica", "evolucion", "alertas", "oportunidades", "equipo", "gestion_equipo",
-            "cargar", "documentos", "cobranzas", "auditoria", "conectores", "perfil", "angela",
+            "cargar", "documentos", "cobranzas", "auditoria", "conectores", "whatsapp_bot",
+            "perfil", "angela",
         ],
     },
     "paula": {

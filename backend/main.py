@@ -24,7 +24,7 @@ import sys
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -39,7 +39,9 @@ from authz import require_admin, require_any_feature, require_feature, usuario_a
 from core import (store, saneamiento, fase, memoria, importer, staging, anomalias,
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
-                  evolucion, ventas, pagos, paths, conocimiento, piso, onboarding)
+                  evolucion, ventas, pagos, paths, conocimiento, piso, onboarding,
+                  whatsapp_channel)
+import whatsapp_bot
 
 
 def _lang(u: dict | None = None) -> str:
@@ -1368,7 +1370,8 @@ def _familia_evento(acc: str) -> str | None:
 # bloque "qué resolvió esta semana" de la ficha.
 _TRABAJO_EXTRA = {"validacion_montos_ventas", "preparar_orden_compra",
                   "reportar_faltante", "marcar_conteo", "confirmar_entrega",
-                  "cerrar_tarea_piso", "pedir_reposicion", "registrar_pedido"}
+                  "cerrar_tarea_piso", "pedir_reposicion", "registrar_pedido",
+                  "registrar_presupuesto"}
 
 
 def _es_trabajo(acc: str) -> bool:
@@ -1800,6 +1803,107 @@ def whatsapp_in(req: WhatsAppRequest):
                          features=u.get("features"))
     return {"autorizado": True, "usuario": u.get("nombre"), "rol": u.get("rol"),
             "respuesta": r["respuesta"], "acciones": r.get("acciones", [])}
+
+
+# --- WhatsApp Bot: canal de VENTAS de cara al cliente -------------------------
+# Distinto del bloque de arriba (ese es el WhatsApp del EMPLEADO hablando con
+# la misma Ángela interna). Acá el tenant conecta su propio número de WhatsApp
+# Business (Meta Cloud API) para que sus CLIENTES puedan pedir catálogo,
+# armar un pedido o pedir un presupuesto por chat. Ver core/whatsapp_channel.py
+# y backend/whatsapp_bot.py.
+
+class WhatsAppBotConfigRequest(BaseModel):
+    phone_number_id: str
+    access_token: str
+    app_secret: str
+    greeting_message: str = ""
+    enabled: bool = True
+
+
+@app.get("/api/whatsapp-bot/config")
+def whatsapp_bot_config_ver(_u: dict = Depends(require_admin)):
+    """Config guardada del bot de ventas. El token/secret nunca vuelven al
+    frontend — mismo criterio que /api/conectores/odoo."""
+    from core.db import tenant as _tenant
+    c = whatsapp_channel.obtener_config(_tenant.current_tenant_id())
+    if not c:
+        return {"conectado": False}
+    return {"conectado": True, **c}
+
+
+@app.put("/api/whatsapp-bot/config")
+def whatsapp_bot_config_guardar(req: WhatsAppBotConfigRequest, _u: dict = Depends(require_admin)):
+    """Prueba las credenciales contra la Graph API de Meta antes de guardar —
+    nunca persiste un token/phone_number_id que no sirve."""
+    from core.db import tenant as _tenant
+    try:
+        return {"conectado": True, **whatsapp_channel.guardar_config(
+            _tenant.current_tenant_id(),
+            phone_number_id=req.phone_number_id, access_token=req.access_token,
+            app_secret=req.app_secret, greeting_message=req.greeting_message,
+            enabled=req.enabled,
+        )}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/whatsapp-bot/config")
+def whatsapp_bot_config_borrar(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    whatsapp_channel.borrar_config(_tenant.current_tenant_id())
+    return {"ok": True}
+
+
+@app.get("/api/whatsapp-bot/conversaciones")
+def whatsapp_bot_conversaciones(_u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    return {"conversaciones": whatsapp_channel.listar_conversaciones(_tenant.current_tenant_id())}
+
+
+@app.get("/api/whatsapp-bot/conversaciones/{conversation_id}/mensajes")
+def whatsapp_bot_mensajes(conversation_id: str, _u: dict = Depends(require_admin)):
+    from core.db import tenant as _tenant
+    return {"mensajes": whatsapp_channel.historial_conversacion(
+        _tenant.current_tenant_id(), conversation_id)}
+
+
+# EXCEPCIÓN documentada: máquina-a-máquina (Meta), no lleva sesión de humano.
+# El handshake de verificación es GET con hub.mode/hub.verify_token/hub.challenge
+# — lo manda Meta UNA vez al guardar la config del webhook en su panel.
+@app.get("/api/webhooks/whatsapp")
+def whatsapp_webhook_verificar(
+    hub_mode: str = Query("", alias="hub.mode"),
+    hub_verify_token: str = Query("", alias="hub.verify_token"),
+    hub_challenge: str = Query("", alias="hub.challenge"),
+):
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    if whatsapp_channel.verificar_handshake(tid, hub_mode, hub_verify_token):
+        return Response(content=hub_challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="verify_token inválido")
+
+
+# EXCEPCIÓN documentada: máquina-a-máquina (Meta). Se autentica con la firma
+# HMAC del body (X-Hub-Signature-256, con el app secret guardado del tenant),
+# no con un token de sesión — mismo criterio que el resto de los webhooks.
+@app.post("/api/webhooks/whatsapp")
+async def whatsapp_webhook_recibir(request: Request):
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    body = await request.body()
+    config = whatsapp_channel.config_con_secretos(tid)
+    if not config:
+        return {"ok": True}
+    if not whatsapp_channel.verificar_firma(
+        config["app_secret"], body, request.headers.get("x-hub-signature-256"),
+    ):
+        raise HTTPException(status_code=401, detail="firma inválida")
+    try:
+        payload = json.loads(body or b"{}")
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="payload inválido")
+    whatsapp_bot.procesar_webhook(tid, payload)
+    return {"ok": True}
 
 
 @app.get("/api/inventario")
