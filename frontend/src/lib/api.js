@@ -225,9 +225,9 @@ export const api = {
     if (!res.ok) throw new Error(`angela → ${res.status}`);
     return res.json();
   },
-  // Igual que angela() pero streaming (NDJSON): devuelve el Response crudo
-  // para que el runtime de assistant-ui lea el body a medida que llega.
-  angelaStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
+  // Same as angela() but streaming (NDJSON): returns the raw Response so the
+  // assistant-ui runtime can read the body as it arrives.
+  chatStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
     const res = await fetch("/api/angela/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

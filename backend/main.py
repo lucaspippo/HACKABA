@@ -1675,26 +1675,26 @@ def chat(req: ChatRequest, request: Request):
 
 @app.post("/api/angela/stream")
 def chat_stream(req: ChatRequest, request: Request):
-    """Igual a /api/angela pero en streaming (NDJSON: una línea = un evento
-    JSON) para el chat con assistant-ui — texto en vivo y cada tool-call
-    visible apenas corre. Misma identidad/auth/cap que /api/angela; sólo
-    cambia el transporte."""
+    """Same as /api/angela but streaming (NDJSON: one line = one JSON event)
+    for the assistant-ui chat — live text and each tool call visible as soon
+    as it runs. Same identity/auth/cap as /api/angela; only the transport
+    changes."""
     from fastapi.responses import StreamingResponse
 
-    historial = [t.model_dump() for t in (req.historial or [])]
+    history = [t.model_dump() for t in (req.historial or [])]
 
-    def linea(evento: dict) -> str:
-        return json.dumps(evento, ensure_ascii=False, default=str) + "\n"
+    def line(event: dict) -> str:
+        return json.dumps(event, ensure_ascii=False, default=str) + "\n"
 
-    def evento_cap(u) -> str:
-        return linea({"type": "done", "result": {
+    def cap_event(u) -> str:
+        return line({"type": "done", "result": {
             "respuesta": i18n.t("angela.cap_alcanzado", _lang(u)),
             "modo": "cap", "tools_usadas": [], "acciones": [], "opciones": [],
         }})
 
     if _ip_excedido(_client_ip(request), _cap_ip()):
         u = auth.usuario_por_token(req.token) if req.token else None
-        return StreamingResponse(iter([evento_cap(u)]), media_type="application/x-ndjson")
+        return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
 
     if req.token:
         u = auth.usuario_por_token(req.token)
@@ -1702,44 +1702,44 @@ def chat_stream(req: ChatRequest, request: Request):
             raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
         cap = _cap_mensajes()
         if cap > 0:
-            usados = _CHAT_POR_SESION.get(req.token, 0)
-            if usados >= cap:
-                return StreamingResponse(iter([evento_cap(u)]), media_type="application/x-ndjson")
-            _CHAT_POR_SESION[req.token] = usados + 1
+            used = _CHAT_POR_SESION.get(req.token, 0)
+            if used >= cap:
+                return StreamingResponse(iter([cap_event(u)]), media_type="application/x-ndjson")
+            _CHAT_POR_SESION[req.token] = used + 1
 
-        def generar():
+        def generate():
             import time as _time
             _t0 = _time.monotonic()
-            resultado = None
-            for ev in angela.stream_responder(
-                req.mensaje, historial, rol=u.get("rol"),
-                nombre=u.get("username"), features=u.get("features"),
+            result = None
+            for ev in angela.stream_response(
+                req.mensaje, history, role=u.get("rol"),
+                name=u.get("username"), features=u.get("features"),
             ):
                 if ev.get("type") == "done":
-                    resultado = ev.get("result") or {}
-                yield linea(ev)
+                    result = ev.get("result") or {}
+                yield line(ev)
             _ms = round((_time.monotonic() - _t0) * 1000)
-            resultado = resultado or {}
-            print(f"[angela/stream] {_ms}ms tools={','.join(resultado.get('tools_usadas') or []) or '-'} "
+            result = result or {}
+            print(f"[angela/stream] {_ms}ms tools={','.join(result.get('tools_usadas') or []) or '-'} "
                   f"user={u['username']}", flush=True)
             try:
                 store.audit.record(actor=u["username"], accion="consulta_angela",
-                                   despues={"tools": (resultado.get("tools_usadas") or [])[:4],
+                                   despues={"tools": (result.get("tools_usadas") or [])[:4],
                                             "ms": _ms})
             except Exception:  # noqa: BLE001
                 pass
 
-        return StreamingResponse(generar(), media_type="application/x-ndjson")
+        return StreamingResponse(generate(), media_type="application/x-ndjson")
 
     if _es_demo():
         raise HTTPException(status_code=401, detail=i18n.t("api.sesion_requerida"))
 
-    def generar_invitado():
-        for ev in angela.stream_responder(req.mensaje, historial, rol="invitado",
-                                          nombre=None, features=[]):
-            yield linea(ev)
+    def generate_guest():
+        for ev in angela.stream_response(req.mensaje, history, role="invitado",
+                                         name=None, features=[]):
+            yield line(ev)
 
-    return StreamingResponse(generar_invitado(), media_type="application/x-ndjson")
+    return StreamingResponse(generate_guest(), media_type="application/x-ndjson")
 
 
 @app.get("/api/oportunidades")

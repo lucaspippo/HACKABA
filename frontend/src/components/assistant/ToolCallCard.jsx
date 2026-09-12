@@ -1,12 +1,12 @@
 import { Loader2, Wrench } from "lucide-react";
-import AngelaTable from "./AngelaTable";
-import AngelaMiniChart from "./AngelaMiniChart";
+import ResultTable from "./ResultTable";
+import MiniChart from "./MiniChart";
 import { peso, num } from "../../lib/format";
 
-// Nombres humanos para las tools más comunes (P·chat) — el resto cae al
-// nombre de la tool con guiones bajos como espacios; no hace falta mantener
-// una entrada por cada una de las ~40 tools de angela.py para que se lea bien.
-const ETIQUETAS = {
+// Human labels for the most common tools — everything else falls back to the
+// tool name with underscores turned into spaces; no need to keep an entry
+// for each of angela.py's ~40 tools for this to read well.
+const LABELS = {
   resumen_negocio: "Mirando el resumen del negocio",
   plata_en: "Calculando plata inmovilizada",
   buscar_productos: "Buscando productos",
@@ -31,13 +31,13 @@ const ETIQUETAS = {
   consultar_manual: "Revisando el manual",
 };
 
-function etiquetaDe(toolName) {
-  return ETIQUETAS[toolName] || toolName.replaceAll("_", " ");
+function labelFor(toolName) {
+  return LABELS[toolName] || toolName.replaceAll("_", " ");
 }
 
-// Un objeto "chico" (pocas claves escalares) se muestra como grilla clave/valor
-// compacta — el fallback genérico para tools sin renderer dedicado arriba.
-function ResultadoGenerico({ result }) {
+// A "small" object (few scalar keys) renders as a compact key/value grid —
+// the generic fallback for tools with no dedicated renderer above.
+function GenericResult({ result }) {
   if (result == null) return null;
   if (typeof result !== "object" || Array.isArray(result)) {
     return <p className="mt-1 text-[0.82rem] text-tinta">{String(result)}</p>;
@@ -45,13 +45,13 @@ function ResultadoGenerico({ result }) {
   if (result.error) {
     return <p className="mt-1 text-[0.82rem] text-rojo-hondo">{String(result.error || result.motivo)}</p>;
   }
-  const entradas = Object.entries(result).filter(
+  const entries = Object.entries(result).filter(
     ([, v]) => v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean"
   );
-  if (entradas.length === 0) return null;
+  if (entries.length === 0) return null;
   return (
     <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[0.8rem]">
-      {entradas.slice(0, 8).map(([k, v]) => (
+      {entries.slice(0, 8).map(([k, v]) => (
         <div key={k} className="contents">
           <dt className="capitalize text-tinta-suave">{k.replaceAll("_", " ")}</dt>
           <dd className="tabular-nums text-tinta">
@@ -63,12 +63,13 @@ function ResultadoGenerico({ result }) {
   );
 }
 
-// Dispatcher por FORMA del resultado, no por nombre de tool: cualquiera de las
-// ~40 tools de angela.py que devuelva `items`/una lista de objetos homogéneos
-// sale como tabla; una `consultar_serie` no-temporal con `top` sale como mini
-// gráfico; todo lo demás cae al resumen genérico clave/valor. Así una tool
-// nueva en el backend ya tiene una UI razonable sin tocar el frontend.
-function Resultado({ toolName, result }) {
+// Dispatch by the SHAPE of the result, not by tool name: any of angela.py's
+// ~40 tools that returns `items`/a list of homogeneous objects renders as a
+// table; a non-temporal `consultar_serie` with `top` renders as a mini chart;
+// everything else falls back to the generic key/value summary. That way a
+// new backend tool already gets a reasonable UI without touching the
+// frontend.
+function Result({ toolName, result }) {
   if (result == null) return null;
   if (toolName === "navegar_a" && result.navegado_a) {
     return <p className="mt-1 text-[0.82rem] text-tinta-suave">→ te llevé a <b className="text-tinta">{result.navegado_a}</b></p>;
@@ -85,32 +86,32 @@ function Resultado({ toolName, result }) {
             Total: <b>{peso(result.total_inmovilizado_listado)}</b>
           </p>
         )}
-        <AngelaTable filas={items} />
+        <ResultTable rows={items} />
       </>
     );
   }
   if (Array.isArray(result.series)) {
-    const conTop = result.series.find((s) => Array.isArray(s.top) && s.top.length);
-    if (conTop) return <AngelaMiniChart puntos={conTop.top} />;
+    const withTop = result.series.find((s) => Array.isArray(s.top) && s.top.length);
+    if (withTop) return <MiniChart points={withTop.top} />;
   }
-  return <ResultadoGenerico result={result} />;
+  return <GenericResult result={result} />;
 }
 
-// La card que representa UN tool-call dentro del mensaje: badge con el
-// nombre mientras corre, resultado renderizado (por forma) cuando llega.
+// The card representing ONE tool call inside a message: a badge with the
+// name while it runs, the rendered result (by shape) once it arrives.
 export default function ToolCallCard({ part }) {
-  const corriendo = part.status?.type === "running" && part.result === undefined;
+  const isRunning = part.status?.type === "running" && part.result === undefined;
   return (
     <div className="my-1.5 rounded-xl border border-linea/70 bg-papel/50 px-3 py-2">
       <div className="flex items-center gap-2 text-[0.8rem] font-medium text-tinta-suave">
-        {corriendo ? (
+        {isRunning ? (
           <Loader2 size={14} className="shrink-0 animate-spin text-violeta" />
         ) : (
           <Wrench size={14} className="shrink-0 text-violeta" />
         )}
-        <span>{etiquetaDe(part.toolName)}</span>
+        <span>{labelFor(part.toolName)}</span>
       </div>
-      {!corriendo && <Resultado toolName={part.toolName} result={part.result} />}
+      {!isRunning && <Result toolName={part.toolName} result={part.result} />}
     </div>
   );
 }

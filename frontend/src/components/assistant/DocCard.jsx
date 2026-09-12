@@ -2,22 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 import { api } from "../../lib/api";
 
-// P24·B — la entrega del documento EN el chat: al montar, el PDF se renderiza
-// UNA vez en el server (con eso queda listado en Documentos, "pedido por" y
-// todo); el botón descarga ese binario. Sin preview dentro de PolPilot: la
-// única acción es DESCARGAR (el preview en pantalla descalzaba números).
+// Document delivery IN the chat: on mount, the PDF renders ONCE on the
+// server (which also lists it under Documentos, "requested by", etc.); the
+// button downloads that binary. No in-app preview: the only action is
+// DOWNLOAD (an on-screen preview drifted from the real numbers).
 export default function DocCard({ documento, t }) {
-  const [estado, setEstado] = useState("generando"); // generando|listo|error
+  const [status, setStatus] = useState("generating"); // generating|ready|error
   const blobRef = useRef(null);
   useEffect(() => {
-    let vivo = true;
+    let mounted = true;
     api.documentoPdf(documento)
-      .then((b) => { if (vivo) { blobRef.current = b; setEstado("listo"); } })
-      .catch(() => { if (vivo) setEstado("error"); });
-    return () => { vivo = false; };
+      .then((b) => { if (mounted) { blobRef.current = b; setStatus("ready"); } })
+      .catch(() => { if (mounted) setStatus("error"); });
+    return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const bajar = () => {
+  const download = () => {
     if (!blobRef.current) return;
     const url = URL.createObjectURL(blobRef.current);
     const a = document.createElement("a");
@@ -33,16 +33,16 @@ export default function DocCard({ documento, t }) {
         <p className="truncate text-[0.88rem] font-semibold text-tinta">{documento.titulo}</p>
         <p className="text-[0.74rem] text-tinta-suave">{documento.subtitulo || documento.fecha || ""}</p>
       </div>
-      {estado === "generando" && (
+      {status === "generating" && (
         <span className="shrink-0 text-[0.78rem] text-tinta-suave">{t("angela.doc_generando")}</span>
       )}
-      {estado === "listo" && (
-        <button onClick={bajar}
+      {status === "ready" && (
+        <button onClick={download}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema">
           {t("angela.doc_descargar")}
         </button>
       )}
-      {estado === "error" && (
+      {status === "error" && (
         <span className="shrink-0 text-[0.78rem] font-semibold text-rojo">{t("angela.doc_error")}</span>
       )}
     </div>
