@@ -43,8 +43,13 @@ ALTO_PILDORA = 22
 
 
 def ANCHO_CHIP(nombre: str) -> float:
-    """Lo que mide una chip de la expansion: el disco + el texto + aire."""
-    return max(112.0, len(nombre) * 5.75 + 46)
+    """Lo que mide un nodo de la expansion: la forma o el nombre, el que sea
+    mas ancho. El nombre va DEBAJO, asi que manda el texto."""
+    return max(64.0, len(nombre) * 5.3 + 14)
+
+
+# Alto de un nodo de expansion: la forma (~52) + el nombre debajo (~16) + aire.
+ALTO_NODO_EXP = 76
 
 
 def punto_medio(a, b, k):
@@ -100,8 +105,10 @@ def main() -> None:
             cajas.append((f"rel:{cual}:«{gr['rel']}»",
                           rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
             for m in gr["nodos"]:
+                # centrado en la forma, que esta arriba del nombre
                 cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
-                              rect(m["x"], m["y"], ANCHO_CHIP(m["nombre"]), 30)))
+                              rect(m["x"], m["y"] + 12, ANCHO_CHIP(m["nombre"]),
+                                   ALTO_NODO_EXP)))
 
     # LA PILDORA DE LA PISTA. Vive abajo a la izquierda, fuera del grupo que se
     # transforma, asi que no se achica con la escena: en coordenadas del lienzo

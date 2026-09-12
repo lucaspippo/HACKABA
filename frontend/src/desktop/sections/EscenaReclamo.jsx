@@ -384,48 +384,93 @@ const COLOR_EXP = {
   producto: "#2f8fa8", ubicacion: "#8a8378", remito: "#7a63b8",
 };
 
+// LAS FORMAS DE LA EXPANSION.
+//
+// Antes eran pildoras chatas con un puntito de color, todas iguales, alineadas
+// en columna. Al lado de los nodos del caso —que estan dibujados uno por uno—
+// se leian como OTRA COSA: una lista, no un grafo.
+//
+// Ahora cada tipo tiene la forma que le corresponde, en el mismo idioma que la
+// escena: disco para lo que es una cosa, rombo para quien provee, tarjeta
+// plegada para lo que alguien enseño, chapa para el lugar. Menos detalle que
+// los del caso —no llevan texto adentro ni insignias— porque siguen siendo
+// secundarios: lo dibujado con cuidado es la respuesta, esto es el resto del
+// cerebro asomando. Pero pertenecen al mismo lenguaje.
+const R_EXP = 25;
+
+function FormaExp({ tipo, x, y, color }) {
+  const borde = "rgba(33,32,29,.32)";
+  if (tipo === "proveedor" || tipo === "cliente") {
+    // rombo: quien esta del otro lado de una transaccion
+    const r = R_EXP + 2;
+    const d = `M ${x} ${y - r} L ${x + r} ${y} L ${x} ${y + r} L ${x - r} ${y} Z`;
+    return <><path d={d} fill={color} /><path d={d} fill="none" stroke={borde} strokeWidth="1.4" /></>;
+  }
+  if (tipo === "conocimiento") {
+    // tarjeta con la esquina plegada, igual que la regla del caso
+    const w = 56, h = 40, pl = 11, x0 = x - w / 2, y0 = y - h / 2;
+    const d = `M ${x0 + pl} ${y0} H ${x0 + w} V ${y0 + h} H ${x0} V ${y0 + pl} Z`;
+    return <><path d={d} fill={color} /><path d={d} fill="none" stroke={borde} strokeWidth="1.4" />
+      <path d={`M ${x0 + pl} ${y0} V ${y0 + pl} H ${x0}`} fill="none" stroke={borde} strokeWidth="1.2" /></>;
+  }
+  if (tipo === "local" || tipo === "ubicacion") {
+    // chapa con el techo en punta: un lugar fisico
+    const w = 50, h = 36, t = 13, x0 = x - w / 2, y0 = y - h / 2 + t / 2;
+    const d = `M ${x} ${y0 - t} L ${x0 + w} ${y0} V ${y0 + h} H ${x0} V ${y0} Z`;
+    return <><path d={d} fill={color} /><path d={d} fill="none" stroke={borde} strokeWidth="1.4" /></>;
+  }
+  if (tipo === "rubro") {
+    // etiqueta: una categoria, no una cosa
+    const w = 54, h = 34, m = 12, x0 = x - w / 2, y0 = y - h / 2;
+    const d = `M ${x0} ${y0} H ${x0 + w - m} L ${x0 + w} ${y} L ${x0 + w - m} ${y0 + h} H ${x0} Z`;
+    return <><path d={d} fill={color} /><path d={d} fill="none" stroke={borde} strokeWidth="1.4" /></>;
+  }
+  // disco: una cosa (producto, remito, lo que sea)
+  return <><circle cx={x} cy={y} r={R_EXP} fill={color} />
+    <circle cx={x} cy={y} r={R_EXP} fill="none" stroke={borde} strokeWidth="1.4" /></>;
+}
+
 function Expansion({ datos, desde, visible }) {
   const grupos = datos?.grupos || [];
   if (!grupos.length || !desde) return null;
   let orden = 0;
   return (
     <g style={{ pointerEvents: "none" }}>
-      {grupos.map((gr) => {
-        const alto = gr.nodos.length * 38;
-        return (
-          <g key={gr.rel}>
-            {/* una sola linea por RACIMO, no una por nodo: once lineas
-                saliendo del mismo punto son una estrella ilegible */}
-            <path d={`M ${desde.x} ${desde.y} C ${desde.x + 160} ${desde.y}, `
-                   + `${gr.x - 170} ${gr.y + alto / 2}, ${gr.x - 96} ${gr.y + alto / 2}`}
-                  fill="none" stroke="rgba(33,32,29,.20)" strokeWidth="1.5"
-                  style={{ opacity: visible ? 1 : 0, transition: "opacity 320ms" }} />
-            <text x={gr.x} y={gr.y + 4} textAnchor="middle"
-                  fill="rgba(33,32,29,.52)" fontSize="12"
-                  style={{ opacity: visible ? 1 : 0, transition: "opacity 300ms" }}>
-              {gr.rel}
-            </text>
-            {gr.nodos.map((n) => {
-              const color = COLOR_EXP[n.tipo] || "#8b8fa8";
-              const ancho = Math.max(112, n.nombre.length * 5.75 + 46);
-              const izq = n.x - ancho / 2;
-              const retraso = 90 + orden++ * 55;
-              return (
-                <g key={n.id}
-                   style={{ opacity: visible ? 1 : 0,
-                            transition: `opacity 300ms ease-out ${visible ? retraso : 0}ms` }}>
-                  <rect x={izq} y={n.y - 15} width={ancho} height="30" rx="15"
-                        fill={FONDO} stroke={color} strokeWidth="1.6" />
-                  <circle cx={izq + 16} cy={n.y} r="5" fill={color} />
-                  <text x={izq + 30} y={n.y + 4} fill={TINTA} fontSize="11.5">
-                    {n.nombre}
-                  </text>
-                </g>
-              );
-            })}
-          </g>
-        );
-      })}
+      {grupos.map((gr) => (
+        <g key={gr.rel}>
+          <text x={gr.x} y={gr.y + 4} textAnchor="middle"
+                fill="rgba(33,32,29,.55)" fontSize="12.5" fontWeight="600"
+                style={{ opacity: visible ? 1 : 0, transition: "opacity 300ms" }}>
+            {gr.rel}
+          </text>
+          {gr.nodos.map((n) => {
+            const color = COLOR_EXP[n.tipo] || "#8b8fa8";
+            const retraso = 90 + orden++ * 55;
+            // UNA LINEA POR NODO, con curva y punta. Antes era una gris finita
+            // por racimo y se perdia: no se entendia que eso colgaba del nodo
+            // del medio. Ahora cada una sale del centro, llega al borde de la
+            // forma y termina en flecha.
+            const dx = n.x - desde.x, dy = n.y - desde.y;
+            const largo = Math.hypot(dx, dy) || 1;
+            const fx = n.x - (dx / largo) * (R_EXP + 9);
+            const fy = n.y - (dy / largo) * (R_EXP + 9);
+            const cxq = (desde.x + fx) / 2 - dy * 0.07;
+            const cyq = (desde.y + fy) / 2 + dx * 0.07;
+            return (
+              <g key={n.id}
+                 style={{ opacity: visible ? 1 : 0,
+                          transition: `opacity 320ms ease-out ${visible ? retraso : 0}ms` }}>
+                <path d={`M ${desde.x} ${desde.y} Q ${cxq} ${cyq} ${fx} ${fy}`}
+                      fill="none" stroke={color} strokeWidth="2.2" opacity=".62"
+                      markerEnd="url(#punta-exp)" />
+                <FormaExp tipo={n.tipo} x={n.x} y={n.y} color={color} />
+                <text x={n.x} y={n.y + R_EXP + 17} textAnchor="middle"
+                      fill={TINTA} fontSize="11.5" fontWeight="600">{n.nombre}</text>
+              </g>
+            );
+          })}
+        </g>
+      ))}
     </g>
   );
 }
@@ -501,6 +546,13 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
     <svg viewBox={`0 0 ${ancho} ${alto}`} className="h-full w-full"
          style={{ background: FONDO }}>
       <defs>
+        {/* la punta de las lineas de la expansion: hereda el color de su
+            linea, asi cada relacion llega con el color de lo que conecta */}
+        <marker id="punta-exp" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="5" markerHeight="5" orient="auto-start-reverse"
+                markerUnits="strokeWidth">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+        </marker>
         {[["normal", "rgba(33,32,29,.45)"], ["viva", AZUL_IA],
           ["apagada", "rgba(33,32,29,.22)"]].map(([id, c]) => (
           <marker key={id} id={`punta-${id}`} viewBox="0 0 10 10" refX="9" refY="5"

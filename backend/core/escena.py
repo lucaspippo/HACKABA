@@ -322,8 +322,11 @@ _COLUMNAS = (
     (1420, ("lo compra", "es de", "guardado en")),
 )
 _Y_INICIAL = -60          # arranca arriba del producto
-_SEPARACION_GRUPO = 46    # aire entre un racimo y el siguiente
-_ALTO_CHIP = 38
+_SEPARACION_GRUPO = 54    # aire entre un racimo y el siguiente
+# Cuanto ocupa cada nodo de la expansion, de arriba a abajo.
+# Ya no es una pildora de 30: son FORMAS —disco, rombo, tarjeta— con el nombre
+# DEBAJO, igual que los nodos del caso. Eso pide mas aire vertical.
+_ALTO_CHIP = 82
 
 
 def _nombre_corto(nombre: str) -> str:
@@ -399,9 +402,9 @@ def expansion(lang: str = "es") -> dict:
             miembros = miembros[:TOPE_POR_GRUPO]
             total += len(miembros)
             for i, m in enumerate(miembros):
-                m["x"], m["y"] = x, y + 36 + i * _ALTO_CHIP
+                m["x"], m["y"] = x, y + 62 + i * _ALTO_CHIP
             grupos.append({"rel": rel, "x": x, "y": y, "nodos": miembros})
-            y += 36 + len(miembros) * _ALTO_CHIP + _SEPARACION_GRUPO
+            y += 62 + len(miembros) * _ALTO_CHIP + _SEPARACION_GRUPO
 
     if not grupos:
         return {}
@@ -415,7 +418,7 @@ def expansion(lang: str = "es") -> dict:
     x0 = min([0] + [m["x"] - medio_chip(m["nombre"]) for m in planos])
     x1 = max([ANCHO] + [m["x"] + medio_chip(m["nombre"]) for m in planos])
     y0 = min([0] + [gr["y"] - 14 for gr in grupos])
-    y1 = max([ALTO] + [m["y"] + 19 for m in planos])
+    y1 = max([ALTO] + [m["y"] + 46 for m in planos])
     m_ = 46
     vb = [x0 - m_, y0 - m_, (x1 - x0) + m_ * 2, (y1 - y0) + m_ * 2]
 
@@ -464,14 +467,14 @@ def expansion_proveedor(lang: str = "es") -> dict:
     # nada que pisar.
     x, y0 = 540, 600
     for i, r in enumerate(reglas):
-        r["x"], r["y"] = x, y0 + i * 40
-    grupos = [{"rel": _t("escena.rel_le_enseñaron", lang), "x": x, "y": y0 - 36,
+        r["x"], r["y"] = x, y0 + i * _ALTO_CHIP
+    grupos = [{"rel": _t("escena.rel_le_enseñaron", lang), "x": x, "y": y0 - 62,
                "nodos": reglas}]
 
     ancho_chip = lambda n: max(112.0, len(n) * 5.75 + 46)
     x0 = min([0] + [r["x"] - ancho_chip(r["nombre"]) / 2 for r in reglas])
     x1 = max([ANCHO] + [r["x"] + ancho_chip(r["nombre"]) / 2 for r in reglas])
-    y1 = max([ALTO] + [r["y"] + 19 for r in reglas])
+    y1 = max([ALTO] + [r["y"] + 46 for r in reglas])
     m_ = 46
     return {
         "desde": "proveedor",
