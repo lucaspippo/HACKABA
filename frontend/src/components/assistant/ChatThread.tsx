@@ -1,4 +1,4 @@
-import { ThreadPrimitive, useAuiState } from "@assistant-ui/react";
+import { ThreadPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import Composer from "./composer/composer";
@@ -27,8 +27,11 @@ export default function ChatThread({
   /** Opens the app's document-upload flow; omit to hide the call's attach button. */
   onAttach?: () => void;
 }) {
+  const aui = useAui();
   const isEmpty = useAuiState((s) => s.thread.isEmpty);
-  // Its own bounded session (see VoiceCallScreen) — never appended into `messages`.
+  // Its own bounded RealtimeVoiceAdapter session while live (see VoiceCallScreen);
+  // on end, its transcript is replayed into this thread as real messages (below)
+  // so the call reads back as an ordinary part of the conversation.
   const [call, setCall] = useState<Call | null>(null);
 
   const startCall = () => {
@@ -45,7 +48,20 @@ export default function ChatThread({
     });
     setCall({ adapter, transcript: [] });
   };
-  const endCall = () => setCall(null);
+  const endCall = () => {
+    setCall((prev) => {
+      // Already-narrated turns, replayed as real messages — startRun: false
+      // on the user side so replaying doesn't re-ask Ángela a second time.
+      for (const item of prev?.transcript ?? []) {
+        if (item.role === "user") {
+          aui.thread.append({ role: "user", content: [{ type: "text", text: item.text }], startRun: false });
+        } else {
+          aui.thread.append({ role: "assistant", content: [{ type: "text", text: item.text }] });
+        }
+      }
+      return null;
+    });
+  };
   const attachFromCall = onAttach
     ? () => {
         endCall();

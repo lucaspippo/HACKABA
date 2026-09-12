@@ -50,15 +50,22 @@ export function VoiceConversation({
   // A gentle floor so the ring never fully disappears between words — a
   // silent orb reads as "frozen", not "listening".
   const level = Math.min(Math.max(amplitude, 0), 1);
+  const live = mode === "listening" || mode === "speaking";
   const scale = 1 + level * 0.35;
   const canInterrupt = mode === "speaking" && Boolean(onInterrupt);
 
   return (
     <div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
-      {/* Ángela's color, not data — an ambient wash, not a hard edge. */}
+      {/* Ángela's color, not data — an ambient wash, pulsing with whoever's
+          talking (the person while listening, Ángela while speaking). */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-violeta/[0.18] via-violeta/[0.05] to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-violeta/[0.18] via-violeta/[0.05] to-transparent transition-[opacity,transform] duration-150 ease-out"
+        style={{
+          opacity: live ? 0.6 + level * 0.4 : 0.6,
+          transform: `scaleY(${live ? 1 + level * 0.3 : 1})`,
+          transformOrigin: "bottom",
+        }}
       />
 
       <div className="relative flex flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-4 py-6">
