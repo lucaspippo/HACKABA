@@ -14,11 +14,16 @@ CSV = (
 
 @pytest.fixture(autouse=True)
 def limpio():
+    from core import esquema
+    from core.db import blob_repo, tenant as _t
     limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
+    esquema.reemplazar_filas("venta", [])
+    blob_repo.save_blob("sales_validation", _t.current_tenant_id(), {"estado": "sin_datos"})
     yield
     limpiar_tabla_tenant("staging_batches")
     store.resetear_actual()
+    esquema.reemplazar_filas("venta", [])
 
 
 def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
@@ -138,6 +143,28 @@ def test_integrar_batch_odoo_orden_compra():
     creada = purchase_orders_repo.find_by_number(_tenant.current_tenant_id(), "P00202")
     assert creada["estado"] == "recibida"  # "cerrada" (Odoo) -> "recibida" (PolPilot)
     assert creada["source_status"] == "cerrada"
+
+
+def test_crear_batch_odoo_venta_nueva():
+    r = staging.crear_batch_odoo("venta", [
+        {"id": 200, "nombre": "Laptop", "fecha": "2026-06-15 10:00:00",
+         "cantidad": 2, "precio": 1200, "estado": "confirmada"},
+    ])
+    assert r["tipo"] == "venta"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_venta_auto_confirma_montos():
+    from core import esquema, ventas
+    r = staging.crear_batch_odoo("venta", [
+        {"id": 201, "nombre": "Laptop", "fecha": "2026-06-15",
+         "cantidad": 2, "precio": 100, "codigo": 1, "estado": "confirmada"},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    filas = esquema.filas("venta")
+    assert any(f.get("source_id") == "201" for f in filas)
+    assert ventas.montos_confirmados() is True
 
 
 def test_localizar_batch_odoo_cliente_usa_el_sustantivo_correcto():

@@ -159,3 +159,66 @@ def ingest_ordenes_compra(actor: str = "dueño") -> dict:
 
     return {"actualizados": actualizadas, "nuevos_para_revisar": len(nuevas),
             "omitidos_malformados": omitidas, "batch_id": batch_id}
+
+
+def _flatten_confirmed_sale_lines(ordenes: list[dict]) -> list[dict]:
+    """One ingest row per confirmed sale.order.line (estado == confirmada)."""
+    from core import store
+    out = []
+    for o in ordenes:
+        if o.get("estado") != "confirmada":
+            continue
+        fecha = (o.get("fecha") or "")[:10]
+        for it in o.get("items") or []:
+            tmpl = it.get("product_tmpl_id")
+            art = store.buscar_por_source("odoo", str(tmpl)) if tmpl is not None else None
+            out.append({
+                "id": it["id"],
+                "nombre": it.get("producto") or "",
+                "fecha": fecha,
+                "cantidad": it.get("cantidad") or 0,
+                "precio": it.get("precio_unitario"),
+                "product_tmpl_id": tmpl,
+                "codigo": art["codigo"] if art else None,
+                "estado": o.get("estado") or "",
+            })
+    return out
+
+
+def ingest_ventas(actor: str = "dueño") -> dict:
+    from core import esquema
+
+    tenant_id = _tenant.current_tenant_id()
+    conector = conectores.ConectorOdoo(tenant_id)
+    pull = conector.pull_ordenes_venta()
+    filas = _flatten_confirmed_sale_lines(pull["ordenes"])
+
+    vinculadas = {str(f.get("source_id")) for f in esquema.filas("venta")
+                  if f.get("source") == "odoo"}
+    nuevas, actualizadas_filas, omitidas = [], [], 0
+    pulled_ids = [str(p["id"]) for p in filas]
+    for p in filas:
+        fila = staging.coerce_venta_odoo(p)
+        if not fila.get(staging._REQUERIDO_ODOO["venta"]):
+            omitidas += 1
+            continue
+        if str(p["id"]) in vinculadas:
+            actualizadas_filas.append(fila)
+        else:
+            nuevas.append(p)
+
+    if actualizadas_filas:
+        esquema.upsert_filas("venta", actualizadas_filas)
+        _audit.record(actor, "upsert_ventas_conector", None,
+                       {"actualizadas": len(actualizadas_filas),
+                        "source_ids": [f["source_id"] for f in actualizadas_filas]})
+
+    esquema.delete_odoo_missing("venta", pulled_ids)
+
+    batch_id = None
+    if nuevas:
+        r = staging.crear_batch_odoo("venta", nuevas, nombre="Odoo · ventas")
+        batch_id = r["id"]
+
+    return {"actualizados": len(actualizadas_filas), "nuevos_para_revisar": len(nuevas),
+            "omitidos_malformados": omitidas, "batch_id": batch_id}
