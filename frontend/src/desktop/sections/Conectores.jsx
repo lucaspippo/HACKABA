@@ -135,8 +135,21 @@ function PanelOdoo({ estado }) {
                     tab === "productos" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
                   {t("odoo.tab_productos")}
                 </button>
+                <button onClick={() => setTab("proveedores")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "proveedores" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_proveedores")}
+                </button>
+                <button onClick={() => setTab("compras")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "compras" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_compras")}
+                </button>
               </div>
-              {tab === "contactos" ? <OdooTabContactos t={t} /> : <OdooTabProductos t={t} />}
+              {tab === "contactos" && <OdooTabContactos t={t} />}
+              {tab === "productos" && <OdooTabProductos t={t} />}
+              {tab === "proveedores" && <OdooTabProveedores t={t} />}
+              {tab === "compras" && <OdooTabCompras t={t} />}
               <button onClick={desconectar}
                 className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
                            text-tinta-suave hover:text-tinta">
@@ -260,6 +273,111 @@ function OdooTabProductos({ t }) {
               <span className={`shrink-0 font-semibold ${p.stock > 0 ? "text-tinta" : "text-rojo"}`}>
                 {t("odoo.stock_unidades", { n: p.stock })}
               </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Pestaña Proveedores: contactos-proveedor (supplier_rank > 0), la
+// contraparte de Contactos del lado compras. Mismo patrón: sólo lectura, preview.
+function OdooTabProveedores({ t }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncProveedores());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <button onClick={sincronizar} disabled={sincronizando}
+        className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                   font-semibold text-crema disabled:opacity-50">
+        {sincronizando ? t("odoo.sincronizando_proveedores") : t("odoo.traer_proveedores")}
+      </button>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_proveedores_resultado", { n: sync.total }) : t("odoo.sync_proveedores_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.proveedores.map((p) => (
+            <li key={p.id} className="text-tinta">
+              {p.nombre}{p.localidad && <span className="text-tinta-suave"> · {p.localidad}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Pestaña Compras: órdenes de compra (purchase.order) con sus líneas, la
+// contraparte de Productos del lado compras. Mismo patrón: sólo lectura, preview.
+function OdooTabCompras({ t }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncOrdenesCompra());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <button onClick={sincronizar} disabled={sincronizando}
+        className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                   font-semibold text-crema disabled:opacity-50">
+        {sincronizando ? t("odoo.sincronizando_compras") : t("odoo.traer_compras")}
+      </button>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_compras_resultado", { n: sync.total }) : t("odoo.sync_compras_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.ordenes.map((o) => (
+            <li key={o.id} className="rounded-lg border border-linea/50 bg-papel/60 p-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate font-semibold text-tinta">
+                  {o.numero} <span className="font-normal text-tinta-suave">· {o.proveedor}</span>
+                </span>
+                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
+                                 font-semibold text-tinta-suave">
+                  {t(`odoo.estado_compra_${o.estado}`)}
+                </span>
+              </div>
+              <ul className="mt-1 space-y-0.5 pl-1 text-tinta-suave">
+                {o.items.map((it, i) => (
+                  <li key={i}>{it.producto} · {it.cantidad}</li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
