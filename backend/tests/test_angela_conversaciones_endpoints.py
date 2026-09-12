@@ -21,41 +21,41 @@ def _no_provider(monkeypatch):
 
 
 @pytest.fixture
-def aldo_token():
+def emilio_token():
     creds = auth.cargar_o_generar_credenciales()
-    return client.post("/api/login", json={"username": "aldo", "password": creds["aldo"]}).json()["token"]
+    return client.post("/api/login", json={"username": "emilio", "password": creds["emilio"]}).json()["token"]
 
 
 @pytest.fixture
-def marta_token():
+def paula_token():
     creds = auth.cargar_o_generar_credenciales()
-    return client.post("/api/login", json={"username": "marta", "password": creds["marta"]}).json()["token"]
+    return client.post("/api/login", json={"username": "paula", "password": creds["paula"]}).json()["token"]
 
 
 def _h(tok):
     return {"Authorization": f"Bearer {tok}"}
 
 
-def test_chat_persists_the_user_side_of_the_turn(aldo_token, monkeypatch):
+def test_chat_persists_the_user_side_of_the_turn(emilio_token, monkeypatch):
     _no_provider(monkeypatch)
-    r = client.post("/api/angela", json={"message": "¿cuánto vendimos hoy?", "token": aldo_token})
+    r = client.post("/api/angela", json={"message": "¿cuánto vendimos hoy?", "token": emilio_token})
     assert r.status_code == 200
 
-    got = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
-                     params={"actor": "aldo"})
+    got = client.get("/api/angela/conversaciones", headers=_h(emilio_token),
+                     params={"actor": "emilio"})
     assert got.status_code == 200
     convs = got.json()["conversations"]
-    assert convs, "expected a persisted conversation for aldo"
+    assert convs, "expected a persisted conversation for emilio"
 
-    full = client.get(f"/api/angela/conversaciones/{convs[0]['id']}", headers=_h(aldo_token))
+    full = client.get(f"/api/angela/conversaciones/{convs[0]['id']}", headers=_h(emilio_token))
     assert full.status_code == 200
     messages = full.json()["messages"]
     assert any(m["role"] == "user" and m["content"] == "¿cuánto vendimos hoy?"
               for m in messages)
 
 
-def test_conversations_requires_auditoria_feature(marta_token):
-    r = client.get("/api/angela/conversaciones", headers=_h(marta_token))
+def test_conversations_requires_auditoria_feature(paula_token):
+    r = client.get("/api/angela/conversaciones", headers=_h(paula_token))
     assert r.status_code == 403
 
 
@@ -64,8 +64,8 @@ def test_conversations_requires_auth():
     assert r.status_code == 401
 
 
-def test_missing_conversation_is_404(aldo_token):
-    r = client.get("/api/angela/conversaciones/no-existe", headers=_h(aldo_token))
+def test_missing_conversation_is_404(emilio_token):
+    r = client.get("/api/angela/conversaciones/no-existe", headers=_h(emilio_token))
     assert r.status_code == 404
 
 
