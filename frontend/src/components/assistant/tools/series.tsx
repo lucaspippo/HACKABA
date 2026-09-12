@@ -1,21 +1,21 @@
 import { Pin } from "lucide-react";
 import type { ToolPresenter, ToolRenderProps } from "./types";
 import { toolLabels } from "./labels";
+import { toolErrorMessage, ToolErrorText } from "./toolError";
 import MiniChart from "../MiniChart";
 import { peso, num } from "../../../lib/format";
 import { t } from "../../../lib/i18n";
 
 /**
- * Phase 3 / D10 presenter for consultar_serie: the visual is driven by `meta`
- * (temporal / composicion / unidad / deflactado), never guessed from shape.
+ * consultar_serie's visual is driven by `meta` (temporal/composicion/unidad/
+ * deflactado — D10), never guessed from shape.
  *
- * One real limitation, not papered over here: per D8 (not yet implemented),
- * the chat only ever receives a SUMMARY of a series — `primero`/`ultimo`/
- * `max`/`total` for a temporal series, up to 5 `top` points for a dimensional
- * one (see angela.py::_consultar_serie_tool). Full-resolution points live
- * only in the pinned widget. So a temporal series renders as a trend
- * (first → last, deflactado noted) rather than a line chart — a real line
- * needs the backend's `result`/`display` split from D8.
+ * Limitation: per D8 (not yet implemented), the chat only ever receives a
+ * SUMMARY of a series — `primero`/`ultimo`/`max`/`total` for a temporal one,
+ * up to 5 `top` points for a dimensional one (angela.py::_consultar_serie_tool).
+ * Full-resolution points live only in the pinned widget, so a temporal series
+ * renders as a trend (first → last) rather than a line chart until D8 splits
+ * the wire payload into a model `result` and a full-resolution UI `display`.
  */
 
 type Punto = { x: string; y: number };
@@ -99,6 +99,10 @@ export function SerieTool({ result }: ToolRenderProps) {
       </div>
     );
   }
+
+  // A feature-gate error (e.g. sin_acceso) carries no `ok` key at all.
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
 
   const meta = r.meta || {};
   const series = r.series || [];
