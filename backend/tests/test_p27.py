@@ -164,3 +164,9 @@ def test_ventana_compra_cites_the_supplier_rules_as_evidence():
     card = next(c for c in _demo_cards("es") if c["id"] == "ventana_compra")
     kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
     assert "knowledge" in kinds
+
+
+def test_cobrar_morosos_cites_a_tolerance_rule_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "cobrar_morosos")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert "knowledge" in kinds

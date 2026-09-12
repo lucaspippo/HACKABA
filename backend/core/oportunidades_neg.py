@@ -224,6 +224,11 @@ def _card_morosos(lang, ctx) -> dict | None:
             chart=grafico, weight="supporting",
             method={"key": "core.method.debtor_payment_curve",
                     "label": _t("core.method.debtor_payment_curve", lang)}))
+    piezas_tolerancia = {
+        p["id"]: p for c in morosos for p in (c.get("piezas_conocimiento") or [])
+    }.values()  # de-duplicated across clients, in case two morosos share a piece
+    for p in piezas_tolerancia:
+        evidencia.append(ins.knowledge(p))
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.morosos_p1", lang, n=len(morosos)),
                             scope={"kind": "clients", "count": len(morosos)}),
