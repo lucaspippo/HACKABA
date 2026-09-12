@@ -3056,6 +3056,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                    "en": "Requested a restock"},
     "audit.acc.registrar_pedido": {"es": "Registró un pedido del mostrador",
                                    "en": "Logged an order from the counter"},
+    "audit.acc.registrar_presupuesto": {"es": "Registró un presupuesto por WhatsApp",
+                                        "en": "Logged a WhatsApp quote request"},
     "audit.acc.resolver_reporte_piso": {"es": "Resolvió un reporte del piso",
                                         "en": "Closed a floor report"},
     "audit.acc.solicitar_modulo": {"es": "Pidió acceso a un módulo",
