@@ -225,4 +225,16 @@ export const api = {
     if (!res.ok) throw new Error(`angela → ${res.status}`);
     return res.json();
   },
+  // Igual que angela() pero streaming (NDJSON): devuelve el Response crudo
+  // para que el runtime de assistant-ui lea el body a medida que llega.
+  angelaStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
+    const res = await fetch("/api/angela/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensaje, historial, ...extra }),
+      signal,
+    });
+    if (!res.ok || !res.body) throw new Error(`angela/stream → ${res.status}`);
+    return res;
+  },
 };
