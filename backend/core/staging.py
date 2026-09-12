@@ -42,6 +42,11 @@ def _t(key: str, lang: str | None = None, **params) -> str:
     return i18n.t(key, lang, **params)
 
 
+def _tenant_id_actual() -> str:
+    from core.db import tenant as _tenant
+    return _tenant.current_tenant_id()
+
+
 def _load() -> list[dict]:
     from core.db import blob_repo
     from core.db import tenant as _tenant
@@ -141,6 +146,35 @@ def _analizar_proveedores(filas: list[dict], lang: str | None = None) -> list[di
         "id": "duplicado", "tipo": "duplicado",
         "titulo": _t("core.staging.obs_duplicado", lang),
         "descripcion": f"{len(dups)} proveedores parecen ya existir en tu sistema con el mismo nombre.",
+        "items": len(dups), "indices": dups, "impacto_pesos": 0,
+        "opciones": [{"label": "No agregarlos (ya existen)", "accion": "unificar", "params": {}},
+                     {"label": "Agregarlos igual (son distintos)", "accion": "mantener", "params": {}}],
+        "resuelta": False, "resolucion": None,
+    }]
+
+
+def coerce_cliente_odoo(c: dict) -> dict:
+    return {
+        "id": f"odoo-{c['id']}",
+        "nombre": str(c.get("nombre") or "").strip(),
+        "saldo": 0, "limite_credito": 0, "plazo_dias": 30,
+        "dias_sin_pagar": 0, "promedio_pago_dias": None,
+        "vat": c.get("cuit") or "", "city": c.get("localidad") or "",
+        "phone": c.get("telefono") or "", "email": c.get("email") or "",
+        "source": "odoo", "source_id": str(c["id"]),
+    }
+
+
+def _analizar_clientes(filas: list[dict], lang: str | None = None) -> list[dict]:
+    from . import cuentas as cuentas_mod
+    existentes = {_norm(c["nombre"]) for c in cuentas_mod.listar() if not c.get("source")}
+    dups = [i for i, f in enumerate(filas) if _norm(f["nombre"]) in existentes]
+    if not dups:
+        return []
+    return [{
+        "id": "duplicado", "tipo": "duplicado",
+        "titulo": _t("core.staging.obs_duplicado", lang),
+        "descripcion": f"{len(dups)} clientes parecen ya existir en tu sistema con el mismo nombre.",
         "items": len(dups), "indices": dups, "impacto_pesos": 0,
         "opciones": [{"label": "No agregarlos (ya existen)", "accion": "unificar", "params": {}},
                      {"label": "Agregarlos igual (son distintos)", "accion": "mantener", "params": {}}],
@@ -547,6 +581,15 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
         return {"ok": True, "nuevos": res["nuevos"], "tipo": tipo,
                 "mensaje": f"{res['nuevos']} proveedores nuevos, {res['actualizados']} actualizados."}
 
+    if tipo == "cliente" and b.get("fuente") == "odoo":
+        from core.db import customer_accounts_repo
+        for f in a_integrar:
+            customer_accounts_repo.upsert_account(_tenant_id_actual(), f)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": len(a_integrar), "tipo": tipo,
+                "mensaje": f"{len(a_integrar)} clientes nuevos."}
+
     if tipo != "producto":
         # Tipo nuevo (ventas, clientes, …): crea el apartado y arma las relaciones.
         res = esquema.crear_apartado(tipo, a_integrar)
@@ -638,6 +681,7 @@ def descartar(batch_id: str) -> dict:
 _COERCERS_ODOO = {
     "producto": coerce_producto_odoo,
     "proveedor": coerce_proveedor_odoo,
+    "cliente": coerce_cliente_odoo,
 }
 
 # Qué campo identifica una fila coercionada como "utilizable" por tipo — una
@@ -663,6 +707,8 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
         observaciones = _analizar(filas)
     elif tipo == "proveedor":
         observaciones = _analizar_proveedores(filas, lang)
+    elif tipo == "cliente":
+        observaciones = _analizar_clientes(filas, lang)
     else:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
     batch = {

@@ -79,6 +79,28 @@ def test_integrar_batch_odoo_proveedor():
     assert creado["nombre"] == "Proveedor Integrado Odoo"
 
 
+def test_crear_batch_odoo_cliente_nuevo():
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 901, "nombre": "Cliente Staging Nuevo", "cuit": "20-4-4",
+         "localidad": "CABA", "telefono": "11-000", "email": "cl@example.com"},
+    ])
+    assert r["tipo"] == "cliente"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_cliente():
+    from core import cuentas
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 902, "nombre": "Cliente Integrado Odoo", "cuit": "20-5-5",
+         "localidad": "", "telefono": "", "email": ""},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(c for c in cuentas.listar() if c.get("source_id") == "902")
+    assert creado["nombre"] == "Cliente Integrado Odoo"
+    assert creado["saldo"] == 0
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}
