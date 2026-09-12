@@ -465,3 +465,42 @@ Postgres you care about** — its `sembrar_*()` functions are hardwired to
 the real "demo" tenant no matter what `POLPILOT_TENANT` says. Test its
 behavior indirectly (as the regression test above does, exercising the
 same core functions it calls) rather than by running it.
+
+## Update: generar.py's hardcoded POLPILOT_TENANT is now fixed
+
+The "never invoke `data-demo/generar.py` directly against a Postgres you
+care about" warning above is now half-obsolete. `sembrar_staging()`,
+`sembrar_solicitud()`, and `sembrar_fotos()` used to unconditionally set
+`os.environ["POLPILOT_TENANT"] = "demo"` inside themselves, silently
+overriding whatever tenant a caller had already set — `sembrar_notificaciones()`
+already used the correct `os.environ.setdefault(...)` pattern, but the
+other three didn't. Fixed to match: all four `sembrar_*()` now use
+`setdefault()` for both `POLPILOT_TENANT` and `POLPILOT_DATA_DIR`, so a
+caller that sets a throwaway tenant *before* invoking `generar.py` gets
+respected instead of clobbered.
+
+This mattered in practice: `tests/test_demo_separacion.py::
+test_generador_es_determinista` ran `python generar.py` twice, directly
+against the real `data-demo/` and (because of the hardcoding) the real
+"demo" tenant's Postgres — corrupting its audit trail on every single full
+suite run, the same category of bug as the `test_admin_reset_demo.py` one
+documented above, just not yet caught. Fixed the test to run against an
+isolated temp copy + a throwaway tenant (seeded via `seed_db.
+ensure_tenant()` first), now that the `setdefault()` fix makes that
+actually work.
+
+Running `generar.py` directly against the real `data-demo/` with no other
+env override is still fine and intentional — that's exactly what `deploy/
+boot.py` and the CI workflow do, and it's supposed to seed the real "demo"
+tenant in that case. The danger was only ever the *silent, unconditional*
+override making isolation attempts (a different tenant, a temp directory)
+not actually take effect.
+
+Also fixed `test_demo_no_escribe_fuera_de_su_directorio` (same file): it
+unconditionally deleted `data-demo/caja.json` as leftover cleanup from
+when `core.caja` wrote there directly (pre-migration). Since `core.caja`
+is fully Postgres now and never touches that file, the cleanup was pure
+collateral damage — it deleted `generar.py`'s legitimate seed file every
+time this test ran, breaking `tests/test_p38.py`'s direct read of it
+whenever the two ran in the same suite (alphabetically, `test_demo_separacion.py`
+always runs first). Removed the dead cleanup line.

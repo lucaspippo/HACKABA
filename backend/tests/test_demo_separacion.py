@@ -86,15 +86,15 @@ def test_demo_no_escribe_fuera_de_su_directorio(tmp_path):
     )
     assert inv_otro.stat().st_mtime == antes              # el otro tenant ni se enteró
     assert not os.path.isdir(os.path.join(RAIZ, "data"))  # no apareció un data/ fantasma
-    # y lo que escribió quedó en data-demo (runtime, gitignored)
+    # cuentas.py y caja.py son Postgres-backed (ver core/db/MIGRATING_A_MODULE.md):
+    # registrar_cobro()/abrir()/cerrar() ya no tocan ningún archivo en DATA_DIR.
+    # cuentas.json sigue existiendo porque es el seed versionado (git-tracked),
+    # no porque el cobro lo haya escrito — lo importante ya está cubierto arriba
+    # (nada se movió fuera del directorio del tenant). NO limpiar caja.json acá:
+    # generar.py lo escribe como seed legítimo, core.caja no lo toca más, y
+    # borrarlo rompía tests/test_p38.py cada vez que este test corría antes
+    # (alfabéticamente) en la misma suite.
     assert os.path.exists(os.path.join(DATA_DEMO, "cuentas.json"))
-    # limpiar el runtime del demo que generó el test
-    subprocess.run(["git", "checkout", "--", "data-demo/cuentas.json"], cwd=RAIZ,
-                   capture_output=True)
-    for f in ("caja.json",):
-        p = os.path.join(DATA_DEMO, f)
-        if os.path.exists(p):
-            os.remove(p)
 
 
 def test_dataset_demo_es_coherente():
@@ -144,14 +144,51 @@ def test_dataset_demo_es_coherente():
 
 
 def test_generador_es_determinista():
-    r1 = subprocess.run([sys.executable, "generar.py"], cwd=DATA_DEMO,
-                        capture_output=True, text=True, timeout=180,
-                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
-    assert r1.returncode == 0, r1.stderr[-500:]
-    hash1 = hash(open(os.path.join(DATA_DEMO, "inventory.json"), encoding="utf-8").read())
-    r2 = subprocess.run([sys.executable, "generar.py"], cwd=DATA_DEMO,
-                        capture_output=True, text=True, timeout=180,
-                        env={**os.environ, "PYTHONIOENCODING": "utf-8"})
-    assert r2.returncode == 0
-    hash2 = hash(open(os.path.join(DATA_DEMO, "inventory.json"), encoding="utf-8").read())
-    assert hash1 == hash2  # reproducible: correrlo dos veces da lo mismo
+    """Correr generar.py DOS VECES tiene que dar el mismo inventory.json —
+    pero NUNCA contra data-demo/ real ni el tenant "demo" real: sus
+    sembrar_staging()/sembrar_solicitud()/sembrar_fotos() llaman directo a
+    módulos ya-Postgres (core.staging, core.perfiles), y hasta hace poco
+    hardcodeaban POLPILOT_TENANT="demo" sin importar el env externo —
+    corriendo este test mutaba de verdad el tenant demo compartido (más
+    grave: dos veces por corrida). Ahora esas funciones usan
+    os.environ.setdefault(...), así que un tenant descartable puesto ANTES
+    de invocar generar.py se respeta. Nunca vuelvas a este patrón sin esa
+    garantía — ver core/db/MIGRATING_A_MODULE.md para la historia completa."""
+    import shutil
+    import tempfile
+    import uuid
+    from sqlalchemy import text
+    from core.db.engine import get_admin_engine
+
+    tenant_slug = f"generar-determinismo-{uuid.uuid4().hex[:8]}"
+    tmp = tempfile.mkdtemp(prefix="polpilot-generar-test-")
+    data_dir = os.path.join(tmp, "data-demo")
+    shutil.copytree(DATA_DEMO, data_dir)
+    try:
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8",
+               "POLPILOT_TENANT": tenant_slug, "POLPILOT_DATA_DIR": data_dir,
+               # generar.py's own sembrar_*() do sys.path.insert(0,
+               # "<their dir>/../backend") — correct when run from the real
+               # data-demo/, wrong from this isolated temp copy. PYTHONPATH
+               # makes `from core import ...` resolve regardless.
+               "PYTHONPATH": BACKEND}
+        env.pop("ANTHROPIC_API_KEY", None)
+
+        r0 = subprocess.run(
+            [sys.executable, "-c", f"import seed_db; seed_db.ensure_tenant({tenant_slug!r})"],
+            cwd=data_dir, env=env, capture_output=True, text=True, timeout=60)
+        assert r0.returncode == 0, r0.stderr[-500:]
+
+        r1 = subprocess.run([sys.executable, "generar.py"], cwd=data_dir,
+                            capture_output=True, text=True, timeout=180, env=env)
+        assert r1.returncode == 0, r1.stderr[-500:]
+        hash1 = hash(open(os.path.join(data_dir, "inventory.json"), encoding="utf-8").read())
+        r2 = subprocess.run([sys.executable, "generar.py"], cwd=data_dir,
+                            capture_output=True, text=True, timeout=180, env=env)
+        assert r2.returncode == 0, r2.stderr[-500:]
+        hash2 = hash(open(os.path.join(data_dir, "inventory.json"), encoding="utf-8").read())
+        assert hash1 == hash2  # reproducible: correrlo dos veces da lo mismo
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        with get_admin_engine().begin() as conn:
+            conn.execute(text("DELETE FROM tenants WHERE slug = :slug"), {"slug": tenant_slug})

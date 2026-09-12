@@ -33,6 +33,11 @@ jobs:
       DATABASE_URL: postgresql+psycopg://polpilot:polpilot@localhost:5432/polpilot
       APP_DATABASE_URL: postgresql+psycopg://polpilot_app:polpilot_app@localhost:5432/polpilot
       PYTHONIOENCODING: utf-8
+      # Fernet key for encrypting stored Odoo API keys (core/db/
+      # odoo_connections_repo.py). Only ever used to en/decrypt values that
+      # live in this run's own throwaway CI Postgres — not a real secret,
+      # so it's fine committed here rather than in repo/org secrets.
+      ODOO_ENCRYPTION_KEY: 8NJQd4Oy4DagREKj05rrJfulkdg1K7ZvH5arTOlGr3M=
     steps:
       - uses: actions/checkout@v4
 

@@ -274,6 +274,7 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "Team management (master)"},
     "modulo.cobranzas": {"es": "Cobranzas", "en": "Collections"},
     "modulo.auditoria": {"es": "Registro de auditoría", "en": "Audit trail"},
+    "modulo.conectores": {"es": "Conectores", "en": "Connectors"},
 
     # --- P45·T1 · la plata parada que la rotación no puede clasificar ----------
     "core.analisis.sin_clasificar": {
