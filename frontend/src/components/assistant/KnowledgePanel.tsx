@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Brain, Check, Pause, Pencil, Play, Plus, Search, Trash2, X } from "lucide-react";
+import { Brain, Check, Pause, Pencil, Play, Plus, Search, Settings, Trash2, X } from "lucide-react";
 import { SettingsPanel } from "./settings-panel";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
@@ -31,10 +31,18 @@ type Piece = {
   quien?: string | null;
   cuando?: string | null;
   superseded_by_texto?: string | null;
+  freshness?: "fresco" | "atencion" | "revisar" | null;
+  needs_review?: boolean;
 };
 
 type Tab = "active" | "review" | "archived";
 const ARCHIVED_ESTADOS = new Set(["archivada", "superada"]);
+
+const FRESHNESS_TONE: Record<string, string> = {
+  fresco: "bg-salvia",
+  atencion: "bg-oro",
+  revisar: "bg-tinta/30",
+};
 
 const SETTING_KEYS = ["knowledge_capture", "knowledge_in_context"] as const;
 type SettingKey = (typeof SETTING_KEYS)[number];
@@ -56,15 +64,6 @@ const STATE_TONE: Record<string, string> = {
   archivada: "bg-tinta/[0.06] text-tinta-suave",
 };
 
-const AGING_THRESHOLD_DAYS = 60;
-
-function ageDays(cuando?: string | null): number | null {
-  if (!cuando) return null;
-  const taught = new Date(cuando);
-  if (Number.isNaN(taught.getTime())) return null;
-  return Math.floor((Date.now() - taught.getTime()) / 86_400_000);
-}
-
 export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const [pieces, setPieces] = useState<Piece[]>([]);
@@ -74,7 +73,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
   const [formOpen, setFormOpen] = useState(false);
-  const [onlyAging, setOnlyAging] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("active");
   const searchRef = useRef<HTMLInputElement>(null);
   const session = useSession();
@@ -106,17 +105,21 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     () => [...new Set(pieces.map((p) => p.nodo))].sort(),
     [pieces],
   );
-  const byTab = (p: Piece) => {
-    if (tab === "archived") return ARCHIVED_ESTADOS.has(p.estado);
-    if (tab === "review") return p.estado === "revisar";
-    return !ARCHIVED_ESTADOS.has(p.estado) && p.estado !== "revisar";
+  const needsReview = (p: Piece) => p.estado === "revisar" || Boolean(p.needs_review);
+  const byTab: Record<Tab, (p: Piece) => boolean> = {
+    archived: (p) => ARCHIVED_ESTADOS.has(p.estado),
+    review: (p) => !ARCHIVED_ESTADOS.has(p.estado) && needsReview(p),
+    active: (p) => !ARCHIVED_ESTADOS.has(p.estado) && !needsReview(p),
   };
   const shown = pieces
-    .filter(byTab)
-    .filter((p) => matches(p, query) && (!node || p.nodo === node))
-    .filter((p) => !onlyAging || (ageDays(p.cuando) ?? 0) > AGING_THRESHOLD_DAYS);
+    .filter(byTab[tab])
+    .filter((p) => matches(p, query) && (!node || p.nodo === node));
   const pending = pieces.filter((p) => p.estado === "pendiente").length;
-  const reviewCount = pieces.filter((p) => p.estado === "revisar").length;
+  const counts: Record<Tab, number> = {
+    active: pieces.filter(byTab.active).length,
+    review: pieces.filter(byTab.review).length,
+    archived: pieces.filter(byTab.archived).length,
+  };
 
   const replace = (id: string, next: Piece | null) =>
     setPieces((prev) =>
@@ -173,7 +176,11 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
-          onClose();
+          if (settingsOpen) {
+            setSettingsOpen(false);
+          } else {
+            onClose();
+          }
         }
       }}
       className="absolute inset-0 z-20 flex flex-col bg-papel"
@@ -183,6 +190,34 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-tinta">
           {t("chat.knowledge.title")}
         </h2>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-label={t("chat.knowledge.settings")}
+            aria-pressed={settingsOpen}
+            onClick={() => setSettingsOpen((v) => !v)}
+            className="grid size-7 place-items-center rounded-full text-tinta-suave outline-none transition-colors hover:bg-papel-hondo hover:text-tinta focus-visible:ring-2 focus-visible:ring-violeta/40"
+          >
+            <Settings size={14} />
+          </button>
+          {settingsOpen && (
+            <div className="absolute right-0 top-9 z-40 w-64 rounded-xl border border-linea bg-crema p-3 shadow-lg">
+              <SettingsPanel
+                toggles={SETTING_KEYS.map((key: SettingKey) => ({
+                  key,
+                  label: t(key === "knowledge_capture" ? "chat.settings.capture" : "chat.settings.context"),
+                  detail: t(
+                    key === "knowledge_capture"
+                      ? "chat.settings.capture_detail"
+                      : "chat.settings.context_detail",
+                  ),
+                  on: settings[key] ?? true,
+                }))}
+                onToggle={toggleSetting}
+              />
+            </div>
+          )}
+        </div>
         <button
           type="button"
           aria-label={t("chat.knowledge.close")}
@@ -192,6 +227,10 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
           <X size={14} />
         </button>
       </div>
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setSettingsOpen(false)} />
+      )}
 
       <div className="flex-1 overflow-y-auto px-3 py-3">
         <div className="mb-2.5 flex gap-1 rounded-full bg-papel-hondo p-0.5 text-xs">
@@ -206,73 +245,54 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
               }`}
             >
               {t(`chat.knowledge.tab_${tabKey}`)}
-              {tabKey === "review" && reviewCount > 0 && ` (${reviewCount})`}
+              {counts[tabKey] > 0 && ` (${counts[tabKey]})`}
             </button>
           ))}
         </div>
 
-        <div className="relative mb-2.5">
-          <Search
-            size={13}
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-tinta-suave"
-          />
-          <input
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("chat.knowledge.search")}
-            aria-label={t("chat.knowledge.search")}
-            className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
-          />
+        <div className="mb-2.5 flex gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={13}
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-tinta-suave"
+            />
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("chat.knowledge.search")}
+              aria-label={t("chat.knowledge.search")}
+              className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
+            />
+          </div>
+          {nodes.length > 1 && (
+            <select
+              value={node ?? ""}
+              onChange={(e) => setNode(e.target.value || null)}
+              aria-label={t("chat.knowledge.all_nodes")}
+              className="shrink-0 rounded-xl border border-linea bg-crema px-2 text-xs text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              <option value="">{t("chat.knowledge.all_nodes")}</option>
+              {nodes.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            aria-label={t("chat.knowledge.create")}
+            onClick={openCreate}
+            className="grid size-8 shrink-0 place-items-center rounded-xl bg-tinta text-crema outline-none transition-colors hover:bg-tinta/90 focus-visible:ring-2 focus-visible:ring-violeta/40"
+          >
+            <Plus size={14} />
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreate}
-          className="mb-2.5 flex items-center gap-1 rounded-full bg-tinta px-2.5 py-1 text-xs text-crema outline-none transition-colors hover:bg-tinta/90 focus-visible:ring-2 focus-visible:ring-violeta/40"
-        >
-          <Plus size={12} /> {t("chat.knowledge.create")}
-        </button>
-
-        {(nodes.length > 1 || pieces.some((p) => (ageDays(p.cuando) ?? 0) > AGING_THRESHOLD_DAYS)) && (
-          <div className="mb-2.5 flex flex-wrap gap-1">
-            {nodes.length > 1 &&
-              [null, ...nodes].map((n) => (
-                <button
-                  key={n ?? "all"}
-                  type="button"
-                  aria-pressed={node === n}
-                  onClick={() => setNode(n)}
-                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                    node === n
-                      ? "bg-tinta text-crema"
-                      : "bg-papel-hondo text-tinta-suave hover:text-tinta"
-                  }`}
-                >
-                  {n ?? t("chat.knowledge.all_nodes")}
-                </button>
-              ))}
-            <button
-              type="button"
-              aria-pressed={onlyAging}
-              onClick={() => setOnlyAging((v) => !v)}
-              className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                onlyAging
-                  ? "bg-tinta text-crema"
-                  : "bg-papel-hondo text-tinta-suave hover:text-tinta"
-              }`}
-            >
-              {t("chat.knowledge.only_aging")}
-            </button>
-          </div>
-        )}
-
-        {!loading && (
+        {!loading && pending > 0 && tab === "active" && (
           <p className="mb-2 text-xs text-tinta-suave">
-            {t("chat.knowledge.count", { n: String(pieces.length) })}
-            {pending > 0 && ` · ${t("chat.knowledge.pending_n", { n: String(pending) })}`}
+            {t("chat.knowledge.pending_n", { n: String(pending) })}
           </p>
         )}
 
@@ -283,7 +303,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         )}
         {!loading && pieces.length > 0 && shown.length === 0 && (
           <p className="py-8 text-center text-sm text-tinta-suave">
-            {t("chat.knowledge.no_results", { q: query })}
+            {query ? t("chat.knowledge.no_results", { q: query }) : t("chat.knowledge.tab_empty")}
           </p>
         )}
 
@@ -318,14 +338,14 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     · {t("chat.knowledge.superseded_by", { text: piece.superseded_by_texto })}
                   </span>
                 )}
-                {(() => {
-                  const days = ageDays(piece.cuando);
-                  return days !== null && days > AGING_THRESHOLD_DAYS ? (
-                    <span className="rounded-full bg-oro/[0.07] px-1.5 py-0.5 text-2xs text-oro-tinta/80">
-                      {t("chat.knowledge.age_days", { n: String(days) })}
-                    </span>
-                  ) : null;
-                })()}
+                {piece.freshness && !ARCHIVED_ESTADOS.has(piece.estado) && piece.estado !== "pendiente" && (
+                  <span
+                    role="img"
+                    aria-label={t(`chat.knowledge.freshness.${piece.freshness}`)}
+                    title={t(`chat.knowledge.freshness.${piece.freshness}`)}
+                    className={`size-1.5 shrink-0 rounded-full ${FRESHNESS_TONE[piece.freshness] ?? ""}`}
+                  />
+                )}
                 <span className="flex-1" />
                 {piece.estado === "pendiente" && (
                   <>
@@ -420,25 +440,6 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
             </li>
           ))}
         </ul>
-      </div>
-
-      <div className="border-t border-linea px-3 py-3">
-        <p className="mb-2 text-xs font-semibold text-tinta-suave">
-          {t("chat.knowledge.settings")}
-        </p>
-        <SettingsPanel
-          toggles={SETTING_KEYS.map((key: SettingKey) => ({
-            key,
-            label: t(key === "knowledge_capture" ? "chat.settings.capture" : "chat.settings.context"),
-            detail: t(
-              key === "knowledge_capture"
-                ? "chat.settings.capture_detail"
-                : "chat.settings.context_detail",
-            ),
-            on: settings[key] ?? true,
-          }))}
-          onToggle={toggleSetting}
-        />
       </div>
 
       {formOpen && (
