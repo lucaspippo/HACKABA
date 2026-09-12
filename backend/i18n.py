@@ -294,6 +294,12 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Solo el dueño o quien la enseñó puede editar esta pieza.",
         "en": "Only the owner or whoever taught it can edit this piece.",
     },
+    "api.conocimiento_conflicto": {
+        "es": "Ya hay una regla distinta para {entidad} en {nodo} ({efecto}): "
+              "\"{texto}\". Revisala antes de crear una nueva.",
+        "en": "There's already a different rule for {entidad} in {nodo} ({efecto}): "
+              "\"{texto}\". Review it before creating a new one.",
+    },
     "api.version_inexistente": {
         "es": "Versión inexistente: {version_id}",
         "en": "No such version: {version_id}",

@@ -292,6 +292,16 @@ def test_edit_endpoint_404s_on_a_missing_piece(tokens):
     assert r.status_code == 404
 
 
+def test_create_endpoint_blocks_a_conflicting_rule(tokens):
+    conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
+                       nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
+    r = client.post("/api/conocimiento", json={
+        "texto": "Tolerale 45 días", "tipo": "regla", "ambito": "cliente",
+        "nodo": "clientes", "efecto": "ajusta_umbral", "entidad": "Doña Elsa"},
+        headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.status_code == 409
+
+
 def test_age_days_counts_from_origen_cuando():
     pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
                                nodo="caja", efecto="contexto_para_angela",

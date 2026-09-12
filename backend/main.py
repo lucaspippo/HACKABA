@@ -3589,6 +3589,12 @@ def conocimiento_confirm(req: KnowledgeProposal, u: dict = Depends(usuario_actua
 @app.post("/api/conocimiento")
 def conocimiento_crear(req: ConocimientoNuevo, u: dict = Depends(require_admin)):
     from core import fechas
+    conflicto = conocimiento.find_conflict(
+        texto=req.texto, nodo=req.nodo, entidad=req.entidad, efecto=req.efecto)
+    if conflicto:
+        raise HTTPException(status_code=409, detail=i18n.t(
+            "api.conocimiento_conflicto", _lang(u), entidad=req.entidad or "",
+            nodo=req.nodo, efecto=req.efecto, texto=conflicto["texto"]))
     try:
         pieza = conocimiento.crear(
             texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
