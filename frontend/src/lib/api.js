@@ -1,6 +1,7 @@
 // Cliente de la API de PolPilot. En dev, Vite proxea /api -> FastAPI:8000.
 import { authStore } from "./auth";
 import { t } from "./i18n";
+import { ChatStreamError, chatErrorCodeFromStatus } from "./chat/errors";
 
 // El token de sesión viaja en el header Authorization en TODA llamada: el backend
 // saca la identidad de ahí (nunca del body). Un solo lugar, sin tocar cada llamada.
@@ -344,7 +345,7 @@ export const api = {
     const res = await fetch("/api/angela", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensaje, historial, ...extra }),
+      body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
     });
     if (!res.ok) throw new Error(`angela → ${res.status}`);
     return res.json();
@@ -352,13 +353,27 @@ export const api = {
   // Same as angela() but streaming (NDJSON): returns the raw Response so the
   // assistant-ui runtime can read the body as it arrives.
   chatStream: async (mensaje, historial = [], extra = {}, { signal } = {}) => {
-    const res = await fetch("/api/angela/stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mensaje, historial, ...extra }),
-      signal,
-    });
-    if (!res.ok || !res.body) throw new Error(`angela/stream → ${res.status}`);
+    let res;
+    try {
+      res = await fetch("/api/angela/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: mensaje, history: historial, ...extra }),
+        signal,
+      });
+    } catch (e) {
+      // An aborted fetch is a cancellation, not a failure.
+      if (signal?.aborted) throw new ChatStreamError("aborted");
+      throw new ChatStreamError("network", String(e?.message || e));
+    }
+    if (!res.ok) {
+      throw new ChatStreamError(
+        chatErrorCodeFromStatus(res.status),
+        `angela/stream → ${res.status}`,
+        res.status,
+      );
+    }
+    if (!res.body) throw new ChatStreamError("stream", "response has no body");
     return res;
   },
 };

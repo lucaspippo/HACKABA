@@ -207,17 +207,17 @@ def test_caso6_sin_torta_activo_no_hay_torta(ventas):
 def test_caso7a_fallback_vino_es(ventas):
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="es")
     r = angela._fallback("haceme un gráfico en trend de ventas mes a mes de vino tinto la ribera")
-    assert "consultar_serie" in r["tools_usadas"]
-    assert any(a["type"] == "create_widget" for a in r["acciones"])
-    assert "VINO TINTO LA RIBERA" in r["respuesta"]
+    assert "consultar_serie" in r["tools_used"]
+    assert any(a["type"] == "create_widget" for a in r["actions"])
+    assert "VINO TINTO LA RIBERA" in r["answer"]
     assert memoria.vista("emilio")["widgets"]["evolucion"]  # quedó fijo
 
 
 def test_caso7b_fallback_por_dia_en(ventas):
     angela._set_sesion(usuario="emilio", rol="dueño", idioma="en")
     r = angela._fallback("make me a chart of sales by day")
-    assert "by month" in r["respuesta"]
-    assert r["opciones"]  # ofrece lo más cercano, no un menú de gráficos genéricos
+    assert "by month" in r["answer"]
+    assert r["options"]  # ofrece lo más cercano, no un menú de gráficos genéricos
 
 
 def test_caso1_contra_demo_real():

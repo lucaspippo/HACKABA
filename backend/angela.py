@@ -2293,8 +2293,8 @@ def _fallback(mensaje: str) -> dict:
     cat = _categoria_en(m)
 
     def resp(texto, acciones=None, opciones=None, tools=None):
-        return {"respuesta": texto, "modo": "simulado", "tools_usadas": tools or [],
-                "acciones": acciones or [], "opciones": opciones or []}
+        return {"answer": texto, "mode": "simulado", "tools_used": tools or [],
+                "actions": acciones or [], "options": opciones or []}
 
     def bloqueado(feature):
         """Corta un cluster de intents si el usuario no tiene ese módulo (capa 2 del
@@ -3218,16 +3218,12 @@ def responder(
     # Sesión request-scoped (P9·A): features acotan las 3 capas anti-fuga.
     _set_sesion(usuario=nombre, rol=rol, features=features, idioma=idioma)
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    if not config.model_disponible():
         return _fallback(mensaje)
 
-    try:
-        import anthropic
-    except ImportError:
+    client = _build_client()
+    if client is None:
         return _fallback(mensaje)
-
-    client = anthropic.Anthropic(api_key=api_key)
     quien = ""
     if nombre or rol:
         quien = (
@@ -3355,17 +3351,17 @@ def responder(
             # Respuesta final
             texto = "".join(b.text for b in resp.content if b.type == "text").strip()
             return {
-                "respuesta": texto,
-                "modo": "claude",
-                "tools_usadas": tools_usadas,
-                "acciones": acciones,
+                "answer": texto,
+                "mode": "claude",
+                "tools_used": tools_usadas,
+                "actions": acciones,
             }
 
         return {
-            "respuesta": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
-            "modo": "claude",
-            "tools_usadas": tools_usadas,
-            "acciones": acciones,
+            "answer": i18n.t("angela.muchas_vueltas", idioma),
+            "mode": "claude",
+            "tools_used": tools_usadas,
+            "actions": acciones,
         }
     except Exception as e:  # noqa: BLE001 — degradar nunca tira la app abajo
         fb = _fallback(mensaje)
@@ -3459,6 +3455,34 @@ def _prepare_turn(message, history, role, name, features, language):
     return system, model, available_tools, messages
 
 
+def _build_client():
+    """The Anthropic client for whichever provider config resolved, behind a
+    seam so tests can make construction fail. Returns None when no provider
+    is configured, or when the `anthropic` package isn't installed."""
+    try:
+        return config.get_client()
+    except ImportError:
+        return None
+
+
+def _degraded_stream(message: str, kind: str):
+    """A reply produced WITHOUT the model, always labelled as such.
+
+    Phase 1.5 removes `_fallback` entirely (see the design doc, D9); until
+    then the deterministic router still answers, but it can no longer pass
+    itself off as Ángela: the `notice` says where the answer came from.
+    """
+    fb = _fallback(message)
+    yield {"type": "notice", "kind": kind}
+    if fb.get("answer"):
+        yield {"type": "text", "delta": fb["answer"]}
+    yield {"type": "done", "result": {
+        "mode": fb.get("mode", "simulado"),
+        "tools_used": fb.get("tools_used", []),
+        "actions": fb.get("actions", []),
+        "options": fb.get("options", [])}}
+
+
 def stream_response(
     message: str,
     history: list[dict] | None = None,
@@ -3469,34 +3493,35 @@ def stream_response(
 ):
     """Like responder(), but as a generator: emits events as they happen so
     the assistant-ui chat can stream text and show each tool call with its
-    result as soon as it runs, instead of waiting for the whole reply. The
-    final `done` event carries the SAME shape responder() has always
-    returned (respuesta/modo/tools_usadas/acciones), so nothing reading that
-    result (audit log, telemetry) has to change.
+    result as soon as it runs, instead of waiting for the whole reply.
 
-    Events: {"type": "text", "text": <accumulated>}
+    Protocol v2: failures and degraded modes are first-class events (`notice`,
+    `error`) instead of masquerading as normal answers. `text` events carry a
+    delta, never the accumulated string. `done.result` no longer carries the
+    answer text — that already arrived as `text` deltas.
+
+    Events: {"type": "text", "delta": str}
             {"type": "tool_call", "id", "name", "input"}
-            {"type": "tool_result", "id", "name", "input", "result"}
-            {"type": "done", "result": {...}}
+            {"type": "tool_result", "id", "result"}
+            {"type": "notice", "kind"}
+            {"type": "error", "code", "retryable"}
+            {"type": "done", "result": {"mode", "tools_used", "actions", "options"}}
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        fb = _fallback(message)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
-        yield {"type": "done", "result": fb}
+    if not config.model_disponible():
+        yield from _degraded_stream(message, "fake_model")
         return
 
     try:
-        import anthropic
-    except ImportError:
-        fb = _fallback(message)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
-        yield {"type": "done", "result": fb}
+        client = _build_client()
+        if client is None:
+            raise RuntimeError("no LLM provider configured")
+    except Exception as e:  # noqa: BLE001
+        print(f"[angela/stream] client init failed: {e}", flush=True)
+        yield {"type": "error", "code": "model_unavailable", "retryable": True}
+        yield {"type": "done", "result": {"mode": "error", "tools_used": [],
+                                          "actions": [], "options": []}}
         return
 
-    client = anthropic.Anthropic(api_key=api_key)
     system, model, available_tools, messages = _prepare_turn(
         message, history, role, name, features, language)
 
@@ -3504,7 +3529,6 @@ def stream_response(
     actions: list[dict] = []
     try:
         for _ in range(MAX_TOOL_TURNS):
-            accumulated_text = ""
             with client.messages.stream(
                 model=model, max_tokens=MAX_TOKENS, system=system,
                 tools=available_tools, messages=messages,
@@ -3512,8 +3536,8 @@ def stream_response(
                 for event in stream:
                     if (event.type == "content_block_delta"
                             and event.delta.type == "text_delta"):
-                        accumulated_text += event.delta.text
-                        yield {"type": "text", "text": accumulated_text}
+                        # v2: the DELTA travels, never the accumulation.
+                        yield {"type": "text", "delta": event.delta.text}
                 resp = stream.get_final_message()
 
             if resp.stop_reason == "tool_use":
@@ -3528,7 +3552,6 @@ def stream_response(
                         if action:
                             actions.append(action)
                         yield {"type": "tool_result", "id": block.id,
-                               "name": block.name, "input": block.input or {},
                                "result": result}
                         tool_results.append({
                             "type": "tool_result",
@@ -3538,22 +3561,19 @@ def stream_response(
                 messages.append({"role": "user", "content": tool_results})
                 continue
 
-            text = "".join(b.text for b in resp.content if b.type == "text").strip()
             yield {"type": "done", "result": {
-                "respuesta": text, "modo": "claude",
-                "tools_usadas": tools_used, "acciones": actions,
-            }}
+                "mode": "claude", "tools_used": tools_used,
+                "actions": actions, "options": []}}
             return
 
-        stuck_text = "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?"
-        yield {"type": "text", "text": stuck_text}
+        yield {"type": "notice", "kind": "tool_loop_exhausted"}
         yield {"type": "done", "result": {
-            "respuesta": stuck_text,
-            "modo": "claude", "tools_usadas": tools_used, "acciones": actions,
-        }}
-    except Exception as e:  # noqa: BLE001 — degrading gracefully never crashes the chat
-        fb = _fallback(message)
-        fb["error_tecnico"] = str(e)
-        if fb.get("respuesta"):
-            yield {"type": "text", "text": fb["respuesta"]}
-        yield {"type": "done", "result": fb}
+            "mode": "claude", "tools_used": tools_used,
+            "actions": actions, "options": []}}
+    except Exception as e:  # noqa: BLE001
+        # The technical detail is logged, never shipped: it leaks internals.
+        print(f"[angela/stream] failed after tools={tools_used}: {e}", flush=True)
+        yield {"type": "error", "code": "model_failed", "retryable": True}
+        yield {"type": "done", "result": {
+            "mode": "error", "tools_used": tools_used,
+            "actions": actions, "options": []}}

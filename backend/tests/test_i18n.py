@@ -147,38 +147,38 @@ def angela_lang():
 def test_fallback_cuentas_responde_en_ingles(angela_lang):
     angela_lang("en")
     r = angela._fallback("who owes me money?")
-    assert r["modo"] == "simulado"
+    assert r["mode"] == "simulado"
     # con o sin morosos — o sin cuentas REALES (P45·T3: el guard responde que
     # falta el dato) — la respuesta sale del catálogo EN
-    assert ("overdue" in r["respuesta"] or "keeping up" in r["respuesta"]
-            or "factory seed" in r["respuesta"])
-    assert "mora" not in r["respuesta"]
+    assert ("overdue" in r["answer"] or "keeping up" in r["answer"]
+            or "factory seed" in r["answer"])
+    assert "mora" not in r["answer"]
 
 
 def test_fallback_caja_responde_en_ingles(angela_lang):
     angela_lang("en")
     r = angela._fallback("how much cash do I have in the register?")
-    assert "register" in r["respuesta"]
+    assert "register" in r["answer"]
     # Las tools NO cambian de nombre con el idioma. Actualizado en P9·C7 (M11):
     # "caja" nunca existió en TOOLS — el nombre real es estado_caja.
-    assert "estado_caja" in r["tools_usadas"]
-    assert "En caja" not in r["respuesta"]
+    assert "estado_caja" in r["tools_used"]
+    assert "En caja" not in r["answer"]
 
 
 def test_fallback_default_responde_en_ingles(angela_lang):
     angela_lang("en")
     r = angela._fallback("hello there")
-    assert "Where do we start?" in r["respuesta"]
-    assert "ANTHROPIC_API_KEY" in r["respuesta"]  # el aviso de modo datos sigue
+    assert "Where do we start?" in r["answer"]
+    assert "ANTHROPIC_API_KEY" in r["answer"]  # el aviso de modo datos sigue
     # y el monto va con agrupación en-US (coma), nunca 1.234.567
-    assert "$" in r["respuesta"]
+    assert "$" in r["answer"]
 
 
 def test_fallback_es_queda_byte_igual(angela_lang):
     angela_lang("es")
     r = angela._fallback("hello there")
-    assert "¿Por dónde arrancamos?" in r["respuesta"]
-    assert "(Modo datos: para charla libre total falta cargar ANTHROPIC_API_KEY.)" in r["respuesta"]
+    assert "¿Por dónde arrancamos?" in r["answer"]
+    assert "(Modo datos: para charla libre total falta cargar ANTHROPIC_API_KEY.)" in r["answer"]
 
 
 def test_fallback_opciones_label_en_enviar_es(angela_lang):
@@ -186,17 +186,17 @@ def test_fallback_opciones_label_en_enviar_es(angela_lang):
     # cuyo matching es por keywords en español → queda en ES.
     angela_lang("en")
     r = angela._fallback("make me a chart of the money per product")
-    assert r["opciones"], "el widget sin sección debe ofrecer opciones"
-    labels = [o["label"] for o in r["opciones"]]
+    assert r["options"], "el widget sin sección debe ofrecer opciones"
+    labels = [o["label"] for o in r["options"]]
     assert "On Home" in labels and "In Inventory" in labels
-    assert all("poné un gráfico" in o["enviar"] for o in r["opciones"])
+    assert all("poné un gráfico" in o["enviar"] for o in r["options"])
 
 
 def test_fallback_bloqueo_por_feature_en_ingles(angela_lang):
     angela_lang("en", features={"deposito", "logistica", "perfil", "angela"})
     r = angela._fallback("who owes me money?")
-    assert "isn't part of" in r["respuesta"]     # fb.bloqueado en EN
-    assert "cuentas" not in r["tools_usadas"]
+    assert "isn't part of" in r["answer"]     # fb.bloqueado en EN
+    assert "cuentas" not in r["tools_used"]
 
 
 # --- E9b: los textos que PRODUCE core/ salen en el idioma del usuario --------------

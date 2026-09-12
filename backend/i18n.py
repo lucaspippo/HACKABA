@@ -368,6 +368,11 @@ CATALOGO: dict[str, dict[str, str]] = {
               "para arrancar una nueva.",
         "en": "This demo session reached its chat limit — refresh to start a new one.",
     },
+    "angela.muchas_vueltas": {
+        "es": "Estoy dando muchas vueltas con esa consulta. "
+              "¿Me la reformulás más simple?",
+        "en": "I'm going in circles with that one. Could you put it more simply?",
+    },
     # Comprobantes por foto (P10) — chequeos, cruces y sync simulado.
     "core.comp.chk_suma": {
         "es": "La suma de los ítems no cierra contra el total declarado "
