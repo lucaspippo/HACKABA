@@ -1,92 +1,167 @@
-# Render Blueprint. One Docker service: the API plus the compiled frontend on
-# one port, backed by an external Postgres.
+# Render Blueprint — LA DEMO ENTERA, DESDE CERO, SIN TOCAR NADA A MANO.
 #
-# The image is tenant-agnostic — POLPILOT_TENANT below is what decides which
-# tenant this service serves. A second (productive) tenant is a copy of this
-# service block with a different tenant and its own database, NOT a routing
-# layer: one process serves one tenant (see backend/core/db/tenant.py).
+# Levanta tres cosas de una sola sincronización:
+#   1. la base Postgres administrada
+#   2. el servicio web (API + frontend compilado en un solo puerto)
+#   3. el esquema y los datos: Alembic como preDeployCommand, y el seed del
+#      dataset en el arranque del contenedor (deploy/boot.py)
 #
-# The documented target topology, and the triggers that would justify
-# building it, are in deploy/ARCHITECTURE.md §3.
+# "New +" -> "Blueprint" -> conectar este repo -> Render lee este archivo.
 #
-# "New +" -> "Blueprint" -> connect this repo -> Render reads this file.
+# EL NOMBRE DEL SERVICIO. Se llama `polpilot-hackathon` y no `polpilot-app`
+# a propósito: `polpilot-app` es el servicio del repo del producto
+# (agustindelmonti/polpilot-app), donde vive la demo pública. Dos servicios con
+# el mismo nombre en la misma cuenta de Render chocan, y aunque estén en
+# cuentas distintas, tener dos "polpilot-app" apuntando a repos distintos es
+# una confusión esperando a pasar: el día que haya que mirar un log, nadie va a
+# saber cuál es cuál. Este blueprint es el de la hackathon y se llama así.
+#
+# La topología objetivo (y qué justificaría construirla) está en
+# deploy/ARCHITECTURE.md §3.
+
+databases:
+  # LA BASE ESTÁ ACÁ, no cargada a mano. Antes `DATABASE_URL` era `sync: false`
+  # y no había ningún bloque `databases:`: o sea que una sincronización desde
+  # cero creaba el servicio web con la variable VACÍA, el preDeployCommand
+  # intentaba `alembic upgrade head` sin a dónde conectarse, y el deploy moría
+  # antes de construir nada. Con la base declarada acá, Render la crea primero
+  # y le pasa la URL al servicio (ver `fromDatabase` más abajo).
+  - name: polpilot-hackathon-db
+    databaseName: polpilot        # el nombre de la base adentro del server
+    user: polpilot                # el rol DUEÑO: Alembic y consultas de admin
+    # `basic-256mb` es de pago y no expira. `free` también funciona y alcanza
+    # de sobra para esto, pero se vence a los 30 días y se borra: para algo que
+    # hay que tener en pie el día del pitch, esa fecha de vencimiento es un
+    # riesgo que no vale el ahorro. Cambialo a `free` si preferís lo otro.
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+
 services:
   - type: web
-    name: polpilot-app
+    name: polpilot-hackathon
     runtime: docker
-    plan: starter          # 512 MB is enough; free sleeps and ruins first impressions
+    plan: starter          # 512 MB alcanza; el free duerme y arruina la primera impresión
     healthCheckPath: /api/health
 
-    # Migrations run BEFORE any instance of the new version starts, so a
-    # failed migration fails the deploy and the running instance keeps
-    # serving. Inside the container it used to exit the process instead,
-    # which took the service down. See deploy/migrate.py.
-    # The path is absolute: the Dockerfile's WORKDIR is /app, so this is the
-    # same file, without depending on an undocumented working directory.
+    # Las migraciones corren ANTES de que arranque ninguna instancia de la
+    # versión nueva, así una migración fallida hace fallar el deploy y la
+    # instancia que está sirviendo sigue en pie. Adentro del contenedor lo que
+    # hacía era matar el proceso, que bajaba el servicio. Ver deploy/migrate.py.
+    # Ese script además CREA el rol sin bypass de RLS (ver más abajo).
     preDeployCommand: python /app/deploy/migrate.py
 
     envVars:
-      # --- secrets: set in the dashboard, never in the repo -----------------
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: POLPILOT_RESET_TOKEN
-        sync: false        # guards POST /api/admin/reset-demo
+      # ======================================================================
+      # 1 · LA BASE — la completa Render sola desde el bloque `databases:`
+      # ======================================================================
       - key: DATABASE_URL
-        sync: false        # owner role: Alembic + tenant-row lookups
-      - key: APP_DATABASE_URL
-        sync: false        # NOBYPASSRLS role: every tenant-scoped query.
-                           # Reusing DATABASE_URL here would make Row-Level
-                           # Security silently do nothing, with no error.
-                           # docker/init-app-role.sql is the local equivalent.
+        fromDatabase:
+          name: polpilot-hackathon-db
+          property: connectionString
 
-      # --- which tenant this service is ------------------------------------
-      # Mandatory. deploy/migrate.py and deploy/boot.py both refuse to run
-      # without it: core/paths.py falls back to "demo", so an unset variable
-      # would silently serve the demo tenant's users and data.
+      # APP_DATABASE_URL NO está acá, y no es un olvido.
+      #
+      # La app usa DOS conexiones a la MISMA base: `DATABASE_URL` con el rol
+      # dueño (Alembic, fila del tenant) y `APP_DATABASE_URL` con un rol SIN
+      # bypass de RLS para todo lo que toca datos del tenant. Si las dos usan
+      # el rol dueño, Row-Level Security deja de tener efecto EN SILENCIO —un
+      # superusuario lo saltea siempre— y no hay error que lo delate.
+      #
+      # Render no puede armarla: `fromDatabase` sólo sabe dar la del dueño.
+      # Así que el rol lo crea `deploy/migrate.py` con la contraseña de abajo,
+      # y `deploy/boot.py` arma la URL (deploy/dburl.py, una sola derivación
+      # para los dos). Si algún día se apunta a Supabase, alcanza con setear
+      # APP_DATABASE_URL a mano: lo explícito le gana a lo derivado.
+      - key: POLPILOT_APP_DB_PASSWORD
+        generateValue: true      # Render la genera y la sincroniza al servicio
+
+      # ======================================================================
+      # 2 · LA IA — va por el GATEWAY DE VERCEL, no por Anthropic directo
+      # ======================================================================
+      # El token es lo único de este bloque que hay que cargar a mano
+      # (Dashboard -> Environment). Sin él, `modo_angela` queda en "offline" y
+      # NADA fuera del guion del demo contesta.
+      - key: AI_GATEWAY_API_KEY
+        sync: false
+
+      # El proveedor, explícito. Sin esto se autodetecta —hay
+      # AI_GATEWAY_API_KEY y no hay ANTHROPIC_API_KEY, así que daría gateway
+      # igual— pero dejarlo implícito significa que el día que alguien cargue
+      # una ANTHROPIC_API_KEY "para probar", el proveedor cambia solo y los
+      # slugs de abajo dejan de servir. Declarado, no cambia por accidente.
+      - key: LLM_PROVIDER
+        value: gateway
+
+      # EL FORMATO DEL SLUG NO ES COSMÉTICO. Por el gateway va con prefijo de
+      # proveedor y versión CON PUNTO (`anthropic/claude-sonnet-5`); por
+      # Anthropic directo va con guiones y sin prefijo (`claude-sonnet-5`).
+      # Mezclarlos devuelve HTTP 400 y Ángela queda muda en la primera
+      # pregunta. Por eso son dos variables distintas: GATEWAY_MODEL le gana a
+      # ANGELA_MODEL cuando el proveedor activo es el gateway, así que las dos
+      # formas pueden convivir sin pisarse (ver backend/config.py).
+      - key: GATEWAY_MODEL
+        value: anthropic/claude-sonnet-5
+
+      # El modelo CHICO, para el camino de tool-use que no razona (abrir una
+      # pantalla, un widget, un recordatorio). Mismo formato de gateway. Sin
+      # esto el routing por tema no baja nada: anda igual, sale más caro.
+      - key: ANGELA_MODEL_SIMPLE
+        value: anthropic/claude-haiku-4.5
+
+      # ======================================================================
+      # 3 · QUÉ TENANT ES ESTE SERVICIO
+      # ======================================================================
+      # Obligatoria. `deploy/migrate.py` y `deploy/boot.py` se niegan a correr
+      # sin esto: core/paths.py cae a "demo" por default, así que una variable
+      # sin setear serviría los datos del tenant demo por descuido.
       - key: POLPILOT_TENANT
         value: demo
 
-      # Regenerate and reseed the dataset on every boot. Correct for the
-      # demo — Render's filesystem is ephemeral, so each restart returns it
-      # to a clean state, and /api/admin/reset-demo depends on the canonical
-      # copy. NEVER set this on a productive tenant: data-demo/generar.py
-      # rewrites the whole dataset.
+      # Regenera y resiembra el dataset en cada arranque. Correcto para el
+      # demo —el disco de Render es efímero, así que cada reinicio vuelve a un
+      # estado limpio— y es pérdida de datos en un tenant productivo, donde
+      # NUNCA hay que ponerlo: data-demo/generar.py reescribe todo.
       - key: POLPILOT_SEED_ON_BOOT
         value: "1"
 
-      # --- demo-only behavior (was baked into the image; see D6/F1) --------
-      # Do NOT copy this block to a productive service.
-      - key: POLPILOT_DEMO_AUTOLOGIN
-        value: "1"         # no login screen: the public link lands on Home
-      - key: POLPILOT_DEMO_ROLE_SWITCH
-        value: "1"         # "View as" role switcher
+      # La copia canónica desde la que restaura POST /api/admin/reset-demo sin
+      # reiniciar el contenedor. La escribe boot.py al arrancar.
+      - key: POLPILOT_CANONICAL_DIR
+        value: /app/data-canonica
+
+      # ======================================================================
+      # 4 · EL DEMO
+      # ======================================================================
+      # LA FECHA CONGELADA. El dataset tiene una historia sembrada que termina
+      # acá: los cruces se calculan contra "hoy", así que con la fecha real
+      # (2026-09) todo queda fuera de ventana y los cruces DEJAN DE EMITIR. La
+      # pantalla no se rompe: se queda vacía, que es peor, porque parece que el
+      # producto no encontró nada.
       - key: POLPILOT_DEMO_TODAY
-        value: "2026-07-07"  # the seeded history's "today"
+        value: "2026-07-07"
+
+      - key: POLPILOT_DEMO_AUTOLOGIN
+        value: "1"         # sin pantalla de login: el link público entra directo
+      - key: POLPILOT_DEMO_ROLE_SWITCH
+        value: "1"         # el selector "Ver como"
       - key: POLPILOT_DEMO_MSG_CAP
-        value: "35"        # per-session message cap
+        value: "35"        # tope de mensajes por sesión
       - key: POLPILOT_DEMO_IP_CAP
-        value: "60"        # per-IP/day spend brake, survives a re-login
+        value: "60"        # freno de gasto por IP/día, sobrevive a un re-login
+
+      # El idioma del tenant. `es`, no `en`: el pitch es en español y además el
+      # precalentado del arranque llena PRIMERO este idioma (ver
+      # core/analisis_cache.precalentar) — con `en` acá, la pantalla que se va a
+      # mostrar sería la última en quedar caliente.
       - key: POLPILOT_DEFAULT_LANG
-        value: en
+        value: es
 
-      # --- config, deliberately explicit -----------------------------------
-      # Not a secret, but it cannot be implicit either: without this line the
-      # code falls back to its historical default (claude-sonnet-4-6, see
-      # backend/config.MODELO_VALIDACION) and production would run a
-      # different model than the one validated. Verified via /api/health ->
-      # modelo_angela.
-      - key: ANGELA_MODEL
-        value: claude-sonnet-5
+      # ======================================================================
+      # 5 · SECRETOS — a mano en el dashboard
+      # ======================================================================
+      - key: POLPILOT_RESET_TOKEN
+        sync: false        # protege POST /api/admin/reset-demo
 
-      # El modelo CHICO, para el camino de tool-use que no razona (abrir una
-      # pantalla, un widget, un recordatorio). Sin esto el routing por tema no
-      # baja nada: anda igual, sale mas caro. Si el proveedor activo es el
-      # gateway, el slug lleva prefijo y version con punto — ver
-      # deploy/ANGELA-EN-RENDER.md, que es el checklist de dos minutos para
-      # verificar todo esto desde el dashboard antes de un pitch.
-      - key: ANGELA_MODEL_SIMPLE
-        value: claude-haiku-4-5-20251001
-
-# The real ceiling on LLM spend is NOT in this file. The per-IP cap above is a
-# soft brake; the limit that cannot be evaded is set outside the app — a spend
-# limit or budget alert on the API key in the Anthropic console.
+# El techo real del gasto de IA NO está en este archivo. El cap por IP de
+# arriba es un freno blando; el límite que no se puede evadir se pone afuera de
+# la app — un spend limit sobre la credencial, en el gateway.

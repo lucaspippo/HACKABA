@@ -68,6 +68,8 @@ CANONICAL = os.environ.get("POLPILOT_CANONICAL_DIR")
 
 sys.path.insert(0, BACKEND)
 import deploy_guard  # noqa: E402  (needs BACKEND on the path first)
+sys.path.insert(0, HERE)
+import dburl  # noqa: E402
 
 
 def fallar(msg: str) -> NoReturn:
@@ -80,6 +82,20 @@ def main() -> None:
     # Render's preDeployCommand, so a failed migration fails the deploy
     # instead of taking the running service down.
     tenant = deploy_guard.require_tenant()
+
+    # 1b · APP_DATABASE_URL. Con una Postgres administrada por el blueprint no
+    #      hay forma de que Render la arme sola: lleva OTRO usuario que el que
+    #      da `fromDatabase`. Se deriva de DATABASE_URL con el rol que creo
+    #      deploy/migrate.py. Si el operador la seteo a mano (Supabase, base
+    #      propia), esto no la toca. Va antes de cualquier import que abra
+    #      conexion — seed_db, core.db — porque engine.py la lee del entorno.
+    url, origen = dburl.asegurar_app_database_url()
+    if origen == "falta":
+        fallar("no hay APP_DATABASE_URL y no se pudo derivar: falta DATABASE_URL "
+               f"o {dburl.ENV_PASSWORD}. Con el blueprint de render.yaml las "
+               "completa Render solo (fromDatabase + generateValue); si faltan, "
+               "el servicio no quedo enlazado a la base del blueprint.")
+    print(f"[boot] APP_DATABASE_URL {origen} (rol '{dburl.ROL_APP}')", flush=True)
     sys.path.insert(0, DATA_DIR)
     import seed_db
 
