@@ -37,7 +37,7 @@ import base64
 import os
 import secrets
 
-from . import fechas, paths
+from . import fechas, insight as ins, paths
 from .audit import AuditLog
 
 # P41·4 — la PRUEBA de una entrega (foto del remito firmado, firma en pantalla).
@@ -248,6 +248,7 @@ def propuestas(lang: str | None = None) -> list[dict]:
         g["reportes"].append(r["id"])
         g["actores"].add(r["actor"])
         g["items"].append({
+            "codigo": (a or {}).get("codigo"),
             "nombre": (a or {}).get("descripcion") or (r["datos"].get("producto") or ""),
             "monto": round(cant * costo, 2) or None,
             "detalle": _t(f"core.piso.motivo_{r['datos'].get('motivo', 'faltante')}",
@@ -260,13 +261,36 @@ def propuestas(lang: str | None = None) -> list[dict]:
         quien = ", ".join(sorted(_nombre(a) for a in g["actores"]))
         n = len(g["reportes"])
         suf = "_1" if n == 1 else ""
-        porque = [
-            _t(f"core.piso.reclamo_q1{suf}", lang, quien=quien, n=n,
-               proveedor=prov, monto=_pesos(g["monto"], lang)),
-            _t("core.piso.reclamo_q2", lang),
+        claim_method = {"key": "core.method.floor_report_claim",
+                        "label": _t("core.method.floor_report_claim", lang)}
+        evidence = [
+            ins.records(
+                "floor_reports", label=_t(f"core.piso.reclamo_r{suf}", lang, n=n, quien=quien),
+                weight="primary", method=claim_method,
+                rows=[ins.record(kind="product", id=it.get("codigo"), name=it["nombre"],
+                                 amount=it["monto"], detail=it["detalle"])
+                      for it in g["items"][:8]]),
         ]
         if oc:
-            porque.append(_t("core.piso.reclamo_q3", lang, oc=oc.get("numero") or ""))
+            evidence.append(ins.metric(
+                "purchase_order_check",
+                label=_t("core.piso.reclamo_q3", lang, oc=oc.get("numero") or ""),
+                value=None, unit=None, weight="supporting",
+                method={"key": "core.method.floor_report_po_check",
+                        "label": _t("core.method.floor_report_po_check", lang)}))
+        insight_val = ins.build(
+            # What the team reported, not a computed finding — a report is an
+            # observation, so there's no hypothesis for it (see test below).
+            pattern=ins.pattern(
+                _t(f"core.piso.reclamo_q1{suf}", lang, quien=quien, n=n,
+                   proveedor=prov, monto=_pesos(g["monto"], lang)),
+                scope={"kind": "supplier", "count": 1}),
+            evidence=evidence,
+            assumptions=[ins.assumption(_t("core.piso.reclamo_s1", lang))],
+            recommendation=ins.recommendation(
+                detail=_t("core.piso.reclamo_q2", lang), navigate=None,
+                chat=_t("core.piso.reclamo_chat", lang, proveedor=prov)),
+        )
         out.append({
             "id": "reclamo_" + prov.lower().replace(" ", "_")[:24],
             "tipo": "reclamar",
@@ -279,7 +303,6 @@ def propuestas(lang: str | None = None) -> list[dict]:
             "accion_chat": _t("core.piso.reclamo_chat", lang, proveedor=prov),
             "fuentes": [_t("core.piso.f_reportes", lang), _t("core.piso.f_stock", lang)]
                        + ([_t("core.piso.f_oc", lang)] if oc else []),
-            "drill": {"porque": porque, "grafico": None, "involucrados": g["items"][:8],
-                      "supuestos": [_t("core.piso.reclamo_s1", lang)]},
+            "insight": insight_val,
         })
     return out

@@ -27,7 +27,7 @@ import datetime
 import json
 import os
 
-from . import paths, conocimiento, stock
+from . import paths, conocimiento, stock, insight as ins
 
 CONDICIONES_JSON = os.path.join(paths.DATA_DIR, "proveedores_condiciones.json")
 
@@ -189,6 +189,49 @@ def _card_morosos(lang, ctx) -> dict | None:
         grafico = _grafico(_t("core.opn.morosos_g", lang, nombre=peor["nombre"]),
                            [{"x": k, "y": round(por_mes.get(k, 0.0), 2)} for k in meses],
                            "$", True, f"{meses[0]} → {meses[-1]}")
+    prom_dias = peor.get("promedio_pago_dias") or 0
+    evidencia = [
+        ins.metric("overdue_total", label=_t("core.opn.overdue_total_ev", lang), value=total,
+                   unit="ars", weight="primary",
+                   method={"key": "core.method.mora_total",
+                           "label": _t("core.method.mora_total", lang)}),
+        ins.records("overdue_clients", label=_t("core.opn.morosos_t", lang, n=len(morosos)),
+                    weight="primary",
+                    rows=[ins.record(kind="client", id=c["id"], name=c["nombre"],
+                                     amount=c["saldo"],
+                                     detail=_t("core.opn.morosos_i", lang,
+                                               dias=c["dias_sin_pagar"]))
+                          for c in sorted(morosos, key=lambda x: -x["saldo"])],
+                    method={"key": "core.method.mora_total",
+                            "label": _t("core.method.mora_total", lang)}),
+        ins.metric("days_overdue", label=_t("core.opn.morosos_p2_lbl", lang, peor=peor["nombre"]),
+                   value=peor["dias_sin_pagar"], unit="days", weight="primary",
+                   baseline=({"value": prom_dias, "label": _t("core.method.prom_pago", lang)}
+                             if prom_dias else None),
+                   method={"key": "core.method.dias_mora",
+                           "label": _t("core.method.dias_mora", lang)},
+                   # No `detail`: it could only repeat the day count this
+                   # metric already carries. The row's `amount` (the saldo)
+                   # is the fact the metric does not show. The multi-row
+                   # `overdue_clients` list above keeps its per-row detail —
+                   # there each row's own day count is new information.
+                   records=[ins.record(kind="client", id=peor["id"], name=peor["nombre"],
+                                       amount=peor["saldo"])]),
+    ]
+    if grafico:
+        evidencia.append(ins.series(
+            "debtor_payment_curve", label=_t("core.opn.morosos_g", lang, nombre=peor["nombre"]),
+            chart=grafico, weight="supporting",
+            method={"key": "core.method.debtor_payment_curve",
+                    "label": _t("core.method.debtor_payment_curve", lang)}))
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.morosos_p1", lang, n=len(morosos)),
+                            scope={"kind": "clients", "count": len(morosos)}),
+        evidence=evidencia,
+        risk=ins.risk(_t("core.prio.mora_risk", lang), exposure=total),
+        recommendation=ins.recommendation(
+            navigate="cuentas", chat=_t("core.opn.morosos_chat", lang)),
+    )
     return {
         "id": "cobrar_morosos", "tipo": "cobrar",
         # The worst debtor names the finding: if a DIFFERENT customer
@@ -201,22 +244,7 @@ def _card_morosos(lang, ctx) -> dict | None:
         "accion_chat": _t("core.opn.morosos_chat", lang),
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
-        "drill": {
-            "porque": [_t("core.opn.morosos_p1", lang, n=len(morosos),
-                          total=_pesos(total, lang)),
-                       _t("core.opn.morosos_p2", lang, peor=peor["nombre"],
-                          dias=peor["dias_sin_pagar"],
-                          prom=peor.get("promedio_pago_dias") or "—")],
-            "grafico": grafico,
-            # "id" lets the frontend deep-link each debtor to their exact row
-            # in Cuentas por cobrar (CuentasCorrientes.jsx's `cliente-${id}`
-            # anchor) instead of leaving the name as inert text.
-            "involucrados": [{"id": c["id"], "kind": "client", "nombre": c["nombre"], "monto": c["saldo"],
-                              "detalle": _t("core.opn.morosos_i", lang,
-                                            dias=c["dias_sin_pagar"])}
-                             for c in sorted(morosos, key=lambda x: -x["saldo"])],
-            "supuestos": [],
-        },
+        "insight": insight_val,
     }
 
 
@@ -232,6 +260,34 @@ def _card_dormido(lang, ctx) -> dict | None:
     grafico = _grafico(_t("core.opn.dormido_g", lang),
                        [{"x": x["producto"], "y": x["inmovilizado"]} for x in top[:6]],
                        "$", False) if top else None
+    evidencia = [
+        ins.metric("dormant_value", label=_t("core.opn.dormant_value_ev", lang),
+                   value=rot["por_estado"]["dormido"], unit="ars", weight="primary",
+                   method={"key": "core.method.dormant_value",
+                           "label": _t("core.method.dormant_value", lang)}),
+        ins.records("dormant_products", label=_t("core.opn.dormido_t", lang),
+                    weight="primary",
+                    rows=[ins.record(kind="product", id=x.get("codigo"), name=x["producto"],
+                                     amount=x["inmovilizado"],
+                                     detail=(_t("core.opn.dormido_dias", lang,
+                                               dias=int(x["dias_rotacion"]))
+                                             if x.get("dias_rotacion")
+                                             else _t("core.opn.dormido_sin_venta", lang)))
+                          for x in top[:6]],
+                    method={"key": "core.method.dormant_products",
+                            "label": _t("core.method.dormant_products", lang)}),
+        ins.metric("dormant_top5_value", label=_t("core.opn.dormant_top5_ev", lang), value=top5, unit="ars",
+                   weight="supporting",
+                   method={"key": "core.method.dormant_top5_value",
+                           "label": _t("core.method.dormant_top5_value", lang)}),
+    ]
+    if grafico:
+        evidencia.append(ins.series(
+            "dormant_chart", label=_t("core.opn.dormido_g", lang), chart=grafico,
+            weight="supporting",
+            method={"key": "core.method.dormant_products",
+                    "label": _t("core.method.dormant_products", lang)}))
+    assunciones = [ins.assumption(_t("core.opn.dormido_s1", lang))]
     card = {
         "id": "despertar_dormido", "tipo": "liquidar",
         # The single most-dormant product names the finding; if a different
@@ -245,29 +301,25 @@ def _card_dormido(lang, ctx) -> dict | None:
         "navegar": "inventario",
         "fuentes": [_t("core.opn.f_ventas12", lang), _t("core.opn.f_stock", lang),
                     _t("core.opn.f_costos", lang)],
-        "drill": {
-            "porque": [_t("core.opn.dormido_p1", lang, pct=rot["pct_dormido"],
-                          monto=_pesos(rot["por_estado"]["dormido"], lang)),
-                       _t("core.opn.dormido_p2", lang, top5=_pesos(top5, lang))],
-            "grafico": grafico,
-            "involucrados": [{"id": x.get("codigo"), "kind": "product",
-                              "nombre": x["producto"], "monto": x["inmovilizado"],
-                              "detalle": (_t("core.opn.dormido_dias", lang,
-                                             dias=int(x["dias_rotacion"]))
-                                          if x.get("dias_rotacion")
-                                          else _t("core.opn.dormido_sin_venta", lang))}
-                             for x in top[:6]],
-            "supuestos": [_t("core.opn.dormido_s1", lang)],
-        },
     }
     # Piece 14 — el dormido de limpieza fue una compra por precio, no un error:
-    # el hallazgo lo distingue del resto (contexto en el porqué).
+    # el hallazgo lo distingue del resto (contexto declarado, no un cálculo).
     k_dorm = [p for p in conocimiento.aplicables(nodo="inventario", efecto="contexto_para_angela")
               if "limpieza" in conocimiento._norm(p.get("entidad"))]
     if k_dorm:
-        card["drill"]["porque"].append(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_dorm[0], lang)))
+        assunciones.append(ins.assumption(
+            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_dorm[0], lang))))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_dorm]
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.dormido_p1", lang, pct=rot["pct_dormido"],
+                               monto=_pesos(rot["por_estado"]["dormido"], lang))),
+        hypothesis=ins.hypothesis(_t("core.opn.dormido_p2", lang, top5=_pesos(top5, lang))),
+        evidence=evidencia,
+        assumptions=assunciones,
+        recommendation=ins.recommendation(
+            navigate="inventario", chat=_t("core.opn.dormido_chat", lang)),
+    )
+    card["insight"] = insight_val
     return card
 
 def _card_ventana_compra(lang, ctx) -> dict | None:
@@ -324,15 +376,11 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
               else _t("core.opn.ventana_en", lang, n=dias_hasta))
     ipc = macro.consultar(["inflacion"], lang).get("inflacion") or {}
 
-    porque = [
-        _t("core.opn.ventana_q1", lang, proveedor=prov, frec=frec,
-           cuando=cuando, suba=f"{suba:g}"),
-        _t("core.opn.ventana_q2", lang, n=len(items), compra=_pesos(compra, lang)),
-        _t("core.opn.ventana_q3", lang, suba=f"{suba:g}", ahorro=_pesos(ahorro, lang)),
-    ] + ([_t("core.opn.ventana_p3", lang, ipc=f"{ipc['valor']:g}",
-             fuente=ipc.get("fuente") or "")] if ipc.get("disponible") else [])
-    supuestos = [_t("core.opn.ventana_s1", lang),
-                 _t("core.opn.ventana_s3", lang, n=len(historial), suba=f"{suba:g}")]
+    supuestos = [ins.assumption(_t("core.opn.ventana_s1", lang)),
+                 ins.assumption(_t("core.opn.ventana_s3", lang, n=len(historial), suba=f"{suba:g}"))]
+    if ipc.get("disponible"):
+        supuestos.append(ins.assumption(_t("core.opn.ventana_p3", lang,
+                                           ipc=f"{ipc['valor']:g}", fuente=ipc.get("fuente") or "")))
 
     # Pieces 7+8 — lo que Aldo enseñó sobre este proveedor. La regla del viernes
     # es un efecto de comportamiento (el día sugerido nunca cae viernes) y la
@@ -347,13 +395,47 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
     if regla_viernes and base_dia.weekday() == 4:  # 4 = viernes
         dia_pedido, movido = base_dia - datetime.timedelta(days=1), True  # al jueves
     if ctx_suba:
-        porque.insert(1, _t("core.opn.ventana_k_suba", lang, proveedor=prov))
+        supuestos.insert(1, ins.assumption(_t("core.opn.ventana_k_suba", lang, proveedor=prov)))
     if regla_viernes:
-        porque.append(_t("core.opn.ventana_k_viernes_mov", lang) if movido
-                      else _t("core.opn.ventana_k_viernes", lang))
+        supuestos.append(ins.assumption(_t("core.opn.ventana_k_viernes_mov", lang) if movido
+                                        else _t("core.opn.ventana_k_viernes", lang)))
     aplicadas = ([conocimiento.resumen_pieza(ctx_suba)] if ctx_suba else []) + \
                 ([conocimiento.resumen_pieza(regla_viernes)] if regla_viernes else [])
 
+    evidencia = [
+        ins.metric("window_purchase_amount", label=_t("core.opn.window_purchase_ev", lang), value=compra,
+                   unit="ars", weight="primary",
+                   method={"key": "core.method.window_purchase",
+                           "label": _t("core.method.window_purchase", lang)}),
+        ins.metric("window_savings_amount", label=_t("core.opn.window_savings_ev", lang), value=ahorro,
+                   unit="ars", weight="primary",
+                   method={"key": "core.method.window_savings",
+                           "label": _t("core.method.window_savings", lang)}),
+        ins.records("window_items", label=_t("core.opn.ventana_t", lang, proveedor=prov),
+                    weight="supporting",
+                    rows=[ins.record(kind=it["kind"], id=it["id"], name=it["nombre"],
+                                     amount=it["monto"], detail=it["detalle"])
+                          for it in items[:6]],
+                    method={"key": "core.method.window_purchase",
+                            "label": _t("core.method.window_purchase", lang)}),
+        ins.series("price_rise_history", label=_t("core.opn.ventana_g", lang, proveedor=prov),
+                   chart=grafico, weight="supporting",
+                   method={"key": "core.method.price_rise_history",
+                           "label": _t("core.method.price_rise_history", lang)}),
+    ]
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.ventana_q1", lang, proveedor=prov, frec=frec,
+                               cuando=cuando, suba=f"{suba:g}")),
+        hypothesis=ins.hypothesis(_t("core.opn.ventana_q2", lang, n=len(items),
+                                     compra=_pesos(compra, lang))),
+        evidence=evidencia,
+        assumptions=supuestos,
+        recommendation=ins.recommendation(
+            navigate=None,
+            chat=_t("core.opn.ventana_chat", lang, proveedor=prov)),
+        deadline=ins.deadline(date=proxima.isoformat(),
+                              basis=_t("core.opn.ventana_deadline_basis", lang, proveedor=prov)),
+    )
     card = {
         "id": "ventana_compra", "tipo": "comprar",
         "fingerprint": f"proveedor:{prov}",
@@ -369,8 +451,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
                     _t("core.opn.f_ventas12", lang), _t("core.opn.f_ipc", lang)],
         "macro": {"inflacion": ipc.get("valor"), "fuente": ipc.get("fuente"),
                   "fecha": ipc.get("fecha")} if ipc.get("disponible") else None,
-        "drill": {"porque": porque, "grafico": grafico, "involucrados": items[:6],
-                  "supuestos": supuestos},
+        "insight": insight_val,
     }
     if aplicadas:
         card["conocimiento_aplicado"] = aplicadas
@@ -422,6 +503,41 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
     grafico = _grafico(_t("core.opn.frio_g", lang, nombre=peor["c"]["nombre"]),
                        [{"x": k, "y": round(por_mes.get(k, 0.0), 2)} for k in meses],
                        "$", True, f"{meses[0]} → {meses[-1]}")
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.frio_q1", lang, nombre=peor["c"]["nombre"],
+                               pct=f"{peor['caida']:.0f}",
+                               actual=_pesos(peor["actual"], lang),
+                               esperado=_pesos(peor["esperado"], lang)),
+                            scope={"kind": "client", "count": 1}),
+        evidence=[
+            ins.metric("cooling_purchase_pace", label=_t("core.opn.cooling_pace_ev", lang),
+                       value=peor["actual"], unit="ars", weight="primary",
+                       baseline={"value": peor["esperado"],
+                                 "label": _t("core.opn.frio_s1", lang, dias=VENTANA_FRIO_DIAS)},
+                       method={"key": "core.method.client_cooling",
+                               "label": _t("core.method.client_cooling", lang)}),
+            ins.metric("cooling_revenue_gap", label=_t("core.opn.frio_q2_lbl", lang, pos=pos or "—"),
+                       value=monto, unit="ars", weight="primary",
+                       method={"key": "core.method.client_cooling_gap",
+                               "label": _t("core.method.client_cooling_gap", lang)}),
+            ins.records("cooling_clients", label=_t("core.opn.frio_t", lang, nombre=peor["c"]["nombre"]),
+                        weight="supporting",
+                        rows=[ins.record(kind="client", id=x["c"].get("id"), name=x["c"]["nombre"],
+                                         amount=round(x["actual"], 2),
+                                         detail=_t("core.opn.frio_i", lang, pct=f"{x['caida']:.0f}"))
+                              for x in cands[:4]],
+                        method={"key": "core.method.client_cooling",
+                                "label": _t("core.method.client_cooling", lang)}),
+            ins.series("cooling_chart", label=_t("core.opn.frio_g", lang, nombre=peor["c"]["nombre"]),
+                       chart=grafico, weight="supporting",
+                       method={"key": "core.method.client_cooling",
+                               "label": _t("core.method.client_cooling", lang)}),
+        ],
+        assumptions=[ins.assumption(_t("core.opn.frio_s1", lang, dias=VENTANA_FRIO_DIAS))],
+        recommendation=ins.recommendation(
+            navigate="cuentas",
+            chat=_t("core.opn.frio_chat", lang, nombre=peor["c"]["nombre"])),
+    )
     return {
         "id": "cliente_frio", "tipo": "vender",
         "fingerprint": f"cliente:{peor['c']['nombre']}",
@@ -434,21 +550,7 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
         "accion_chat": _t("core.opn.frio_chat", lang, nombre=peor["c"]["nombre"]),
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
-        "drill": {
-            "porque": [_t("core.opn.frio_q1", lang, nombre=peor["c"]["nombre"],
-                          pct=f"{peor['caida']:.0f}",
-                          actual=_pesos(peor["actual"], lang),
-                          esperado=_pesos(peor["esperado"], lang)),
-                       _t("core.opn.frio_q2", lang, pos=pos or "—",
-                          monto=_pesos(monto, lang))],
-            "grafico": grafico,
-            "involucrados": [{"id": x["c"].get("id"), "kind": "client",
-                              "nombre": x["c"]["nombre"], "monto": round(x["actual"], 2),
-                              "detalle": _t("core.opn.frio_i", lang,
-                                            pct=f"{x['caida']:.0f}")}
-                             for x in cands[:4]],
-            "supuestos": [_t("core.opn.frio_s1", lang, dias=VENTANA_FRIO_DIAS)],
-        },
+        "insight": insight_val,
     }
 
 
@@ -500,6 +602,37 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
                           "detalle": _t("core.opn.estrella_i", lang, n=r2)})
     grafico = _grafico(prod, [{"x": m, "y": v} for m, v in zip(meses, serie)],
                        "$", True, f"{meses[0]} → {meses[-1]}")
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.estrella_q1", lang, producto=prod, pos=pos,
+                               n=racha, ultimo=_pesos(ultimo, lang)),
+                            scope={"kind": "product", "count": 1}),
+        evidence=[
+            ins.metric("revenue_decline_streak", label=_t("core.opn.estrella_r_lbl", lang,
+                                                           producto=prod, pos=pos),
+                       value=racha, unit="months", weight="primary",
+                       method={"key": "core.method.streak_decline",
+                               "label": _t("core.method.streak_decline", lang)}),
+            ins.metric("revenue_loss", label=_t("core.opn.estrella_loss_lbl", lang),
+                       value=perdida, unit="ars",
+                       weight="primary",
+                       method={"key": "core.method.streak_loss",
+                               "label": _t("core.method.streak_loss", lang)}),
+            ins.records("falling_products", label=_t("core.opn.estrella_t", lang),
+                        weight="supporting", rows=[
+                            ins.record(kind="product", id=o["id"], name=o["nombre"],
+                                      amount=o["monto"], detail=o["detalle"])
+                            for o in otros[:4]],
+                        method={"key": "core.method.streak_decline",
+                                "label": _t("core.method.streak_decline", lang)}),
+            ins.series("product_trend", label=prod, chart=grafico, weight="supporting",
+                       method={"key": "core.method.streak_decline",
+                               "label": _t("core.method.streak_decline", lang)}),
+        ],
+        assumptions=[ins.assumption(_t("core.opn.estrella_s1", lang))],
+        recommendation=ins.recommendation(
+            navigate="evolucion",
+            chat=_t("core.opn.estrella_chat", lang, producto=prod)),
+    )
     return {
         "id": "estrella_caida", "tipo": "vender",
         "fingerprint": f"producto:{prod}",
@@ -510,18 +643,7 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
         "accion_chat": _t("core.opn.estrella_chat", lang, producto=prod),
         "navegar": "evolucion",
         "fuentes": [_t("core.opn.f_ventas24", lang), _t("core.opn.f_rank", lang)],
-        "drill": {
-            "porque": [_t("core.opn.estrella_q1", lang, producto=prod, pos=pos,
-                          n=racha, ultimo=_pesos(ultimo, lang)),
-                       (_t("core.opn.estrella_q2", lang,
-                           prev=_pesos(y_prev, lang), perdida=_pesos(perdida, lang))
-                        if y_prev > ultimo else
-                        _t("core.opn.estrella_q3", lang,
-                           perdida=_pesos(perdida, lang)))],
-            "grafico": grafico,
-            "involucrados": otros[:4],
-            "supuestos": [_t("core.opn.estrella_s1", lang)],
-        },
+        "insight": insight_val,
     }
 
 
@@ -578,21 +700,45 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     # se pide por peso lleva su decimal.
     sugerido = round(sugerido, 1) if pricing.es_por_peso(art) else float(round(sugerido))
 
-    if dias_para_negociar > 1:
-        ventana = _t("core.opn.qi_q3_ventana", lang, n=dias_para_negociar)
-    elif dias_para_negociar == 1:
-        ventana = _t("core.opn.qi_q3_ventana_1", lang)
-    elif dias_para_negociar == 0:
-        ventana = _t("core.opn.qi_q3_justo", lang)
-    else:
-        ventana = _t("core.opn.qi_q3_tarde", lang, n=-dias_para_negociar)
-    porque = [
-        _t("core.opn.qi_q1b", lang, u=_num(u_mes, lang), unidad=unidad,
-           producto=prod, dias=int(cob), proveedor=proveedor, lead=lead),
-        _t("core.opn.qi_q2b", lang),
-        ventana,
-        _t("core.opn.qi_q2", lang, semanal=_pesos(semanal, lang)),
+    metodo_qi = {"key": "core.method.qi_stockout",
+                 "label": _t("core.method.qi_stockout", lang)}
+    evidencia = [
+        ins.metric("stockout_count", label=_t("core.opn.stockout_count_ev", lang), value=len(cands),
+                   unit="products", weight="primary", method=metodo_qi),
+        # A generic list heading: the rows are cands[1:6], the RUNNERS-UP.
+        # `qi_i` names one product's coverage and rank, and cands[0] is
+        # exactly the product excluded from this list — heading five products
+        # with a sixth one's figures asserts something about none of them.
+        ins.records("stockout_items",
+                    label=_t("core.opn.stockout_items_lbl", lang),
+                    weight="primary",
+                    rows=[ins.record(kind="product", id=_a.get("codigo"), name=p, amount=None,
+                                     detail=_t("core.opn.qi_i", lang, dias=int(c), pos=ps))
+                          for c, ps, p, _a, _r in cands[1:6]],
+                    method=metodo_qi),
+        ins.metric("weekly_revenue_at_stake", label=_t("core.opn.weekly_revenue_ev", lang), value=semanal,
+                   unit="ars", weight="primary",
+                   method={"key": "core.method.qi_weekly_revenue",
+                           "label": _t("core.method.qi_weekly_revenue", lang)}),
+        ins.metric("days_of_coverage", label=_t("core.opn.qi_m_coverage_lbl", lang),
+                   value=int(cob), unit="days", weight="supporting",
+                   method={"key": "core.method.days_of_coverage",
+                           "label": _t("core.method.days_of_coverage", lang)}),
+        ins.metric("supplier_lead_time", label=_t("core.opn.qi_m_lead_lbl", lang),
+                   value=lead, unit="days", weight="supporting",
+                   method={"key": "core.method.supplier_lead_time",
+                           "label": _t("core.method.supplier_lead_time", lang)}),
+        ins.metric("negotiating_window", label=_t("core.opn.qi_q3_window_lbl", lang),
+                   value=dias_para_negociar, unit="days", weight="supporting",
+                   method={"key": "core.method.negotiating_window",
+                           "label": _t("core.method.negotiating_window", lang)}),
     ]
+    if grafico:
+        evidencia.append(ins.series("product_sales_trend", label=prod, chart=grafico,
+                                    weight="supporting", method=metodo_qi))
+    supuestos = [ins.assumption(_t("core.opn.qi_s1", lang))]
+    if not lead_propio:
+        supuestos.append(ins.assumption(_t("core.opn.qi_s2", lang, lead=lead)))
     card = {
         "id": "quiebre_inminente", "tipo": "comprar",
         "fingerprint": f"producto:{prod}",
@@ -620,40 +766,34 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
             "codigo": art.get("codigo"), "producto": prod, "proveedor": proveedor,
             "cantidad": round(sugerido, 1),
         },
-        "drill": {
-            "porque": porque,
-            "grafico": grafico,
-            "involucrados": [{"id": _a.get("codigo"), "kind": "product",
-                              "nombre": p, "monto": None,
-                              "detalle": _t("core.opn.qi_i", lang, dias=int(c),
-                                            pos=ps)}
-                             for c, ps, p, _a, _r in cands[1:6]],
-            "supuestos": [_t("core.opn.qi_s1", lang)] +
-                         ([] if lead_propio else [_t("core.opn.qi_s2", lang, lead=lead)]),
-            # The exact numbers already narrated in `porque` (qi_q1b/ventana),
-            # repeated as short stat labels next to the chart so they're
-            # scannable without parsing a sentence — see the chart, which is
-            # historical monthly sales and can't also host these forward-
-            # looking day-counts as a reference line on the same x-axis.
-            "metrics": [
-                {"label": _t("core.opn.qi_m_coverage", lang),
-                 "value": _t("core.opn.qi_m_days", lang, n=int(cob))},
-                {"label": _t("core.opn.qi_m_lead", lang),
-                 "value": _t("core.opn.qi_m_days", lang, n=lead)},
-                {"label": _t("core.opn.qi_m_window", lang),
-                 "value": (_t("core.opn.qi_m_days", lang, n=dias_para_negociar) if dias_para_negociar > 0
-                           else _t("core.opn.qi_m_today", lang) if dias_para_negociar == 0
-                           else _t("core.opn.qi_m_late", lang, n=-dias_para_negociar))},
-            ],
-        },
     }
     if piezas_k:
-        # chip "Regla de Aldo: crítico" + la regla arriba del porqué + el nodo de
-        # conocimiento para el camino en el mapa (E3).
+        # chip "Regla de Aldo: crítico" + la regla PRIMERO en la evidencia (misma
+        # jerarquía que el viejo porque.insert(0, ...)) + el nodo de conocimiento
+        # para el camino en el mapa (E3).
         card["chip_conocimiento"] = _t("core.opn.qi_k_chip", lang)
-        porque.insert(0, _t("core.opn.qi_k_por", lang,
-                            texto=conocimiento.texto_en(piezas_k[0], lang)))
+        evidencia.insert(0, ins.metric(
+            "critical_rule_flag",
+            label=_t("core.opn.qi_k_por", lang, texto=conocimiento.texto_en(piezas_k[0], lang)),
+            value=None, unit=None, weight="primary",
+            method={"key": "core.method.critical_rule",
+                    "label": _t("core.method.critical_rule", lang)}))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in piezas_k]
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.qi_q1b", lang, u=_num(u_mes, lang), unidad=unidad,
+                               producto=prod, dias=int(cob), proveedor=proveedor, lead=lead),
+                            scope={"kind": "product", "count": 1}),
+        hypothesis=ins.hypothesis(_t("core.opn.qi_q2b", lang)),
+        evidence=evidencia,
+        assumptions=supuestos,
+        risk=ins.risk(_t("core.prio.quiebre_risk", lang), exposure=semanal),
+        recommendation=ins.recommendation(
+            proposal=card.get("propuesta"), navigate="inventario",
+            chat=_t("core.opn.qi_chat", lang, producto=prod)),
+        deadline=ins.deadline(date=(ctx["hoy"] + datetime.timedelta(days=lead)).isoformat(),
+                              basis=_t("core.opn.qi_deadline_basis", lang, lead=lead)),
+    )
+    card["insight"] = insight_val
     return card
 
 
@@ -697,6 +837,39 @@ def _card_pre_pico(lang, ctx) -> dict | None:
                                       anios=est.get("anios_analizados") or 0))
     nombre_pico = _mes(mes_pico, lang)
     nombre_plan = _mes(mes_plan, lang)
+    hoy = ctx["hoy"]
+    anio_pico = hoy.year if mes_pico >= hoy.month else hoy.year + 1
+    fecha_pico = datetime.date(anio_pico, mes_pico, 1)
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.pico_q1", lang, mes=nombre_pico, idx=f"{idx:g}",
+                               cat=cat_disp, anios=est.get("anios_analizados") or 0)),
+        evidence=[
+            ins.metric("peak_multiplier", label=_t("core.opn.peak_multiplier_lbl", lang),
+                       value=idx, unit="×",
+                       weight="primary",
+                       method={"key": "core.method.peak_multiplier",
+                               "label": _t("core.method.peak_multiplier", lang)}),
+            ins.metric("peak_purchase_amount",
+                       label=_t("core.opn.pico_q3_lbl", lang, plan=nombre_plan),
+                       value=compra, unit="ars", weight="primary",
+                       method={"key": "core.method.peak_purchase",
+                               "label": _t("core.method.peak_purchase", lang)}),
+            ins.metric("peak_coverage_days", label=_t("core.opn.pico_q2_lbl", lang),
+                       value=cob_pico, unit="days", weight="supporting",
+                       method={"key": "core.method.peak_coverage",
+                               "label": _t("core.method.peak_coverage", lang)}),
+            ins.series("seasonality_index", label=_t("core.opn.pico_g", lang, cat=cat_disp),
+                       chart=grafico, weight="supporting",
+                       method={"key": "core.method.peak_multiplier",
+                               "label": _t("core.method.peak_multiplier", lang)}),
+        ],
+        assumptions=[ins.assumption(_t("core.opn.pico_s1", lang))],
+        recommendation=ins.recommendation(
+            navigate="evolucion",
+            chat=_t("core.opn.pico_chat", lang, cat=cat_disp, mes=nombre_pico)),
+        deadline=ins.deadline(date=fecha_pico.isoformat(),
+                              basis=_t("core.opn.pico_deadline_basis", lang, mes=nombre_pico)),
+    )
     return {
         "id": "pre_pico", "tipo": "planificar",
         "fingerprint": f"categoria:{cat}",
@@ -710,16 +883,7 @@ def _card_pre_pico(lang, ctx) -> dict | None:
         "navegar": "evolucion",
         "fuentes": [_t("core.opn.f_ventas10a", lang), _t("core.opn.f_estacion", lang),
                     _t("core.opn.f_stock", lang)],
-        "drill": {
-            "porque": [_t("core.opn.pico_q1", lang, mes=nombre_pico, idx=f"{idx:g}",
-                          cat=cat_disp, anios=est.get("anios_analizados") or 0),
-                       _t("core.opn.pico_q2", lang, dias=cob_pico),
-                       _t("core.opn.pico_q3", lang, compra=_pesos(compra, lang),
-                          plan=nombre_plan)],
-            "grafico": grafico,
-            "involucrados": [],
-            "supuestos": [_t("core.opn.pico_s1", lang)],
-        },
+        "insight": insight_val,
     }
 
 
@@ -766,27 +930,45 @@ def _card_concentracion(lang, ctx) -> dict | None:
         "accion_chat": _t("core.opn.conc_chat", lang),
         "navegar": "cuentas",
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
-        "drill": {
-            "porque": [_t("core.opn.conc_q1", lang, pct=f"{pct:.0f}",
-                          monto=_pesos(monto, lang)),
-                       _t("core.opn.conc_q2", lang)],
-            "grafico": grafico,
-            "involucrados": [{"id": ctx["client_id_by_name"].get(n), "kind": "client",
-                              "nombre": n, "monto": round(v, 2),
-                              "detalle": _t("core.opn.conc_i", lang,
-                                            pct=f"{v / total * 100:.0f}")}
-                             for n, v in top3],
-            "supuestos": [_t("core.opn.conc_s1", lang)],
-        },
     }
     # Piece 4 — el matiz de Aldo: son los que pagan en fecha, el riesgo es de
     # concentración, no de cobro. Reencuadra la card sin cambiar el número.
+    asunciones = [ins.assumption(_t("core.opn.conc_s1", lang))]
     k_conc = [p for p in conocimiento.aplicables(nodo="clientes", efecto="contexto_para_angela")
               if p.get("ambito") == "global" and (p.get("params") or {}).get("marca") == "concentracion"]
     if k_conc:
-        card["drill"]["porque"].append(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_conc[0], lang)))
+        asunciones.append(ins.assumption(
+            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_conc[0], lang))))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_conc]
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.conc_q1", lang, pct=f"{pct:.0f}",
+                               monto=_pesos(monto, lang)),
+                            scope={"kind": "clients", "count": 3}),
+        evidence=[
+            ins.metric("client_concentration_pct",
+                       label=_t("core.opn.client_concentration_lbl", lang), value=round(pct, 1),
+                       unit="pct", weight="primary",
+                       method={"key": "core.method.client_concentration",
+                               "label": _t("core.method.client_concentration", lang)}),
+            ins.records("top_clients", label=_t("core.opn.conc_t", lang), weight="primary",
+                        rows=[ins.record(kind="client", id=ctx["client_id_by_name"].get(n),
+                                         name=n, amount=round(v, 2),
+                                         detail=_t("core.opn.conc_i", lang,
+                                                   pct=f"{v / total * 100:.0f}"))
+                              for n, v in top3],
+                        method={"key": "core.method.client_concentration",
+                                "label": _t("core.method.client_concentration", lang)}),
+            ins.series("client_share_chart", label=_t("core.opn.conc_g", lang), chart=grafico,
+                       weight="supporting",
+                       method={"key": "core.method.client_concentration",
+                               "label": _t("core.method.client_concentration", lang)}),
+        ],
+        assumptions=asunciones,
+        risk=ins.risk(_t("core.opn.conc_q2", lang), exposure=monto),
+        recommendation=ins.recommendation(
+            navigate="cuentas", chat=_t("core.opn.conc_chat", lang)),
+    )
+    card["insight"] = insight_val
     return card
 
 
@@ -847,11 +1029,54 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
     # un producto con nombre y apellido sí. El resto queda en los involucrados.
     cat_disp = i18n.categoria(peor["cat"], lang)
     otros = len(bajos) - 1
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.margen_p0", lang, producto=peor["producto"],
+                               m=f"{peor['margen']:.1f}", prom=f"{peor['prom']:.1f}",
+                               cat=cat_disp),
+                            scope={"kind": "product", "count": 1}),
+        evidence=[
+            ins.metric("margin_gap_pct", label=_t("core.opn.margin_gap_lbl", lang),
+                       value=round(peor["margen"], 1),
+                       unit="pct", weight="primary",
+                       baseline={"value": round(peor["prom"], 1),
+                                 "label": _t("core.opn.margen_prom_label", lang)},
+                       method={"key": "core.method.margin_gap",
+                               "label": _t("core.method.margin_gap", lang)}),
+            ins.metric("extra_profit_monthly",
+                       label=_t("core.opn.margen_p2_lbl", lang, pvp=_pesos(peor["pvp"], lang),
+                                objetivo=_pesos(peor["pvp_objetivo"], lang)),
+                       value=peor["extra_mes"], unit="ars", weight="primary",
+                       method={"key": "core.method.margin_extra_profit",
+                               "label": _t("core.method.margin_extra_profit", lang)}),
+            ins.metric("extra_profit_total",
+                       label=_t("core.opn.margen_p1_lbl", lang, n=len(bajos)),
+                       value=ganancia_total, unit="ars", weight="supporting",
+                       method={"key": "core.method.margin_extra_total",
+                               "label": _t("core.method.margin_extra_total", lang)}),
+            # No `m=`: that percentage is `margin_gap_pct`'s own value, the
+            # sibling metric two items up.
+            ins.records("low_margin_products", label=_t("core.opn.margen_t2", lang,
+                                                         producto=peor["producto"]),
+                        weight="supporting",
+                        rows=[ins.record(kind=b["kind"], id=b["id"], name=b["nombre"],
+                                         amount=b["monto"], detail=b["detalle"])
+                              for b in bajos[:8]],
+                        method={"key": "core.method.margin_extra_total",
+                                "label": _t("core.method.margin_extra_total", lang)}),
+            ins.series("margin_chart", label=_t("core.opn.margen_g", lang), chart=grafico,
+                       weight="supporting",
+                       method={"key": "core.method.margin_extra_total",
+                               "label": _t("core.method.margin_extra_total", lang)}),
+        ],
+        assumptions=[ins.assumption(_t("core.opn.margen_s1", lang))],
+        recommendation=ins.recommendation(
+            navigate="inventario",
+            chat=_t("core.opn.margen_chat2", lang, producto=peor["producto"])),
+    )
     return {
         "id": "margen_bajo", "tipo": "ajustar_precio",
         "fingerprint": f"producto:{peor['producto']}",
-        "titulo": _t("core.opn.margen_t2", lang, producto=peor["producto"],
-                     m=f"{peor['margen']:.1f}"),
+        "titulo": _t("core.opn.margen_t2", lang, producto=peor["producto"]),
         "monto": round(ganancia_total, 2),
         "datos": {"producto": peor["producto"], "margen_pct": round(peor["margen"], 1),
                   "promedio_grupo_pct": round(peor["prom"], 1), "grupo": peor["cat"],
@@ -863,20 +1088,7 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
         "accion_chat": _t("core.opn.margen_chat2", lang, producto=peor["producto"]),
         "navegar": "inventario",
         "fuentes": [_t("core.opn.f_costos", lang), _t("core.opn.f_ventas12", lang)],
-        "drill": {
-            "porque": [
-                _t("core.opn.margen_p0", lang, producto=peor["producto"],
-                   m=f"{peor['margen']:.1f}", prom=f"{peor['prom']:.1f}", cat=cat_disp),
-                _t("core.opn.margen_p2", lang, pvp=_pesos(peor["pvp"], lang),
-                   objetivo=_pesos(peor["pvp_objetivo"], lang),
-                   extra=_pesos(peor["extra_mes"], lang)),
-                _t("core.opn.margen_p1", lang, n=len(bajos),
-                   extra=_pesos(ganancia_total, lang)),
-            ],
-            "grafico": grafico,
-            "involucrados": bajos[:8],
-            "supuestos": [_t("core.opn.margen_s1", lang)],
-        },
+        "insight": insight_val,
     }
 
 
@@ -950,6 +1162,50 @@ def _card_sobrecompra(lang, ctx) -> dict | None:
     if piezas_of:
         oferta_txt += _t("core.opn.sobre_piezas", lang, n=_num(piezas_of, lang))
 
+    propuesta = {
+        "tipo": "orden_compra",
+        "titulo": _t("core.opn.sobre_prop_t", lang),
+        "detalle": _t("core.opn.sobre_prop_d", lang, sug=sug_txt,
+                      producto=prod, proveedor=prov, oferta=oferta_txt),
+        "codigo": a.get("codigo"), "producto": prod, "proveedor": prov,
+        "cantidad": round(mejor["absorbible"], 1),
+    }
+    grafico = _grafico(
+        _t("core.opn.sobre_g", lang, unidad=unidad),
+        [{"x": _t("core.opn.sobre_g_oferta", lang), "y": round(mejor["cantidad"], 1)},
+         {"x": _t("core.opn.sobre_g_vendible", lang), "y": round(mejor["absorbible"], 1)},
+         {"x": _t("core.opn.sobre_g_stock", lang), "y": round(max(0.0, a.get("stock") or 0), 1)}],
+        unidad, False)
+    insight_val = ins.build(
+        pattern=ins.pattern(_t("core.opn.sobre_q1", lang, proveedor=prov, oferta=oferta_txt,
+                               producto=prod, desc=f"{mejor['desc']:g}"),
+                            scope={"kind": "product", "count": 1}),
+        hypothesis=ins.hypothesis(_t("core.opn.sobre_q2", lang, u=_num(round(u_mes, 1), lang),
+                                     unidad=unidad, meses=f"{meses:.0f}", dias=mejor["dias_vida"])),
+        evidence=[
+            ins.metric("waste_value",
+                       label=_t("core.opn.sobre_q3_lbl", lang,
+                                sobrante=_num(round(mejor["sobrante"], 1), lang),
+                                unidad=unidad),
+                       value=mejor["tirar"], unit="ars", weight="primary",
+                       method={"key": "core.method.overbuy_waste",
+                               "label": _t("core.method.overbuy_waste", lang)}),
+            ins.metric("discount_savings",
+                       label=_t("core.opn.sobre_q4_lbl", lang, sug=sug_txt),
+                       value=mejor["ahorro"], unit="ars", weight="supporting",
+                       method={"key": "core.method.overbuy_savings",
+                               "label": _t("core.method.overbuy_savings", lang)}),
+            ins.series("overbuy_chart", label=_t("core.opn.sobre_g", lang, unidad=unidad),
+                       chart=grafico, weight="supporting",
+                       method={"key": "core.method.overbuy_waste",
+                               "label": _t("core.method.overbuy_waste", lang)}),
+        ],
+        assumptions=[ins.assumption(_t("core.opn.sobre_s1", lang, fecha=of.get("vencimiento_lote"))),
+                     ins.assumption(_t("core.opn.qi_s1", lang))],
+        recommendation=ins.recommendation(
+            proposal=propuesta, navigate="inventario",
+            chat=_t("core.opn.sobre_chat", lang, producto=prod)),
+    )
     return {
         "id": "sobrecompra", "tipo": "comprar",
         "fingerprint": f"producto:{prod}:proveedor:{prov}",
@@ -967,35 +1223,8 @@ def _card_sobrecompra(lang, ctx) -> dict | None:
         "navegar": "inventario",
         "fuentes": [_t("core.opn.f_oferta", lang), _t("core.opn.f_ventas12", lang),
                     _t("core.opn.f_vida_util", lang)],
-        "propuesta": {
-            "tipo": "orden_compra",
-            "titulo": _t("core.opn.sobre_prop_t", lang),
-            "detalle": _t("core.opn.sobre_prop_d", lang, sug=sug_txt,
-                          producto=prod, proveedor=prov, oferta=oferta_txt),
-            "codigo": a.get("codigo"), "producto": prod, "proveedor": prov,
-            "cantidad": round(mejor["absorbible"], 1),
-        },
-        "drill": {
-            "porque": [
-                _t("core.opn.sobre_q1", lang, proveedor=prov, oferta=oferta_txt,
-                   producto=prod, desc=f"{mejor['desc']:g}"),
-                _t("core.opn.sobre_q2", lang, u=_num(round(u_mes, 1), lang),
-                   unidad=unidad, meses=f"{meses:.0f}", dias=mejor["dias_vida"]),
-                _t("core.opn.sobre_q3", lang, sobrante=_num(round(mejor["sobrante"], 1), lang),
-                   unidad=unidad, tirar=_pesos(mejor["tirar"], lang)),
-                _t("core.opn.sobre_q4", lang, sug=sug_txt,
-                   ahorro=_pesos(mejor["ahorro"], lang)),
-            ],
-            "grafico": _grafico(
-                _t("core.opn.sobre_g", lang, unidad=unidad),
-                [{"x": _t("core.opn.sobre_g_oferta", lang), "y": round(mejor["cantidad"], 1)},
-                 {"x": _t("core.opn.sobre_g_vendible", lang), "y": round(mejor["absorbible"], 1)},
-                 {"x": _t("core.opn.sobre_g_stock", lang), "y": round(max(0.0, a.get("stock") or 0), 1)}],
-                unidad, False),
-            "involucrados": [],
-            "supuestos": [_t("core.opn.sobre_s1", lang, fecha=of.get("vencimiento_lote")),
-                          _t("core.opn.qi_s1", lang)],
-        },
+        "propuesta": propuesta,
+        "insight": insight_val,
     }
 
 

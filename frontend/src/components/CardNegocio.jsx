@@ -1,9 +1,12 @@
-import { ArrowRight, ChevronRight, X, Link2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  ArrowRight, CalendarClock, ChevronDown, ChevronRight, Link2, TrendingDown,
+  TrendingUp, UserRound, X,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CuerpoConsulta } from "./Widget";
 import AngelaProposal from "./AngelaProposal";
-import { pesoCorto, peso } from "../lib/format";
-import { useT } from "../lib/i18n";
+import { fecha, pesoCorto, peso } from "../lib/format";
+import { useLang, useT } from "../lib/i18n";
 
 // P27·C — LA anatomía de card de negocio, una sola para Alertas y
 // Oportunidades: chip de tipo (lucide + color semántico) → título en lenguaje
@@ -58,9 +61,10 @@ export function CardNegocio({ tono = "salvia", icon: Icon, chip, chipCls, titulo
   );
 }
 
-// El drill-down, consistente en AMBAS secciones: el porqué narrado + el
-// gráfico histórico (renderer P21) + los ítems involucrados + los supuestos
-// declarados + las acciones que cada sección arma (adoptar / Ángela / ir).
+// The drill-down, identical in BOTH sections: one structured insight
+// (backend/core/insight.py) read in the order the owner reasons — pattern →
+// hypothesis → evidence → risk → recommendation → assumptions → caveats —
+// plus the actions each section assembles (adoptar / Ángela / ir).
 
 // Closing the loop on a finding (core/pattern_feedback.py, shared by
 // core/patrones.py and core/oportunidades_neg.py alike): the owner's
@@ -142,16 +146,21 @@ const CONFIDENCE_STYLE = {
   low: "border-tinta-suave/30 text-tinta-suave",
 };
 
-function ConfidenceBadge({ confidence }) {
+// `axis` names WHICH confidence this is — data or hypothesis (see
+// backend/core/confidence.py). The two can disagree, and when they do that
+// disagreement is the most informative thing on the card, so the axis name
+// rides inside the badge instead of being implied by position.
+function ConfidenceBadge({ confidence, axis }) {
   const t = useT();
   if (!confidence?.level) return null;
   const cls = CONFIDENCE_STYLE[confidence.level] || CONFIDENCE_STYLE.low;
   return (
     <span
       title={confidence.reason}
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] ${cls}`}
     >
-      {t(`cardneg.confidence_${confidence.level}`)}
+      {axis && <span className="opacity-70">{t(`cardneg.conf_${axis}`)}</span>}
+      <span className="font-semibold">{t(`cardneg.conf_level_${confidence.level}`)}</span>
     </span>
   );
 }
@@ -189,26 +198,6 @@ function BasedOn({ origins = [] }) {
   );
 }
 
-// A small strip of the exact numbers already narrated in prose inside
-// `porque` (e.g. days of coverage, supplier lead time) — structured so a
-// scanning eye doesn't have to parse a sentence to find them. Not a
-// replacement for the chart: these are forward-looking day-counts that
-// don't share the chart's (historical, monthly) x-axis, so they render as
-// stats rather than a misleading reference line drawn over past months.
-function Metrics({ items = [] }) {
-  if (!items.length) return null;
-  return (
-    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 border-t border-linea/60 pt-2.5">
-      {items.map((m, i) => (
-        <div key={i} className="text-[0.78rem]">
-          <span className="text-tinta-suave">{m.label}: </span>
-          <span className="plata font-semibold text-tinta">{m.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function InvolucradoRow({ iv, onClick }) {
   // kind is required, not just id: an id without a recognized kind has
   // nowhere to navigate, and a clickable-looking row that silently no-ops
@@ -223,27 +212,275 @@ function InvolucradoRow({ iv, onClick }) {
         clickable ? "transition-colors hover:bg-papel-hondo/50" : ""
       }`}
     >
-      <span className="min-w-0 flex-1">{iv.nombre}{iv.detalle && <span className="text-tinta-suave"> — {iv.detalle}</span>}</span>
+      <span className="min-w-0 flex-1">{iv.name}{iv.detail && <span className="text-tinta-suave"> — {iv.detail}</span>}</span>
       <span className="flex shrink-0 items-center gap-1">
-        {iv.monto != null && <span className="plata font-medium text-hielo">{pesoCorto(iv.monto)}</span>}
+        {iv.amount != null && <span className="plata font-medium text-hielo">{pesoCorto(iv.amount)}</span>}
         {clickable && <ChevronRight size={14} className="text-tinta-suave" />}
       </span>
     </Tag>
   );
 }
 
+// --- the structured insight (backend/core/insight.py) ---------------------
+//
+// The drill used to be a flat run of prose sentences that repeated the same
+// fact in several of them. It now reads the insight in the order the owner
+// actually reasons: what we saw → what we think it means → the evidence, each
+// claim openable down to the rows behind it → the risk → the move → what we
+// assumed and what would change our mind.
+
+const SECTION_LABEL = "text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave";
+
+// One section: heading, an optional aside (the confidence badges), body.
+// More air above the heading than below it, so a section reads as a unit.
+function DrillSection({ title, aside, children }) {
+  return (
+    <section className="mt-5">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h3 className={SECTION_LABEL}>{title}</h3>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+// Assumptions, alternatives and falsifiers are all {label} objects; tolerate
+// a bare string so one stale builder cannot blank a whole section.
+const labelOf = (x) => (typeof x === "string" ? x : x?.label || "");
+
+const VALUE_LOCALE = { es: "es-AR", en: "en-US" };
+const UNIT_KEY = {
+  days: "cardneg.unit_days",
+  months: "cardneg.unit_months",
+  products: "cardneg.unit_products",
+};
+
+// Evidence values arrive RAW on purpose: the backend ships typed data so the
+// client can format it for the reader's locale. Money follows the Silver Rule
+// (`.plata`, DM Mono, tabular); everything else is a plain localized number.
+function formatValue(value, unit, lang) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return String(value);
+  if (unit === "ars") return peso(n);
+  return new Intl.NumberFormat(VALUE_LOCALE[lang] || VALUE_LOCALE.es, {
+    maximumFractionDigits: Number.isInteger(n) ? 0 : 1,
+  }).format(n);
+}
+
+// "¿Cómo se calculó?" on every metric. Native <details> so it is keyboard-
+// and screen-reader-correct without any state of its own.
+function MethodDisclosure({ method }) {
+  const t = useT();
+  if (!method?.label) return null;
+  return (
+    <details className="group mt-1.5">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[0.76rem] font-semibold text-tinta-suave hover:text-tinta [&::-webkit-details-marker]:hidden">
+        <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
+        {t("cardneg.drill_method")}
+      </summary>
+      <p className="mt-1 pl-[15px] text-[0.78rem] leading-snug text-tinta-suave">{method.label}</p>
+    </details>
+  );
+}
+
+// A P21 chart carried by one piece of evidence — the same box the drill used
+// to give the card's single `grafico`, now owned by the claim it supports.
+function EvidenceChart({ chart }) {
+  const t = useT();
+  if (!chart) return null;
+  const serie = chart.series?.[0];
+  return (
+    <div className="mt-2 rounded-xl border border-linea bg-papel p-3">
+      {(serie?.nombre || chart.meta?.unidad) && (
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          {serie?.nombre && <p className="truncate text-[0.8rem] font-semibold text-tinta">{serie.nombre}</p>}
+          {chart.meta?.unidad && <p className="shrink-0 text-[0.68rem] text-tinta-suave">{chart.meta.unidad}</p>}
+        </div>
+      )}
+      <CuerpoConsulta resultado={chart} t={t} />
+      {chart.meta?.ventana && <p className="mt-1 text-[0.7rem] text-tinta-suave">{chart.meta.ventana}</p>}
+    </div>
+  );
+}
+
+// One claim: its label, the number that carries it, how far that number sits
+// from its baseline, how it was computed, and the exact records behind it.
+function EvidenceItem({ item, onVerInvolucrado }) {
+  const t = useT();
+  const lang = useLang();
+  const formatted = formatValue(item.value, item.unit, lang);
+  const unitKey = UNIT_KEY[item.unit];
+  // `pct` and `×` are symbols, not words, so they are special-cased here
+  // instead of going through UNIT_KEY. `×` sits BEFORE the number, matching
+  // how the card header already prints a multiplier ("×1,8").
+  const shown = formatted && (item.unit === "pct" ? `${formatted}%`
+    : item.unit === "×" ? `×${formatted}`
+    : unitKey ? `${formatted} ${t(unitKey)}` : formatted);
+  const dev = item.deviation;
+  const DevIcon = dev?.direction === "down" ? TrendingDown : TrendingUp;
+  const records = item.records || [];
+  return (
+    <div className="border-t border-linea/60 pt-3 first:border-t-0 first:pt-0">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="min-w-0 flex-1 text-[0.92rem] leading-snug text-tinta">{item.label}</p>
+        {shown && (
+          <span className={`shrink-0 text-[0.92rem] font-semibold text-tinta ${item.unit === "ars" ? "plata" : ""}`}>
+            {shown}
+          </span>
+        )}
+      </div>
+      {(dev || item.baseline?.label) && (
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[0.78rem] text-tinta-suave">
+          {dev && (
+            <span className="inline-flex items-center gap-0.5 font-semibold">
+              <DevIcon size={12} aria-hidden="true" />{dev.pct}%
+            </span>
+          )}
+          {item.baseline?.label && t("cardneg.drill_vs", { baseline: item.baseline.label })}
+        </p>
+      )}
+      <MethodDisclosure method={item.method} />
+      <EvidenceChart chart={item.chart} />
+      {records.length > 0 && (
+        <div className="mt-2 overflow-hidden rounded-xl border border-linea">
+          {records.map((r, i) => <InvolucradoRow key={r.id ?? i} iv={r} onClick={onVerInvolucrado} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Primary evidence is what makes the conclusion true and stays open;
+// supporting evidence is context and waits behind one tap, so the panel opens
+// on the load-bearing facts instead of on everything at once.
+function Evidence({ items, onVerInvolucrado }) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(false);
+  const [primary, supporting] = useMemo(() => [
+    items.filter((e) => e.weight === "primary"),
+    items.filter((e) => e.weight !== "primary"),
+  ], [items]);
+  // A card whose builder marked nothing primary would otherwise open empty.
+  const lead = primary.length ? primary : supporting;
+  const rest = primary.length ? supporting : [];
+  return (
+    <div className="mt-2 space-y-3">
+      {lead.map((e, i) => (
+        <EvidenceItem key={e.id ?? `p${i}`} item={e} onVerInvolucrado={onVerInvolucrado} />
+      ))}
+      {expanded && rest.map((e, i) => (
+        <EvidenceItem key={e.id ?? `s${i}`} item={e} onVerInvolucrado={onVerInvolucrado} />
+      ))}
+      {rest.length > 0 && (
+        <button type="button" onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+          <ChevronDown size={13} className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
+          {expanded ? t("cardneg.drill_less") : t("cardneg.drill_more", { n: rest.length })}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Alternatives and falsifiers answer the same question — "what would change
+// this?" — so they share one collapsed block instead of two headings the
+// owner has to read past on the way to the action.
+function Caveats({ alternatives = [], falsifiers = [] }) {
+  const t = useT();
+  if (!alternatives.length && !falsifiers.length) return null;
+  return (
+    <details className="group mt-5 border-t border-linea pt-3">
+      <summary className={`inline-flex cursor-pointer list-none items-center gap-1 ${SECTION_LABEL} hover:text-tinta [&::-webkit-details-marker]:hidden`}>
+        <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
+        {t("cardneg.drill_caveats")}
+      </summary>
+      <div className="mt-2 space-y-2 pl-[15px]">
+        {alternatives.length > 0 && (
+          <div>
+            <p className="text-[0.78rem] font-semibold text-tinta">{t("cardneg.drill_alternatives")}</p>
+            <ul className="mt-1 space-y-1">
+              {alternatives.map((c, i) => (
+                <li key={i} className="text-[0.82rem] leading-snug text-tinta-suave">{labelOf(c)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {falsifiers.length > 0 && (
+          <ul className="space-y-1">
+            {falsifiers.map((c, i) => (
+              <li key={i} className="text-[0.82rem] leading-snug text-tinta-suave">{labelOf(c)}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+}
+
+// Who this lands on and by when — a footer line, because it frames the whole
+// card rather than belonging to any one part of the reasoning. "Sin dueño
+// sugerido" is the honest state when no single teammate covers the modules
+// (core/insight_owner.py returns None rather than guessing).
+function OwnerLine({ owner, deadline }) {
+  const t = useT();
+  if (!owner && !deadline?.date) return null;
+  const late = deadline?.urgency === "overdue" || deadline?.urgency === "today";
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-linea pt-3 text-[0.78rem] text-tinta-suave">
+      <span className="inline-flex items-center gap-1.5">
+        <UserRound size={13} aria-hidden="true" />
+        {owner ? t("cardneg.drill_owner", { name: owner.suggested }) : t("cardneg.drill_no_owner")}
+        {owner?.role && <span className="text-tinta-suave/80">· {owner.role}</span>}
+      </span>
+      {deadline?.date && (
+        <span className={`inline-flex items-center gap-1.5 ${late ? "font-semibold text-rojo-hondo" : ""}`}>
+          <CalendarClock size={13} aria-hidden="true" />
+          {t("cardneg.drill_due", { date: fecha(deadline.date) })}
+          {deadline.basis && <span className="font-normal text-tinta-suave/80">· {deadline.basis}</span>}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
-                               porque = [], macro, grafico, involucrados = [],
-                               supuestos = [], fuentes = [], acciones, onCerrar,
+                               insight, macro, fuentes = [], acciones, onCerrar,
                                propuesta, onAprobarPropuesta, actionTaken,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy, confidence, origins = [],
-                               metrics = [], onVerFuentes, onVerInvolucrado }) {
+                               onFeedback, feedbackBusy, origins = [],
+                               onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
   const dialogRef = useRef(null);
+
+  // One structured object in place of the six prose props this drill used to
+  // take (backend/core/insight.py). Destructured with defaults so a card that
+  // is still loading, or one that honestly has no hypothesis, renders the
+  // parts it does have instead of nothing.
+  const {
+    pattern, hypothesis, evidence = [], assumptions = [], alternatives = [],
+    falsifiers = [], risk, recommendation, owner, deadline, confidence,
+  } = insight || {};
+  // The proposal lives on the recommendation now; `propuesta` stays as the
+  // envelope-level fallback. AngelaProposal is unchanged, so normalize the
+  // two key styles here rather than there.
+  const rawProposal = recommendation?.proposal || propuesta;
+  const proposal = rawProposal && {
+    title: rawProposal.title ?? rawProposal.titulo,
+    detail: rawProposal.detail ?? rawProposal.detalle,
+  };
+  const dataBadge = <ConfidenceBadge confidence={confidence?.data} axis="data" />;
+  // On nine cards `risk.exposure`, `monto` and the primary metric are
+  // literally the same expression, so the panel printed one figure three
+  // times. Compare the RAW numbers the backend ships — never the formatted
+  // strings, which Python and Intl render differently — so this can only
+  // ever hide a figure that really is the header figure.
+  const showExposure = risk?.exposure != null &&
+    !(monto != null && Number(risk.exposure) === Number(monto));
 
   // Every caller passes an inline arrow for `onCerrar`, so its identity
   // changes on each render. Depending on it would re-run this effect —
@@ -286,87 +523,118 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           )}
         </div>
 
-        {porque.length > 0 && (
-          <>
-            <div className="mt-4 flex items-center justify-between gap-2">
-              <h3 className="text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
-              <ConfidenceBadge confidence={confidence} />
-            </div>
-            <ConfidenceReason confidence={confidence} />
-            <div className="mt-1.5 space-y-1.5">
-              {porque.map((p, i) => (
-                <p key={i} className="text-[0.92rem] leading-snug text-tinta">{p}</p>
-              ))}
-              {macro?.inflacion != null && (
-                <p className="rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-[0.84rem] text-hielo">
-                  {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
-                </p>
-              )}
-            </div>
-          </>
+        {/* 1 · What we observed — the finding itself, no interpretation in it. */}
+        {(pattern?.label || macro?.inflacion != null) && (
+          <DrillSection title={t("cardneg.drill_pattern")}>
+            {/* A step larger than every other body line in the panel: the
+                observation is what the owner came here to read. */}
+            {pattern?.label && (
+              <p className="mt-1.5 text-[1rem] leading-snug text-tinta">{pattern.label}</p>
+            )}
+            {pattern?.since && (
+              <p className="mt-1 text-[0.78rem] text-tinta-suave">{pattern.since}</p>
+            )}
+            {macro?.inflacion != null && (
+              <p className="mt-2 rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-[0.84rem] text-hielo">
+                {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
+              </p>
+            )}
+          </DrillSection>
         )}
 
+        {/* 2 · What we think it means. Several cards honestly have no reading
+            of the pattern; those show no hypothesis and no hypothesis badge,
+            rather than dressing the observation up as a conclusion. */}
+        {hypothesis?.label && (
+          <DrillSection
+            title={t("cardneg.drill_hypothesis")}
+            aside={(
+              <span className="flex flex-wrap items-center gap-1.5">
+                {dataBadge}
+                <ConfidenceBadge confidence={confidence?.hypothesis} axis="hypothesis" />
+              </span>
+            )}
+          >
+            <p className="mt-1.5 text-[0.92rem] leading-snug text-tinta">{hypothesis.label}</p>
+            {/* Repeated as text because the badges' `reason` is only a hover
+                title — invisible on touch, which is half these users. */}
+            <ConfidenceReason confidence={confidence?.data} />
+            <ConfidenceReason confidence={confidence?.hypothesis} />
+          </DrillSection>
+        )}
+
+        {/* 3 · The evidence, each claim openable down to its own records. */}
+        {evidence.length > 0 && (
+          <DrillSection
+            title={t("cardneg.drill_evidence")}
+            aside={hypothesis?.label ? null : dataBadge}
+          >
+            <Evidence items={evidence} onVerInvolucrado={onVerInvolucrado} />
+          </DrillSection>
+        )}
+
+        {/* 4 · What it costs to do nothing, as the lead line, then what to do.
+            Risk and recommendation are causally paired — risk is typically one
+            short line, too light to earn its own section header — so they
+            share this section instead of each getting one. */}
+        {(risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken) && (
+          <DrillSection title={t("cardneg.drill_recommend")}>
+            {risk?.label && (
+              <p className={`rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
+                risk.level === "high"
+                  ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
+                  : "bg-papel-hondo/50 text-tinta"
+              }`}>
+                {risk.label}
+                {showExposure && (
+                  <span className="plata ml-1.5 font-semibold">{peso(risk.exposure)}</span>
+                )}
+              </p>
+            )}
+            {recommendation?.label && (
+              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
+            )}
+            {recommendation?.detail && (
+              <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">{recommendation.detail}</p>
+            )}
+            {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador
+                firmado. Human-in-the-loop visible. */}
+            <AngelaProposal
+              proposal={proposal}
+              onApprove={onAprobarPropuesta}
+              working={propuestaTrabajando}
+              actionTaken={actionTaken}
+            />
+          </DrillSection>
+        )}
+
+        {/* 5 · What we took for granted, and what would change our mind. */}
+        {assumptions.length > 0 && (
+          <DrillSection title={t("cardneg.drill_assumptions")}>
+            <ul className="mt-1.5 space-y-1.5">
+              {assumptions.map((s, i) => (
+                <li key={i} className="rounded-lg bg-papel-hondo/50 px-3 py-2 text-[0.8rem] leading-snug text-tinta-suave">
+                  {labelOf(s)}
+                  {s?.if_wrong && <span className="mt-0.5 block text-tinta-suave/80">{s.if_wrong}</span>}
+                </li>
+              ))}
+            </ul>
+          </DrillSection>
+        )}
+
+        <Caveats alternatives={alternatives} falsifiers={falsifiers} />
+
+        {/* 6 · Who it lands on, by when, and where the numbers came from. */}
+        <OwnerLine owner={owner} deadline={deadline} />
+
         {fuentes.length > 0 && (
-          <>
-            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_fuentes")}</h3>
+          <DrillSection title={t("cardneg.drill_fuentes")}>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {fuentes.map((f, i) => (
                 <FuentePill key={i} label={f} onClick={onVerFuentes} />
               ))}
             </div>
-          </>
-        )}
-
-        {grafico && (
-          <div className="mt-4 rounded-xl border border-linea bg-papel p-3">
-            {(grafico.series?.[0]?.nombre || grafico.meta?.unidad) && (
-              <div className="mb-1 flex items-baseline justify-between gap-2">
-                {grafico.series?.[0]?.nombre && (
-                  <p className="truncate text-[0.8rem] font-semibold text-tinta">{grafico.series[0].nombre}</p>
-                )}
-                {grafico.meta?.unidad && (
-                  <p className="shrink-0 text-[0.68rem] text-tinta-suave">{grafico.meta.unidad}</p>
-                )}
-              </div>
-            )}
-            <CuerpoConsulta resultado={grafico} t={t} />
-            {grafico.meta?.ventana && (
-              <p className="mt-1 text-[0.7rem] text-tinta-suave">{grafico.meta.ventana}</p>
-            )}
-          </div>
-        )}
-
-        {/* Outside the chart block on purpose: a tenant with no complete
-            months of history gets `grafico = None` (see _card_quiebre_inminente
-            in backend/core/oportunidades_neg.py) and would otherwise lose the
-            coverage / lead-time / negotiating-window stats entirely — exactly
-            the tenant who needs them most. */}
-        <Metrics items={metrics} />
-
-        {involucrados.length > 0 && (
-          <>
-            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_involucrados")}</h3>
-            <div className="mt-1.5 overflow-hidden rounded-xl border border-linea">
-              {involucrados.map((iv, i) => (
-                <InvolucradoRow key={i} iv={iv} onClick={onVerInvolucrado} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador firmado.
-            Human-in-the-loop visible. */}
-        <AngelaProposal
-          proposal={propuesta && { title: propuesta.titulo, detail: propuesta.detalle }}
-          onApprove={onAprobarPropuesta}
-          working={propuestaTrabajando}
-          actionTaken={actionTaken}
-        />
-
-        {supuestos.length > 0 && (
-          <p className="mt-3 rounded-lg bg-papel-hondo/50 px-3 py-2 text-[0.78rem] leading-snug text-tinta-suave">
-            {supuestos.join(" · ")}
-          </p>
+          </DrillSection>
         )}
 
         <BasedOn origins={origins} />
