@@ -2987,6 +2987,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                    "en": "Edited a vendor's record"},
     "audit.acc.eliminar_proveedor": {"es": "Eliminó un proveedor",
                                      "en": "Deleted a vendor"},
+    "audit.acc.upsert_proveedores_conector": {"es": "Actualizó proveedores desde un conector",
+                                              "en": "Updated vendors from a connector"},
     "audit.acc.crear_lote": {"es": "Dio de alta un lote de depósito",
                              "en": "Added a warehouse lot"},
     "audit.acc.editar_lote": {"es": "Editó un lote de depósito",

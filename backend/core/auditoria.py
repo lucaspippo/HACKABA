@@ -76,6 +76,7 @@ ACCIONES: dict[str, dict] = {
     "crear_proveedor":    {"clase": "datos", "gate": "propia"},
     "editar_proveedor":   {"clase": "datos", "gate": "propia"},
     "eliminar_proveedor": {"clase": "datos", "gate": "propia"},
+    "upsert_proveedores_conector": {"clase": "datos", "gate": "propia"},
     "crear_lote":         {"clase": "stock", "gate": "propia"},
     "editar_lote":        {"clase": "stock", "gate": "propia"},
     "eliminar_lote":      {"clase": "stock", "gate": "propia"},
