@@ -589,7 +589,7 @@ def _alerts_cuentas(lang) -> list[dict]:
                 hypothesis=ins.hypothesis(_t("core.prio.morosos_hyp", lang)),
                 evidence=[
                     ins.metric("overdue_total",
-                               label=_pesos(al["impacto_pesos"], lang),
+                               label=_t("core.prio.overdue_total_ev", lang),
                                value=al["impacto_pesos"], unit="ars", weight="primary",
                                method={"key": "core.method.mora_total",
                                        "label": _t("core.method.mora_total", lang)}),
@@ -688,7 +688,7 @@ def _alerts_ventas(lang) -> list[dict]:
                                 scope={"kind": "products", "count": q["cantidad"]}),
             hypothesis=ins.hypothesis(_t("core.prio.quiebre_hyp", lang)),
             evidence=[
-                ins.metric("stockout_count", label=_num(q["cantidad"], lang),
+                ins.metric("stockout_count", label=_t("core.prio.stockout_count_ev", lang),
                            value=q["cantidad"], unit="products", weight="primary",
                            method=metodo),
                 ins.records("stockout_items", label=_t("core.prio.quiebre_t", lang),
@@ -733,7 +733,7 @@ def _alerts_pagos(lang) -> list[dict]:
                                     scope={"kind": "payables", "count": pv["pagos_vencidos"]}),
                 evidence=[
                     ins.metric("payables_overdue_total",
-                               label=_pesos(pv["vencidos_total"], lang),
+                               label=_t("core.prio.payables_overdue_ev", lang),
                                value=pv["vencidos_total"], unit="ars", weight="primary",
                                method=metodo),
                     ins.records("payables_overdue_rows",
@@ -779,7 +779,7 @@ def _alerts_pagos(lang) -> list[dict]:
                                        monto=_pesos(pv["por_pagar_semana"], lang))),
                 evidence=[
                     ins.metric("payables_week_total",
-                               label=_pesos(pv["por_pagar_semana"], lang),
+                               label=_t("core.prio.payables_week_ev", lang),
                                value=pv["por_pagar_semana"], unit="ars", weight="primary",
                                method=metodo),
                     ins.records("payables_week_rows",
@@ -826,7 +826,7 @@ def _alerts_pagos(lang) -> list[dict]:
                                        monto=_pesos(pv["cheques_total"], lang)),
                                     scope={"kind": "checks", "count": pv["cheques_cartera"]}),
                 evidence=[
-                    ins.metric("checks_total", label=_pesos(pv["cheques_total"], lang),
+                    ins.metric("checks_total", label=_t("core.prio.checks_total_ev", lang),
                                value=pv["cheques_total"], unit="ars", weight="primary",
                                method=metodo),
                     ins.records("checks_rows", label=_t("core.prio.cheques_t", lang),
@@ -877,7 +877,7 @@ def _alerts_deposito(lang) -> list[dict]:
                                        monto=_pesos(total_valor, lang)),
                                     scope={"kind": "products", "count": dep["vencidos"]}),
                 evidence=[
-                    ins.metric("expired_lots_value", label=_pesos(total_valor, lang),
+                    ins.metric("expired_lots_value", label=_t("core.prio.expired_lots_ev", lang),
                                value=total_valor, unit="ars", weight="primary", method=metodo),
                     ins.records("expired_lots", label=_t("core.prio.dep_vencidos_t", lang),
                                 weight="primary",
@@ -920,7 +920,7 @@ def _alerts_deposito(lang) -> list[dict]:
                                     scope={"kind": "products", "count": dep["por_vencer"]}),
                 hypothesis=ins.hypothesis(_t("core.prio.dep_porvencer_hyp", lang)),
                 evidence=[
-                    ins.metric("expiring_lots_value", label=_pesos(total_valor, lang),
+                    ins.metric("expiring_lots_value", label=_t("core.prio.expiring_lots_ev", lang),
                                value=total_valor, unit="ars", weight="primary", method=metodo),
                     ins.records("expiring_lots", label=_t("core.prio.dep_porvencer_t", lang),
                                 weight="primary",
@@ -963,7 +963,7 @@ def _alerts_deposito(lang) -> list[dict]:
                 pattern=ins.pattern(_t("core.prio.dep_discrep_p", lang, n=_num(dep["discrepancias"], lang)),
                                     scope={"kind": "products", "count": dep["discrepancias"]}),
                 evidence=[
-                    ins.metric("discrepancy_count", label=_num(dep["discrepancias"], lang),
+                    ins.metric("discrepancy_count", label=_t("core.prio.discrepancy_count_ev", lang),
                                value=dep["discrepancias"], unit="products", weight="primary",
                                method=metodo),
                     ins.records("discrepancy_rows", label=_t("core.prio.dep_discrep_t", lang),
@@ -1002,7 +1002,7 @@ def _alerts_deposito(lang) -> list[dict]:
                                        monto=_pesos(venc.get("total_en_riesgo") or 0, lang)),
                                     scope={"kind": "products", "count": venc["lotes_en_riesgo"]}),
                 evidence=[
-                    ins.metric("at_risk_value", label=_pesos(venc.get("total_en_riesgo") or 0, lang),
+                    ins.metric("at_risk_value", label=_t("core.prio.at_risk_value_ev", lang),
                                value=venc.get("total_en_riesgo"), unit="ars", weight="primary",
                                method=metodo),
                     ins.records("at_risk_rows", label=_t("core.prio.venc_riesgo_t", lang,
@@ -1062,7 +1062,7 @@ def _alerts_inventario(lang) -> list[dict]:
                                 scope={"kind": "products", "count": cv["cantidad"]}),
             hypothesis=ins.hypothesis(_t("core.prio.costo_viejo_hyp", lang)),
             evidence=[
-                ins.metric("stale_cost_value", label=_pesos(cv.get("impacto_pesos"), lang),
+                ins.metric("stale_cost_value", label=_t("core.prio.stale_cost_value_ev", lang),
                            value=cv.get("impacto_pesos"), unit="ars", weight="primary",
                            method=value_metodo),
                 ins.records("stale_cost_rows", label=_t("core.prio.costo_viejo_t", lang),
@@ -1124,7 +1124,7 @@ def _alerts_caja(lang) -> list[dict]:
                                    prom=_pesos(prom, lang), pct=round(desvio * 100))),
             hypothesis=ins.hypothesis(_t("core.prio.caja_hyp", lang)),
             evidence=[
-                ins.metric("cash_today", label=_pesos(tot, lang), value=tot, unit="ars",
+                ins.metric("cash_today", label=_t("core.prio.cash_today_ev", lang), value=tot, unit="ars",
                            weight="primary",
                            baseline={"value": prom, "label": _t("core.prio.caja_s", lang)},
                            method=today_metodo),

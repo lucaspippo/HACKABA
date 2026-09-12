@@ -185,7 +185,7 @@ def _unnoticed_combo_card(lang) -> dict | None:
         evidence=[
             ins.metric("cooccurrence_rate", label=summary, value=attach_pct, unit="pct",
                        weight="primary", method=cooccurrence_method),
-            ins.metric("combo_amount", label=_money(amount, lang), value=amount, unit="ars",
+            ins.metric("combo_amount", label=_t("core.pat.combo_amount_ev", lang), value=amount, unit="ars",
                        weight="primary", method=amount_method),
             ins.records("combo_customers",
                         label=_t("core.pat.combo_t", lang, a=anchor_name, b=partner_name),
@@ -282,7 +282,7 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
                        baseline={"value": pct_rest,
                                  "label": _t("core.pat.caja_baseline", lang)},
                        weight="primary", method=rate_method),
-            ins.metric("shortfall_total", label=_money(total, lang), value=total, unit="ars",
+            ins.metric("shortfall_total", label=_t("core.pat.shortfall_total_ev", lang), value=total, unit="ars",
                        weight="primary",
                        method={"key": "core.method.weekday_shortfall_total",
                                "label": _t("core.method.weekday_shortfall_total", lang)}),

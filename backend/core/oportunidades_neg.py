@@ -221,7 +221,7 @@ def _card_morosos(lang, ctx) -> dict | None:
                            "$", True, f"{meses[0]} → {meses[-1]}")
     prom_dias = peor.get("promedio_pago_dias") or 0
     evidencia = [
-        ins.metric("overdue_total", label=_pesos(total, lang), value=total,
+        ins.metric("overdue_total", label=_t("core.opn.overdue_total_ev", lang), value=total,
                    unit="ars", weight="primary",
                    method={"key": "core.method.mora_total",
                            "label": _t("core.method.mora_total", lang)}),
@@ -293,7 +293,7 @@ def _card_dormido(lang, ctx) -> dict | None:
                        [{"x": x["producto"], "y": x["inmovilizado"]} for x in top[:6]],
                        "$", False) if top else None
     evidencia = [
-        ins.metric("dormant_value", label=_pesos(rot["por_estado"]["dormido"], lang),
+        ins.metric("dormant_value", label=_t("core.opn.dormant_value_ev", lang),
                    value=rot["por_estado"]["dormido"], unit="ars", weight="primary",
                    method={"key": "core.method.dormant_value",
                            "label": _t("core.method.dormant_value", lang)}),
@@ -308,7 +308,7 @@ def _card_dormido(lang, ctx) -> dict | None:
                           for x in top[:6]],
                     method={"key": "core.method.dormant_products",
                             "label": _t("core.method.dormant_products", lang)}),
-        ins.metric("dormant_top5_value", label=_pesos(top5, lang), value=top5, unit="ars",
+        ins.metric("dormant_top5_value", label=_t("core.opn.dormant_top5_ev", lang), value=top5, unit="ars",
                    weight="supporting",
                    method={"key": "core.method.dormant_top5_value",
                            "label": _t("core.method.dormant_top5_value", lang)}),
@@ -437,11 +437,11 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
                 ([conocimiento.resumen_pieza(regla_viernes)] if regla_viernes else [])
 
     evidencia = [
-        ins.metric("window_purchase_amount", label=_pesos(compra, lang), value=compra,
+        ins.metric("window_purchase_amount", label=_t("core.opn.window_purchase_ev", lang), value=compra,
                    unit="ars", weight="primary",
                    method={"key": "core.method.window_purchase",
                            "label": _t("core.method.window_purchase", lang)}),
-        ins.metric("window_savings_amount", label=_pesos(ahorro, lang), value=ahorro,
+        ins.metric("window_savings_amount", label=_t("core.opn.window_savings_ev", lang), value=ahorro,
                    unit="ars", weight="primary",
                    method={"key": "core.method.window_savings",
                            "label": _t("core.method.window_savings", lang)}),
@@ -545,7 +545,7 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
                                esperado=_pesos(peor["esperado"], lang)),
                             scope={"kind": "client", "count": 1}),
         evidence=[
-            ins.metric("cooling_purchase_pace", label=_pesos(peor["actual"], lang),
+            ins.metric("cooling_purchase_pace", label=_t("core.opn.cooling_pace_ev", lang),
                        value=peor["actual"], unit="ars", weight="primary",
                        baseline={"value": peor["esperado"],
                                  "label": _t("core.opn.frio_s1", lang, dias=VENTANA_FRIO_DIAS)},
@@ -752,7 +752,7 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     metodo_qi = {"key": "core.method.qi_stockout",
                  "label": _t("core.method.qi_stockout", lang)}
     evidencia = [
-        ins.metric("stockout_count", label=_num(len(cands), lang), value=len(cands),
+        ins.metric("stockout_count", label=_t("core.opn.stockout_count_ev", lang), value=len(cands),
                    unit="products", weight="primary", method=metodo_qi),
         ins.records("stockout_items",
                     label=_t("core.opn.qi_i", lang, dias=int(cob), pos=pos),
@@ -761,7 +761,7 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
                                      detail=_t("core.opn.qi_i", lang, dias=int(c), pos=ps))
                           for c, ps, p, _a, _r in cands[1:6]],
                     method=metodo_qi),
-        ins.metric("weekly_revenue_at_stake", label=_pesos(semanal, lang), value=semanal,
+        ins.metric("weekly_revenue_at_stake", label=_t("core.opn.weekly_revenue_ev", lang), value=semanal,
                    unit="ars", weight="primary",
                    method={"key": "core.method.qi_weekly_revenue",
                            "label": _t("core.method.qi_weekly_revenue", lang)}),

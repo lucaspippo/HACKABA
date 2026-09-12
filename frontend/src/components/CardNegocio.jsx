@@ -314,10 +314,6 @@ function EvidenceItem({ item, onVerInvolucrado }) {
   const unitKey = UNIT_KEY[item.unit];
   const shown = formatted && (item.unit === "pct" ? `${formatted}%`
     : unitKey ? `${formatted} ${t(unitKey)}` : formatted);
-  // Several builders put the same figure in the label ("$1.234.567", "45 días
-  // sin pagar"). Printing it again beside the label is precisely the
-  // duplication this redesign exists to remove.
-  const duplicate = shown && String(item.label || "").includes(formatted);
   const dev = item.deviation;
   const DevIcon = dev?.direction === "down" ? TrendingDown : TrendingUp;
   const records = item.records || [];
@@ -325,7 +321,7 @@ function EvidenceItem({ item, onVerInvolucrado }) {
     <div className="border-t border-linea/60 pt-3 first:border-t-0 first:pt-0">
       <div className="flex items-baseline justify-between gap-3">
         <p className="min-w-0 flex-1 text-[0.92rem] leading-snug text-tinta">{item.label}</p>
-        {shown && !duplicate && (
+        {shown && (
           <span className={`shrink-0 text-[0.92rem] font-semibold text-tinta ${item.unit === "ars" ? "plata" : ""}`}>
             {shown}
           </span>
