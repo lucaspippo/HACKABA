@@ -43,6 +43,7 @@ function HotkeyBadge({ children }) {
 }
 
 function WorkRow({ item, selected, onSelect }) {
+  const t = useT();
   const a = ACENTO[item.tono] || ACENTO.salvia;
   const acc = estiloAccion(item);
   const Icon = acc.icon;
@@ -56,12 +57,17 @@ function WorkRow({ item, selected, onSelect }) {
       aria-current={selected || undefined}
       className={`flex w-full items-start gap-3 border-b border-linea px-4 py-3 text-left last:border-0 ${
         selected ? "bg-papel-hondo/70" : "hover:bg-papel-hondo/40"
-      }`}
+      } ${item.action_taken ? "opacity-60" : ""}`}
     >
       <span className="min-w-0 flex-1">
         <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${acc.cls}`}>
           <Icon size={11} /> {item.chip}
         </span>
+        {item.action_taken && (
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-[0.68rem] font-semibold text-salvia">
+            <Check size={10} /> {t("prioridades.done")} · {item.action_taken.label}
+          </span>
+        )}
         <span className="mt-1 block font-display text-[0.98rem] font-bold leading-tight">{item.titulo}</span>
         {item.resumen && (
           <span className="mt-0.5 block line-clamp-1 text-[0.82rem] leading-snug text-tinta-suave">{item.resumen}</span>
