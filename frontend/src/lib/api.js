@@ -258,7 +258,16 @@ export const api = {
     post("/api/cobranza/registrar", { cliente_id, estado, ...extra }),
   // EL CEREBRO — entidades del negocio y sus cruces reales (vista nueva del
   // mapa). Aditivo: el mapa de árbol no lo consume.
-  grafo: () => get("/api/grafo"),
+  // `sinNotas` es el contrafáctico: el cerebro leído como si esas notas no
+  // existieran. No borra nada en el servidor — ver core/grafo.completo.
+  grafo: (sinNotas = []) =>
+    get(sinNotas.length
+      ? `/api/grafo?sin_notas=${encodeURIComponent(sinNotas.join(","))}`
+      : "/api/grafo"),
+  // The last RECORDED eval run — how often the engine is right, with the size
+  // of each set next to the score. Reads a file the runner wrote; opening the
+  // panel never re-measures.
+  evals: () => get("/api/evals"),
   // THE OPERATION MAP — the physical chain (origin → warehouse → destination)
   // plus the context layer no ERP captures. Additive: neither the sources
   // tree nor the brain consume these.

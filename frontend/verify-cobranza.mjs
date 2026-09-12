@@ -27,7 +27,13 @@ await page.waitForTimeout(2500);
 await page.evaluate(async () => {
   const r = await fetch("/api/login", {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: "diego", password: "manteca-8624" }),
+    body: JSON.stringify({
+      username: "diego",
+      // La contraseña fija que siembra data-demo/seed_db.py. Antes acá
+      // había una generada al azar, pegada a mano y ya vencida: una
+      // credencial literal en el repo que además no servía.
+      password: process.env.POLPILOT_DEMO_PASSWORD || "demo-password",
+    }),
   });
   localStorage.setItem("polpilot.session.v1", JSON.stringify(await r.json()));
   sessionStorage.setItem("polpilot.logout.manual", "1");   // que no re-autologuee

@@ -1734,6 +1734,45 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.cru.f_logistica": {"es": "entregas y remitos", "en": "deliveries and notes"},
     "core.cru.f_wms": {"es": "ubicaciones del depósito", "en": "warehouse locations"},
     "core.cru.f_ordenes": {"es": "órdenes de compra abiertas", "en": "open purchase orders"},
+    "core.cru.f_oferta": {"es": "la oferta del proveedor", "en": "the supplier's offer"},
+    "core.cru.f_ventas12": {"es": "ventas de los últimos 12 meses",
+                            "en": "the last 12 months of sales"},
+
+    # 7 · oferta × rotación × vida del lote × notas del depósito
+    # La card `sobrecompra` pone los pesos; acá se le engancha la gente.
+    "core.cru.oferta_t": {
+        "es": "El {desc}% de descuento de {proveedor} conviene rechazarlo",
+        "en": "{proveedor}'s {desc}% discount is one to turn down"},
+    "core.cru.oferta_r": {
+        "es": "De {producto} podés absorber {sug} de las {oferta} que ofrecen, "
+              "y {n} personas ya avisaron que en {ubicacion} no entra nada.",
+        "en": "Of {producto} you can absorb {sug} of the {oferta} on offer, and "
+              "{n} people already flagged that nothing else fits in {ubicacion}."},
+    "core.cru.oferta_p1": {
+        "es": "{proveedor} ofrece {oferta} con {desc}% de descuento.",
+        "en": "{proveedor} is offering {oferta} at {desc}% off."},
+    "core.cru.oferta_p2": {
+        "es": "Al ritmo real de {producto}, hasta que el lote venza "
+              "({dias} días) se venden {sug}: el resto se tira.",
+        "en": "At {producto}'s real rate, {sug} sell before the lot expires "
+              "({dias} days): the rest gets thrown out."},
+    "core.cru.oferta_p3": {
+        "es": "{n} personas ({quienes}) lo dijeron por {canales} canales "
+              "distintos: en {ubicacion} hay {lotes} lotes y no entra más.",
+        "en": "{n} people ({quienes}) said it through {canales} different "
+              "channels: {ubicacion} holds {lotes} lots and nothing else fits."},
+    "core.cru.oferta_p4": {
+        "es": "Y el propio {proveedor} avisó por {canal} — lo levantó {autor}.",
+        "en": "And {proveedor} itself gave notice over {canal} — {autor} took it."},
+    "core.cru.oferta_i": {"es": "ofrece el {desc}% de descuento",
+                          "en": "offering the {desc}% discount"},
+    "core.cru.oferta_i2": {"es": "entra {sug}, no la oferta entera",
+                           "en": "{sug} fits, not the whole offer"},
+    "core.cru.oferta_i3": {"es": "avisó por {canal} el {fecha}",
+                           "en": "flagged it over {canal} on {fecha}"},
+    "core.cru.oferta_chat": {
+        "es": "¿cuánto de {producto} conviene comprar?",
+        "en": "how much {producto} is worth buying?"},
 
     # 1 · cuentas × ventas × depósito
     "core.cru.deuda_venc_t": {
@@ -4214,6 +4253,12 @@ CATALOGO: dict[str, dict[str, str]] = {
     "mapaop.devuelve_via": {"es": "por export de CSV", "en": "via CSV export"},
     "mapaop.devuelve_sub": {"es": "{n} devoluciones en {d} días",
                             "en": "{n} write-backs in {d} days"},
+    # La mitad que faltaba de esta banda: no cuántas escrituras, QUIÉN las
+    # firmó. Es la diferencia entre que el círculo lo cierre un agente solo y
+    # que lo cierre una persona que responde por eso.
+    "mapaop.devuelve_firma": {
+        "es": "cada una la firmó una persona — {quienes}",
+        "en": "a person signed every one of them — {quienes}"},
     "mapaop.devuelve_vacio": {
         "es": "nada volvió al sistema todavía",
         "en": "nothing has gone back to the system yet",

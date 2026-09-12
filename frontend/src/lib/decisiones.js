@@ -10,12 +10,41 @@ export const CATEGORIAS_CON_PROPUESTA = ["fantasma", "balanza"];
 export function armarDecisiones(ini, t) {
   if (!ini) return [];
   const d = [];
+  // UNA DECISIÓN POR ARCHIVO, no por lote.
+  //
+  // El bug: cuatro lotes del mismo CSV producían cuatro filas idénticas —
+  // mismo título, mismo nombre de archivo, mismas 12 filas— una debajo de la
+  // otra. Nadie puede decidir entre cuatro cosas que se leen igual, y el que
+  // abre esto a las siete de la mañana asume que la pantalla está rota.
+  //
+  // La unidad de esta cola es el ARCHIVO que espera un OK, no la fila de la
+  // tabla de lotes (PRODUCT.md, The Counting Rule). Sumar las filas de varios
+  // lotes del mismo archivo sí es legítimo: son renglones del mismo import, y
+  // el número que el dueño necesita es cuántos va a integrar en total.
+  //
+  // Los ids de los lotes viajan en `batches` para que la acción siga pudiendo
+  // abrirlos: se agrupa lo que se MUESTRA, no lo que se hace.
+  const porArchivo = new Map();
   for (const b of ini.staging?.batches || []) {
+    const clave = b.nombre || b.id;
+    const g = porArchivo.get(clave)
+      || { nombre: b.nombre, batches: [], filas: 0 };
+    g.batches.push(b.id);
+    g.filas += b.total_filas || 0;
+    porArchivo.set(clave, g);
+  }
+  for (const g of porArchivo.values()) {
     d.push({
-      id: `staging-${b.id}`,
+      id: `staging-${g.batches.join("-")}`,
       tipo: "staging",
+      batches: g.batches,
       titulo: t("inicio.dec_staging_titulo"),
-      detalle: t("inicio.dec_staging_detalle", { nombre: b.nombre, n: num(b.total_filas) }),
+      // Con un solo lote, la frase de siempre. Con varios, se dice cuántos:
+      // esconder que son cuatro sería cambiar un bug visible por uno callado.
+      detalle: g.batches.length > 1
+        ? t("inicio.dec_staging_detalle_lotes",
+            { nombre: g.nombre, lotes: num(g.batches.length), n: num(g.filas) })
+        : t("inicio.dec_staging_detalle", { nombre: g.nombre, n: num(g.filas) }),
       monto: null,
     });
   }

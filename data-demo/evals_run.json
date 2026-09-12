@@ -1,0 +1,257 @@
+{
+ "generado": "2026-09-11T17:04:39",
+ "duracion_s": 23.19,
+ "hoy": "2026-07-07",
+ "tenant": "demo",
+ "empresa": "Distribuidora del Litoral",
+ "dataset": "sintético, determinista, semilla fija (data-demo/generar.py)",
+ "suites": [
+  {
+   "id": "deteccion",
+   "nombre": "Detección sobre casos etiquetados",
+   "mide": "de los hallazgos que este dataset obliga a encontrar, cuántos encontró",
+   "aciertos": 3,
+   "total": 3,
+   "casos": [
+    {
+     "id": "cruce_espacio_camara",
+     "ok": true,
+     "detalle": "emitido",
+     "porque": "Cámara de frío 2 tiene 4 avisos de estado_deposito dentro de los 30 días (Ramón 29/06 y 02/07, Nahuel 01/07, Tomás 06/07) y OC-2026-0847 sigue abierta con renglones."
+    },
+    {
+     "id": "sobrecompra",
+     "ok": true,
+     "detalle": "emitido",
+     "porque": "La oferta of-2026-071 (689 kg, 18%) vence el 17/07, el lote el 15/10, y el ritmo real del código 1282 es 524,2 kg/12m: el sobrante no da cero."
+    },
+    {
+     "id": "cruce_oferta_camara",
+     "ok": true,
+     "detalle": "emitido",
+     "porque": "El cruce propio: la misma oferta, más los avisos de que la cámara del proveedor está llena y su orden del 9."
+    }
+   ],
+   "cobertura_observada": {
+    "emitidos": [
+     "cruce_credito_creciente",
+     "cruce_deuda_vencimiento",
+     "cruce_proveedor_estrella"
+    ],
+    "del_catalogo": 5,
+    "nota": "Cruces del motor cuyas precondiciones dependen de umbrales (atrasos de pago, posición en el ranking). Se informa cuántos tienen datos para existir hoy; no se puntúa."
+   },
+   "hallazgos_totales": 17
+  },
+  {
+   "id": "procedencia",
+   "nombre": "Procedencia declarada",
+   "mide": "de los hallazgos que emitió, cuántos declaran de dónde salieron",
+   "aciertos": 17,
+   "total": 17,
+   "casos": [
+    {
+     "id": "cruce_deuda_vencimiento",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_proveedor_estrella",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_credito_creciente",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_queja_clave",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_cliente_problemas",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_espacio_camara",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cruce_oferta_camara",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "concentracion",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cobrar_morosos",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "despertar_dormido",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "pre_pico",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "cliente_frio",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "sobrecompra",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "estrella_caida",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "ventana_compra",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "quiebre_inminente",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    },
+    {
+     "id": "margen_bajo",
+     "ok": true,
+     "detalle": "declara fuente y porqué"
+    }
+   ]
+  },
+  {
+   "id": "abstencion",
+   "nombre": "Abstención correcta",
+   "mide": "de las preguntas que no se pueden contestar con estos datos, cuántas veces dijo que no sabe",
+   "aciertos": 7,
+   "total": 7,
+   "casos": [
+    {
+     "id": "granularidad_dia",
+     "ok": true,
+     "detalle": "se negó: Las ventas están cargadas por mes, no por día — el detalle diario no existe en el sistema. Te lo puedo armar mes a mes.",
+     "porque": "Las ventas están por SKU y mes. «Por día» no existe en el dato, y la respuesta correcta es decirlo, no interpolar."
+    },
+    {
+     "id": "granularidad_semana",
+     "ok": true,
+     "detalle": "se negó: Las ventas están cargadas por mes, no por día — el detalle diario no existe en el sistema. Te lo puedo armar mes a mes.",
+     "porque": "Misma granularidad inexistente, otra palabra."
+    },
+    {
+     "id": "fuente_inexistente",
+     "ok": true,
+     "detalle": "se negó: No tengo la fuente «clima» — trabajo con ventas, inventario, cuentas y caja.",
+     "porque": "Una fuente fuera de la whitelist. El contrato la rechaza con las que sí existen."
+    },
+    {
+     "id": "metrica_ajena",
+     "ok": true,
+     "detalle": "se negó: La métrica «saldo» no aplica a inventario.",
+     "porque": "«Saldo» es de cuentas corrientes, no de inventario. Cruzar el nombre de una métrica con otra fuente es el error típico."
+    },
+    {
+     "id": "deflactar_unidades",
+     "ok": true,
+     "detalle": "se negó: Las unidades no se deflactan — la inflación es de los pesos, no de los paquetes. Te lo doy en unidades tal cual o en pesos constantes.",
+     "porque": "Deflactar unidades no significa nada: el IPC ajusta dinero. Es la regla dura que evita un número con cara de serio."
+    },
+    {
+     "id": "fecha_mal_formada",
+     "ok": true,
+     "detalle": "se negó: La fecha de «desde» tiene que venir como AAAA-MM.",
+     "porque": "Una fecha que no es AAAA-MM. Se rechaza antes de tocar un dato."
+    },
+    {
+     "id": "agrupar_ajeno",
+     "ok": true,
+     "detalle": "se negó: No puedo agrupar caja por «mes».",
+     "porque": "La caja es EL DÍA: no hay serie histórica. Pedirle meses es pedirle algo que no tiene."
+    }
+   ]
+  },
+  {
+   "id": "consulta",
+   "nombre": "Consultas que deben contestarse",
+   "mide": "de las preguntas que sí tienen respuesta, cuántas volvieron con una serie sana",
+   "aciertos": 5,
+   "total": 5,
+   "casos": [
+    {
+     "id": "ventas_pesos_mes",
+     "ok": true,
+     "detalle": "1 serie/s sana/s"
+    },
+    {
+     "id": "ventas_unidades_categoria",
+     "ok": true,
+     "detalle": "1 serie/s sana/s"
+    },
+    {
+     "id": "inventario_inmovilizado_categoria",
+     "ok": true,
+     "detalle": "1 serie/s sana/s"
+    },
+    {
+     "id": "cuentas_saldo_cliente",
+     "ok": true,
+     "detalle": "1 serie/s sana/s"
+    },
+    {
+     "id": "caja_pesos_medio",
+     "ok": true,
+     "detalle": "1 serie/s sana/s"
+    }
+   ]
+  },
+  {
+   "id": "determinismo",
+   "nombre": "Determinismo",
+   "mide": "de las consultas repetidas 3 veces, cuántas dieron exactamente lo mismo",
+   "aciertos": 3,
+   "total": 3,
+   "casos": [
+    {
+     "id": "cruces",
+     "ok": true,
+     "detalle": "3 corridas idénticas",
+     "porque": "Los hallazgos del motor de cruces"
+    },
+    {
+     "id": "consulta_ventas",
+     "ok": true,
+     "detalle": "3 corridas idénticas",
+     "porque": "La serie de ventas por mes"
+    },
+    {
+     "id": "capital",
+     "ok": true,
+     "detalle": "3 corridas idénticas",
+     "porque": "El capital inmovilizado del inventario"
+    }
+   ]
+  }
+ ],
+ "resumen": {
+  "aciertos": 35,
+  "total": 35
+ }
+}

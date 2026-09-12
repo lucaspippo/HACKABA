@@ -1393,6 +1393,26 @@ def cards(lang: str | None = None) -> list[dict]:
     return out
 
 
+def card_por_id(cid: str, lang: str | None = None) -> dict | None:
+    """ONE card, for a caller that needs to CITE its numbers instead of doing
+    the arithmetic again (PRODUCT.md, The Counting Rule).
+
+    `core/cruces.py` needs the overbuy figures — what the offer would make you
+    throw away, and what the discount actually saves — to hang the unstructured
+    layer off them. Recomputing them over there would be a second source of
+    truth for the same peso, which is the exact shape of the `$900M` bug.
+
+    Cached per language through the analysis cache, so a request that already
+    built this set (the brain builds both crossings and opportunities) pays for
+    it once. The cache invalidates on any data mutation, same as everything
+    else — see core/analisis_cache.py.
+    """
+    from . import analisis_cache
+    todas = analisis_cache.get_o_computar(
+        "oportunidades_cards", lang, lambda: {"cards": cards(lang)})
+    return next((c for c in (todas.get("cards") or []) if c.get("id") == cid), None)
+
+
 def record_feedback(card_id: str, action: str, *, actor: str,
                     note: str | None = None, lang: str | None = None) -> dict:
     """The owner's reaction (accepted/dismissed/already knew) to one of the

@@ -216,8 +216,22 @@ def _nodo(nid, tipo, nombre, **extra) -> dict:
             "riesgo": None, "metricas": [], **extra}
 
 
-def construir() -> dict:
-    """Nodos + aristas. Sin idioma: son entidades y relaciones, no textos."""
+def _de_afuera(canal: str | None) -> bool:
+    """¿Ese canal entra DESDE AFUERA del sistema?
+
+    La definición no se copia: sale de `mapa_operacion.DE_AFUERA`, que ya la
+    usa para ordenar los chips de canales. Dos definiciones de "de afuera" en
+    dos pantallas es cómo empiezan a decir cosas distintas."""
+    from .mapa_operacion import DE_AFUERA
+    return (canal or "") in DE_AFUERA
+
+
+def construir(sin_notas: frozenset | set | None = None) -> dict:
+    """Nodos + aristas. Sin idioma: son entidades y relaciones, no textos.
+
+    `sin_notas` saca del grafo las notas que el contrafáctico pidió leer como
+    si no existieran — el nodo desaparece y su arista `menciona` con él, que es
+    justo lo que hace visible que el hallazgo dependía de eso."""
     ref = hoy()
     desde = ref - datetime.timedelta(days=365 * VENTANA_MESES // 12)
 
@@ -440,12 +454,27 @@ def construir() -> dict:
         from . import notas as _notas
         idx_prod = {_norm(n["nombre"]): nid for nid, n in nodos.items()
                     if n["tipo"] == "producto"}
-        for nt in _notas.listar():
+        # Quiénes son las fuentes humanas de cada entidad. Se acumula acá, al
+        # colgar la nota, porque es exactamente la misma relación: el que dejó
+        # la nota ES la fuente. La unidad es la ENTIDAD y no la nota (PRODUCT.md,
+        # The Counting Rule): dos notas de Walter sobre el mismo cliente son UNA
+        # fuente humana, por eso es un set.
+        fuentes_humanas: dict[str, set] = {}
+        for nt in _notas.listar(excluir=sin_notas):
             nid = f"nota:{nt['id']}"
             nodos[nid] = _nodo(
                 nid, "nota", f"{nt['autor']} · {nt['fecha'][5:]}", seccion="equipo",
                 riesgo="atencion",
                 texto=nt.get("texto"), texto_en=nt.get("texto_en"),
+                # Campos de primer nivel y no sólo métricas: el lienzo dibuja
+                # un glifo por CANAL y necesita leerlos sin recorrer una lista.
+                autor=nt.get("autor"), canal=nt.get("canal"),
+                fecha=nt.get("fecha"),
+                # LA LECTURA QUE IMPORTA: lo que entró DE AFUERA del sistema
+                # (whatsapp, mail, foto) contra lo que ya era un dato adentro.
+                # La constante vive en mapa_operacion: una sola definición de
+                # "de afuera" para las dos superficies.
+                de_afuera=_de_afuera(nt.get("canal")),
                 metricas=[{"k": "autor", "v": nt.get("autor"), "fmt": "texto"},
                           {"k": "canal", "v": nt.get("canal"), "fmt": "texto"},
                           {"k": "fecha", "v": nt.get("fecha"), "fmt": "fecha"},
@@ -462,6 +491,11 @@ def construir() -> dict:
                     destino = _resolver(valor, nodos, tipos)
                 if destino:
                     add_arista(nid, destino, "menciona")
+                    if nt.get("autor"):
+                        fuentes_humanas.setdefault(destino, set()).add(nt["autor"])
+        for destino, quienes in fuentes_humanas.items():
+            nodos[destino]["autores"] = sorted(quienes)
+            nodos[destino]["fuentes_humanas"] = len(quienes)
     except Exception:  # noqa: BLE001 — sin notas, el grafo es el de siempre
         pass
 
@@ -628,23 +662,45 @@ CARDS_QUE_CRUZAN = {
     "cliente_frio": ["clientes", "ventas", "tiempo"],
     # la ventana de compra: la lista del proveedor × lo que rota × el stock
     "ventana_compra": ["proveedores", "inventario", "precios"],
+    # la sobrecompra: la oferta × la rotación real × la vida del lote. Cruza
+    # de verdad y sus semillas (producto, proveedor) ya viajan en `datos`, así
+    # que el camino sale sin tocar nada más.
+    #
+    # Convive a propósito con `cruce_oferta_camara` (core/cruces.py, 7) y no es
+    # una repetición: ésta es la CUENTA —lo que esa compra te hace tirar— y
+    # aquélla es la misma decisión con las personas que ya avisaron dónde no
+    # entra. Una enciende cosas en el mapa; la otra, gente.
+    "sobrecompra": ["proveedores", "inventario", "ventas"],
 }
 
 
-def completo(lang: str | None = None) -> dict:
-    g = construir()
+def completo(lang: str | None = None,
+             sin_notas: frozenset | set | None = None) -> dict:
+    """El cerebro entero: entidades, relaciones y el camino de cada hallazgo.
+
+    `sin_notas` es EL CONTRAFÁCTICO. Con ids adentro, el grafo se arma como si
+    esas notas no existieran: el nodo se va, la arista se va, y el hallazgo que
+    dependía de ellas deja de emitirse o pierde su rama. Nada se borra de la
+    base — es un parámetro de lectura, así que se puede hacer delante de
+    alguien y devolver el dato un segundo después."""
+    sin_notas = frozenset(sin_notas or ())
+    g = construir(sin_notas)
     # 1 · los cruces propios (3+ dominios, ver core/cruces.py)
     try:
         from . import cruces as _cruces
-        hallazgos = _cruces.cards(lang)
+        hallazgos = _cruces.cards(lang, sin_notas)
     except Exception:  # noqa: BLE001
         hallazgos = []
     # 2 · los de Oportunidades que también cruzan de verdad
     try:
-        from . import oportunidades_neg
-        cards = oportunidades_neg.cards(lang)
-        if isinstance(cards, dict):     # el shape {"cards": [...]} es el del endpoint
-            cards = cards.get("cards") or []
+        from . import analisis_cache, oportunidades_neg
+        # Por el cache y no directo: `cruces.cards()` de arriba ya necesitó
+        # este mismo set (el cruce de la oferta CITA la card `sobrecompra` en
+        # vez de rehacer su cuenta), y recomputarlo acá pagaría dos veces la
+        # pasada cara sobre las ventas. Misma llave que usa card_por_id.
+        cards = analisis_cache.get_o_computar(
+            "oportunidades_cards", lang,
+            lambda: {"cards": oportunidades_neg.cards(lang)}).get("cards") or []
         hallazgos += [c for c in cards if c.get("id") in CARDS_QUE_CRUZAN]
     except Exception:  # noqa: BLE001
         pass
@@ -673,11 +729,26 @@ def completo(lang: str | None = None) -> dict:
         por_rel[a["rel"]] = por_rel.get(a["rel"], 0) + 1
 
     grados = sorted(nodos, key=lambda n: -n.get("grado", 0))[:8]
+    # EL PUNTO CIEGO: de qué entidades una sola persona es la única fuente.
+    # Viaja con el grafo y no en un endpoint aparte porque se dibuja SOBRE el
+    # grafo: es el mismo mapa, coloreado por quién lo sostiene.
+    try:
+        from . import notas as _notas
+        equipo = {"cobertura": _notas.cobertura_humana(),
+                  "por_persona": _notas.riesgo_por_persona()}
+    except Exception:  # noqa: BLE001
+        equipo = {"cobertura": None, "por_persona": []}
+
     return {
         "disponible": len(nodos) > 0,
         "nodos": nodos,
         "aristas": aristas,
         "caminos": cam,
+        "equipo": equipo,
+        # Lo que se sacó de la mesa en esta lectura. Va en la respuesta para
+        # que la pantalla pueda decir «estás mirando el negocio sin esto», en
+        # vez de mostrar un grafo distinto sin avisar por qué.
+        "sin_notas": sorted(sin_notas),
         "meta": {
             "generado": hoy().isoformat(),
             "nodos": len(nodos),

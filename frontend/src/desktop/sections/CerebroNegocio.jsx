@@ -19,8 +19,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { forceCollide, forceX, forceY } from "d3-force-3d";
-import { Search, Crosshair, Maximize2, X, ArrowRight, Sparkles } from "lucide-react";
+import { Search, Crosshair, Maximize2, X, ArrowRight, Sparkles, FlaskConical,
+         Play, Presentation, UserMinus } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
+import PanelEvals from "./PanelEvals";
 import { api } from "../../lib/api";
 import { pesoCorto, num, fecha as fmtFecha } from "../../lib/format";
 import { useT, useLang } from "../../lib/i18n";
@@ -114,6 +116,164 @@ function dibujarForma(ctx, tipo, x, y, r) {
   }
 }
 
+// --- DE DÓNDE VINO: el glifo de canal dentro del post-it --------------------
+//
+// Todas las notas eran el mismo post-it amarillo, y eso contaba la mitad de la
+// historia: se veía "esto lo dijo una persona", no se veía "esto lo dijo
+// hablando, con las manos ocupadas". El canal ya viajaba en el dato y no
+// llegaba al cuerpo del grafo.
+//
+// POR QUÉ UN GLIFO Y NO UN COLOR MÁS. Ya hay ocho colores de tipo y cada uno
+// significa una cosa (DESIGN.md: un color, un significado). Un noveno eje de
+// color rompe la lectura. La FORMA ya está ocupada por el tipo de entidad. El
+// interior de la forma era el único canal libre, y encima es el que se lee sin
+// leyenda: una onda es voz, un sobre es mail.
+//
+// Y LA LECTURA QUE MÁS IMPORTA, que es una sola: lo que entró DESDE AFUERA del
+// sistema (whatsapp, mail, foto) va con el borde discontinuo. Adentro contra
+// afuera, de un vistazo, sin leer una palabra. `de_afuera` lo decide el backend
+// con la misma constante que usa la banda de canales del mapa.
+function dibujarGlifoCanal(ctx, canal, x, y, r) {
+  const k = r * 0.52;                       // el glifo vive dentro de la forma
+  ctx.save();
+  ctx.strokeStyle = "rgba(15,17,19,0.78)";
+  ctx.lineWidth = Math.max(0.34, r * 0.1);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  switch (canal) {
+    case "voz": {                            // tres barras de onda
+      for (let i = -1; i <= 1; i++) {
+        const alto = k * (i === 0 ? 1 : 0.55);
+        ctx.moveTo(x + i * k * 0.62, y - alto);
+        ctx.lineTo(x + i * k * 0.62, y + alto);
+      }
+      break;
+    }
+    case "whatsapp": {                       // burbuja con cola
+      ctx.moveTo(x - k, y - k * 0.7);
+      ctx.lineTo(x + k, y - k * 0.7);
+      ctx.lineTo(x + k, y + k * 0.25);
+      ctx.lineTo(x - k * 0.25, y + k * 0.25);
+      ctx.lineTo(x - k * 0.72, y + k * 0.92);
+      ctx.lineTo(x - k * 0.6, y + k * 0.25);
+      ctx.lineTo(x - k, y + k * 0.25);
+      ctx.closePath();
+      break;
+    }
+    case "email": {                          // sobre: rectángulo y solapa
+      ctx.moveTo(x - k, y - k * 0.68);
+      ctx.lineTo(x + k, y - k * 0.68);
+      ctx.lineTo(x + k, y + k * 0.68);
+      ctx.lineTo(x - k, y + k * 0.68);
+      ctx.closePath();
+      ctx.moveTo(x - k, y - k * 0.68);
+      ctx.lineTo(x, y + k * 0.1);
+      ctx.lineTo(x + k, y - k * 0.68);
+      break;
+    }
+    case "foto": {                           // cámara: cuerpo y lente
+      ctx.moveTo(x - k, y - k * 0.5);
+      ctx.lineTo(x + k, y - k * 0.5);
+      ctx.lineTo(x + k, y + k * 0.72);
+      ctx.lineTo(x - k, y + k * 0.72);
+      ctx.closePath();
+      ctx.moveTo(x + k * 0.5, y + k * 0.12);
+      ctx.arc(x, y + k * 0.12, k * 0.5, 0, 2 * Math.PI);
+      break;
+    }
+    case "chat": {                           // dos burbujas encontradas
+      ctx.moveTo(x - k, y - k * 0.75);
+      ctx.lineTo(x + k * 0.25, y - k * 0.75);
+      ctx.lineTo(x + k * 0.25, y);
+      ctx.lineTo(x - k, y);
+      ctx.closePath();
+      ctx.moveTo(x - k * 0.25, y + k * 0.15);
+      ctx.lineTo(x + k, y + k * 0.15);
+      ctx.lineTo(x + k, y + k * 0.9);
+      ctx.lineTo(x - k * 0.25, y + k * 0.9);
+      ctx.closePath();
+      break;
+    }
+    default: {                               // reporte del piso: tilde en caja
+      ctx.moveTo(x - k, y - k);
+      ctx.lineTo(x + k, y - k);
+      ctx.lineTo(x + k, y + k);
+      ctx.lineTo(x - k, y + k);
+      ctx.closePath();
+      ctx.moveTo(x - k * 0.45, y);
+      ctx.lineTo(x - k * 0.1, y + k * 0.42);
+      ctx.lineTo(x + k * 0.5, y - k * 0.4);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+// El globo de una nota semilla: lo que la persona dijo, con su nombre y su
+// canal. Se dibuja en el lienzo y no en un panel al costado a propósito — si
+// hay que mover el ojo a otra parte de la pantalla, la frase deja de ser parte
+// del camino y pasa a ser una nota al pie.
+const GLOBO_ANCHO = 30;   // caracteres por línea
+const GLOBO_LINEAS = 3;
+
+function dibujarGloboNota(ctx, n, r, escala, presentar) {
+  const fs = Math.max(2.4, (presentar ? 7.4 : 3.6) / Math.sqrt(escala));
+  ctx.font = `400 ${fs}px "Hanken Grotesk", sans-serif`;
+  // envoltura por palabras, con el corte contado en caracteres: medir cada
+  // palabra sería más exacto y acá no hace falta — el texto es corto y fijo.
+  const palabras = String(n.texto).split(/\s+/);
+  const lineas = [];
+  let actual = "";
+  for (const p of palabras) {
+    if ((actual + " " + p).trim().length > GLOBO_ANCHO) {
+      lineas.push(actual.trim());
+      actual = p;
+      if (lineas.length === GLOBO_LINEAS) break;
+    } else actual = `${actual} ${p}`;
+  }
+  if (lineas.length < GLOBO_LINEAS && actual.trim()) lineas.push(actual.trim());
+  if (lineas.length === GLOBO_LINEAS) lineas[GLOBO_LINEAS - 1] += "…";
+
+  const firma = `${n.autor} · ${n.canal} · ${(n.fecha || "").slice(5)}`;
+  const todas = [firma, ...lineas];
+  const ancho = Math.max(...todas.map((l) => ctx.measureText(l).width));
+  const alto = todas.length * (fs * 1.28) + fs * 0.7;
+  const x0 = n.x + r + fs * 0.8;
+  const y0 = n.y - alto / 2;
+
+  ctx.fillStyle = "rgba(15,17,19,0.9)";
+  ctx.strokeStyle = "rgba(232,200,106,0.55)";   // el amarillo del post-it
+  ctx.lineWidth = Math.max(0.28, fs * 0.07);
+  ctx.beginPath();
+  ctx.roundRect(x0 - fs * 0.4, y0, ancho + fs * 0.9, alto, fs * 0.35);
+  ctx.fill(); ctx.stroke();
+
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  // la firma primero y en el amarillo de la nota: quién y por dónde va antes
+  // que qué, porque es lo que prueba que esto no salió de una tabla
+  ctx.fillStyle = "#e8c86a";
+  ctx.fillText(firma, x0, y0 + fs * 0.35);
+  ctx.fillStyle = "rgba(245,245,244,0.92)";
+  lineas.forEach((l, i) => ctx.fillText(l, x0, y0 + fs * 0.35 + (i + 1) * fs * 1.28));
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+}
+
+// --- PROYECTAR NO ES TRABAJAR DE CERCA ---------------------------------------
+//
+// El lienzo está afinado para un monitor y un mouse: tipografías de 4 px de
+// grafo, aristas de 0,55 y 570 nodos en pantalla. A cuatro metros eso es una
+// mancha que se mueve. El modo presentación multiplica lo que se ve y —lo que
+// más cambia— DEJA DE DIBUJAR lo que no hace falta.
+//
+// Ninguno de estos números toca lo que el motor calcula. Es tinta, no verdad.
+const PRESENTAR = {
+  texto: 2.2,        // 4,1 px de grafo se vuelven 9
+  arista: 2.6,       // 0,55 se vuelve 1,4; el camino, 4,4
+  nodo: 1.35,
+  atenuado: 0.05,    // lo que queda de contexto casi desaparece
+  saltos: 2,         // cuántos saltos alrededor del camino se siguen dibujando
+};
+
 // el mismo glifo en HTML, para la leyenda y el panel
 function Glifo({ tipo, size = 11 }) {
   const c = COLOR_TIPO[tipo] || "#8b8fa8";
@@ -177,21 +337,26 @@ const MAX_RESULTADOS = 8;
 
 // --- carga (mismo patrón P32: cache de sesión por idioma) --------------------
 let _cacheGrafo = { lang: null, datos: null };
-function useGrafo(langKey) {
+function useGrafo(langKey, sinNotas = []) {
   const [d, setD] = useState(_cacheGrafo.lang === langKey ? _cacheGrafo.datos : null);
   const [error, setError] = useState(null);
+  // `sinNotas` es el contrafáctico. Va como clave del efecto para que quitar
+  // una evidencia vuelva a pedir el grafo — y NO toca el cache de módulo: lo
+  // que se guarda entre visitas es el negocio real, nunca una lectura
+  // hipotética que después parecería la verdad.
+  const claveSin = sinNotas.join(",");
   useEffect(() => {
     let vivo = true;
-    if (_cacheGrafo.lang !== langKey) setD(null);
-    api.grafo()
+    if (_cacheGrafo.lang !== langKey && !claveSin) setD(null);
+    api.grafo(claveSin ? claveSin.split(",") : [])
       .then((r) => {
         if (!vivo) return;
-        _cacheGrafo = { lang: langKey, datos: r };
+        if (!claveSin) _cacheGrafo = { lang: langKey, datos: r };
         setD(r);
       })
       .catch((e) => vivo && setError(e));
     return () => { vivo = false; };
-  }, [langKey]);
+  }, [langKey, claveSin]);
   return { datos: d, error };
 }
 
@@ -210,7 +375,10 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   const t = useT();
   const lang = useLang();
   const langKey = useSession()?.usuario?.idioma || lang;
-  const { datos, error } = useGrafo(langKey);
+  // Declarado antes del fetch porque el fetch depende de él: quitar una
+  // evidencia vuelve a pedir el cerebro, y ése es todo el truco.
+  const [sinNotas, setSinNotas] = useState([]);  // las evidencias que el jurado quitó
+  const { datos, error } = useGrafo(langKey, sinNotas);
   const { ref: caja, el: lienzoEl, w, h } = useMedida();
   const grafoRef = useRef(null);
   const inputRef = useRef(null);
@@ -220,6 +388,14 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   const [busqueda, setBusqueda] = useState("");
   const [leyenda, setLeyenda] = useState(false);  // el detalle de la leyenda, a pedido
   const [listo, setListo] = useState(false);     // la simulación ya se asentó
+  const [verEvals, setVerEvals] = useState(false); // la evidencia sobre el motor
+  // --- lo que sigue existe para PROYECTAR, no para trabajar de cerca -------
+  // El grafo está diseñado para un monitor y un mouse. Un jurado a cuatro
+  // metros ve manchas. Estos tres estados son la diferencia entre las dos
+  // cosas, y ninguno cambia lo que el motor calcula.
+  const [presentar, setPresentar] = useState(false); // tipografías y trazos al doble
+  const [etapa, setEtapa] = useState(null);      // la animación del camino, por etapas
+  const [apagado, setApagado] = useState(null);  // la persona "apagada" del equipo
 
   // graphData ESTABLE: force-graph muta los objetos (les escribe x/y). Si se
   // recrea en cada render, la simulación se reinicia y el grafo tiembla.
@@ -267,6 +443,90 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   const hayResalte = !!foco || !!camino;
   const enfocado = (id) => (camino ? nodosCamino.has(id) : vecinos.has(id));
   const enfocadoLink = (l) => (camino ? aristasCamino.has(l._i) : aristasFoco.has(l._i));
+
+  // --- EL RECORTE: en presentación no se dibujan 570 nodos ------------------
+  // Atenuar no alcanza en un proyector: el gris de fondo sigue siendo ruido y
+  // el ojo del que mira desde lejos no lo descarta. Con un camino encendido se
+  // dibuja el camino más dos saltos —entre 20 y 40 nodos— y el resto NO EXISTE
+  // para el lienzo. Es un filtro sobre graphData, no un cambio de dibujo: la
+  // simulación tiene menos cuerpos y encima se asienta más rápido.
+  const gdVisible = useMemo(() => {
+    if (!gd) return null;
+    if (!presentar || !camino || !nodosCamino.size) return gd;
+    let alcance = new Set(nodosCamino);
+    for (let salto = 0; salto < PRESENTAR.saltos; salto++) {
+      const siguiente = new Set(alcance);
+      for (const l of gd.links) {
+        const s = idDe(l.source), tg = idDe(l.target);
+        if (alcance.has(s)) siguiente.add(tg);
+        if (alcance.has(tg)) siguiente.add(s);
+      }
+      alcance = siguiente;
+    }
+    return {
+      nodes: gd.nodes.filter((n) => alcance.has(n.id)),
+      links: gd.links.filter((l) => alcance.has(idDe(l.source)) && alcance.has(idDe(l.target))),
+    };
+  }, [gd, presentar, camino, nodosCamino]);
+
+  // --- EL CAMINO COMO SECUENCIA, NO COMO CONJUNTO --------------------------
+  // Encender todo a la vez muestra el RESULTADO. El razonamiento es el orden:
+  // primero quién lo dijo, después por dónde viajó, y recién al final en qué
+  // terminó. Cuatro etapas, cuatro segundos, y el dato ya existe — `semillas`
+  // viene del backend, ordenada por fecha de la nota.
+  //
+  //   0 · el lienzo en silencio, sólo la silueta
+  //   1 · se encienden LAS SEMILLAS, una por una (quién lo dijo, por qué canal)
+  //   2 · viajan las ramas desde cada semilla
+  //   3 · converge: el nodo de la consecuencia, y el número
+  const ETAPAS_MS = [400, 1200, 1200, 600];
+  useEffect(() => {
+    if (etapa === null) return;
+    if (etapa >= ETAPAS_MS.length - 1) return;
+    const id = setTimeout(() => setEtapa((e) => (e === null ? null : e + 1)),
+                          ETAPAS_MS[etapa]);
+    return () => clearTimeout(id);
+  }, [etapa]);
+
+  // Cambiar de hallazgo corta la animación en curso: quedarse a mitad de la
+  // secuencia anterior sobre un camino nuevo se lee como un error.
+  useEffect(() => { setEtapa(null); }, [camino]);
+
+  const semillasCamino = useMemo(
+    () => new Set(caminoActual?.semillas || []), [caminoActual]);
+
+  // Qué está encendido AHORA, según la etapa. Fuera de la animación (etapa
+  // null) todo el camino está encendido, que es el comportamiento de siempre.
+  const enEtapa = (id) => {
+    if (etapa === null) return nodosCamino.has(id);
+    if (etapa === 0) return false;
+    if (etapa === 1) return semillasCamino.has(id);
+    return nodosCamino.has(id);
+  };
+  const enEtapaLink = (l) => {
+    if (etapa === null) return aristasCamino.has(l._i);
+    if (etapa <= 1) return false;
+    return aristasCamino.has(l._i);
+  };
+
+  // --- EL PUNTO CIEGO: qué se apaga si esta persona no está ----------------
+  // No es sobre las reglas de la casa (en el demo las enseñó todas el dueño, y
+  // un mapa que dice "si se va el dueño se pierde todo" no sirve para nada).
+  // Es sobre las notas del equipo: 13 personas, y hay entidades de las que una
+  // sola es la única fuente. Apagás a Walter y la empresa deja de saber lo que
+  // NO está en ningún dato sobre dos de sus clientes.
+  const huerfanas = useMemo(() => {
+    const out = new Set();
+    if (!apagado || !gd) return out;
+    for (const n of gd.nodes) {
+      const aut = n.autores || [];
+      if (aut.length === 1 && aut[0] === apagado) out.add(n.id);
+      if (n.tipo === "nota" && n.autor === apagado) out.add(n.id);
+    }
+    return out;
+  }, [apagado, gd]);
+
+  const equipo = datos?.equipo?.por_persona || [];
 
   // --- las fuerzas: acá nace el núcleo denso --------------------------------
   useEffect(() => {
@@ -449,14 +709,115 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   return (
     <div className="space-y-4">
       {/* ------------------------------------------------------ encabezado */}
-      <div>
-        <h2 className="font-display text-3xl font-semibold tracking-tight text-tinta">
-          {t("cerebro.titulo")}
-        </h2>
-        <p className="mt-1 max-w-5xl text-lg leading-snug text-tinta-suave">
-          {t("cerebro.bajada", { nodos: num(meta.nodos), aristas: num(meta.aristas) })}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl font-semibold tracking-tight text-tinta">
+            {t("cerebro.titulo")}
+          </h2>
+          <p className="mt-1 max-w-5xl text-lg leading-snug text-tinta-suave">
+            {t("cerebro.bajada", { nodos: num(meta.nodos), aristas: num(meta.aristas) })}
+          </p>
+        </div>
+        {/* Los controles son NEUTROS a propósito: el azul es de Ángela
+            (DESIGN.md) y ninguna de estas tres cosas la dice ella — las dice
+            el código, midiéndose, proyectándose o apagando a alguien. */}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <button
+            onClick={() => setPresentar((v) => !v)}
+            aria-pressed={presentar}
+            title={t("cerebro.presentar_ay")}
+            className={`flex items-center gap-1.5 rounded-md border px-3 py-2 text-base ${
+              presentar ? "border-tinta bg-tinta text-crema"
+                        : "border-linea bg-crema text-tinta hover:bg-papel"}`}
+          >
+            <Presentation className="size-4" />
+            {t("cerebro.presentar")}
+          </button>
+          {/* La evidencia sobre el motor vive donde el motor se muestra, no en
+              el sidebar (PRODUCT.md, Report Rule). */}
+          <button
+            onClick={() => setVerEvals((v) => !v)}
+            className="flex items-center gap-1.5 rounded-md border border-linea bg-crema
+                       px-3 py-2 text-base text-tinta hover:bg-papel"
+          >
+            <FlaskConical className="size-4 text-tinta-suave" />
+            {verEvals ? t("evals.cerrar") : t("evals.abrir")}
+          </button>
+        </div>
       </div>
+
+      {verEvals && <PanelEvals />}
+
+      {/* La franja del contrafáctico vive ACÁ ARRIBA y no dentro del hallazgo,
+          porque cuando el dato que se quitó era el que lo sostenía el hallazgo
+          DESAPARECE — y con él desaparecería el botón de devolverlo. Que no se
+          pueda deshacer lo que acabás de hacer delante de un jurado es el
+          peor momento posible para descubrir un bug de estado. */}
+      {sinNotas.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-card border p-3"
+             style={{ borderColor: `${ROJO}55`, background: "#fdf3f2" }}>
+          <X className="size-4 shrink-0" style={{ color: ROJO }} />
+          <span className="text-base text-tinta">
+            {t("cerebro.contra_banda", { n: sinNotas.length })}
+          </span>
+          <button onClick={() => setSinNotas([])}
+            className="rounded-md border border-linea bg-crema px-2.5 py-1 text-base text-tinta hover:bg-papel">
+            {t("cerebro.contra_devolver")}
+          </button>
+        </div>
+      )}
+
+      {/* ---------------------------------------------- EL PUNTO CIEGO
+          Qué deja de saber la empresa si esta persona no está. No es sobre
+          los datos —los datos siguen ahí— es sobre lo que no está en ningún
+          dato. Va acá arriba, al lado de los hallazgos, porque es la otra
+          forma de mirar el mismo mapa. */}
+      {equipo.length > 0 && (
+        <div className="rounded-card border border-linea bg-crema p-4">
+          <div className="flex flex-wrap items-baseline gap-2">
+            <UserMinus className="size-4 shrink-0 self-center text-tinta-suave" />
+            <span className="text-lg font-semibold text-tinta">{t("cerebro.ciego_titulo")}</span>
+            <span className="text-base text-tinta-suave">· {t("cerebro.ciego_ay")}</span>
+          </div>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {equipo.filter((p) => p.n_solo_suyas > 0).map((p) => {
+              const on = apagado === p.autor;
+              return (
+                <button key={p.autor}
+                  onClick={() => setApagado(on ? null : p.autor)}
+                  aria-pressed={on}
+                  className={`rounded-full border px-3 py-1.5 text-base transition-colors ${
+                    on ? "border-rojo bg-rojo text-white"
+                       : "border-linea bg-papel text-tinta hover:border-rojo/40"}`}>
+                  {p.autor}
+                  {/* de cuántas cosas es LA ÚNICA fuente humana */}
+                  <span className={`ml-1.5 tabular-nums ${on ? "text-white/75" : "text-tinta-suave"}`}>
+                    {p.n_solo_suyas}
+                  </span>
+                </button>
+              );
+            })}
+            {apagado && (
+              <button onClick={() => setApagado(null)}
+                className="rounded-full px-3 py-1.5 text-base text-tinta-suave underline underline-offset-2 hover:text-tinta">
+                {t("cerebro.ciego_volver")}
+              </button>
+            )}
+          </div>
+          {apagado && (
+            <p className="mt-2.5 border-t border-linea pt-2.5 text-base leading-snug text-tinta">
+              {t("cerebro.ciego_frase", {
+                quien: apagado,
+                n: equipo.find((p) => p.autor === apagado)?.n_solo_suyas || 0,
+              })}
+              <span className="mt-1 block text-tinta-suave">
+                {(equipo.find((p) => p.autor === apagado)?.solo_suyas || [])
+                  .map((x) => x.entidad).join(" · ")}
+              </span>
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ------------------------------------- los hallazgos con su camino
           LA PUERTA DE ENTRADA. El cerebro no se explora a ciegas: se entra por
@@ -518,6 +879,69 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               {caminoActual.resumen && (
                 <p className="mb-2 text-base leading-snug text-tinta">{caminoActual.resumen}</p>
               )}
+
+              {/* --------------------------------- REPRODUCIR EL RAZONAMIENTO
+                  Encender todo a la vez muestra el resultado. El razonamiento
+                  es el ORDEN: quién lo dijo, por dónde viajó, en qué terminó.
+                  Cuatro segundos. */}
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setEtapa(0)}
+                  className="flex items-center gap-1.5 rounded-md border border-linea bg-papel
+                             px-2.5 py-1.5 text-base text-tinta hover:bg-crema"
+                >
+                  <Play className="size-3.5" />
+                  {t("cerebro.reproducir")}
+                </button>
+                {etapa !== null && (
+                  <span className="text-sm tabular-nums text-tinta-suave">
+                    {t("cerebro.etapa", { n: etapa + 1, total: 4 })}
+                    {" · "}{t(`cerebro.etapa_${etapa}`)}
+                  </span>
+                )}
+              </div>
+
+              {/* -------------------------------------- QUITAR UNA EVIDENCIA
+                  El contrafáctico. Un chatbot no se rompe cuando le sacás un
+                  dato: sigue contestando con la misma seguridad. Esto se
+                  apaga, y por eso prueba que hay causalidad y no redacción.
+                  NO BORRA NADA: es un parámetro de lectura (core/grafo.py). */}
+              {(() => {
+                const evidencias = (caminoActual.semillas || [])
+                  .filter((id) => String(id).startsWith("nota:"))
+                  .map((id) => indice.get(id))
+                  .filter(Boolean);
+                if (!evidencias.length && !sinNotas.length) return null;
+                return (
+                  <div className="mb-2.5 rounded-md border border-linea bg-papel p-2.5">
+                    <p className="mb-1.5 text-sm text-tinta-suave">{t("cerebro.contra_ay")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {evidencias.map((n) => (
+                        <button key={n.id}
+                          onClick={() => setSinNotas((xs) => [...xs, n.id.replace("nota:", "")])}
+                          className="flex items-center gap-1.5 rounded-full border border-linea
+                                     bg-crema px-2.5 py-1 text-base text-tinta hover:border-rojo/50"
+                        >
+                          <Glifo tipo="nota" />
+                          <span>{n.autor} · {n.canal}</span>
+                          <X className="size-3 text-tinta-suave" />
+                        </button>
+                      ))}
+                    </div>
+                    {sinNotas.length > 0 && (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-linea pt-2">
+                        <span className="text-sm" style={{ color: ROJO }}>
+                          {t("cerebro.contra_sin", { n: sinNotas.length })}
+                        </span>
+                        <button onClick={() => setSinNotas([])}
+                          className="text-sm text-tinta underline underline-offset-2">
+                          {t("cerebro.contra_devolver")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               {caminoActual.dominios?.length > 0 && (
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
                   <span className="text-sm text-tinta-suave">{t("cerebro.cruzo")}</span>
@@ -717,7 +1141,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
           <ForceGraph2D
             ref={grafoRef}
             width={w} height={h}
-            graphData={gd}
+            graphData={gdVisible}
             backgroundColor={TINTA_OSCURA}
             cooldownTicks={220}
             onEngineStop={alQuedarQuieto}
@@ -728,15 +1152,27 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
             onNodeClick={(n) => { if (!nodosCamino.has(n.id)) setCamino(null); irAlNodo(n.id); }}
             onBackgroundClick={() => { setFoco(null); setCamino(null); }}
             nodeLabel={(n) => `${n.nombre} · ${t(`cerebro.t_${n.tipo}`)}`}
-            linkColor={(l) => (hayResalte
-              ? (enfocadoLink(l) ? (camino ? AZUL_IA : "rgba(255,255,255,0.55)") : "rgba(255,255,255,0.035)")
-              : (COLOR_REL[l.rel] || "rgba(255,255,255,0.10)"))}
-            linkWidth={(l) => (enfocadoLink(l) ? 1.7 : 0.55)}
+            linkColor={(l) => {
+              const apagadoFondo = presentar
+                ? `rgba(255,255,255,${PRESENTAR.atenuado})` : "rgba(255,255,255,0.035)";
+              if (!hayResalte) return COLOR_REL[l.rel] || "rgba(255,255,255,0.10)";
+              return enEtapaLink(l)
+                ? (camino ? AZUL_IA : "rgba(255,255,255,0.55)")
+                : apagadoFondo;
+            }}
+            linkWidth={(l) => {
+              const k = presentar ? PRESENTAR.arista : 1;
+              return (enEtapaLink(l) ? 1.7 : 0.55) * k;
+            }}
             // punteada = hipótesis, no dato (ver meta.derivados.afinidad)
             linkLineDash={(l) => (l.inferida ? [2, 3] : null)}
-            // las partículas recorren el camino: se VE por dónde pensó Ángela
-            linkDirectionalParticles={(l) => (camino && enfocadoLink(l) ? 3 : 0)}
-            linkDirectionalParticleWidth={2.2}
+            // las partículas recorren el camino: se VE por dónde pensó Ángela.
+            // En la etapa 2 son el viaje mismo, así que van más y más rápido.
+            linkDirectionalParticles={(l) => {
+              if (!camino || !enEtapaLink(l)) return 0;
+              return etapa === 2 ? 6 : 3;
+            }}
+            linkDirectionalParticleWidth={(presentar ? 4.4 : 2.2)}
             linkDirectionalParticleSpeed={0.006}
             linkDirectionalParticleColor={() => AZUL_IA}
             nodePointerAreaPaint={(n, color, ctx) => {
@@ -751,13 +1187,18 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               // nodos todavía no tienen x/y: createRadialGradient con NaN lanza y
               // se lleva puesto el componente entero. Ese frame se saltea.
               if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) return;
-              const r = n._r;
+              const r = n._r * (presentar ? PRESENTAR.nodo : 1);
               const esFoco = n.id === foco;
-              const dentro = hayResalte ? enfocado(n.id) : true;
-              const semilla = camino && (datos.caminos.find((c) => c.id === camino)?.semillas || []).includes(n.id);
+              const dentro = hayResalte ? (camino ? enEtapa(n.id) : enfocado(n.id)) : true;
+              const semilla = camino && semillasCamino.has(n.id);
+              // Lo que se apaga con la persona apagada. Es la única vez que un
+              // nodo se dibuja "ausente": no está en riesgo, no está mal —
+              // simplemente ya nadie lo mira.
+              const huerfana = huerfanas.has(n.id);
 
               ctx.save();
-              if (!dentro) ctx.globalAlpha = 0.13;
+              if (huerfana) ctx.globalAlpha = 0.12;
+              else if (!dentro) ctx.globalAlpha = presentar ? PRESENTAR.atenuado : 0.13;
 
               // halo: el foco elegido, o la semilla del hallazgo (en azul-Ángela)
               if (esFoco || semilla) {
@@ -777,9 +1218,23 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                 ctx.strokeStyle = color; ctx.stroke();
               } else {
                 ctx.fillStyle = color; ctx.fill();
-                ctx.lineWidth = Math.max(0.35, r * 0.1);
-                ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.stroke();
+                // El borde de una nota que entró DE AFUERA va discontinuo: es
+                // la distinción de una sola mirada entre lo que alguien dijo
+                // por un canal que el ERP no ve y lo que el sistema ya sabía.
+                if (n.tipo === "nota" && n.de_afuera) {
+                  ctx.setLineDash([r * 0.5, r * 0.36]);
+                  ctx.lineWidth = Math.max(0.5, r * 0.16);
+                  ctx.strokeStyle = "rgba(15,17,19,0.85)";
+                } else {
+                  ctx.lineWidth = Math.max(0.35, r * 0.1);
+                  ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
               }
+
+              // el canal, adentro del post-it: voz, whatsapp, foto, mail, chat
+              if (n.tipo === "nota" && r > 2.4) dibujarGlifoCanal(ctx, n.canal, n.x, n.y, r);
 
               // anillo = señal. Rojo SOLO problema real, ámbar = para mirar.
               if (n.riesgo === "riesgo" || n.riesgo === "atencion") {
@@ -792,10 +1247,16 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               // etiquetas: el foco y su círculo siempre; el resto al acercarse,
               // y priorizando lo grande (si no, el núcleo es una sopa de texto)
               const grande = r > 5.2;
-              const muestra = esFoco || semilla || (dentro && hayResalte && escala > 0.6)
+              // En presentación, la semilla y el final del camino llevan
+              // etiqueta SIEMPRE, sin depender del zoom: son las dos cosas que
+              // el que mira desde lejos tiene que poder leer.
+              const muestra = esFoco || semilla
+                || (presentar && camino && dentro)
+                || (dentro && hayResalte && escala > 0.6)
                 || (!hayResalte && (escala > 2.2 || (grande && escala > 0.7)));
               if (muestra && listo) {
-                const fs = Math.max(2.6, (esFoco ? 5.2 : 4.1) / Math.sqrt(escala));
+                const base = (esFoco ? 5.2 : 4.1) * (presentar ? PRESENTAR.texto : 1);
+                const fs = Math.max(2.6, base / Math.sqrt(escala));
                 ctx.font = `${esFoco || semilla ? 600 : 400} ${fs}px "Hanken Grotesk", sans-serif`;
                 ctx.textAlign = "center"; ctx.textBaseline = "top";
                 const txt = n.nombre.length > 34 ? `${n.nombre.slice(0, 33)}…` : n.nombre;
@@ -807,6 +1268,16 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                 ctx.fill();
                 ctx.fillStyle = esFoco ? "#ffffff" : semilla ? AZUL_IA : "rgba(245,245,244,0.82)";
                 ctx.fillText(txt, n.x, ty);
+              }
+
+              // LO QUE ALGUIEN DIJO, dicho. Cuando la semilla de un cruce es
+              // una nota, el texto se lee en el lienzo: es la diferencia entre
+              // "hay un post-it amarillo acá" y "Kevin dijo esto el domingo".
+              // Sólo en la etapa de semillas y sólo si es semilla — si no, el
+              // grafo se vuelve un tablero de post-its.
+              if (semilla && n.tipo === "nota" && n.texto && listo
+                  && (etapa === null || etapa >= 1)) {
+                dibujarGloboNota(ctx, n, r, escala, presentar);
               }
               ctx.restore();
             }}

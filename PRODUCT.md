@@ -192,6 +192,67 @@ or `MODULOS` (`backend/auth.py`), answer in writing:
 - **Owner Rule:** `es_admin` is a role with a work queue, not an exemption
   from one.
 
+## The Counting Rule
+
+**A number is counted once, in one place, over a unit that is a thing and not a
+row.** Fourteen files across `backend/` and `frontend/` cite this rule by name;
+this section is the definition they cite. It is written down at this length
+because the two bugs it prevents both shipped once, both were silent, and both
+were found by a human noticing a total that felt wrong — not by a test.
+
+### The three halves
+
+**1 · The unit of a count is an entity, not a row.** Two rows of the same
+product are one product's demand, not two. `core/vencimientos.py` splits a
+product's sales rate across its lots FEFO precisely for this: giving the whole
+rate to each lot promised the same sales to two lots at once, and the money at
+risk came out at half — silently. Before summing, name the unit out loud: is it
+a product, a customer, a delivery, or a row of an export?
+
+**2 · A canonical number lives in ONE function, and screens cite it.** They
+never recompute it, not even with "the same" formula. The `$900M` bug did not
+come from a wrong formula: it came from the same sum existing in two places
+where only one was canonical. They agreed by coincidence — same filter, same
+items — until they did not. If a screen needs a total, the endpoint sends the
+total; a `reduce` in a component over rows the endpoint happened to include is
+a second source of truth wearing a disguise. (`tests/test_montos_canonicos.py`
+guards this.)
+
+**3 · Magnitudes that are not the same kind of thing never enter the same
+sum.** `core/oportunidades_neg.py`'s `NATURALEZA` table is the single source
+for which findings can be added together: `recuperable` (working capital that
+turns into cash) is homogeneous and sums; `accionable` (avoided loss, recurring
+gain) has money attached but a different magnitude and window, so it shows and
+does not sum; `riesgo` is exposure, not money, and never appears in a sum of
+capturable pesos. Overbuying is avoided loss, not freed capital — it is shown,
+acted on, and kept out of the total.
+
+### How it is enforced: make the bug unable to be born
+
+When a total would be wrong, **the field does not exist.**
+`core/mostrador.py::costos_viejos()` deliberately has no `total`, because
+summing the tied-up capital of those rows produces a number that looks like
+money at stake and is not: an old cost does not say how much is lost, it says
+that nobody knows how much is earned. Each row answers for itself.
+
+This is the part worth repeating to anyone new: the fix for a
+double-counting bug is not a corrected total. It is removing the field, so the
+next person cannot sum it by accident. Same for `core/parada.py` (a stop is one
+customer; amounts are cited, never added) and `core/ficha.py` (no new number is
+born there at all).
+
+### When you are about to add a number to a screen
+
+1. **What is the unit?** If the honest answer is "a row of the export", stop.
+2. **Does this number already exist in `core/`?** Then cite it. If you are
+   writing an arithmetic operation that a `core/` function already performs,
+   you are creating the second source of truth.
+3. **Is everything in this sum the same kind of magnitude?** Check `NATURALEZA`
+   before adding two findings together.
+4. **If the answer to any of the above is uncomfortable, do not add the
+   total.** A screen of rows with no total is honest. A total that is wrong
+   costs the credibility of every other number on the screen.
+
 ## Product Principles
 
 - Every number the user sees traces to a deterministic calculation in `core/`; the
