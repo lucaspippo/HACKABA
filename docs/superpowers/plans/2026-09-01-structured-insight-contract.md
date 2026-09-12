@@ -2051,16 +2051,18 @@ directly in two shallow places — both trivially expressible against the insigh
   `pattern.label`, then `hypothesis.label` if present, then the `label` of each
   `primary` evidence item.
 
-Then update the three test files that read `oportunidades_neg.cards()["drill"]`
-directly — `tests/test_p27.py`, `tests/test_p25.py`, `tests/test_oportunidades_ids.py`
-— to read `["insight"]` instead. These bypass `priorities.py` entirely, which is why
-the shims did not cover them.
+Then update the four test files that read a card's `drill` directly, bypassing
+`priorities.py` entirely — which is why the shims never covered them:
+`tests/test_p27.py`, `tests/test_p25.py`, `tests/test_oportunidades_ids.py` (all
+reading `oportunidades_neg.cards()["drill"]`) and `tests/test_p39.py` (reading a
+piso proposal's `drill`). Point each at `["insight"]`.
 
-Only once those five files are migrated, remove **all three** shims — the two in
-`priorities.py` plus `_project_drill` in `oportunidades_neg.py`:
+Only once those six files are migrated, remove **all four** shims — the two in
+`priorities.py`, `_project_drill` in `oportunidades_neg.py`, and `_project_drill`
+in `piso.py`:
 - `_legacy_drill` and its three call sites: the `"drill":` entry in `_item`, the `out["drill"] =` line in `_combine`, and the `item["drill"] =` line in `_derive`.
 - `_insight_from_legacy_drill` **and the `drill=` keyword on `_item`**. Every builder passes `insight=` by now (Tasks 5–9), so nothing calls it.
-- `_project_drill` in `oportunidades_neg.py` (added in Task 8 to keep `grafo.py` and those three tests working), and the `"drill"` key it populates on every opportunity card.
+- `_project_drill` in `oportunidades_neg.py` (added in Task 8 to keep `grafo.py` and three tests working) and `_project_drill` in `piso.py` (added in Task 9 for `test_p39.py`), along with the `"drill"` key each populates.
 
 Verify with `grep -rn "drill" backend/core/ backend/angela.py backend/tests/` — the only surviving hits should be in comments or unrelated identifiers. **`_blank_drill` also goes**: Task 4 kept it because unmigrated builders still called it; by now nothing does.
 
