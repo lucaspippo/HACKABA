@@ -47,7 +47,7 @@ def _seed_combo(monkeypatch):
 def _seed_moroso(monkeypatch):
     from core import cuentas
     monkeypatch.setattr(cuentas, "listar", lambda: [
-        {"nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
+        {"id": "cliente-uno", "nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
          "saldo": 50_000, "promedio_pago_dias": 30, "movimientos": []}])
 
 

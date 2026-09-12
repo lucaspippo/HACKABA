@@ -104,7 +104,7 @@ def test_feedback_on_cobrar_morosos_shrinks_the_inbox_not_grows_it(monkeypatch, 
     from core.db import tenant as tenant_module
     monkeypatch.setattr(tenant_module, "current_tenant_id", lambda: db_tenant)
     monkeypatch.setattr(cuentas, "listar", lambda: [
-        {"nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
+        {"id": "cliente-uno", "nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
          "saldo": 50_000, "promedio_pago_dias": 30, "atraso_vs_promedio": 200,
          "movimientos": []}])
 

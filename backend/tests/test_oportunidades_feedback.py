@@ -14,8 +14,9 @@ def _patch_tenant(monkeypatch, tenant_id):
 
 
 def _moroso(nombre, dias_sin_pagar, saldo):
-    return {"nombre": nombre, "en_mora": True, "dias_sin_pagar": dias_sin_pagar,
-            "saldo": saldo, "promedio_pago_dias": 30, "movimientos": []}
+    return {"id": nombre.lower().replace(" ", "-"), "nombre": nombre, "en_mora": True,
+            "dias_sin_pagar": dias_sin_pagar, "saldo": saldo, "promedio_pago_dias": 30,
+            "movimientos": []}
 
 
 def test_feedback_hides_the_exact_customer_it_was_given_on(monkeypatch, db_tenant):
