@@ -803,6 +803,100 @@ class ConectorOdoo(IConector):
         }
 
 
+class ConectorOdooDemo(ConectorOdoo):
+    """The Odoo connector over the demo's SAMPLE transport (core/odoo_demo.py).
+
+    Same class, same pull_* contract, same ingest pipeline downstream — only
+    `_execute_kw`'s XML-RPC is replaced by the deterministic payloads in
+    data-demo/odoo_muestra.json. It is NEVER chosen implicitly: see
+    conector_odoo() below — a configured real connection always wins, and
+    without the owner having explicitly connected the sample this class is
+    unreachable. Domains the sample doesn't cover return their honest empty
+    payload (total 0), not invented rows.
+    """
+    nombre = "odoo"
+
+    def __init__(self):
+        # Deliberately NOT calling super().__init__: no tenant row is read
+        # and no credentials exist. `_conexion` is set so the pull_* guards
+        # ("no hay conexión configurada") pass — there IS a connection, to
+        # the sample.
+        self.tenant_id = None
+        self._conexion = {"url": "muestra://odoo", "database": "litoral_demo",
+                          "username": "demo", "api_key": ""}
+        self._uid = None
+        self._models = None
+        self._fx_cache = None
+        self._pricelist_cache = None
+        from . import odoo_demo
+        self._payloads = odoo_demo.payloads()
+
+    def _ensure_rpc(self):  # pragma: no cover - guard, the sample never RPCs
+        raise RuntimeError("ConectorOdooDemo never opens XML-RPC.")
+
+    def _pull(self, clave: str, modulo: str, lista: str) -> dict:
+        rows = list(self._payloads.get(clave) or [])
+        return {"origen": "odoo", "modulo": modulo, "total": len(rows),
+                "moneda_compania": "ARS", lista: rows}
+
+    def pull_data(self, **kwargs) -> dict:
+        return self._pull("clientes", "res.partner", "clientes")
+
+    def pull_productos(self, **kwargs) -> dict:
+        return self._pull("productos", "product.template", "productos")
+
+    def pull_proveedores(self, **kwargs) -> dict:
+        return self._pull("proveedores", "res.partner", "proveedores")
+
+    def pull_ordenes_compra(self, **kwargs) -> dict:
+        return self._pull("ordenes_compra", "purchase.order", "ordenes")
+
+    def pull_ordenes_venta(self, **kwargs) -> dict:
+        return self._pull("ordenes_venta", "sale.order", "ordenes")
+
+    def pull_recepciones(self, **kwargs) -> dict:
+        return self._pull("recepciones", "stock.picking", "recepciones")
+
+    def pull_entregas(self, **kwargs) -> dict:
+        return self._pull("entregas", "stock.picking", "entregas")
+
+    def pull_deposito(self, **kwargs) -> dict:
+        return self._pull("deposito", "stock.quant", "quants")
+
+    def pull_facturas(self, **kwargs) -> dict:
+        return self._pull("facturas", "account.move", "facturas")
+
+    def pull_pagos(self, **kwargs) -> dict:
+        return self._pull("pagos", "account.payment", "pagos")
+
+    def pull_listas_precios(self, **kwargs) -> dict:
+        return self._pull("listas_precios", "product.pricelist", "listas")
+
+    def pull_monedas(self, **kwargs) -> dict:
+        return self._pull("monedas", "res.currency", "monedas")
+
+    def get_schema(self) -> dict:
+        base = super().get_schema()
+        return {**base, "conectado": True, "demo": True}
+
+
+def conector_odoo(tenant_id: str | None) -> ConectorOdoo:
+    """The ONE place that decides which transport serves the Odoo pulls.
+
+    A real configured connection always wins. The sample transport applies
+    only when the owner explicitly connected it (core/odoo_demo.py's marker)
+    and no real connection exists — it is a deliberate demo mode, never a
+    fallback for a failing real one (that one keeps failing loudly, on
+    purpose)."""
+    real = ConectorOdoo(tenant_id)
+    if real._conexion:
+        return real
+    from . import odoo_demo
+    if odoo_demo.activo():
+        return ConectorOdooDemo()
+    return real
+
+
 class ConectorMCP(IConector):
     """Fase 3: slot para Model Context Protocol. Cuando Faro/Tango expongan un MCP
     server, se enchufan acá los métodos reales (1-2 días de trabajo)."""
@@ -829,12 +923,17 @@ def disponibles(tenant_id: str | None = None) -> list[dict]:
     out = []
     for nombre, cls in CONECTORES.items():
         try:
-            inst = cls(tenant_id) if nombre == "odoo" else cls()
+            # Odoo goes through the factory: a connected sample (demo) reads
+            # as activo the same way a real connection does, and says so.
+            inst = conector_odoo(tenant_id) if nombre == "odoo" else cls()
             if nombre == "odoo":
                 estado = "activo" if inst._conexion else "pendiente"
             else:
                 estado = "activo" if nombre in ("csv", "bcra") else "pendiente"
-            out.append({"nombre": nombre, "estado": estado, "schema": inst.get_schema()})
+            entrada = {"nombre": nombre, "estado": estado, "schema": inst.get_schema()}
+            if nombre == "odoo" and isinstance(inst, ConectorOdooDemo):
+                entrada["demo"] = True
+            out.append(entrada)
         except Exception:
             out.append({"nombre": nombre, "estado": "pendiente"})
     return out

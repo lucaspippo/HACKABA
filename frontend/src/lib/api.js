@@ -210,6 +210,8 @@ export const api = {
   odooConfig: () => get("/api/conectores/odoo"),
   odooConfigGuardar: (config) => put("/api/conectores/odoo", config),
   odooConfigBorrar: () => del("/api/conectores/odoo"),
+  // DEMO: one click connects the sample transport and runs the first sync.
+  odooConectarDemo: () => post("/api/conectores/odoo/conectar-demo", {}),
   odooSync: () => post("/api/conectores/odoo/sync", {}),
   odooIngestContactos: () => post("/api/conectores/odoo/ingest-contactos", {}),
   odooSyncProductos: () => post("/api/conectores/odoo/sync-productos", {}),
