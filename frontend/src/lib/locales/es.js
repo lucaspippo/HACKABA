@@ -1138,6 +1138,7 @@ export const ES = {
   "deposito.venc_vencido": "vencido hace {n} días",
   "deposito.venc_hoy": "vence HOY",
   "deposito.venc_dias": "vence en {n} días",
+  "deposito.disc_explica": "Lo que el equipo dijo de esa ubicación ({n})",
   "deposito.disc_titulo": "Físico vs sistema (lo que el conteo encontró distinto)",
   "deposito.aging_titulo": "Antigüedad de la mercadería",
   "deposito.aging_sub": "Por fecha de ingreso al depósito. Sin fecha no entra en la cuenta.",

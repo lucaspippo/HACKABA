@@ -7,7 +7,7 @@ import VozAngela from "../components/VozAngela";
 import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
 import { num, peso, pesoCorto, fecha } from "../lib/format";
-import { useT } from "../lib/i18n";
+import { useT, tDato } from "../lib/i18n";
 import { useEmpresa } from "../lib/useEmpresa";
 
 // P38·H — vencimientos que Ángela GESTIONA.
@@ -359,14 +359,34 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
             )}
           </div>
           {wms.discrepancias.slice(0, 8).map((d) => (
-            <button key={d.codigo} type="button" onClick={() => onNavegar?.("conciliacion")}
-              className="flex w-full items-center justify-between gap-3 border-b border-linea px-4 py-2.5 text-left last:border-0 hover:bg-papel">
-              <p className="min-w-0 flex-1 truncate text-sm font-medium">{d.descripcion}</p>
-              <span className="plata shrink-0 text-sm text-tinta-suave">{num(d.stock_contable)} → {num(d.stock_fisico)}</span>
-              <span className={`plata shrink-0 text-sm font-semibold ${d.diferencia < 0 ? "text-rojo" : "text-salvia"}`}>
-                {d.diferencia > 0 ? "+" : ""}{num(d.diferencia)}
-              </span>
-            </button>
+            <div key={d.codigo} className="border-b border-linea last:border-0">
+              <button type="button" onClick={() => onNavegar?.("conciliacion")}
+                className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-papel">
+                <p className="min-w-0 flex-1 truncate text-sm font-medium">{d.descripcion}</p>
+                <span className="plata shrink-0 text-sm text-tinta-suave">{num(d.stock_contable)} → {num(d.stock_fisico)}</span>
+                <span className={`plata shrink-0 text-sm font-semibold ${d.diferencia < 0 ? "text-rojo" : "text-salvia"}`}>
+                  {d.diferencia > 0 ? "+" : ""}{num(d.diferencia)}
+                </span>
+              </button>
+              {/* C7 — LA DIFERENCIA LLEGA CON LA EXPLICACIÓN PUESTA.
+                  El ERP dice "faltan 6,5"; el equipo ya había dicho por qué, el
+                  mismo día y desde dos canales distintos. Sin esto, el que la
+                  mira manda a recontar — o ajusta el stock por un faltante que
+                  no existe. La nota no decide: es contexto para el que decide,
+                  y por eso NO saca la diferencia de la lista. */}
+              {d.notas?.length > 0 && (
+                <div className="border-t border-linea/60 bg-violeta/[0.04] px-4 py-2.5">
+                  <p className="text-2xs font-semibold uppercase tracking-wide text-violeta-hondo">
+                    {t("deposito.disc_explica", { n: d.notas.length })}
+                  </p>
+                  {d.notas.map((n) => (
+                    <p key={n.id} className="mt-1 text-xs leading-snug text-tinta-suave">
+                      <b className="text-tinta">{n.autor}</b> · {n.fecha} · «{tDato(n.texto, n.texto_en)}»
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

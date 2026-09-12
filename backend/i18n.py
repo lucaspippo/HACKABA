@@ -231,6 +231,12 @@ CATALOGO: dict[str, dict[str, str]] = {
     "piso.resuelto_t": {"es": "{quien} cerró lo que reportaste",
                         "en": "{quien} closed what you reported"},
     "piso.resuelto_c": {"es": "{nota}", "en": "{nota}"},
+    "core.avisos.dif_t": {
+        "es": "Lo que dijiste explica una diferencia en {producto}",
+        "en": "What you said explains a difference in {producto}"},
+    "core.avisos.dif_r": {
+        "es": "El sistema y el conteo no coinciden por {diferencia} en {ubicacion}.",
+        "en": "System and count differ by {diferencia} in {ubicacion}."},
     "api.reporte_ajeno": {
         "es": "Ese aviso no te lo mandaron a vos.",
         "en": "That report was not directed to you."},

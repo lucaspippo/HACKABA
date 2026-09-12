@@ -1167,6 +1167,7 @@ export const EN = {
   "deposito.venc_vencido": "expired {n} days ago",
   "deposito.venc_hoy": "expires TODAY",
   "deposito.venc_dias": "expires in {n} days",
+  "deposito.disc_explica": "What the team said about that location ({n})",
   "deposito.disc_titulo": "Physical vs system (what the count found different)",
   "deposito.aging_titulo": "How old the stock is",
   "deposito.aging_sub": "By date it entered the warehouse. Rows without a date are omitted.",
