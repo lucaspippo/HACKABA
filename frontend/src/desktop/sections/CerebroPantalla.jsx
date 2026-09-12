@@ -28,7 +28,7 @@
 //    hairlines y la misma tipografía que el resto.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
-import { forceCollide, forceX, forceY } from "d3-force-3d";
+import { construirNube } from "./cerebroNube";
 import { X, Maximize2, Mic, Square } from "lucide-react";
 import { api } from "../../lib/api";
 import { cerebroBus } from "../../lib/cerebroBus";
@@ -50,171 +50,34 @@ const COLOR_TIPO = {
 };
 const GRIS = "#8b8fa8";
 
-// LAS ISLAS. Cada dominio tiene su lugar, y eso es lo que convierte una nube
-// en una red: sin esto, 605 nodos repartidos por fuerzas son confeti — el
-// numero «605 entidades · 2062 relaciones» queda desmentido por lo que se ve.
+// EL GRAFO EN REPOSO.
 //
-// El orden del circulo no es al azar: se lee como la cadena del negocio.
-// proveedores -> productos -> depósito -> locales -> clientes, y el
-// conocimiento y las notas (lo que dijo la gente) en el centro-arriba, que es
-// lo que cruza todo lo demas.
-const ISLAS = {
-  proveedor:    { a: -150, r: 0.80 },
-  producto:     { a: -100, r: 0.10 },
-  rubro:        { a:  -70, r: 0.88 },
-  ubicacion:    { a:  -20, r: 0.86 },
-  local:        { a:   20, r: 0.72 },
-  cliente:      { a:   62, r: 0.86 },
-  cuenta:       { a:   96, r: 0.90 },
-  remito:       { a:  140, r: 0.82 },
-  nota:         { a:  180, r: 0.78 },
-  persona:      { a: -175, r: 0.72 },
-  conocimiento: { a: 205, r: 0.80 },
-};
-
-// Cuánto dura el viaje de cámara desde el cerebro entero hasta el caso.
-const MS_ZOOM = 1500;
-
-// LA PREGUNTA DEL DEMO — SÓLO PARA LA CÁMARA.
-// La respuesta la decide el backend (core/guion.py, con la misma comparación).
-// Acá se usa únicamente para saber si hay que viajar a la zona del caso y
-// mostrar la escena: es una decisión de puesta en escena, no de contenido.
-const normalizar = (t) => (t || "")
-  .toLowerCase().normalize("NFD").replace(/\p{M}/gu, "")
-  .replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
-
-const PREGUNTA_DEMO = [
-  "Llegaron ocho cajas rotas de Campo Alegre, ¿qué hago?",
-  "Eight broken boxes arrived from Campo Alegre, what do I do?",
-].map(normalizar);
-
-const esLaDelDemo = (t) => PREGUNTA_DEMO.includes(normalizar(t));
-
-// Los tipos de nodo que tocaron estas herramientas, según el mapa que sirve el
-// backend. Una herramienta que no está en el mapa no enciende nada.
-const tiposDe = (tools, mapa) => {
-  if (!mapa) return null;
-  const vistos = new Set();
-  for (const n of tools || []) for (const tipo of mapa[n] || []) vistos.add(tipo);
-  return vistos.size ? vistos : null;
-};
-
-// =============================================================================
-// LAS POSICIONES, CALCULADAS UNA VEZ Y GUARDADAS.
+// Dibuja la nube compuesta de cerebroNube.js — ver ahí el porqué de que sea
+// compuesta y no el grafo real, y qué tiene que seguir siendo verdad para que
+// el zoom al caso funcione.
 //
-// La simulación de fuerzas sobre 605 nodos tarda lo suyo, y un segundo de
-// nodos acomodándose al entrar arruina la entrada. Se guardan en memoria para
-// las reaperturas de la sesión y en localStorage para las recargas: la segunda
-// vez que alguien abre el cerebro —o sea SIEMPRE en el escenario del demo,
-// porque se prueba antes— pinta ya quieto.
-// =============================================================================
-// La VERSION va en la llave: al cambiar el layout, las posiciones guardadas de
-// la version anterior taparian el cambio —se pintaria quieto el dibujo viejo—
-// y nadie entenderia por que. Subir el numero al tocar las fuerzas.
-const LLAVE_POS = "polpilot.cerebro.posiciones.v2";
-let _posiciones = null;
-
-function leerGuardadas(n) {
-  if (_posiciones) return _posiciones;
-  try {
-    const crudo = window.localStorage.getItem(LLAVE_POS);
-    if (!crudo) return null;
-    const g = JSON.parse(crudo);
-    // si el grafo cambió de tamaño, las posiciones viejas no sirven
-    if (!g || g.n !== n || !g.p) return null;
-    _posiciones = g.p;
-    return _posiciones;
-  } catch { return null; }
-}
-
-function guardar(nodos, n) {
-  const p = {};
-  for (const nodo of nodos) {
-    if (Number.isFinite(nodo.x)) p[nodo.id] = [Math.round(nodo.x), Math.round(nodo.y)];
-  }
-  _posiciones = p;
-  try { window.localStorage.setItem(LLAVE_POS, JSON.stringify({ n, p })); }
-  catch { /* storage lleno: se recalcula la próxima, no es grave */ }
-}
-
-// =============================================================================
-// El grafo completo: el estado de reposo. Tiene que LEERSE COMO UNA RED.
+// Acá vive sólo el DIBUJO, y son cuatro capas de atrás hacia adelante:
 //
-// Antes era puntitos sueltos sobre negro con las líneas a 7% de opacidad, o
-// sea invisibles. Decir «605 entidades · 2062 relaciones» encima de una
-// pantalla donde no se ve ninguna relación es peor que no decir nada: el
-// número queda desmentido por lo que se ve.
-// =============================================================================
-function GrafoCompleto({ datos, w, h, apagado, refGrafo, encendidos }) {
-  const gd = useMemo(() => {
-    if (!datos?.nodos?.length) return null;
-    const maxPeso = Math.max(1, ...datos.nodos.map((n) => n.peso || 0));
-    const guardadas = leerGuardadas(datos.nodos.length);
-    const nodes = datos.nodos.map((n) => {
-      const p = guardadas?.[n.id];
-      return {
-        ...n,
-        _r: 2.4 + 5.2 * Math.sqrt((n.peso || 0) / maxPeso),
-        ...(p ? { x: p[0], y: p[1] } : {}),
-      };
-    });
-    // los ocho mas conectados llevan nombre
-    [...nodes].sort((a, b) => (b.grado || 0) - (a.grado || 0)).slice(0, 8)
-      .forEach((n) => { n._rotulo = (n.nombre || "").slice(0, 26); });
-    return { nodes, links: datos.aristas.map((a, i) => ({ ...a, _i: i })), _pre: !!guardadas };
-  }, [datos]);
+//   1. los campos: un disco de color difuso por comunidad. Es lo que hace que
+//      los grupos se lean como zonas y no como manchas de puntos del mismo
+//      color mezclados con los de al lado.
+//   2. las aristas internas, finísimas. Dan tejido, no información.
+//   3. los puentes entre comunidades, en el azul de Ángela y más curvos: son
+//      la tesis del producto y tienen que leerse POR ENCIMA del tejido.
+//   4. los nodos, con profundidad: los del fondo más chicos y transparentes,
+//      los de adelante nítidos y con halo. Sin eso son 455 puntos planos.
+function GrafoCompleto({ w, h, apagado, refGrafo, encendidos }) {
+  // LA NUBE SE CONSTRUYE UNA VEZ. Semilla fija: idéntica en cada carga, así
+  // que se puede ensayar el pitch veinte veces y ver siempre lo mismo. Ya no
+  // hay posiciones guardadas en localStorage —no hacen falta cuando el layout
+  // es determinístico— ni simulación enfriándose antes de que se vea algo.
+  const gd = useMemo(() => construirNube(), []);
 
-  useEffect(() => {
-    const fg = refGrafo.current;
-    if (!fg || !gd) return;
-    fg.d3Force("charge")?.strength(-58).distanceMax(300);
-    fg.d3Force("collide", forceCollide((n) => n._r + 1.4));
-    // cada nodo tira hacia el centro de SU dominio: las islas emergen solas y
-    // las aristas que las cruzan quedan tendidas entre ellas, que es
-    // exactamente lo que hay que ver.
-    // El radio de cada isla lo da su TAMANIO: `producto` son 427 de los 605
-    // nodos, asi que si todas las islas tiran al mismo radio esa se come la
-    // pantalla y las demas quedan de adorno pegadas al borde. La grande va al
-    // centro con mucho aire; las chicas, afuera.
-    const R = 560;
-    const centro = (n) => {
-      const i = ISLAS[n.tipo];
-      if (!i) return { x: 0, y: 0 };
-      const rad = (i.a * Math.PI) / 180;
-      return { x: Math.cos(rad) * R * i.r, y: Math.sin(rad) * R * i.r };
-    };
-    fg.d3Force("islaX", forceX((n) => centro(n).x).strength(0.11));
-    fg.d3Force("islaY", forceY((n) => centro(n).y).strength(0.11));
-    // NOTA HONESTA SOBRE LAS ISLAS. La idea era que cada dominio formara su
-    // propia isla. NO FUNCIONA con estos datos, y la razon es la proporcion:
-    // 427 de los 605 nodos son `producto`. Una isla con el 70% de la poblacion
-    // no es una isla, es el continente — las otras diez quedan de adorno
-    // pegadas al borde y el centro sigue siendo el mismo bollo.
-    //
-    // Probado: fuerza de isla 0.11 / 0.42, carga -58 / -130, colision +1.4 /
-    // +5, resorte de arista 0.035 / 0.02, radios por dominio. Ninguna
-    // combinacion separo nada; las mas agresivas lo COMPACTARON todavia mas.
-    //
-    // Se deja la fuerza suave: ordena un poco sin deformar, y no cuesta nada.
-    // Lo que SI hizo la diferencia son los puentes de abajo. Si algun dia hay
-    // que insistir con las islas, el camino no es tocar fuerzas: es no dibujar
-    // los 427 productos —muestrear los N mas pesados— para que las
-    // proporciones entre dominios sean comparables.
-    // SIN ESTO NO PASA NADA. Las fuerzas se registran en la simulacion, pero la
-    // simulacion ya venia enfriandose desde el mount: se quedaba con el alpha
-    // en cero y jamas volvia a tickear, asi que el layout salia identico al de
-    // antes por mas que se cambiaran los numeros. Verificado: el modulo servido
-    // tenia los valores nuevos y el dibujo era el mismo pixel por pixel.
-    fg.d3ReheatSimulation?.();
-  }, [gd, refGrafo]);
+  const alMontar = useCallback(() => {
+    refGrafo.current?.zoomToFit(0, 60);
+  }, [refGrafo]);
 
-  const alParar = useCallback(() => {
-    if (!gd) return;
-    guardar(gd.nodes, gd.nodes.length);
-    refGrafo.current?.zoomToFit(0, 40);
-  }, [gd, refGrafo]);
-
-  if (!gd || !w) return null;
+  if (!w) return null;
   return (
     <div className="absolute inset-0 transition-opacity duration-700"
          style={{ opacity: apagado ? 0.12 : 1 }}>
@@ -223,59 +86,77 @@ function GrafoCompleto({ datos, w, h, apagado, refGrafo, encendidos }) {
         width={w} height={h}
         graphData={gd}
         backgroundColor={PAPEL}
-        warmupTicks={gd._pre ? 0 : 90}
-        cooldownTicks={gd._pre ? 0 : 140}
-        onEngineStop={alParar}
+        // las posiciones vienen congeladas (fx/fy), así que no hay nada que
+        // simular: el dibujo aparece ya armado en el primer frame
+        warmupTicks={0}
+        cooldownTicks={0}
+        onEngineStop={alMontar}
         enableNodeDrag={false}
         enableZoomInteraction={false}
         enablePanInteraction={false}
-        // LAS RELACIONES SE VEN. Tinta al 13% sobre papel: suficiente para que
-        // el tejido se lea de lejos y no tanto como para tapar los nodos.
-        // LOS PUENTES. Lo que hace valioso a este grafo son las aristas que
-        // CRUZAN dominios —una nota que toca un proveedor, una regla que toca
-        // un producto—, y se pintaban igual que las dos mil internas. Ahora la
-        // interna casi no se ve y el puente si: la imagen pasa a decir «hay
-        // varios mundos y estos hilos los cruzan», que es la tesis.
+        // CURVAS, NO RECTAS. Un haz de rectas entre dos racimos se lee como un
+        // rayado; curvadas se leen como hilos. Y el puente se curva más que la
+        // arista interna: al cruzar media pantalla, una recta pasaría por
+        // encima de todo lo que hay en el medio.
+        linkCurvature={(l) => (l._puente ? 0.26 : 0.1)}
         linkColor={(l) => {
           if (encendidos) return "rgba(33,32,29,.04)";
-          const a = typeof l.source === "object" ? l.source.tipo : null;
-          const b = typeof l.target === "object" ? l.target.tipo : null;
-          return a && b && a !== b ? "rgba(42,92,223,.30)" : "rgba(33,32,29,.07)";
+          return l._puente ? "rgba(42,92,223,.34)" : "rgba(33,32,29,.075)";
         }}
-        linkWidth={(l) => {
-          const a = typeof l.source === "object" ? l.source.tipo : null;
-          const b = typeof l.target === "object" ? l.target.tipo : null;
-          return a && b && a !== b ? 1.1 : 0.5;
+        linkWidth={(l) => (l._puente ? 1.15 : 0.5)}
+        // CAPA 1 · LOS CAMPOS. Van ANTES que todo (onRenderFramePre), en
+        // coordenadas del grafo. Un degradado radial por comunidad, muy suave:
+        // suficiente para que se vea dónde empieza y termina cada mundo, no
+        // tanto como para que compita con los nodos.
+        onRenderFramePre={(ctx) => {
+          for (const c of gd.campos) {
+            const base = COLOR_TIPO[c.tipo] || GRIS;
+            const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
+            g.addColorStop(0, base + "20");
+            g.addColorStop(0.62, base + "0e");
+            g.addColorStop(1, base + "00");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
+            ctx.fill();
+          }
         }}
-        nodeCanvasObject={(n, ctx) => {
+        nodeCanvasObject={(n, ctx, escala) => {
           if (!Number.isFinite(n.x)) return;
-          // Con una respuesta en curso, lo que Ángela consultó se enciende y
-          // el resto se apaga: de todo el cerebro, esto.
           const vivo = !encendidos || encendidos.has(n.tipo);
           const base = COLOR_TIPO[n.tipo] || GRIS;
-          if (vivo && encendidos) {
+          // PROFUNDIDAD. `_z` va de 0 (fondo) a 1 (frente): achica y
+          // transparenta lo de atrás. Es lo que convierte 455 puntos planos en
+          // algo que tiene adentro, y hace que el zoom se sienta como entrar.
+          const z = n._z ?? 1;
+          const r = n._r * (0.62 + 0.48 * z);
+          const alfa = vivo ? 0.34 + 0.66 * z : 0.1;
+
+          if (vivo && (n._rotulo || (encendidos && n._r > 4))) {
+            // halo: sólo lo que manda. Un halo en todo es niebla.
             ctx.beginPath();
-            ctx.arc(n.x, n.y, n._r * 2.6, 0, 2 * Math.PI);
+            ctx.arc(n.x, n.y, r * 3.1, 0, 2 * Math.PI);
             ctx.fillStyle = base;
-            ctx.globalAlpha = 0.18;
+            ctx.globalAlpha = 0.14;
             ctx.fill();
-            ctx.globalAlpha = 1;
           }
           ctx.beginPath();
-          ctx.arc(n.x, n.y, vivo && encendidos ? n._r * 1.45 : n._r, 0, 2 * Math.PI);
+          ctx.arc(n.x, n.y, encendidos && vivo ? r * 1.4 : r, 0, 2 * Math.PI);
           ctx.fillStyle = vivo ? base : "rgba(33,32,29,.10)";
+          ctx.globalAlpha = alfa;
           ctx.fill();
+          ctx.globalAlpha = 1;
 
-          // UNOS POCOS CON NOMBRE. Un grafo sin una sola palabra es abstracto;
+          // UNAS POCAS PALABRAS. Un grafo sin una sola palabra es abstracto;
           // ocho nombres le dan escala humana — deja de ser «puntos» y pasa a
-          // ser «Lácteos Campo Alegre». Solo los mas conectados, y solo en
-          // reposo: con una respuesta en curso el texto competiria con lo que
-          // se esta encendiendo.
+          // ser el mapa de un negocio. Sólo en reposo: con una respuesta en
+          // curso el texto competiría con lo que se está encendiendo.
           if (!encendidos && n._rotulo) {
-            ctx.font = "600 7px 'Hanken Grotesk', system-ui, sans-serif";
+            const px = (n._caso ? 11 : 12) / Math.max(escala, 0.35);
+            ctx.font = `${n._caso ? 700 : 600} ${px}px 'Hanken Grotesk', system-ui, sans-serif`;
             ctx.textAlign = "center";
-            ctx.fillStyle = "rgba(33,32,29,.62)";
-            ctx.fillText(n._rotulo, n.x, n.y - n._r - 4);
+            ctx.fillStyle = n._caso ? "rgba(33,32,29,.82)" : "rgba(33,32,29,.55)";
+            ctx.fillText(n._rotulo, n.x, n.y - r - px * 0.55);
           }
         }}
       />
@@ -478,7 +359,7 @@ export default function CerebroPantalla({ onCerrar }) {
 
       <div className="flex min-h-0 flex-1">
         <main ref={lienzoRef} className="relative min-w-0 flex-1 overflow-hidden bg-papel">
-          <GrafoCompleto datos={grafo} w={caja.w} h={caja.h}
+          <GrafoCompleto w={caja.w} h={caja.h}
                          apagado={fase !== null} refGrafo={refGrafo}
                          encendidos={encendidos} />
           {/* la escena entra encima, escalando desde un poco más chica: se lee

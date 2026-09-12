@@ -43,6 +43,12 @@ from .fechas import hoy, parse_fecha
 # haya — así la escena se ve igual en un monitor y en un proyector.
 ANCHO, ALTO = 1000, 560
 
+# La posicion del producto en la escena. Una sola vez: la usa el nodo del caso
+# y la usa el abanico de la expansion, que sale de ahi. Si el nodo se mueve y
+# el abanico no, las lineas arrancan de la nada.
+_POS_PRODUCTO = (706, 142)
+
+
 # La línea que separa el caso del contraste.
 Y_SEPARADOR = 400
 
@@ -164,7 +170,7 @@ def reclamo(lang: str = "es") -> dict:
               texto=notas.texto_en(nota, lang),
               canal=nota.get("canal"), autor=nota.get("autor"),
               fecha=nota.get("fecha")),
-        _nodo("producto", "producto", 706, 142,
+        _nodo("producto", "producto", *_POS_PRODUCTO,
               nombre=producto_nombre, lote=(lote or {}).get("lote")),
         _nodo("proveedor", "proveedor", 404, 400, nombre=PROVEEDOR_CASO),
         _nodo("regla", "regla", 880, 250,
@@ -305,28 +311,39 @@ _REL_LEIBLE = {
     "provee": "lo provee", "vende": "se vende en",
 }
 
-# Los GRUPOS: una relacion, un racimo.
+# EL ABANICO DEL PRODUCTO: CUATRO NODOS, HACIA EL LADO LIBRE.
 #
-# EN DOS COLUMNAS A LA DERECHA, no en abanico alrededor del producto. El
-# producto esta en (706,142), o sea pegado al borde superior derecho del
-# lienzo: cualquier racimo puesto "alrededor" cae encima del post-it de la nota
-# o de la tarjeta de la regla, y correrlo mas lejos lo empuja mas adentro del
-# caso. Probado con cuatro configuraciones de angulo y radio: ninguna daba cero.
+# Antes salian ONCE, en dos columnas a la derecha (x=1090 y x=1420). Dos cosas
+# estaban mal y las dos se veian:
 #
-# A la derecha hay lugar vacio de sobra —el caso termina en x≈965— y el lienzo
-# se agranda al abrir igual. Ademas se lee mejor: cinco bloques en columna se
-# recorren de arriba abajo, un abanico obliga a girar la cabeza.
-_COLUMNAS = (
-    # (x, [relaciones de esa columna, de arriba a abajo])
-    (1090, ("se vende junto con", "se vende en")),
-    (1420, ("lo compra", "es de", "guardado en")),
-)
-_Y_INICIAL = -60          # arranca arriba del producto
-_SEPARACION_GRUPO = 54    # aire entre un racimo y el siguiente
-# Cuanto ocupa cada nodo de la expansion, de arriba a abajo.
-# Ya no es una pildora de 30: son FORMAS —disco, rombo, tarjeta— con el nombre
-# DEBAJO, igual que los nodos del caso. Eso pide mas aire vertical.
-_ALTO_CHIP = 82
+#   1. ONCE ES DEMASIADO. Nadie lee once cosas de un vistazo, y para que
+#      entraran habia que abrir tanto el lienzo que el caso —lo que hay que
+#      seguir leyendo— quedaba al 51%.
+#   2. LAS LINEAS PASABAN POR DEBAJO DE LOS NODOS. El producto esta en
+#      (706,142) y las columnas a su derecha y abajo: las lineas a «se vende
+#      en» y «guardado en» cruzaban la tarjeta de la regla (795..965 x
+#      210..290) y pasaban por atras del envio. Una linea que pasa por abajo
+#      de una caja no se lee como conexion, se lee como error de dibujo.
+#
+# Habia un comentario que decia que el abanico se habia probado y no daba cero
+# choques. Era cierto CON ONCE NODOS. Con cuatro el problema es otro: sobra
+# lugar, y hay un lado enteramente libre.
+#
+# EL LADO LIBRE ES ARRIBA. El caso ocupa y>=83 (el post-it de la nota empieza
+# ahi) y se extiende hacia abajo hasta y=504 (el envio). Arriba del producto no
+# hay absolutamente nada, y el lienzo se agranda al abrir. Asi que el abanico
+# se abre hacia ARRIBA, entre -145 y -25 grados, con radio 340: a esa altura
+# ninguna linea llega siquiera a tocar la banda donde vive la regla.
+#
+# UNA POR CATEGORIA, y categorias que digan cosas distintas: donde se vende,
+# quien lo compra, donde esta guardado, con que se vende junto. Cuatro del
+# mismo tipo no agregan una idea por nodo, agregan una lista.
+_ABANICO_RELS = ("se vende en", "lo compra", "guardado en", "se vende junto con")
+_ABANICO_MAX = 4
+_ABANICO_RADIO = 340
+_ABANICO_DESDE, _ABANICO_HASTA = -145.0, -25.0   # grados, y hacia abajo
+# la etiqueta de la relacion, arriba de la forma (la forma llega a y-27)
+_ABANICO_DY_ETIQUETA = -48
 
 
 def _nombre_corto(nombre: str) -> str:
@@ -391,23 +408,33 @@ def expansion(lang: str = "es") -> dict:
         por_rel.setdefault(rel, []).append(
             {"id": otro, "tipo": n["tipo"], "nombre": _nombre_corto(n.get("nombre") or otro)})
 
-    grupos, total = [], 0
-    for x, rels in _COLUMNAS:
-        y = _Y_INICIAL
-        for rel in rels:
-            miembros = por_rel.get(rel) or []
-            if not miembros:
-                continue
-            miembros.sort(key=lambda m: m["nombre"])
-            miembros = miembros[:TOPE_POR_GRUPO]
-            total += len(miembros)
-            for i, m in enumerate(miembros):
-                m["x"], m["y"] = x, y + 62 + i * _ALTO_CHIP
-            grupos.append({"rel": rel, "x": x, "y": y, "nodos": miembros})
-            y += 62 + len(miembros) * _ALTO_CHIP + _SEPARACION_GRUPO
-
-    if not grupos:
+    # UNA SOLA por categoria, en el orden en que cuentan la historia. La
+    # eleccion adentro de la categoria es alfabetica: deterministica, que es lo
+    # que importa cuando se ensaya un pitch veinte veces.
+    elegidos = []
+    for rel in _ABANICO_RELS:
+        miembros = por_rel.get(rel) or []
+        if not miembros:
+            continue
+        miembros.sort(key=lambda m: m["nombre"])
+        elegidos.append((rel, dict(miembros[0])))
+        if len(elegidos) >= _ABANICO_MAX:
+            break
+    if not elegidos:
         return {}
+
+    # El abanico: angulos repartidos parejo en el arco libre de arriba.
+    n = len(elegidos)
+    paso = ((_ABANICO_HASTA - _ABANICO_DESDE) / (n - 1)) if n > 1 else 0.0
+    base = _ABANICO_DESDE if n > 1 else (_ABANICO_DESDE + _ABANICO_HASTA) / 2
+    px, py = _POS_PRODUCTO
+    grupos = []
+    for i, (rel, m) in enumerate(elegidos):
+        ang = math.radians(base + i * paso)
+        m["x"] = round(px + _ABANICO_RADIO * math.cos(ang))
+        m["y"] = round(py + _ABANICO_RADIO * math.sin(ang))
+        grupos.append({"rel": rel, "x": m["x"],
+                       "y": m["y"] + _ABANICO_DY_ETIQUETA, "nodos": [m]})
 
     # El encuadre, ajustado a los extremos REALES. Con un margen generoso a
     # ambos lados el lienzo se iba a 1940 de ancho y la escena quedaba al 51%:
@@ -415,8 +442,10 @@ def expansion(lang: str = "es") -> dict:
     # el ancho de cada chip y se deja poco aire.
     planos = [m for gr in grupos for m in gr["nodos"]]
     medio_chip = lambda n: max(112.0, len(n) * 5.75 + 46) / 2
-    x0 = min([0] + [m["x"] - medio_chip(m["nombre"]) for m in planos])
-    x1 = max([ANCHO] + [m["x"] + medio_chip(m["nombre"]) for m in planos])
+    x0 = min([0] + [m["x"] - medio_chip(m["nombre"]) for m in planos]
+                 + [gr["x"] - len(gr["rel"]) * 3.4 for gr in grupos])
+    x1 = max([ANCHO] + [m["x"] + medio_chip(m["nombre"]) for m in planos]
+                     + [gr["x"] + len(gr["rel"]) * 3.4 for gr in grupos])
     y0 = min([0] + [gr["y"] - 14 for gr in grupos])
     y1 = max([ALTO] + [m["y"] + 46 for m in planos])
     m_ = 46
@@ -567,11 +596,20 @@ def expansion_proveedor(lang: str = "es") -> dict:
         p["x"] = round(x0 + c * (ANCHO_T + SEP) + ANCHO_T / 2)
         p["y"] = round(y0 + r * (ALTO_T + SEP) + ALTO_T / 2)
 
+    # LA ETIQUETA VA DEBAJO DE LA FILA, no arriba.
+    #
+    # Centrada arriba quedaba en (404, y0-48) y las lineas del rombo a las
+    # tarjetas —que bajan desde (404,400)— le pasaban por encima: la del medio
+    # es casi vertical en x=404, o sea exactamente por el medio del texto. Lo
+    # encontro el chequeo de lineas contra cajas de scripts/revisar_escena.py,
+    # no la pantalla. Debajo de la fila no llega ninguna linea, porque todas
+    # terminan en el borde de arriba de una tarjeta.
     grupos = [{"rel": _t("escena.rel_le_enseñaron", lang),
-               "x": 404, "y": y0 - 48, "nodos": piezas}]
+               "x": 404, "y": y0 + ALTO_T + 30, "nodos": piezas}]
 
     x1 = x0 + cols * ANCHO_T + (cols - 1) * SEP
-    y1 = y0 + filas * ALTO_T + (filas - 1) * SEP
+    # +44: la etiqueta del racimo ahora cuelga DEBAJO de la fila
+    y1 = y0 + filas * ALTO_T + (filas - 1) * SEP + 44
     m_ = 46
     return {
         "desde": "proveedor",

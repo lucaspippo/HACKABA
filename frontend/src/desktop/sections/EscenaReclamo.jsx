@@ -463,6 +463,11 @@ function FormaExp({ tipo, x, y, color }) {
 //      cuatro tarjetas en columna se van a 350px de alto y obligan a alejar
 //      tanto el lienzo que el caso queda ilegible.
 const T_ANCHO = 190, T_ALTO = 92, T_PLIEGUE = 16;
+// El sello de la tarjeta usada, y el ancho que de verdad necesita su texto a
+// 10.5px con peso 700. Se calcula, no se adivina: era un numero fijo y el
+// texto se salia.
+const SELLO_USADA = "la que usé para esto";
+const ANCHO_SELLO = Math.round(SELLO_USADA.length * 5.95 + 20);
 
 function TarjetaConocimiento({ n }) {
   const x0 = n.x - T_ANCHO / 2, y0 = n.y - T_ALTO / 2;
@@ -497,10 +502,15 @@ function TarjetaConocimiento({ n }) {
         // la etiqueta cuelga del borde de arriba, fuera de la tarjeta, para no
         // comerle renglones al texto
         <g transform={`translate(${x0 + T_ANCHO - 4} ${y0 - 9})`}>
-          <rect x="-96" y="-11" width="96" height="19" rx="9.5" fill={TINTA} />
-          <text x="-48" y="2.5" textAnchor="middle" fill="#fbfbfa"
+          {/* EL OVALO SE MIDE CON EL TEXTO. Estaba fijo en 96px y el texto
+              necesita ~124: se veia el cartel cortado, con las primeras letras
+              afuera del fondo oscuro —«a que usé para esto»— encima de la
+              tarjeta. Un cartel cortado no dice nada, ensucia. */}
+          <rect x={-ANCHO_SELLO} y="-11" width={ANCHO_SELLO} height="19"
+                rx="9.5" fill={TINTA} />
+          <text x={-ANCHO_SELLO / 2} y="2.5" textAnchor="middle" fill="#fbfbfa"
                 fontSize="10.5" fontWeight="700" letterSpacing=".02em">
-            la que usé para esto
+            {SELLO_USADA}
           </text>
         </g>
       )}

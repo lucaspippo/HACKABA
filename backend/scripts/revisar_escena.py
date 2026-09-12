@@ -19,6 +19,7 @@ Sale 0 si no hay choques; 1 y la lista si los hay.
 """
 from __future__ import annotations
 
+import math
 import os
 import sys
 
@@ -71,6 +72,94 @@ def chocan(r1, r2, margen=4):
                 or r1[3] + margen < r2[1] or r2[3] + margen < r1[1])
 
 
+
+# --- LINEAS QUE PASAN POR DEBAJO DE CAJAS -----------------------------------
+#
+# POR QUE SE AGREGO. El chequeo solo comparaba CAJA contra CAJA y daba cero
+# mientras en la pantalla las lineas del producto atravesaban la tarjeta de la
+# regla, pasaban por atras de «arma el reclamo» y cruzaban por detras de dos
+# productos. Una linea que pasa por abajo de una caja no se lee como conexion:
+# se lee como un error de dibujo. Y ninguna comparacion de rectangulos lo iba
+# a encontrar nunca, porque una linea no es un rectangulo.
+#
+# Se reproduce la MISMA curva que dibuja el frontend (Expansion en
+# EscenaReclamo.jsx), se la muestrea, y se chequea cada tramo contra cada caja.
+
+R_EXP = 25          # radio de la forma de un nodo de expansion
+RETIRO_DISCO = R_EXP + 9
+T_ANCHO_F, T_ALTO_F = 190, 92     # la tarjeta de regla, en el frontend
+MUESTRAS = 240
+
+
+def _punto_final(desde, n, tarjeta):
+    """Donde frena la linea: al borde de la forma. Misma cuenta que el JSX."""
+    dx, dy = n[0] - desde[0], n[1] - desde[1]
+    largo = math.hypot(dx, dy) or 1.0
+    if tarjeta:
+        ex, ey = T_ANCHO_F / 2 + 8, T_ALTO_F / 2 + 8
+        rec = min(ex / abs(dx / largo) if abs(dx) > 0.5 else 1e9,
+                  ey / abs(dy / largo) if abs(dy) > 0.5 else 1e9)
+    else:
+        rec = RETIRO_DISCO
+    return (n[0] - dx / largo * rec, n[1] - dy / largo * rec)
+
+
+def curva_expansion(desde, n, tarjeta):
+    """Los puntos de la curva cuadratica, muestreada."""
+    fx, fy = _punto_final(desde, n, tarjeta)
+    dx, dy = n[0] - desde[0], n[1] - desde[1]
+    cx = (desde[0] + fx) / 2 - dy * 0.07
+    cy = (desde[1] + fy) / 2 + dx * 0.07
+    pts = []
+    for i in range(MUESTRAS + 1):
+        t = i / MUESTRAS
+        u = 1 - t
+        pts.append((u * u * desde[0] + 2 * u * t * cx + t * t * fx,
+                    u * u * desde[1] + 2 * u * t * cy + t * t * fy))
+    return pts
+
+
+def curva_arista(a, b, k):
+    """La curva de una arista del caso: misma `curva()` del frontend."""
+    cx, cy = punto_medio(a, b, k)
+    pts = []
+    for i in range(MUESTRAS + 1):
+        t = i / MUESTRAS
+        u = 1 - t
+        pts.append((u * u * a[0] + 2 * u * t * cx + t * t * b[0],
+                    u * u * a[1] + 2 * u * t * cy + t * t * b[1]))
+    return pts
+
+
+def _dentro(p, r):
+    return r[0] <= p[0] <= r[2] and r[1] <= p[1] <= r[3]
+
+
+def _cruzan(p, q, a, b):
+    """Se cortan los segmentos pq y ab?"""
+    def lado(o, x, y):
+        return (x[0] - o[0]) * (y[1] - o[1]) - (x[1] - o[1]) * (y[0] - o[0])
+    d1, d2 = lado(a, b, p), lado(a, b, q)
+    d3, d4 = lado(p, q, a), lado(p, q, b)
+    return ((d1 > 0) != (d2 > 0)) and ((d3 > 0) != (d4 > 0))
+
+
+def toca_rect(pts, r, margen=3):
+    """Pasa la polilinea por adentro (o al ras) del rectangulo?"""
+    x0, y0, x1, y1 = r[0] - margen, r[1] - margen, r[2] + margen, r[3] + margen
+    lados = (((x0, y0), (x1, y0)), ((x1, y0), (x1, y1)),
+             ((x1, y1), (x0, y1)), ((x0, y1), (x0, y0)))
+    caja = (x0, y0, x1, y1)
+    for i in range(len(pts) - 1):
+        p, q = pts[i], pts[i + 1]
+        if _dentro(p, caja) or _dentro(q, caja):
+            return True
+        for a, b in lados:
+            if _cruzan(p, q, a, b):
+                return True
+    return False
+
+
 def main() -> None:
     os.environ.setdefault("POLPILOT_TENANT", "demo")
     from core import escena
@@ -103,10 +192,16 @@ def main() -> None:
     # es una etiqueta que se va a pisar.
     # CADA expansion se chequea POR SEPARADO contra la escena: nunca se abren
     # dos a la vez, asi que que dos expansiones se pisen entre si no importa.
+    lineas = []          # (nombre, puntos, cual_expansion, id_del_destino)
+    cajas_exp = {}       # cual -> [(nombre, rect, id_nodo)]
     for cual, exp in (esc.get("expansiones") or {}).items():
+        desde = nodos.get(exp.get("desde") or cual)
+        tarjeta = exp.get("forma") == "tarjeta"
         for gr in exp.get("grupos", []):
-            cajas.append((f"rel:{cual}:«{gr['rel']}»",
-                          rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
+            r_rel = rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)
+            cajas.append((f"rel:{cual}:«{gr['rel']}»", r_rel))
+            cajas_exp.setdefault(cual, []).append(
+                (f"etiqueta «{gr['rel']}»", r_rel, None))
             tarjeta = exp.get("forma") == "tarjeta"
             for m in gr["nodos"]:
                 if tarjeta:
@@ -115,14 +210,21 @@ def main() -> None:
                     # +11 de alto por la etiqueta «la que usé» de la usada,
                     # que cuelga por fuera del borde de arriba.
                     extra = 22 if m.get("usada") else 0
-                    cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
-                                  rect(m["x"], m["y"] - extra / 2,
-                                       ANCHO_TARJETA, ALTO_TARJETA + extra)))
-                    continue
-                # centrado en la forma, que esta arriba del nombre
-                cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
-                              rect(m["x"], m["y"] + 12, ANCHO_CHIP(m["nombre"]),
-                                   ALTO_NODO_EXP)))
+                    r = rect(m["x"], m["y"] - extra / 2,
+                             ANCHO_TARJETA, ALTO_TARJETA + extra)
+                else:
+                    # centrado en la forma, que esta arriba del nombre
+                    r = rect(m["x"], m["y"] + 12, ANCHO_CHIP(m["nombre"]),
+                             ALTO_NODO_EXP)
+                nom = f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}"
+                cajas.append((nom, r))
+                cajas_exp.setdefault(cual, []).append((nom, r, m["id"]))
+                if desde:
+                    lineas.append((
+                        f"linea {cual} -> {m['nombre'][:28]}",
+                        curva_expansion((desde["x"], desde["y"]),
+                                        (m["x"], m["y"]), tarjeta),
+                        cual, m["id"]))
 
     # LA PILDORA DE LA PISTA. Vive abajo a la izquierda, fuera del grupo que se
     # transforma, asi que no se achica con la escena: en coordenadas del lienzo
@@ -154,12 +256,41 @@ def main() -> None:
             if chocan(r1, r2):
                 choques.append((n1, n2))
 
-    if not choques:
-        print(f"[escena] {len(cajas)} cajas, 0 choques")
+    # --- LINEAS CONTRA CAJAS -------------------------------------------
+    #
+    # Cada linea de expansion contra: los nodos del caso, las etiquetas de sus
+    # aristas, y los nodos y etiquetas de SU PROPIA expansion (las de la otra
+    # nunca coexisten). Se saltea el nodo de DESTINO de la linea —llegar hasta
+    # el es su trabajo— y el nodo del que SALE, por lo mismo.
+    cajas_caso = [(n, r) for n, r in cajas
+                  if n.startswith("nodo:") or n.startswith("etiqueta:")]
+    exps = esc.get("expansiones") or {}
+    cruces = []
+    for nombre, pts, cual, destino in lineas:
+        origen = "nodo:" + (exps.get(cual, {}).get("desde") or cual)
+        for n2, r2 in cajas_caso:
+            if n2 == origen:
+                continue
+            if toca_rect(pts, r2):
+                cruces.append((nombre, n2))
+        for n2, r2, nid in cajas_exp.get(cual, []):
+            if nid == destino:
+                continue
+            if toca_rect(pts, r2):
+                cruces.append((nombre, n2))
+
+    if not choques and not cruces:
+        print(f"[escena] {len(cajas)} cajas, {len(lineas)} lineas, "
+              f"0 choques, 0 cruces")
         raise SystemExit(0)
-    print(f"[escena] {len(choques)} CHOQUE(S):")
-    for n1, n2 in choques:
-        print(f"  {n1}\n    pisa {n2}")
+    if choques:
+        print(f"[escena] {len(choques)} CHOQUE(S) de caja:")
+        for n1, n2 in choques:
+            print("  " + n1 + chr(10) + "    pisa " + n2)
+    if cruces:
+        print(f"[escena] {len(cruces)} LINEA(S) por debajo de una caja:")
+        for n1, n2 in cruces:
+            print("  " + n1 + chr(10) + "    cruza " + n2)
     raise SystemExit(1)
 
 
