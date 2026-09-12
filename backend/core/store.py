@@ -119,6 +119,44 @@ def actualizar_articulo(codigo: int, cambios: dict, actor: str) -> dict:
     raise KeyError(codigo)
 
 
+def buscar_por_source(source: str, source_id: str) -> dict | None:
+    return next((d for d in raw_actual()
+                 if d.get("source") == source and d.get("source_id") == source_id), None)
+
+
+def upsert_desde_conector(fila: dict, actor: str) -> dict:
+    """Alta o actualización de un producto que llega de un conector externo
+    (p.ej. Odoo), a diferencia de crear_articulo/actualizar_articulo
+    (ediciones manuales del dueño): resuelve el código automáticamente y
+    acepta los campos de procedencia (source, source_id, sku). Usado tanto
+    para el auto-upsert de productos ya vinculados (core/odoo_ingest.py)
+    como al integrar un batch de Staging con productos nuevos."""
+    raw = raw_actual()
+    existente = next((d for d in raw if d.get("source") == fila["source"]
+                       and d.get("source_id") == fila["source_id"]), None)
+    if existente:
+        antes = dict(existente)
+        for campo in ("descripcion", "sku", "stock", "costo_iva", "pvp"):
+            if campo in fila:
+                existente[campo] = fila[campo]
+        _recalcular_inmovilizado(existente)
+        guardar(raw)
+        audit.record(actor, "actualizar_articulo_conector", antes, existente)
+        return existente
+    siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
+    nuevo = {
+        "codigo": siguiente, "descripcion": fila["descripcion"], "estado": "activo",
+        "stock": fila.get("stock") or 0, "costo_iva": fila.get("costo_iva"),
+        "pvp": fila.get("pvp"), "venta_x_peso": False,
+        "sku": fila.get("sku"), "source": fila["source"], "source_id": fila["source_id"],
+    }
+    _recalcular_inmovilizado(nuevo)
+    raw.append(nuevo)
+    guardar(raw)
+    audit.record(actor, "crear_articulo_conector", None, nuevo)
+    return nuevo
+
+
 def resetear_actual() -> None:
     """Descarta las correcciones y vuelve al inventory.json original."""
     global _panorama_cache
