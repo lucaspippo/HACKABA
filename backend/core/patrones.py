@@ -183,7 +183,8 @@ def _unnoticed_combo_card(lang) -> dict | None:
             _t("core.pat.combo_hyp_falta" if has_gap else "core.pat.combo_hyp_conjunto",
                lang, n=len(missed))),
         evidence=[
-            ins.metric("cooccurrence_rate", label=summary, value=attach_pct, unit="pct",
+            ins.metric("cooccurrence_rate", label=_t("core.pat.combo_rate_lbl", lang),
+                       value=attach_pct, unit="pct",
                        weight="primary", method=cooccurrence_method),
             ins.metric("combo_amount", label=_t("core.pat.combo_amount_ev", lang), value=amount, unit="ars",
                        weight="primary", method=amount_method),

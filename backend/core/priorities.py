@@ -1165,7 +1165,7 @@ def _alerts_evolucion(lang) -> list[dict]:
         evidence = []
         if inter.get("variacion_real_pct") is not None:
             evidence.append(ins.metric(
-                "yoy_change", label=f"{_num(inter['variacion_real_pct'], lang)}%",
+                "yoy_change", label=_t("core.prio.yoy_change_lbl", lang),
                 value=inter["variacion_real_pct"], unit="pct", weight="primary",
                 baseline={"value": inter.get("real_anterior"),
                           "label": _t("core.prio.caida_s", lang)},
@@ -1221,7 +1221,7 @@ def _alerts_pico(lang) -> list[dict]:
             pattern=ins.pattern(_t("core.prio.pico_p", lang, mes=pico.get("mes") or "",
                                    cat=pico.get("categoria") or "")),
             evidence=[
-                ins.metric("peak_multiplier", label=f"×{pico.get('indice')}",
+                ins.metric("peak_multiplier", label=_t("core.prio.peak_multiplier_lbl", lang),
                            value=pico.get("indice"), unit="×", weight="primary",
                            method=metodo),
             ],
