@@ -2,8 +2,10 @@ import { ChevronDown, Loader2 } from "lucide-react";
 
 // Marcas reales, inline (sin assets externos — mismo criterio que el resto
 // de la app): un conector reconocible de un vistazo pesa más para la
-// confianza/adopción que un ícono genérico. CSV/BCRA/MCP no tienen una marca
-// propia que valga la pena reproducir; Odoo y WhatsApp sí.
+// confianza/adopción que un ícono genérico. CSV/BCRA no tienen una marca
+// propia que valga la pena reproducir; Odoo, WhatsApp y los clientes de IA
+// (Claude/ChatGPT/Gemini) sí. Son aproximaciones simplificadas de cada marca
+// (mismo criterio que el ícono de WhatsApp de abajo), no assets oficiales.
 export function LogoWhatsApp({ size = 18 }) {
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="#25D366" aria-hidden="true">
@@ -19,6 +21,51 @@ export function LogoOdoo({ size = 18 }) {
       <path fillRule="evenodd" clipRule="evenodd"
         d="M12 6.4a5.6 5.6 0 1 0 0 11.2 5.6 5.6 0 0 0 0-11.2Zm0 2.5a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2Z"
         fill="#fff" />
+    </svg>
+  );
+}
+
+export function LogoClaude({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <g fill="#D97757">
+        {[0, 45, 90, 135].map((deg) => (
+          <rect key={deg} x="10.7" y="1.8" width="2.6" height="20.4" rx="1.3"
+            transform={`rotate(${deg} 12 12)`} />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+export function LogoOpenAI({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <g fill="none" stroke="#0B0B0C" strokeWidth="2.4">
+        {[0, 60, 120, 180, 240, 300].map((deg) => {
+          const rad = (deg * Math.PI) / 180;
+          return (
+            <circle key={deg} r="3.5"
+              cx={12 + 4.3 * Math.cos(rad)} cy={12 + 4.3 * Math.sin(rad)} />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
+export function LogoGemini({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <defs>
+        <linearGradient id="gemini-mark-grad" x1="2" y1="2" x2="22" y2="22">
+          <stop offset="0%" stopColor="#4285F4" />
+          <stop offset="50%" stopColor="#9B72CB" />
+          <stop offset="100%" stopColor="#D96570" />
+        </linearGradient>
+      </defs>
+      <path fill="url(#gemini-mark-grad)"
+        d="M12 2c0 5.5-4.5 10-10 10 5.5 0 10 4.5 10 10 0-5.5 4.5-10 10-10-5.5 0-10-4.5-10-10Z" />
     </svg>
   );
 }

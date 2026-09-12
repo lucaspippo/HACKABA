@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   FileSpreadsheet, LineChart, Waypoints, Copy, Check, ChevronDown, MessagesSquare,
+  Eye, EyeOff,
   Users, Package, Truck, ShoppingCart, ShoppingBag, Warehouse, PackagePlus,
   PackageCheck, FileText, Tag,
 } from "lucide-react";
@@ -8,10 +9,12 @@ import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { useT } from "../../lib/i18n";
+import { useSession } from "../../lib/auth";
 import IngestPipeline from "./IngestPipeline";
 import {
   ConnectorCard, ConnectorStatusPill, ConnectorField, ConnectorButton,
-  ConnectorSyncAction, ConnectorEmptyState, LogoOdoo, LogoWhatsApp,
+  ConnectorSyncAction, ConnectorEmptyState,
+  LogoOdoo, LogoWhatsApp, LogoClaude, LogoOpenAI, LogoGemini,
 } from "./connectorUI";
 
 // Plan 11 · una sola página para TODO sistema externo que hable con PolPilot.
@@ -62,14 +65,26 @@ export default function Conectores({ onNavigate }) {
       {lista === false && <p className="text-[0.9rem] text-rojo-hondo">{t("conectores.error")}</p>}
 
       {lista && (
-        <div className="space-y-4">
-          {lista.map((c) => (
-            c.nombre === "odoo"
-              ? <PanelOdoo key={c.nombre} estado={c.estado} onNavigate={onNavigate} />
-              : <TarjetaConector key={c.nombre} nombre={c.nombre} estado={c.estado} />
-          ))}
-          <PanelWhatsApp />
-        </div>
+        <>
+          <div className="space-y-4">
+            {lista.map((c) => (
+              c.nombre === "odoo"
+                ? <PanelOdoo key={c.nombre} estado={c.estado} onNavigate={onNavigate} />
+                : <TarjetaConector key={c.nombre} nombre={c.nombre} estado={c.estado} />
+            ))}
+            <PanelWhatsApp />
+          </div>
+
+          <div className="pt-2">
+            <h2 className="font-display text-[1.15rem] font-bold text-tinta">{t("conectores.ia_titulo")}</h2>
+            <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("conectores.ia_intro")}</p>
+          </div>
+          <div className="space-y-4">
+            <PanelConectorIA logo={LogoClaude} nombre="Claude" pasoFinal={t("conectores.ia_paso_claude")} />
+            <PanelConectorIA logo={LogoOpenAI} nombre="ChatGPT" pasoFinal={t("conectores.ia_paso_chatgpt")} />
+            <PanelConectorIA logo={LogoGemini} nombre="Gemini" pasoFinal={t("conectores.ia_paso_gemini")} />
+          </div>
+        </>
       )}
     </div>
   );
@@ -307,6 +322,84 @@ function PanelWhatsApp() {
         </ol>
       ))}
       {cfg && <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>}
+    </ConnectorCard>
+  );
+}
+
+// CONECTOR DE IA (Claude/ChatGPT/Gemini, sobre el servidor MCP de sólo
+// lectura en backend/mcp_server.py, montado en /mcp — ver backend/MCP.md).
+// Las tres tarjetas son deliberadamente la MISMA info (URL + token de esta
+// sesión + "pegalo en la app"): un cliente MCP habla el mismo protocolo sin
+// importar qué IA lo use. Separarlas en tarjetas por marca, en vez de una
+// sola tarjeta genérica "MCP", es a propósito — cada una reconocible de un
+// vistazo pesa más para mostrar alcance que una lista de texto.
+function PanelConectorIA({ logo: Logo, nombre, pasoFinal }) {
+  const t = useT();
+  const session = useSession();
+  const [abierta, setAbierta] = useState(false);
+  const [copiadoUrl, setCopiadoUrl] = useState(false);
+  const [copiadoToken, setCopiadoToken] = useState(false);
+  const [mostrarToken, setMostrarToken] = useState(false);
+
+  const mcpUrl = `${window.location.origin}/mcp`;
+  const token = session?.token || "";
+
+  const copiar = (texto, setFlag) => {
+    navigator.clipboard?.writeText(texto).then(() => {
+      setFlag(true);
+      setTimeout(() => setFlag(false), 1500);
+    });
+  };
+
+  return (
+    <ConnectorCard
+      logo={Logo}
+      tone="active"
+      title={nombre}
+      subtitle={t("conectores.ia_card_subtitulo")}
+      status={<ConnectorStatusPill variant="activo">{t("conectores.ia_disponible")}</ConnectorStatusPill>}
+      expanded={abierta}
+      onToggle={() => setAbierta((v) => !v)}
+    >
+      <ol className="space-y-3">
+        <li className="rounded-xl bg-papel-hondo/40 p-3">
+          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_url")}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+              {mcpUrl}
+            </code>
+            <button type="button" onClick={() => copiar(mcpUrl, setCopiadoUrl)}
+              aria-label={t("conectores.ia_copiar_url")}
+              className="shrink-0 rounded-lg border border-linea p-1.5 text-tinta-suave transition-colors hover:border-tinta/40 hover:text-tinta">
+              {copiadoUrl ? <Check size={14} className="text-salvia" /> : <Copy size={14} />}
+            </button>
+          </div>
+        </li>
+        <li className="rounded-xl bg-papel-hondo/40 p-3">
+          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_token")}</p>
+          <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{t("conectores.ia_paso_token_desc")}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+              {mostrarToken ? token : "•".repeat(24)}
+            </code>
+            <button type="button" onClick={() => setMostrarToken((v) => !v)}
+              aria-label={t(mostrarToken ? "conectores.ia_ocultar_token" : "conectores.ia_mostrar_token")}
+              className="shrink-0 rounded-lg border border-linea p-1.5 text-tinta-suave transition-colors hover:border-tinta/40 hover:text-tinta">
+              {mostrarToken ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+            <button type="button" onClick={() => copiar(token, setCopiadoToken)}
+              aria-label={t("conectores.ia_copiar_token")}
+              className="shrink-0 rounded-lg border border-linea p-1.5 text-tinta-suave transition-colors hover:border-tinta/40 hover:text-tinta">
+              {copiadoToken ? <Check size={14} className="text-salvia" /> : <Copy size={14} />}
+            </button>
+          </div>
+        </li>
+        <li className="rounded-xl bg-papel-hondo/40 p-3">
+          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_app")}</p>
+          <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{pasoFinal}</p>
+        </li>
+      </ol>
+      <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("conectores.ia_nota")}</p>
     </ConnectorCard>
   );
 }

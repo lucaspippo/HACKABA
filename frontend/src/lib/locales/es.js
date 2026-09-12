@@ -2732,6 +2732,24 @@ export const ES = {
   "conectores.whatsapp_nombre": "WhatsApp Business",
   "conectores.whatsapp_desc": "El canal de ventas: catálogo, pedidos y presupuestos por chat, atendidos por Ángela.",
 
+  // --- Conectores de IA (Claude/ChatGPT/Gemini vía el servidor MCP) ----------
+  "conectores.ia_titulo": "Conectá tu asistente de IA",
+  "conectores.ia_intro": "PolPilot expone un servidor MCP de sólo lectura: llevá los mismos datos que ves acá a la IA que ya usás todos los días. Ve exactamente lo que tu rol puede ver — nunca corrige nada ni actúa solo.",
+  "conectores.ia_card_subtitulo": "Consultá tus datos de PolPilot desde acá, de sólo lectura.",
+  "conectores.ia_disponible": "Disponible",
+  "conectores.ia_paso_url": "Tu URL de conexión (MCP)",
+  "conectores.ia_paso_token": "Tu token de acceso",
+  "conectores.ia_paso_token_desc": "Es tu sesión actual: expira sola en unas horas. Cada persona del equipo usa la suya — nunca la compartas.",
+  "conectores.ia_paso_app": "Configuralo en la app",
+  "conectores.ia_paso_claude": "En Claude Desktop: Configuración → Conectores → Agregar conector personalizado, pegá la URL y agregá la Autorización con tu token. En claude.ai es el mismo camino, desde Configuración → Conectores.",
+  "conectores.ia_paso_chatgpt": "En ChatGPT: Configuración → Conectores, agregá un conector MCP con esta URL y un header personalizado Authorization: Bearer con tu token. El nombre exacto del menú puede variar según tu plan — buscá 'MCP' o 'conectores'.",
+  "conectores.ia_paso_gemini": "En Gemini: buscá la sección de extensiones o conectores en Configuración y agregá esta URL con tu token como header Authorization. La disponibilidad de conectores MCP puede variar según tu plan.",
+  "conectores.ia_nota": "Sólo lectura: nunca corrige un dato, cierra la caja ni manda un mensaje por vos. Eso sigue pasando sólo dentro de la app.",
+  "conectores.ia_copiar_url": "Copiar la URL de conexión",
+  "conectores.ia_copiar_token": "Copiar el token",
+  "conectores.ia_mostrar_token": "Mostrar el token",
+  "conectores.ia_ocultar_token": "Ocultar el token",
+
   // --- Bot de WhatsApp (canal de ventas de cara al cliente) ------------------
   "whatsapp_bot.error_generico": "Algo falló. Probá de nuevo en un momento.",
   "whatsapp_bot.error_guardar": "No pude validar esas credenciales contra WhatsApp Business. Revisalas y probá de nuevo.",
