@@ -119,6 +119,67 @@ def _blank_drill():
     return {"porque": [], "grafico": None, "involucrados": [], "supuestos": []}
 
 
+def _blank_insight():
+    from . import insight
+    return insight.blank()
+
+
+def _legacy_drill(ins: dict) -> dict:
+    """TEMPORARY one-way projection of an insight back into the old `drill`
+    shape, so the untouched frontend keeps rendering while the builders
+    migrate. Nothing is dual-authored: builders only ever write insights and
+    this derives from them. DELETE once CardNegocio.jsx reads `insight`
+    (see docs/superpowers/plans/2026-09-01-structured-insight-contract.md,
+    Task 13)."""
+    ev = ins.get("evidence") or []
+    porque = [p["label"] for p in (ins.get("pattern"), ins.get("hypothesis")) if p]
+    porque += [e["label"] for e in ev if e["weight"] == "primary"]
+    chart = next((e["chart"] for e in ev if e.get("chart")), None)
+    involucrados = [
+        {"id": r["id"], "kind": r["kind"], "nombre": r["name"],
+         "monto": r["amount"], "detalle": r["detail"]}
+        for e in ev for r in (e.get("records") or [])
+    ]
+    conf = ins.get("confidence") or {}
+    return {
+        "porque": porque,
+        "grafico": chart,
+        "involucrados": involucrados,
+        "supuestos": [a["label"] for a in (ins.get("assumptions") or [])],
+        "confidence": conf.get("data"),
+    }
+
+
+def _insight_from_legacy_drill(drill: dict) -> dict:
+    """TEMPORARY reverse shim: wrap a not-yet-migrated builder's `drill` into a
+    minimal insight, so builders can migrate one task at a time instead of all
+    ~25 in a single commit. The pattern is the drill's first prose line; the
+    rest become supporting metrics with no value, which is honest — legacy
+    prose has no raw number to recover.
+
+    DELETE with `_legacy_drill` and the `drill=` keyword (Task 13)."""
+    from . import insight as ins
+    porque = list(drill.get("porque") or [])
+    evidence = []
+    if drill.get("grafico"):
+        evidence.append(ins.series("legacy_chart", label=porque[0] if porque else "",
+                                   chart=drill["grafico"],
+                                   method={"key": "core.method.legacy", "label": ""}))
+    if drill.get("involucrados"):
+        evidence.append(ins.records(
+            "legacy_records", label="",
+            rows=[ins.record(kind=iv.get("kind"), id=iv.get("id"),
+                             name=iv.get("nombre") or "", amount=iv.get("monto"),
+                             detail=iv.get("detalle"))
+                  for iv in drill["involucrados"]],
+            method={"key": "core.method.legacy", "label": ""}))
+    return ins.build(
+        pattern=ins.pattern(porque[0]) if porque else None,
+        evidence=evidence,
+        assumptions=[ins.assumption(s) for s in (drill.get("supuestos") or [])],
+    )
+
+
 def _grafico(nombre: str, puntos: list[dict], unidad: str, temporal: bool,
              ventana: str = "") -> dict:
     """Contract P21 (consulta-serie) — same shape as oportunidades_neg._grafico,
@@ -146,7 +207,13 @@ def _deposito_lot_value(rows: list[dict]) -> list[dict]:
 def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
           monto=None, monto_label=None, cifra_texto=None, fuentes=None,
           navegar=None, accion_chat=None, propuesta=None, piso=False,
-          macro=None, naturaleza=None, tipo=None, drill=None, reportes=None):
+          macro=None, naturaleza=None, tipo=None, drill=None, insight=None,
+          reportes=None):
+    # `insight=` is the real keyword; `drill=` is transitional and still
+    # used by every not-yet-migrated builder (Tasks 5-9). `_legacy_drill`
+    # keeps the untouched frontend fed until Task 13 removes both shims.
+    resolved_insight = insight or (
+        _insight_from_legacy_drill(drill) if drill else _blank_insight())
     return {
         "id": id,
         "tono": tono,
@@ -166,7 +233,8 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
         "naturaleza": naturaleza,
         "tipo": ACTION_BY_ID.get(id) or tipo,
         "modulos": tuple(modulos),
-        "drill": drill or _blank_drill(),
+        "insight": resolved_insight,
+        "drill": _legacy_drill(resolved_insight),  # TEMPORARY, Task 13
         "reportes": reportes,
         "band": None,
         "action_taken": None,
@@ -201,30 +269,49 @@ def merge_duplicates(items: list[dict]) -> list[dict]:
 
 
 def _combine(keep: dict, extra: dict) -> dict:
+    """One fact, one card. Evidence unions by stable `id`, so two builders
+    describing the same number in different words can no longer both survive
+    — which is exactly what string de-duplication failed to prevent."""
     origen = list(dict.fromkeys(
         (keep.get("origen") or []) + (extra.get("origen") or [])))
     tono = "rojo" if "rojo" in (keep.get("tono"), extra.get("tono")) else keep.get("tono")
-    drill = dict(keep.get("drill") or _blank_drill())
-    extra_drill = extra.get("drill") or {}
-    extra_p = extra_drill.get("porque") or []
-    if extra_p:
-        seen = set(drill.get("porque") or [])
-        porque = list(drill.get("porque") or [])
-        for p in extra_p:
-            if p not in seen:
-                porque.append(p)
-                seen.add(p)
-        drill["porque"] = porque
-    if not drill.get("grafico") and extra_drill.get("grafico"):
-        drill["grafico"] = extra_drill["grafico"]
-    extra_inv = extra_drill.get("involucrados") or []
-    if extra_inv and not (drill.get("involucrados") or []):
-        drill["involucrados"] = extra_inv
     out = dict(keep)
     out["origen"] = origen
     out["tono"] = tono
-    out["drill"] = drill
+    out["insight"] = _merge_insights(keep.get("insight") or _blank_insight(),
+                                     extra.get("insight") or _blank_insight())
+    out["drill"] = _legacy_drill(out["insight"])  # TEMPORARY, Task 13
     return out
+
+
+def _merge_insights(keep: dict, extra: dict) -> dict:
+    """The canonical card's reading wins; the twin only contributes evidence
+    and caveats it uniquely has."""
+    merged = dict(keep)
+    by_id = {e["id"]: dict(e) for e in keep.get("evidence") or []}
+    order = [e["id"] for e in keep.get("evidence") or []]
+    for e in extra.get("evidence") or []:
+        if e["id"] not in by_id:
+            by_id[e["id"]] = dict(e)
+            order.append(e["id"])
+        elif e["weight"] == "primary":
+            # Load-bearing beats supporting; the twin may know better.
+            by_id[e["id"]]["weight"] = "primary"
+    merged["evidence"] = [by_id[i] for i in order]
+
+    for key in ("assumptions", "alternatives", "falsifiers"):
+        seen, rows = set(), []
+        for row in (keep.get(key) or []) + (extra.get(key) or []):
+            if row["label"] in seen:
+                continue
+            seen.add(row["label"])
+            rows.append(row)
+        merged[key] = rows
+
+    # pattern / hypothesis / risk / recommendation / deadline: keep the
+    # canonical card's. Concatenating two readings of one fact is what
+    # produced the duplicated prose this contract replaces.
+    return merged
 
 
 def split_and_rank(items: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -310,8 +397,55 @@ def with_action_taken(items: list[dict]) -> list[dict]:
     return items
 
 
+URGENCY_THIS_WEEK_DAYS = 7
+
+
+def _derive(item: dict, lang) -> None:
+    """Fill the insight fields that need the finished insight (and the
+    tenant's team) rather than one builder's local knowledge."""
+    from . import confidence, insight_owner
+    ins = item["insight"]
+    ins["confidence"] = confidence.split_for(ins, lang)
+    ins["owner"] = insight_owner.suggest(item.get("modulos") or ())
+    if ins.get("risk"):
+        ins["risk"]["level"] = _risk_level(item, ins["risk"].get("exposure"))
+    if ins.get("deadline"):
+        ins["deadline"]["urgency"] = _urgency(ins["deadline"].get("date"))
+    item["drill"] = _legacy_drill(ins)  # TEMPORARY, Task 13
+
+
+def _risk_level(item: dict, exposure) -> str:
+    """A leak-today card is high risk by definition; otherwise exposure
+    decides. Watch-band cards are never high: that band exists precisely
+    because they are not dispatchable work today."""
+    if item["id"] in LEAK_TODAY:
+        return "high"
+    if _is_watch(item):
+        return "low" if not exposure else "medium"
+    return "medium" if exposure else "low"
+
+
+def _urgency(date: str | None) -> str | None:
+    if not date:
+        return None
+    from datetime import date as _date
+    from . import fechas
+    today = fechas.hoy()
+    try:
+        due = _date.fromisoformat(date[:10])
+    except ValueError:
+        return None
+    days = (due - today).days
+    if days < 0:
+        return "overdue"
+    if days == 0:
+        return "today"
+    if days <= URGENCY_THIS_WEEK_DAYS:
+        return "this_week"
+    return "later"
+
+
 def _compose(lang) -> dict:
-    from . import confidence
     items: list[dict] = []
     items.extend(_opportunity_items(lang))
     items.extend(_pattern_items(lang))
@@ -319,7 +453,7 @@ def _compose(lang) -> dict:
     items.extend(_piso_items(lang))
     merged = merge_duplicates(items)
     for it in merged:
-        it["drill"]["confidence"] = confidence.level_for(it["drill"], lang)
+        _derive(it, lang)
     hay_ventas = False
     try:
         from . import ventas

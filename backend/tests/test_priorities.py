@@ -367,3 +367,65 @@ def test_badge_counts_only_open_act_cards():
     open_["action_taken"] = None
     act, watch = priorities.split_and_rank([done, open_])
     assert priorities.badge_of({"act": act, "watch": watch}) == 1
+
+
+# --- structured insight contract ------------------------------------------
+
+from core import insight as _ins
+
+
+def _with_insight(cid, ins, **kw):
+    return _item(cid, **kw) | {"insight": ins}
+
+
+def test_merge_unions_evidence_by_id_instead_of_concatenating_prose():
+    """The duplicate-prose bug: `morosos` and `cobrar_morosos` both state the
+    same fact in different words, so string de-dup kept both. Keyed evidence
+    makes the duplicate structurally impossible."""
+    ev = lambda w: _ins.metric("overdue_total", label="3 clientes por $85.700.000",
+                               value=85700000, unit="ars", weight=w,
+                               method={"key": "k", "label": "l"})
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("p"),
+                                                   evidence=[ev("supporting")]))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("otra redaccion"),
+                                            evidence=[ev("primary")]))
+    out = priorities.merge_duplicates([a, b])
+    assert len(out) == 1
+    evidence = out[0]["insight"]["evidence"]
+    assert len(evidence) == 1
+    assert evidence[0]["weight"] == "primary", "primary must win over supporting"
+
+
+def test_merge_keeps_the_canonical_pattern_and_never_concatenates():
+    a = _with_insight("cobrar_morosos", _ins.build(pattern=_ins.pattern("canonica")))
+    b = _with_insight("morosos", _ins.build(pattern=_ins.pattern("la del alerta")))
+    out = priorities.merge_duplicates([a, b])
+    assert out[0]["insight"]["pattern"]["label"] == "canonica"
+
+
+def test_merge_unions_assumptions_by_label():
+    a = _with_insight("cobrar_morosos", _ins.build(
+        pattern=_ins.pattern("p"), assumptions=[_ins.assumption("mismo supuesto")]))
+    b = _with_insight("morosos", _ins.build(
+        pattern=_ins.pattern("p"),
+        assumptions=[_ins.assumption("mismo supuesto"), _ins.assumption("otro")]))
+    out = priorities.merge_duplicates([a, b])
+    assert len(out[0]["insight"]["assumptions"]) == 2
+
+
+def test_compose_derives_confidence_owner_and_urgency_on_every_card():
+    inbox = priorities.inbox("es", None)
+    for card in inbox["act"] + inbox["watch"]:
+        ins = card["insight"]
+        assert ins["confidence"]["data"]["level"] in ("high", "medium", "low")
+        assert ins["confidence"]["hypothesis"]["level"] in ("high", "medium", "low")
+        assert "owner" in ins           # may be None; must be resolved, not missing
+        if ins["deadline"]:
+            assert ins["deadline"]["urgency"] in (
+                "overdue", "today", "this_week", "later")
+
+
+def test_every_card_carries_a_pattern():
+    inbox = priorities.inbox("es", None)
+    for card in inbox["act"] + inbox["watch"]:
+        assert card["insight"]["pattern"]["label"], f"{card['id']} has no pattern"
