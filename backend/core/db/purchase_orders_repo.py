@@ -8,7 +8,7 @@ from sqlalchemy import text
 from core.db.engine import tenant_connection, to_local_iso
 
 _COLS = ("number", "date", "supplier", "status", "origin", "reason",
-         "prepared_by", "approved_by", "prepared_at", "items")
+         "prepared_by", "approved_by", "prepared_at", "items", "location")
 
 
 def _to_orden(row) -> dict:
@@ -23,6 +23,7 @@ def _to_orden(row) -> dict:
         "aprobada_por": row["approved_by"],
         "preparada": to_local_iso(row["prepared_at"]),
         "items": row["items"],
+        "ubicacion_entrega": row["location"],
     }
 
 
@@ -63,9 +64,9 @@ def create(tenant_id: str, orden: dict) -> None:
             text(
                 "INSERT INTO purchase_orders "
                 "(tenant_id, number, date, supplier, status, origin, reason, "
-                "prepared_by, approved_by, prepared_at, items) "
+                "prepared_by, approved_by, prepared_at, items, location) "
                 "VALUES (:tid, :number, :date, :supplier, :status, :origin, :reason, "
-                ":prepared_by, :approved_by, :prepared_at, :items)"
+                ":prepared_by, :approved_by, :prepared_at, :items, :location)"
             ),
             {
                 "tid": tenant_id,
@@ -84,6 +85,7 @@ def create(tenant_id: str, orden: dict) -> None:
                 # audit_repo.seed_if_empty().
                 "prepared_at": datetime.datetime.fromisoformat(orden["preparada"]).astimezone(),
                 "items": json.dumps(orden["items"]),
+                "location": orden.get("ubicacion_entrega"),
             },
         )
 
@@ -91,3 +93,15 @@ def create(tenant_id: str, orden: dict) -> None:
 def count(tenant_id: str) -> int:
     with tenant_connection(tenant_id) as conn:
         return conn.execute(text("SELECT count(*) FROM purchase_orders")).scalar_one()
+
+
+def update_status(tenant_id: str, numero: str, estado: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                f"UPDATE purchase_orders SET status = :estado "
+                f"WHERE number = :numero RETURNING {', '.join(_COLS)}"
+            ),
+            {"estado": estado, "numero": numero},
+        ).mappings().first()
+    return _to_orden(row) if row else None

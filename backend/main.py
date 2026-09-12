@@ -1839,6 +1839,216 @@ def ordenes_preparadas(_u: dict = Depends(require_feature("inventario"))):
     return {"ordenes": ordenes.listar()}
 
 
+class OrdenCompraManualRequest(BaseModel):
+    proveedor: str
+    ubicacion: str = ""
+    fecha: str = ""
+    motivo: str = ""
+    items: list[dict]
+
+
+@app.post("/api/ordenes-compra")
+def ordenes_compra_crear(req: OrdenCompraManualRequest,
+                         u: dict = Depends(require_feature("inventario"))):
+    """La orden que el dueño arma a mano, sin esperar a que Ángela detecte un
+    quiebre — mismo almacenamiento que orden_compra_preparar, otro origen."""
+    from core import ordenes
+    try:
+        orden = ordenes.crear_manual(
+            proveedor=req.proveedor, ubicacion=req.ubicacion, fecha=req.fecha,
+            items=req.items, motivo=req.motivo,
+            actor=u.get("nombre") or u.get("username") or "dueño")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"ok": True, "orden": orden}
+
+
+class OrdenCompraEstadoRequest(BaseModel):
+    estado: str
+
+
+@app.post("/api/ordenes-compra/{numero}/estado")
+def ordenes_compra_estado(numero: str, req: OrdenCompraEstadoRequest,
+                          u: dict = Depends(require_feature("inventario"))):
+    from core import ordenes
+    try:
+        orden = ordenes.actualizar_estado(
+            numero, req.estado, actor=u.get("nombre") or u.get("username") or "dueño")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True, "orden": orden}
+
+
+# --- Ubicaciones, proveedores y lotes: entidades reales del depósito ---
+
+class UbicacionRequest(BaseModel):
+    nombre: str
+    nota: str = ""
+
+
+@app.get("/api/ubicaciones")
+def ubicaciones_listar(_u: dict = Depends(require_feature("inventario"))):
+    from core import ubicaciones
+    return {"ubicaciones": ubicaciones.listar()}
+
+
+@app.post("/api/ubicaciones")
+def ubicaciones_crear(req: UbicacionRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import ubicaciones
+    try:
+        return ubicaciones.crear(req.nombre, u.get("nombre") or u.get("username"), nota=req.nota)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/ubicaciones/{id}/actualizar")
+def ubicaciones_actualizar(id: str, req: UbicacionRequest,
+                           u: dict = Depends(require_feature("inventario"))):
+    from core import ubicaciones
+    try:
+        return ubicaciones.actualizar(id, req.model_dump(), u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.post("/api/ubicaciones/{id}/eliminar")
+def ubicaciones_eliminar(id: str, u: dict = Depends(require_feature("inventario"))):
+    from core import ubicaciones
+    try:
+        ubicaciones.eliminar(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+class ProveedorRequest(BaseModel):
+    nombre: str
+    contacto: str = ""
+    telefono: str = ""
+    email: str = ""
+    notas: str = ""
+
+
+@app.get("/api/proveedores")
+def proveedores_listar(_u: dict = Depends(require_feature("inventario"))):
+    from core import proveedores
+    return {"proveedores": proveedores.listar()}
+
+
+@app.post("/api/proveedores")
+def proveedores_crear(req: ProveedorRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import proveedores
+    try:
+        return proveedores.crear(req.model_dump(), u.get("nombre") or u.get("username"))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/proveedores/{id}/actualizar")
+def proveedores_actualizar(id: str, req: ProveedorRequest,
+                           u: dict = Depends(require_feature("inventario"))):
+    from core import proveedores
+    try:
+        return proveedores.actualizar(id, req.model_dump(), u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.post("/api/proveedores/{id}/eliminar")
+def proveedores_eliminar(id: str, u: dict = Depends(require_feature("inventario"))):
+    from core import proveedores
+    try:
+        proveedores.eliminar(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+class LoteRequest(BaseModel):
+    codigo: int | None = None
+    producto: str = ""
+    ubicacion: str
+    lote: str = ""
+    vencimiento: str | None = None
+    cantidad: float = 0
+
+
+@app.get("/api/lotes")
+def lotes_listar(_u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    return {"lotes": lotes.listar()}
+
+
+@app.post("/api/lotes")
+def lotes_crear(req: LoteRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    try:
+        return lotes.crear(req.model_dump(), u.get("nombre") or u.get("username"))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/lotes/{id}/actualizar")
+def lotes_actualizar(id: str, req: LoteRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    try:
+        return lotes.actualizar(id, req.model_dump(), u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.post("/api/lotes/{id}/eliminar")
+def lotes_eliminar(id: str, u: dict = Depends(require_feature("inventario"))):
+    from core import lotes
+    try:
+        lotes.eliminar(id, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+    return {"ok": True}
+
+
+class ArticuloRequest(BaseModel):
+    codigo: int
+    descripcion: str
+    tipo: str = ""
+    proveedor: str = ""
+    stock: float = 0
+    costo_iva: float | None = None
+    pvp: float | None = None
+
+
+@app.post("/api/articulos")
+def articulos_crear(req: ArticuloRequest, u: dict = Depends(require_feature("inventario"))):
+    from core import store
+    try:
+        return store.crear_articulo(req.model_dump(), u.get("nombre") or u.get("username"))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+class ArticuloActualizarRequest(BaseModel):
+    descripcion: str | None = None
+    tipo: str | None = None
+    proveedor: str | None = None
+    stock: float | None = None
+    costo_iva: float | None = None
+    pvp: float | None = None
+    estado: str | None = None
+
+
+@app.post("/api/articulos/{codigo}/actualizar")
+def articulos_actualizar(codigo: int, req: ArticuloActualizarRequest,
+                         u: dict = Depends(require_feature("inventario"))):
+    from core import store
+    cambios = {k: v for k, v in req.model_dump().items() if v is not None}
+    try:
+        return store.actualizar_articulo(codigo, cambios, u.get("nombre") or u.get("username"))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
 @app.get("/api/macro")
 def macro_get(u: dict = Depends(require_feature("mapa"))):
     """P28 — el nodo 'Contexto económico' del mapa: IPC y dólar REALES ya

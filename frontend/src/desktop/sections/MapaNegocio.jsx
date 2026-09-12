@@ -1470,7 +1470,7 @@ function NodoDetalle({ insight, onNavegar, onPreguntar, onCerrar, t, flotante })
 
       {/* El detalle completo es opcional y va ÚLTIMO: el nodo primero informa. */}
       <div className="mt-3 border-t border-linea pt-3">
-        <button onClick={() => onNavegar?.(insight.seccion)}
+        <button onClick={() => onNavegar?.(insight.seccion, insight.hl)}
           className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold text-tinta hover:border-tinta/30">
           {t("mapa.ir_a", { seccion: t(`nav.${insight.seccion}`) })} <ArrowRight size={13} />
         </button>
@@ -1980,7 +1980,9 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
 
   // Click en un sub-nodo: sus conclusiones al panel (entidades reales).
   const seleccionarSub = (sid, data) => {
-    let conclusiones = [], titulo = data.label, prompt = null, seccion = null;
+    // `hl` viaja hasta el botón "ver más" para que el drill-through abra la
+    // entidad puntual (el modal de este cliente), no sólo la sección genérica.
+    let conclusiones = [], titulo = data.label, prompt = null, seccion = null, hl = null;
     if (data.kind === "cliente" || (data.kind === "segmento" && false)) {
       const c = data.cliente;
       if (c) {
@@ -1991,6 +1993,7 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
         ].filter(Boolean);
         prompt = `contame de ${c.nombre}: su historial y su riesgo`;
         seccion = "cuentas";
+        hl = c.id != null ? `cliente-${c.id}` : null;
       }
     } else if (data.kind === "persona") {
       const p = data.persona;
@@ -2017,7 +2020,7 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
     // El insight de un sub-nodo (entidad real: cliente, ítem, persona) no cablea
     // conocimiento propio, pero el campo debe existir o el panel revienta.
     const ins = { id: sid, icon: DOMINIOS[rama]?.icon || Boxes, titulo, tono: "verde",
-      conclusiones, alerta: null, hallazgos: [], conocimiento: [], seccion: seccion || "panel",
+      conclusiones, alerta: null, hallazgos: [], conocimiento: [], seccion: seccion || "panel", hl,
       prompt: prompt || DOMINIOS[rama]?.prompt, alCamino: verHallazgo };
     if (esDesktop) setPanelIzq(ins);
     else setSeleccionMobile(ins);
