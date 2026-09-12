@@ -178,4 +178,5 @@ def resumen() -> dict:
         "por_vencer": len(vencimientos()),
         "vencidos": len(vencidos()),
         "discrepancias": len(discrepancias_conocimiento()["visibles"]),
+        "aging": aging(),
     }

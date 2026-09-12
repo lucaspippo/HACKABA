@@ -66,6 +66,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
   }, [data]);
   const picos = analisis?.estacionalidad?.proximos_picos || [];
   const kpis = analisis?.kpis || {};
+  const nQuiebre = (forecast?.items || []).filter((it) => it.available && it.stockout_risk).length;
 
   if (!d) return <div className="pt-2"><Cargando error={error} /></div>;
 
@@ -132,30 +133,14 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
         )}
       </header>
 
-      {forecast?.available && (forecast.items || []).some((it) => it.available) && (
-        <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
-            {t("evolucion.forecast_titulo")}
+      {nQuiebre > 0 && (
+        <button type="button" onClick={() => onNavegar?.("inventario", "reponer")}
+          className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-crema px-5 py-4 text-left sombra-papel hover:border-rojo/40">
+          <p className="text-[0.9rem] font-semibold text-tinta">
+            {t("evolucion.forecast_ir_reponer", { n: num(nQuiebre) })}
           </p>
-          <ul className="mt-3 space-y-2">
-            {(forecast.items || []).filter((it) => it.available).slice(0, 8).map((it) => {
-              const next = it.months?.[0];
-              if (!next) return null;
-              return (
-                <li key={it.product_code} className="flex flex-wrap items-baseline justify-between gap-2 text-[0.85rem]">
-                  <span className="min-w-0 truncate font-medium text-tinta">{it.description || it.product_code}</span>
-                  <span className="shrink-0 text-tinta-suave">
-                    {t("evolucion.forecast_mes", { qty: num(next.qty), period: next.period })}
-                    {next.interval_ok
-                      ? ` · ${t("evolucion.forecast_intervalo", { low: num(next.qty_low), high: num(next.qty_high) })}`
-                      : ` · ${t("evolucion.forecast_sin_intervalo")}`}
-                    {it.stockout_risk ? ` · ${t("evolucion.forecast_quiebre")}` : ""}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+          <ArrowRight size={16} className="shrink-0 text-rojo" />
+        </button>
       )}
 
       {/* P18·A — la fila de KPIs del dueño: MISMA fuente que el chat y el PDF
