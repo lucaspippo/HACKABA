@@ -8,6 +8,7 @@ import {
   Brain,
   X,
 } from "lucide-react";
+import AngelaMark from "../components/AngelaMark";
 import FacturaFlow from "../components/FacturaFlow";
 import ChatThread from "../components/assistant/ChatThread";
 import IconButton from "../components/assistant/IconButton";
@@ -129,22 +130,30 @@ export default function ChatPanel({
   const width = variant === "fullscreen" ? "mx-auto w-full max-w-3xl" : "";
 
   const emptyState = (
-    <div className="flex w-full flex-col gap-1">
-      {prompts.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          onClick={() => aui.thread.append(p.prompt)}
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium leading-snug text-tinta transition-colors hover:bg-crema"
-        >
-          <span className="min-w-0 flex-1">{t(p.labelKey)}</span>
-          <ChevronRight
-            size={15}
-            className="shrink-0 text-tinta-suave/40 transition-colors group-hover:text-tinta"
-          />
-        </button>
-      ))}
-    </div>
+    <>
+      <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
+        <AngelaMark size={variant === "fullscreen" ? 44 : 48} />
+        <h2 className="mt-3 font-display text-lg font-bold tracking-tight text-tinta">
+          {t("angela.hola")}
+        </h2>
+      </div>
+      <div className="flex w-full flex-col gap-1">
+        {prompts.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => aui.thread.append(p.prompt)}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium leading-snug text-tinta transition-colors hover:bg-crema"
+          >
+            <span className="min-w-0 flex-1">{t(p.labelKey)}</span>
+            <ChevronRight
+              size={15}
+              className="shrink-0 text-tinta-suave/40 transition-colors group-hover:text-tinta"
+            />
+          </button>
+        ))}
+      </div>
+    </>
   );
 
   return (
