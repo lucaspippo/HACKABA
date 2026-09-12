@@ -1754,6 +1754,8 @@ CATALOGO: dict[str, dict[str, str]] = {
 
     # --- la escena del reclamo (core/escena.py) ---------------------------
     "escena.titulo": {"es": "Reclamo a {proveedor}", "en": "Claim to {proveedor}"},
+    "escena.expansion_titulo": {"es": "Todo lo que toca este producto",
+                                "en": "Everything this product touches"},
     "escena.separador": {"es": "el mismo problema, con otro proveedor",
                          "en": "the same problem, with another supplier"},
     "escena.y": {"es": " y ", "en": " and "},

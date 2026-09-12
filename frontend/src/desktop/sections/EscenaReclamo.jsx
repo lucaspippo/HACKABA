@@ -17,6 +17,7 @@
 // posición es una decisión de producto —se lee como una frase de izquierda a
 // derecha— y no algo que deba recalcular el navegador.
 import { useEffect, useMemo, useState } from "react";
+import { useT } from "../../lib/i18n";
 
 // --- el lenguaje visual, el mismo del cerebro -------------------------------
 // EL FONDO ES PAPEL, NO NEGRO. La escena vive adentro del producto y tiene
@@ -366,8 +367,63 @@ function EtiquetaPildora({ x, y, texto, apagada }) {
 }
 
 // =============================================================================
+// LA EXPANSION — lo que hay detras del camino.
+//
+// Se toca el producto y aparecen sus OTRAS relaciones: las que no son parte de
+// la respuesta. Sin animacion de recorrido, a proposito: el trazado cuenta un
+// razonamiento y esto no es un razonamiento, es «ademas, hay todo esto». Sale
+// de una vez, como se ve un grafo normalmente.
+//
+// Las formas son DELIBERADAMENTE simples —un disco y una etiqueta— contra las
+// del caso, que estan dibujadas una por una (el post-it, el rombo, el remito).
+// Esa diferencia hace el trabajo: lo dibujado con cuidado es la respuesta, lo
+// simple es el resto del cerebro asomando. Si tuvieran la misma prolijidad,
+// competirian.
+const COLOR_EXP = {
+  rubro: "#6f7490", local: "#a99f8c", cliente: "#2e9c6a",
+  producto: "#2f8fa8", ubicacion: "#8a8378", remito: "#7a63b8",
+};
+
+function Expansion({ datos, desde, visible }) {
+  if (!datos?.nodos?.length || !desde) return null;
+  return (
+    <g opacity={visible ? 1 : 0}
+       style={{ transition: "opacity 420ms ease-out", pointerEvents: "none" }}>
+      {datos.nodos.map((n, i) => {
+        const color = COLOR_EXP[n.tipo] || "#8b8fa8";
+        const ancho = Math.max(96, n.nombre.length * 5.3 + 18);
+        const izq = n.x - ancho / 2;
+        return (
+          <g key={n.id}
+             style={{
+               // cada uno entra apenas despues del anterior: no es un
+               // recorrido, es que no aparezcan los once de un golpe seco
+               transition: `opacity 300ms ease-out ${80 + i * 45}ms`,
+               opacity: visible ? 1 : 0,
+             }}>
+            <path d={`M ${desde.x} ${desde.y} L ${n.x} ${n.y}`} fill="none"
+                  stroke="rgba(33,32,29,.22)" strokeWidth="1.4" />
+            <rect x={izq} y={n.y - 15} width={ancho} height="30" rx="15"
+                  fill={FONDO} stroke={color} strokeWidth="1.6" />
+            <circle cx={izq + 15} cy={n.y} r="5" fill={color} />
+            <text x={izq + 28} y={n.y + 4} fill={TINTA} fontSize="11">
+              {n.nombre.length > 30 ? n.nombre.slice(0, 29) + "…" : n.nombre}
+            </text>
+            <text x={n.x} y={n.y - 21} textAnchor="middle"
+                  fill="rgba(33,32,29,.5)" fontSize="9.5">{n.rel}</text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
   const [paso, setPaso] = useState(trazar ? 0 : 99);
+  const [abierto, setAbierto] = useState(false);
+  const t = useT();
+  // al volver a la escena (otra pregunta) se cierra sola
+  useEffect(() => { setAbierto(false); }, [escena, trazar]);
 
   const nodos = useMemo(() => {
     const m = {};
@@ -400,6 +456,30 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
     encendidos.add(a.de); encendidos.add(a.a);
   });
 
+  // EL ALEJARSE DEL LIENZO ES EL MENSAJE. Al abrir, la escena se achica y se
+  // recentra para que entre todo lo que aparecio: ese movimiento dice «lo que
+  // estabas mirando era un recorte» mejor que cualquier cartel.
+  //
+  // No se anima el viewBox (no es animable por CSS): el viewBox queda fijo y se
+  // transforma el grupo de adentro, que si transiciona suave.
+  const exp = escena.expansion || null;
+  const puedeAbrir = !!exp?.nodos?.length && paso >= (escena.aristas || []).length;
+  const vb = exp?.lienzo_abierto;
+  let encuadre = "";
+  if (abierto && vb) {
+    const [ox, oy, ow, oh] = vb;
+    const k = Math.min(ancho / ow, alto / oh);
+    // EN CSS, NO EN SINTAXIS SVG. `translate(184 150)` es valido como atributo
+    // `transform` de SVG pero NO como propiedad CSS: ahi van unidades y coma, y
+    // sin ellas el navegador descarta la regla entera en silencio — la escena
+    // no se movia y los nodos nuevos quedaban fuera del viewBox, invisibles.
+    // `transformBox: view-box` + `transformOrigin: 0 0` hacen que el transform
+    // CSS se comporte como el de SVG (si no, el origen es el centro de la caja
+    // del elemento y la cuenta de arriba no cierra).
+    encuadre = `translate(${ancho / 2 - k * (ox + ow / 2)}px, ${alto / 2 - k * (oy + oh / 2)}px) scale(${k})`;
+  }
+  const nodoDesde = nodos[exp?.desde];
+
   return (
     <svg viewBox={`0 0 ${ancho} ${alto}`} className="h-full w-full"
          style={{ background: FONDO }}>
@@ -414,20 +494,58 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
       </defs>
 
 
-      {(escena.aristas || []).map((a, i) => (
-        <Arista key={i} a={a} nodos={nodos} idx={i}
-                trazada={i < paso} activa={!a.apagado} />
-      ))}
+      <g style={{ transform: encuadre || "none",
+                  transformBox: "view-box", transformOrigin: "0 0",
+                  transition: "transform 720ms cubic-bezier(.4,0,.2,1)" }}>
+        {(escena.aristas || []).map((a, i) => (
+          <Arista key={i} a={a} nodos={nodos} idx={i}
+                  trazada={i < paso} activa={!a.apagado} />
+        ))}
 
-      {(escena.nodos || []).map((n) => {
-        const F = FORMAS[n.tipo];
-        if (!F) return null;
-        return (
-          <g key={n.id} onClick={() => onNodo?.(n)} style={{ cursor: onNodo ? "pointer" : "default" }}>
-            <F n={n} encendido={encendidos.has(n.id)} />
-          </g>
-        );
-      })}
+        {/* Lo que hay detras, DEBAJO de los nodos del caso: el camino nunca
+            queda tapado por lo que se sumo — se suma, no lo reemplaza. */}
+        <Expansion datos={exp} desde={nodoDesde} visible={abierto} />
+
+        {(escena.nodos || []).map((n) => {
+          const F = FORMAS[n.tipo];
+          if (!F) return null;
+          // el producto es el unico que se toca: abre y cierra
+          const esElQueAbre = puedeAbrir && n.id === exp.desde;
+          return (
+            <g key={n.id}
+               onClick={() => (esElQueAbre ? setAbierto((v) => !v) : onNodo?.(n))}
+               style={{ cursor: esElQueAbre || onNodo ? "pointer" : "default" }}>
+              {/* un halo que late una sola vez cuando ya se puede tocar: sin
+                  esto nadie adivina que ese nodo hace algo */}
+              {esElQueAbre && !abierto && (
+                <circle cx={n.x} cy={n.y} r="66" fill="none" stroke={AZUL_IA}
+                        strokeWidth="2" opacity=".55">
+                  <animate attributeName="r" values="60;74;60" dur="2.2s"
+                           repeatCount="indefinite" />
+                  <animate attributeName="opacity" values=".55;.1;.55" dur="2.2s"
+                           repeatCount="indefinite" />
+                </circle>
+              )}
+              <F n={n} encendido={encendidos.has(n.id)} />
+            </g>
+          );
+        })}
+      </g>
+
+      {/* LA PISTA, y tambien la puerta de vuelta. Sin una linea que lo diga,
+          que el producto se pueda tocar no lo descubre nadie en un pitch de
+          dos minutos y medio. Va FUERA del grupo que se transforma: no se
+          achica con la escena. */}
+      {puedeAbrir && (
+        <g onClick={() => setAbierto((v) => !v)} style={{ cursor: "pointer" }}>
+          <rect x="18" y={alto - 46} width={abierto ? 168 : 268} height="30" rx="15"
+                fill={FONDO} stroke={abierto ? AZUL_IA : LINEA} strokeWidth="1.5" />
+          <text x="34" y={alto - 26}
+                fill={abierto ? AZUL_IA : "rgba(33,32,29,.62)"} fontSize="12.5">
+            {abierto ? `← ${t("cerebro.contraer")}` : t("cerebro.expandir")}
+          </text>
+        </g>
+      )}
     </svg>
   );
 }

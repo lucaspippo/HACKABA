@@ -82,12 +82,26 @@ def main() -> None:
         w = len(a["etiqueta"]) * ANCHO_CHAR + PAD_PILDORA
         cajas.append((f"etiqueta:«{a['etiqueta']}»", rect(cx, cy, w, ALTO_PILDORA)))
 
+    # Los nodos de la EXPANSION tambien tienen que caber: se dibujan encima de
+    # la misma escena cuando se toca el producto.
+    exp = esc.get("expansion") or {}
+    for n in exp.get("nodos", []):
+        w = max(120, len(n["nombre"]) * 5.6 + 20)
+        cajas.append((f"expansion:{n['nombre'][:26]}", rect(n["x"], n["y"], w, 46)))
+
     choques = []
     for i, (n1, r1) in enumerate(cajas):
         for n2, r2 in cajas[i + 1:]:
             # dos nodos pegados no importan: lo que se lee mal es una ETIQUETA
             # encima de cualquier cosa.
-            if not n1.startswith("etiqueta") and not n2.startswith("etiqueta"):
+            etiquetas = n1.startswith("etiqueta") or n2.startswith("etiqueta")
+            expansion = n1.startswith("expansion") or n2.startswith("expansion")
+            if not etiquetas and not expansion:
+                continue
+            # dos nodos de la expansion pegados entre si: es un abanico, se
+            # tocan de a ratos y no molesta. Lo que no puede pasar es que uno
+            # caiga sobre la escena que ya estaba.
+            if n1.startswith("expansion") and n2.startswith("expansion"):
                 continue
             if chocan(r1, r2):
                 choques.append((n1, n2))

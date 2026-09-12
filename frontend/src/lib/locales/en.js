@@ -346,6 +346,8 @@ export const EN = {
   "cerebro.tab_mapa_ay": "The eight sources and their data cuts",
   "cerebro.tab_cerebro_ay": "Every product, customer and supplier, and how they cross",
   "cerebro.titulo": "Your business's brain",
+  "cerebro.expandir": "Tap the product: there is more behind it",
+  "cerebro.contraer": "Back to the path",
   "cerebro.bajada": "{nodos} real entities crossed by {aristas} relationships. The most connected drift to the center on their own: that core is your business.",
   "cerebro.cargando": "Crossing entities…",
   "cerebro.vacio": "No entities to cross yet. Load inventory and sales and the brain builds itself.",

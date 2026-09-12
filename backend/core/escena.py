@@ -246,6 +246,8 @@ def reclamo(lang: str = "es") -> dict:
         # El id de la pieza de conocimiento, para que el guion pueda CITARLA
         # en el texto ([·](memoria:k23)) y el chat pinte el cerebrito.
         "regla_id": regla_caso.get("id"),
+        # lo que aparece al TOCAR el producto (precargado: ver expansion())
+        "expansion": expansion(lang),
         "producto": producto_nombre,
         "cruce_id": "cruce_reclamo_devolucion",
         "procedencia": {
@@ -259,6 +261,127 @@ def reclamo(lang: str = "es") -> dict:
                 "veces": regla_caso.get("veces_aplicada"),
             },
         },
+    }
+
+
+# =============================================================================
+# LO QUE HAY DETRAS DEL CAMINO — el nodo que se toca y se abre.
+#
+# EL PROBLEMA QUE RESUELVE. Mirando la escena, ocho nodos prolijos, es razonable
+# pensar que eso es TODO lo que el sistema tiene. No lo es: es un recorte de 605
+# entidades. Tocando un nodo y viendo aparecer el resto de sus relaciones, el
+# grafo pasa de «ocho cosas dibujadas» a «una porcion de un cerebro».
+#
+# POR QUE EL PRODUCTO Y NO EL PROVEEDOR. Medido sobre el grafo real:
+#
+#   Lacteos Campo Alegre   grado 83  — pero 73 son `provee` a productos.
+#                                      Expandirlo son 73 puntos iguales: una
+#                                      nube monotona que no dice nada nuevo.
+#   LECHE ENTERA CAMPO     grado 14  — repartido en OCHO tipos distintos:
+#   ALEGRE 1L (X12U)                   rubro, proveedor, 3 locales, 4 coventas,
+#                                      2 clientes, remito, ubicacion, nota.
+#
+# El segundo es el que cuenta algo: el mismo producto vive en la venta, en la
+# co-compra, en la logistica, en el deposito y en las notas del equipo. Ocho
+# cajas rotas dejan de ser ocho cajas.
+#
+# Tres de esas catorce ya estan en la escena (proveedor, nota, remito), asi que
+# al tocar aparecen ONCE nodos nuevos. Alcanza para que se note y no tanto como
+# para tapar lo que ya estaba.
+NODO_EXPANDIBLE = "producto"
+TOPE_EXPANSION = 14          # si algun dia hubiera mas, se corta acá
+
+# Como se leen las relaciones del grafo, en palabras.
+_REL_LEIBLE = {
+    "compra": "lo compra", "coventa": "se vende junto con", "guarda": "guardado en",
+    "menciona": "lo menciona", "pertenece": "es de", "pide": "lo pide",
+    "provee": "lo provee", "vende": "se vende en",
+}
+
+# El orden en que se reparten alrededor: agrupados por tipo, para que el ojo
+# lea familias y no una lista.
+_ORDEN_TIPOS = ("rubro", "local", "cliente", "producto", "ubicacion")
+
+
+def expansion(lang: str = "es") -> dict:
+    """Las otras relaciones del producto del caso, ya colocadas.
+
+    Va DENTRO de la respuesta de `reclamo()` y no en un endpoint aparte: se
+    toca en vivo delante de un jurado, y una llamada de red en ese momento es
+    un riesgo que no compra nada. Vienen precargadas y el click solo las
+    muestra.
+    """
+    from . import grafo as _grafo
+
+    nota = next((n for n in notas.listar(tipo="incidencia_entrega")
+                 if (n.get("proveedor") or "") == PROVEEDOR_CASO), None)
+    if not nota:
+        return {}
+    producto_nombre = nota.get("producto")
+    art = next((a for a in store.raw_actual()
+                if (a.get("descripcion") or "") == producto_nombre), None)
+    if not art:
+        return {}
+    pid = f"prod:{art.get('codigo')}"
+
+    g = _grafo.completo(lang)
+    nodos_g = {n["id"]: n for n in g["nodos"]}
+    if pid not in nodos_g:
+        return {}
+
+    # lo que YA se ve en la escena no se repite
+    ya = {"proveedor", "nota", "remito"}
+    vecinos = []
+    for a in g["aristas"]:
+        otro = (a["target"] if a["source"] == pid
+                else a["source"] if a["target"] == pid else None)
+        if otro is None or otro not in nodos_g:
+            continue
+        n = nodos_g[otro]
+        if n["tipo"] in ya:
+            continue
+        vecinos.append({"id": otro, "tipo": n["tipo"],
+                        "nombre": n.get("nombre") or otro,
+                        "rel": _REL_LEIBLE.get(a["rel"], a["rel"])})
+
+    vecinos.sort(key=lambda v: (_ORDEN_TIPOS.index(v["tipo"])
+                                if v["tipo"] in _ORDEN_TIPOS else 99, v["nombre"]))
+    vecinos = vecinos[:TOPE_EXPANSION]
+    if not vecinos:
+        return {}
+
+    # --- las posiciones, decididas (igual que el resto de este modulo) -------
+    # Un abanico arriba y a la derecha del producto: hacia abajo-izquierda esta
+    # el resto de la escena y no se toca. Dos radios para que no queden todas
+    # sobre la misma circunferencia, que se lee como un reloj.
+    import math
+    cx, cy = 706, 142
+    n = len(vecinos)
+    colocados = []
+    for i, v in enumerate(vecinos):
+        # SOLO hacia arriba y a la derecha, de -150° a 0°. Abajo esta la
+        # tarjeta de la regla (880,250) y el envio (726,452): bajar de la
+        # horizontal ponia nodos encima de las dos. Lo verifica
+        # scripts/revisar_escena.py, que tambien mira la expansion.
+        ang = math.radians(-150 + (150 * i / max(1, n - 1)))
+        r = 200 if i % 2 == 0 else 300
+        colocados.append({**v,
+                          "x": round(cx + r * math.cos(ang)),
+                          "y": round(cy + r * math.sin(ang))})
+
+    xs = [c["x"] for c in colocados] + [0, ANCHO]
+    ys = [c["y"] for c in colocados] + [0, ALTO]
+    margen = 90
+    vb = [min(xs) - margen, min(ys) - margen,
+          max(xs) - min(xs) + margen * 2, max(ys) - min(ys) + margen * 2]
+
+    return {
+        "desde": "producto",
+        "titulo": _t("escena.expansion_titulo", lang, producto=producto_nombre),
+        "nodos": colocados,
+        # El lienzo se agranda al abrir: ese alejarse ES el mensaje —lo que
+        # estabas mirando era un recorte.
+        "lienzo_abierto": vb,
     }
 
 
