@@ -857,6 +857,8 @@ export const EN = {
   "evolucion.grafico_nota": "The dotted line is what the receipts say; the solid one is what those pesos are worth today ({base}).",
 
   // --- collections (salesperson view) ---
+  "cobranzas.sug_si": "Prepare it",
+  "cobranzas.sug_no": "Not now",
   "cobranzas.titulo": "Collections",
   "cobranzas.subtitulo": "Who to collect from today and how much credit you can extend.",
   "cobranzas.angela_intro": "To show you today's collections and each customer's credit limit I need the customer-accounts Excel the owner keeps today. As soon as it's loaded, this fills in on its own and I'll line up who to press first. You'll run all your collections from here, no more fighting with spreadsheets.",
@@ -2156,6 +2158,24 @@ export const EN = {
   "staging.faltan": "Settle the {n} remaining observations so it can go in.",
 
   // --- documents ---
+  "carpeta.titulo": "The delivery folder",
+  "carpeta.sub": "The paperwork of a delivery, pre-filled with what the system knows. Every box says where it came from.",
+  "carpeta.pedidos": "Deliveries",
+  "carpeta.sin_pedidos": "No deliveries loaded yet.",
+  "carpeta.falta_n": "{n} missing",
+  "carpeta.completo": "complete",
+  "carpeta.de": "from",
+  "carpeta.falta": "missing",
+  "carpeta.que_falta": "Missing: {campos}",
+  "carpeta.control": "Cross-check",
+  "carpeta.control_ok": "The numbers match across both documents.",
+  "carpeta.control_mal": "One number does not match.",
+  "carpeta.descargar": "Download PDF",
+  "carpeta.bajando": "Generating…",
+  "carpeta.error_pdf": "Could not generate the PDF.",
+  "carpeta.renglones": "Lines",
+  "carpeta.tab_carpeta": "Order folder",
+  "carpeta.tab_generados": "Generated",
   "documentos.titulo": "Documents",
   "documentos.vacio_1": "Ask Ángela for one and I'll build it from your data:",
   "documentos.vacio_ej1": "\"put together a purchase order for me\"",
