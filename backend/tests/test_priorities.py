@@ -206,7 +206,9 @@ def test_demo_inbox_has_no_duplicate_twins():
     assert "quiebre" not in ids
     assert "pico" not in ids
     assert "solicitud_pendiente" not in ids
-    assert d["badge"] == len(d["act"])
+    # badge counts only open work now — cards with an executed proposal
+    # stay in `act` (so the team can see they were handled) but don't nag.
+    assert d["badge"] == sum(1 for c in d["act"] if not c.get("action_taken"))
     for w in d["watch"]:
         assert w["id"] not in {i["id"] for i in d["act"]}
     # leak-today (mora) ranks above dormant stock even if dormido is huge
@@ -296,3 +298,21 @@ def test_compose_marks_cards_whose_proposal_already_ran(monkeypatch):
 def test_cards_without_a_proposal_are_never_marked():
     out = priorities.with_action_taken([_item("caja_inusual")])
     assert out[0]["action_taken"] is None
+
+
+def test_executed_cards_sort_after_open_ones():
+    done = _item("quiebre_inminente", monto=999_999)   # would otherwise rank first
+    done["action_taken"] = {"label": "OC-2026-0901"}
+    open_ = _item("despertar_dormido", monto=1)
+    open_["action_taken"] = None
+    act, _watch = priorities.split_and_rank([done, open_])
+    assert [i["id"] for i in act] == ["despertar_dormido", "quiebre_inminente"]
+
+
+def test_badge_counts_only_open_act_cards():
+    done = _item("quiebre_inminente")
+    done["action_taken"] = {"label": "OC-2026-0901"}
+    open_ = _item("despertar_dormido")
+    open_["action_taken"] = None
+    act, watch = priorities.split_and_rank([done, open_])
+    assert priorities.badge_of({"act": act, "watch": watch}) == 1

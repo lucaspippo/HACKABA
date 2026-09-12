@@ -236,9 +236,11 @@ def split_and_rank(items: list[dict]) -> tuple[list[dict], list[dict]]:
         (watch if band == "watch" else act).append(row)
 
     def act_key(it):
+        # Executed cards stay visible but sink below open work.
+        done = 1 if it.get("action_taken") else 0
         leak = 0 if it["id"] in LEAK_TODAY else 1
         has_monto = 0 if (it.get("monto") or 0) > 0 else 1
-        return (leak, has_monto, -(it.get("monto") or 0))
+        return (done, leak, has_monto, -(it.get("monto") or 0))
 
     act.sort(key=act_key)
     watch.sort(key=lambda i: -(i.get("monto") or 0))
@@ -252,7 +254,9 @@ def _is_watch(it: dict) -> bool:
 
 
 def badge_of(inbox: dict) -> int:
-    return len(inbox.get("act") or [])
+    """Open work only — a card whose proposal was already executed is done,
+    and counting it would keep nagging about finished work."""
+    return sum(1 for c in (inbox.get("act") or []) if not c.get("action_taken"))
 
 
 def visibles_para(items: list[dict], features) -> list[dict]:
@@ -272,7 +276,7 @@ def inbox(lang: str | None = None, features=None) -> dict:
     return {
         "act": act,
         "watch": watch,
-        "badge": len(act),
+        "badge": badge_of({"act": act}),
         "hay_ventas": bool(composed.get("hay_ventas")),
         # Same items already carry `naturaleza` from the opportunity cards, so
         # this reuses the one canonical sum (opn.recuperable) instead of
