@@ -12,6 +12,9 @@ import AngelaMark from "../AngelaMark";
 import ToolCallCard from "./ToolCallCard";
 import ErrorState from "./ErrorState";
 import ThinkingIndicator from "./ThinkingIndicator";
+import MarkdownText from "./MarkdownText";
+import ReplyAnnouncer from "./ReplyAnnouncer";
+import { hasVisibleBody } from "./messageBody";
 import { toolComponentsByName } from "./tools/registry";
 import PlanChecklist from "./PlanChecklist";
 import DocCard from "./DocCard";
@@ -171,31 +174,44 @@ function MessageNotices() {
 }
 
 function AssistantMessage({ onExecutingChange }: { onExecutingChange?: ExecutingHandler }) {
+  const t = useT();
   const isRunning = useAuiState((s) => s.message.status?.type === "running");
   const startedAt = useRef(Date.now()).current;
-  const noContentYet = useAuiState(
-    (s) =>
-      s.message.status?.type === "running" &&
-      (s.message.content?.length ?? 0) === 0 &&
-      ((s.message.metadata?.custom?.notices as Notice[] | undefined)?.length ?? 0) === 0,
+  const partCount = useAuiState((s) => s.message.content?.length ?? 0);
+  const noticeCount = useAuiState(
+    (s) => (s.message.metadata?.custom?.notices as Notice[] | undefined)?.length ?? 0,
   );
+  const spokenText = useAuiState((s) =>
+    (s.message.content ?? [])
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join(" ")
+      .trim(),
+  );
+  const noContentYet = isRunning && partCount === 0 && noticeCount === 0;
   return (
     <MessagePrimitive.Root className="flex gap-2.5">
       <AngelaMark size={28} estado={undefined} />
       <div className="max-w-[88%]">
-        <div className="whitespace-pre-line rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-[0.95rem] leading-snug text-tinta sombra-papel">
-          {isRunning && <ThinkingIndicator startedAt={startedAt} />}
-          {!noContentYet && (
-            <MessagePrimitive.Parts
-              components={{
-                Text: ({ text }: { text: string }) => <span>{text}</span>,
-                tools: TOOL_COMPONENTS,
-              }}
-            />
-          )}
-          <MessageNotices />
-          <MessageExtras onExecutingChange={onExecutingChange} />
-        </div>
+        {hasVisibleBody({ partCount, noticeCount, isRunning }) && (
+          <div
+            aria-busy={isRunning}
+            className="rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-[0.95rem] leading-snug text-tinta sombra-papel"
+          >
+            {isRunning && <ThinkingIndicator startedAt={startedAt} />}
+            {!noContentYet && (
+              <MessagePrimitive.Parts
+                components={{
+                  Text: MarkdownText,
+                  tools: TOOL_COMPONENTS,
+                }}
+              />
+            )}
+            <MessageNotices />
+            <MessageExtras onExecutingChange={onExecutingChange} />
+          </div>
+        )}
+        <ReplyAnnouncer text={spokenText} isRunning={isRunning} label={t("chat.reply_ready")} />
         <MessagePrimitive.Error>
           <ErrorState />
         </MessagePrimitive.Error>

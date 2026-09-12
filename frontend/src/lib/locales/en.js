@@ -3098,6 +3098,22 @@ export const EN = {
   "chat.error.stream.titulo": "The reply was cut off",
   "chat.error.stream.detalle": "The reply stopped partway through. Try again.",
 
+  "chat.panel": "Chat with Ángela",
+  "chat.control.new_thread": "New conversation",
+  "chat.control.history": "Conversation history",
+  "chat.control.expand": "Full screen",
+  "chat.control.close": "Close",
+  "chat.control.collapse": "Back to the panel",
+  "chat.control.photo": "Attach a photo",
+  "chat.control.voice": "Dictate by voice",
+  "chat.history.search": "Search conversations…",
+  "chat.history.empty": "No conversations yet",
+  "chat.history.untitled": "Untitled",
+  "chat.history.today": "Today",
+  "chat.history.yesterday": "Yesterday",
+  "chat.history.older": "Earlier",
+  "chat.reply_ready": "Ángela replied:",
+
   // --- Phase 3: chat tool presenters (design doc D1/D10) ---
   "toolui.caja.abierta": "Open",
   "toolui.caja.cerrada": "Closed",

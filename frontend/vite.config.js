@@ -21,7 +21,11 @@ export default defineConfig({
     },
   },
   test: {
+    // DOM suites opt in per file with `// @vitest-environment jsdom`.
     environment: "node",
+    // Testing Library registers its auto-cleanup only when afterEach is global.
+    globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["./src/test-setup.ts"],
   },
 });

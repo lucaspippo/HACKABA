@@ -3071,6 +3071,22 @@ export const ES = {
   "chat.error.stream.titulo": "Se cortó la respuesta",
   "chat.error.stream.detalle": "La respuesta se interrumpió a mitad de camino. Probá de nuevo.",
 
+  "chat.panel": "Chat con Ángela",
+  "chat.control.new_thread": "Nueva consulta",
+  "chat.control.history": "Historial de consultas",
+  "chat.control.expand": "Pantalla completa",
+  "chat.control.close": "Cerrar",
+  "chat.control.collapse": "Volver al panel",
+  "chat.control.photo": "Adjuntar una foto",
+  "chat.control.voice": "Dictar por voz",
+  "chat.history.search": "Buscar consultas…",
+  "chat.history.empty": "Sin consultas todavía",
+  "chat.history.untitled": "Sin título",
+  "chat.history.today": "Hoy",
+  "chat.history.yesterday": "Ayer",
+  "chat.history.older": "Anteriores",
+  "chat.reply_ready": "Ángela respondió:",
+
   // --- Phase 3: presentadores de tools en el chat (design doc D1/D10) ---
   "toolui.caja.abierta": "Abierta",
   "toolui.caja.cerrada": "Cerrada",
