@@ -77,12 +77,31 @@ def sirvio_para(username: str, lang: str | None = None) -> list[dict]:
     return out
 
 
+# Los campos que llevan un USERNAME y se leen como una persona. El username es
+# la identidad y se guarda tal cual —es la clave, y no se traduce—; el nombre
+# de pantalla se resuelve acá, en el borde donde se muestra. Guardarlo sería
+# duplicar un dato que ya vive en el equipo y que cambia cuando alguien se
+# cambia el nombre.
+_QUIENES = ("actor", "destinatario", "visto_por", "resuelto_por")
+
+
+def _con_nombres(reportes: list[dict]) -> list[dict]:
+    """Agrega `<campo>_nombre` a cada username. La pantalla usa ése y cae al
+    username si la persona ya no está en el equipo — nunca queda vacío."""
+    from . import piso
+    out = []
+    for r in reportes:
+        extra = {f"{k}_nombre": piso._nombre(r[k]) for k in _QUIENES if r.get(k)}
+        out.append({**r, **extra})
+    return out
+
+
 def de(username: str, lang: str | None = None) -> dict:
     """Todo lo de esta persona, en una llamada."""
     from . import piso
     mios = piso.mios(username)
     return {
-        "reporte": mios["reporte"],
-        "me_mandaron": mios["me_mandaron"],
+        "reporte": _con_nombres(mios["reporte"]),
+        "me_mandaron": _con_nombres(mios["me_mandaron"]),
         "sirvio_para": sirvio_para(username, lang),
     }

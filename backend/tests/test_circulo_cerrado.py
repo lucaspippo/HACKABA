@@ -273,3 +273,24 @@ def test_estos_tests_no_le_dejan_actividad_al_equipo(circuito):
     # es mío y no lo limpié.
     assert out["reportes"] == 0, out
     assert out["auditoria_de_piso"] == 0, out
+
+
+def test_lo_que_se_muestra_es_el_nombre_y_no_el_usuario():
+    """«celeste lo cerró» en minúscula era el username crudo llegando a la
+    pantalla. El username es la identidad y se guarda; el nombre de pantalla se
+    resuelve al mostrarlo, y si la persona ya no está en el equipo cae al
+    username en vez de quedar vacío."""
+    out = _en_demo(
+        "import json; from core import piso, mis_avisos;"
+        "r = piso.reportar('faltante', 'nahuel',"
+        "  {'producto': 'X', 'cantidad': 1, 'motivo': 'roto'}, destinatario='celeste');"
+        "piso.ver(r['id'], 'celeste');"
+        "piso.resolver(r['id'], 'celeste', 'listo');"
+        "d = mis_avisos.de('nahuel', 'es');"
+        "limpiar([r['id']]);"
+        "print(json.dumps(d['reporte'][0], ensure_ascii=False))",
+        escribe=True)
+    assert out["actor"] == "nahuel" and out["actor_nombre"] == "Nahuel"
+    assert out["destinatario"] == "celeste" and out["destinatario_nombre"] == "Celeste"
+    assert out["visto_por_nombre"] == "Celeste"
+    assert out["resuelto_por_nombre"] == "Celeste"
