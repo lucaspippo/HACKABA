@@ -119,6 +119,30 @@ def _blank_drill():
     return {"porque": [], "grafico": None, "involucrados": [], "supuestos": []}
 
 
+def _grafico(nombre: str, puntos: list[dict], unidad: str, temporal: bool,
+             ventana: str = "") -> dict:
+    """Contract P21 (consulta-serie) — same shape as oportunidades_neg._grafico,
+    duplicated locally: priorities.py composes alerts standalone and
+    shouldn't reach into opn's private helpers."""
+    return {"ok": True, "series": [{"nombre": nombre, "puntos": puntos}],
+            "meta": {"unidad": unidad, "temporal": temporal, "ventana": ventana,
+                     "composicion": False, "deflactado": False}}
+
+
+def _deposito_lot_value(rows: list[dict]) -> list[dict]:
+    """Deposito rows (vencidos()/vencimientos()) don't carry cost — join
+    with the article catalog so each lot's peso value can drive a chart and
+    a monto on its involucrado row."""
+    from . import store
+    costo_by_codigo = {a.get("codigo"): a.get("costo_iva") or 0
+                       for a in store.raw_actual()}
+    out = []
+    for f in rows:
+        costo = costo_by_codigo.get(f.get("codigo"), 0)
+        out.append({**f, "valor": round(float(f.get("cantidad") or 0) * costo, 2)})
+    return out
+
+
 def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
           monto=None, monto_label=None, cifra_texto=None, fuentes=None,
           navegar=None, accion_chat=None, propuesta=None, piso=False,
@@ -501,28 +525,57 @@ def _alerts_deposito(lang) -> list[dict]:
     out = []
     dep = deposito.resumen()
     if dep.get("vencidos"):
+        lotes = sorted(_deposito_lot_value(deposito.vencidos()),
+                       key=lambda x: -x["valor"])[:8]
         out.append(_item(
             id="dep_vencidos", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_vencidos_t", lang),
             resumen=_t("core.prio.dep_vencidos_r", lang, n=_num(dep["vencidos"], lang)),
             origen=["alerta:dep_vencidos"], modulos=ALERT_MODULOS["dep_vencidos"],
             cifra_texto=_num(dep["vencidos"], lang),
+            monto=round(sum(x["valor"] for x in lotes), 2),
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_vencidos_chat", lang),
-            drill=_blank_drill(),
+            drill={
+                "porque": [_t("core.prio.dep_vencidos_p", lang, n=_num(dep["vencidos"], lang),
+                              monto=_pesos(sum(x["valor"] for x in lotes), lang))],
+                "grafico": _grafico(_t("core.prio.dep_vencidos_g", lang),
+                                    [{"x": x.get("producto") or "", "y": x["valor"]}
+                                     for x in lotes], "$", False),
+                "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                                  "nombre": x.get("producto") or "", "monto": x["valor"],
+                                  "detalle": _t("core.prio.dep_vencidos_i", lang,
+                                                dias=x.get("dias_vencido") or 0)}
+                                 for x in lotes],
+                "supuestos": [_t("core.prio.dep_vencidos_s", lang)],
+            },
         ))
     if dep.get("por_vencer"):
+        lotes = sorted(_deposito_lot_value(deposito.vencimientos()),
+                       key=lambda x: -x["valor"])[:8]
         out.append(_item(
             id="dep_porvencer", tono="oro", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_porvencer_t", lang),
             resumen=_t("core.prio.dep_porvencer_r", lang, n=_num(dep["por_vencer"], lang)),
             origen=["alerta:dep_porvencer"], modulos=ALERT_MODULOS["dep_porvencer"],
             cifra_texto=_num(dep["por_vencer"], lang),
+            monto=round(sum(x["valor"] for x in lotes), 2),
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_porvencer_chat", lang),
-            drill=_blank_drill(),
+            drill={
+                "porque": [_t("core.prio.dep_porvencer_p", lang, n=_num(dep["por_vencer"], lang))],
+                "grafico": _grafico(_t("core.prio.dep_porvencer_g", lang),
+                                    [{"x": x.get("producto") or "", "y": x["valor"]}
+                                     for x in lotes], "$", False),
+                "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                                  "nombre": x.get("producto") or "", "monto": x["valor"],
+                                  "detalle": _t("core.prio.dep_porvencer_i", lang,
+                                                dias=x.get("dias_restantes") or 0)}
+                                 for x in lotes],
+                "supuestos": [_t("core.prio.dep_vencidos_s", lang)],
+            },
         ))
     if dep.get("discrepancias"):
         out.append(_item(
@@ -538,7 +591,8 @@ def _alerts_deposito(lang) -> list[dict]:
         ))
     venc = vencimientos.en_riesgo(30, lang)
     if venc.get("disponible") and venc.get("lotes_en_riesgo"):
-        top = (venc.get("items") or [{}])[0]
+        items = sorted(venc.get("items") or [], key=lambda x: -x["plata_en_riesgo"])[:8]
+        top = items[0]
         out.append(_item(
             id="venc_riesgo", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.venc_riesgo_t", lang, n=_num(venc["lotes_en_riesgo"], lang)),
@@ -551,10 +605,21 @@ def _alerts_deposito(lang) -> list[dict]:
             fuentes=[_t("core.prio.f_deposito", lang), _t("core.prio.f_ventas", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.venc_riesgo_chat", lang),
-            drill={"porque": [_t("core.prio.venc_riesgo_p", lang,
-                                 n=_num(venc["lotes_en_riesgo"], lang),
-                                 monto=_pesos(venc.get("total_en_riesgo") or 0, lang))],
-                   "grafico": None, "involucrados": [], "supuestos": []},
+            drill={
+                "porque": [_t("core.prio.venc_riesgo_p", lang,
+                              n=_num(venc["lotes_en_riesgo"], lang),
+                              monto=_pesos(venc.get("total_en_riesgo") or 0, lang))],
+                "grafico": _grafico(_t("core.prio.venc_riesgo_g", lang),
+                                    [{"x": x.get("producto") or "", "y": x["plata_en_riesgo"]}
+                                     for x in items], "$", False),
+                "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                                  "nombre": x.get("producto") or "",
+                                  "monto": x["plata_en_riesgo"],
+                                  "detalle": _t("core.prio.venc_riesgo_i", lang,
+                                                dias=x.get("dias_restantes") or 0)}
+                                 for x in items],
+                "supuestos": [_t("core.prio.venc_riesgo_s", lang)],
+            },
         ))
     return out
 
