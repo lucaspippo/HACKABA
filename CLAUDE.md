@@ -172,6 +172,27 @@ The suite runs against the `piloto` tenant over `data-demo/` (see
 `tests/conftest.py`). **Careful:** tests write into the data dir — after
 running them, restore the seeds with `git checkout -- data-demo/`.
 
+**`git checkout` does not reach the generated seeds, and that bites.** Several
+files under `data-demo/` are gitignored because `data-demo/generar.py` writes
+them (`caja.json` with its 60 closes, `inventory_actual.json`, `staging.json`,
+`audit.json`, …). Restoring with `git checkout -- data-demo/` leaves them
+exactly as the last run left them, and on a fresh clone they do not exist at
+all. Two consequences worth knowing before you lose an hour to either:
+
+- **Run the seeder before the suite**, once per clone: `python data-demo/seed_db.py`
+  then `python data-demo/generar.py` (or just `python start_demo.py`, which does
+  both). Without it, `test_p38::test_cierres_por_local_suman_exactamente_la_caja`
+  fails on a missing `caja.json` — an error that says nothing about whatever you
+  were actually changing.
+- **A seed that ran against a missing file stays wrong.** Seeding is once per
+  tenant and recorded in `seed_state`, so a suite run that happened *before*
+  `caja.json` existed leaves the demo tenant in `polpilot_test` with a partial
+  cash history forever. The symptom is
+  `test_patrones::test_demo_finds_the_saturday_shortfall` failing with
+  `StopIteration` while the file on disk looks perfectly fine. The fix is to
+  drop the suite's database and let `dbsetup.py` rebuild it:
+  `DROP DATABASE polpilot_test;`
+
 **The suite has its own database.** `tests/dbsetup.py` derives a sibling name
 from `DATABASE_URL` (`polpilot` → `polpilot_test`), creates it, replicates the
 app role's grants, migrates it to head, and repoints
