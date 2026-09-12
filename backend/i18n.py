@@ -2023,6 +2023,8 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "I don't have the warehouse detail with batches and expiry dates yet. "
               "It loads from your warehouse system's export via \"Load data\".",
     },
+    "core.venc.alt_locales": {"es": "Mandarlo a los locales que sí lo rotan",
+                              "en": "Send it to the stores that do rotate it"},
     "core.venc.prop_t": {"es": "Armar una promoción para {producto}",
                           "en": "Set up a promo for {producto}"},
     "core.venc.prop_d": {"es": "Sacarte {sobrante} de encima antes de que venzan, en {dias} días: promoción en el mostrador o mandarlo a los locales que sí lo rotan.",
@@ -3327,6 +3329,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                    "en": "Rolled the data back to an earlier version"},
     "audit.acc.restaurar_version": {"es": "Restauró una versión guardada de los datos",
                                     "en": "Restored a saved version of the data"},
+    "audit.acc.gestionar_vencimiento": {"es": "Decidió qué hacer con un lote por vencer",
+                                        "en": "Decided what to do with a lot about to expire"},
     "audit.acc.preparar_orden_compra": {"es": "Preparó una orden de compra para aprobar",
                                         "en": "Prepared a purchase order for approval"},
     "audit.acc.crear_ubicacion": {"es": "Creó una ubicación de depósito",
