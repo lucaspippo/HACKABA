@@ -5,9 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { Citation } from "./inline-citation";
 
 const source = {
-  domain: "memoria del negocio",
-  title: "Proveedores · Campo Alegre",
-  snippet: "mandale foto del lote y el remito",
+  heading: "mandale foto del lote y el remito",
+  meta: "Proveedores · Campo Alegre",
   detail: "se lo enseñó Celeste el 18/06/2026",
 };
 
@@ -27,9 +26,9 @@ describe("Citation", () => {
     render(
       <Citation tone="knowledge" ariaLabel="cita" label="M" source={source} />,
     );
-    expect(screen.queryByText(source.snippet)).toBeNull();
+    expect(screen.queryByText(source.heading)).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "cita" }));
-    expect(await screen.findByText(source.snippet)).toBeInTheDocument();
+    expect(await screen.findByText(source.heading)).toBeInTheDocument();
   });
 
   it("hands the reader off to the memory panel from inside the preview", async () => {
@@ -56,7 +55,7 @@ describe("Citation", () => {
       <Citation tone="knowledge" ariaLabel="cita" label="M" source={source} />,
     );
     await userEvent.click(screen.getByRole("button", { name: "cita" }));
-    await screen.findByText(source.snippet);
+    await screen.findByText(source.heading);
     expect(screen.queryByRole("button", { name: "Ver en la memoria" })).toBeNull();
   });
 });

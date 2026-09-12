@@ -45,9 +45,10 @@ export default function KnowledgeCite({ id }: { id: string }) {
       onOpen={() => openKnowledge(id, piece.texto)}
       openLabel={t("chat.cite.open")}
       source={{
-        domain: t("chat.cite.source"),
-        title: piece.entidad ? `${piece.nodo} · ${piece.entidad}` : piece.nodo,
-        snippet: piece.texto,
+        // The rule itself leads. The node and the entity are where it applies,
+        // which only means something once you have read the rule.
+        heading: piece.texto,
+        meta: piece.entidad ? `${piece.nodo} · ${piece.entidad}` : piece.nodo,
         detail: piece.quien
           ? t("chat.knowledge.taught_by", {
               who: comoNombre(piece.quien),
