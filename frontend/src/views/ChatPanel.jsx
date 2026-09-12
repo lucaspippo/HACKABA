@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useAui, useAuiState } from "@assistant-ui/react";
 import {
   Camera,
-  Mic,
   FileText,
   ChevronRight,
   Paperclip,
@@ -12,7 +11,6 @@ import {
 } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import FacturaFlow from "../components/FacturaFlow";
-import VozAngela from "../components/VozAngela";
 import ChatThread from "../components/assistant/ChatThread";
 import IconButton from "../components/assistant/IconButton";
 import NewChatButton from "../components/assistant/NewChatButton";
@@ -23,7 +21,6 @@ import { fecha } from "../lib/format";
 import { api } from "../lib/api";
 import { angelaBus } from "../lib/angelaBus";
 import { authStore } from "../lib/auth";
-import { rolDe } from "../lib/roles";
 import { equipoStore } from "../lib/equipoStore";
 import { vistaStore } from "../lib/vistaStore";
 import { useT } from "../lib/i18n";
@@ -54,7 +51,6 @@ export default function ChatPanel({
   const activeThreadTitle = useActiveThreadTitle(
     variant === "fullscreen" ? "Ángela" : undefined,
   );
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [feed, setFeed] = useState([]);
@@ -268,26 +264,18 @@ export default function ChatPanel({
           onExecutingChange={setExecuting}
           emptyState={emptyState}
           composerLeading={
-            <>
-              {authStore.tiene("cargar") && (
-                <IconButton
-                  label={t("chat.control.photo")}
-                  onClick={() => setPhotoOpen(true)}
-                  shape="composer"
-                  placement="top"
-                >
-                  <Camera size={20} />
-                </IconButton>
-              )}
+            authStore.tiene("cargar") && (
+              // The composer's mic is dictation now. This stays the document
+              // path: FacturaFlow reads the photo and stages it for an OK.
               <IconButton
-                label={t("chat.control.voice")}
-                onClick={() => setVoiceOpen(true)}
+                label={t("chat.control.photo")}
+                onClick={() => setPhotoOpen(true)}
                 shape="composer"
                 placement="top"
               >
-                <Mic size={20} />
+                <Camera size={18} />
               </IconButton>
-            </>
+            )
           }
         />
       </div>
@@ -300,19 +288,6 @@ export default function ChatPanel({
           onCargado={() => onDatosCambiaron?.()}
           onPreguntar={(texto) => {
             setPhotoOpen(false);
-            aui.thread.append(texto);
-          }}
-        />
-      )}
-
-      {/* Voice, IN the chat. */}
-      {voiceOpen && (
-        <VozAngela
-          rol={rolDe(user)?.id}
-          onCerrar={() => setVoiceOpen(false)}
-          onListo={() => onDatosCambiaron?.()}
-          onPreguntar={(texto) => {
-            setVoiceOpen(false);
             aui.thread.append(texto);
           }}
         />
