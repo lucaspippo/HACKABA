@@ -64,41 +64,44 @@ function DeadlineChip({ urgency }) {
 function WorkRow({ item, selected, onSelect }) {
   const t = useT();
   const a = ACENTO[item.tono] || ACENTO.salvia;
-  const acc = estiloAccion(item);
-  const Icon = acc.icon;
   const cifra = item.monto != null && item.monto > 0
     ? pesoCorto(item.monto)
     : (item.cifra_texto || null);
+  const urgency = item.insight?.deadline?.urgency;
+  const late = urgency === "overdue" || urgency === "today";
+  // ONE line: severity dot · title · amount. The type is already the filter
+  // row above (FiltrosAccion) and the chip on the panel header, so a badge
+  // per row said it a third time; the subtitle is the panel's first line.
+  // 17 items used to show 6 without scrolling — that is a feed, not a queue.
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-current={selected || undefined}
-      className={`flex w-full items-start gap-3 border-b border-linea px-4 py-3 text-left last:border-0 ${
+      title={item.resumen || undefined}
+      className={`flex w-full items-center gap-2.5 border-b border-linea px-4 py-2 text-left last:border-0 ${
         selected ? "bg-papel-hondo/70" : "hover:bg-papel-hondo/40"
       } ${item.action_taken ? "opacity-60" : ""}`}
     >
-      <span className="min-w-0 flex-1">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${acc.cls}`}>
-          <Icon size={11} /> {item.chip}
-        </span>
-        {item.action_taken && (
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-2xs font-semibold text-salvia">
-            <Check size={10} /> {t("prioridades.done")} · {item.action_taken.label}
-          </span>
-        )}
-        <DeadlineChip urgency={item.insight?.deadline?.urgency} />
-        <span className="mt-1 block font-display text-base font-bold leading-tight">{item.titulo}</span>
-        {item.resumen && (
-          <span className="mt-0.5 block line-clamp-1 text-sm leading-snug text-tinta-suave">{item.resumen}</span>
-        )}
+      <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${DOT[item.tono] || DOT.salvia}`} />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-tinta">
+        {item.titulo}
       </span>
+      {item.action_taken && (
+        <Check size={13} className="shrink-0 text-salvia" aria-label={t("prioridades.done")} />
+      )}
+      {late && (
+        <CalendarClock size={13} className={`shrink-0 ${urgency === "overdue" ? "text-rojo" : "text-oro-tinta"}`}
+          aria-label={t(urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")} />
+      )}
       {cifra && (
-        <span className={`plata mt-1 shrink-0 text-base font-medium ${a.cifra}`}>{cifra}</span>
+        <span className={`plata shrink-0 text-sm font-medium ${a.cifra}`}>{cifra}</span>
       )}
     </button>
   );
 }
+
+const DOT = { rojo: "bg-rojo", oro: "bg-oro", salvia: "bg-salvia", hielo: "bg-hielo" };
 
 export default function Prioridades({ onNavegar, onPreguntar }) {
   const t = useT();
@@ -262,13 +265,17 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   // 1 = the primary action (resolve / adopt), 2 = ask Ángela, 3 = view data.
   // A card that skips slot 1 (already adopted, or no piso/adopt action)
   // just leaves that hotkey unbound — 2 and 3 keep their own meaning.
+  // One primary button per card: the action that CLOSES it. When Ángela's
+  // proposal is live, its own approve button (violeta, inside the panel) is
+  // that primary, so "adoptar" steps down to an outline. Ask-Ángela is an
+  // outline in her color; "ver datos" is a text link.
   const drillAcciones = (item, closeAfter) => (
     <>
       {item.piso && (
         <span className="inline-flex items-center gap-1.5">
           <button data-quick-action="1" onClick={() => resolverPiso(item)}
             className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold text-crema ${
-              confirmingFloorReport === item.id ? "bg-rojo" : "bg-hielo"
+              confirmingFloorReport === item.id ? "bg-rojo" : "bg-tinta"
             }`}>
             <Check size={14} />
             {confirmingFloorReport === item.id ? t("oportunidades.floor_mark_confirm") : t("oportunidades.piso_marcar")}
@@ -296,19 +303,22 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
         </select>
       ) : (
         <button data-quick-action="1" onClick={() => abrirSelector(item)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta transition-colors hover:border-salvia hover:text-salvia">
+          className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+            item.propuesta && !item.action_taken
+              ? "border border-linea text-tinta hover:border-tinta"
+              : "bg-tinta text-crema hover:bg-tinta/90"}`}>
           <Plus size={14} /> {t("oportunidades.adoptar")} <HotkeyBadge>1</HotkeyBadge>
         </button>
       ))}
       {item.accion_chat && (
         <button data-quick-action="2" onClick={() => { onPreguntar?.(item.accion_chat); closeAfter?.(); }}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
+          className="inline-flex items-center gap-1.5 rounded-full border border-violeta/40 px-4 py-2 text-sm font-semibold text-violeta transition-colors hover:border-violeta">
           <AngelaMark size={15} /> {t("oportunidades.accionar_angela")} <HotkeyBadge>2</HotkeyBadge>
         </button>
       )}
       {item.navegar && (
         <button data-quick-action="3" onClick={() => { onNavegar?.(item.navegar); closeAfter?.(); }}
-          className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
+          className="px-2 py-2 text-sm font-semibold text-tinta-suave underline decoration-linea underline-offset-4 hover:text-tinta hover:decoration-tinta">
           {t("oportunidades.ver_datos")} <HotkeyBadge>3</HotkeyBadge>
         </button>
       )}
@@ -481,7 +491,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
                   AngelaProposal's `postponed` / BasedOn's `expanded` would
                   leak across cards too). Remounting resets all of them at once,
                   the same way the parent-owned confirmingFloorReport is. */}
-              <DrillNegocio key={selectedId} variante="panel" {...drillProps(selected)}
+              <DrillNegocio key={selectedId} variante="panel" layout="accion" {...drillProps(selected)}
                 acciones={drillAcciones(selected)} />
             </div>
           )}
@@ -489,7 +499,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       )}
 
       {overlay && selected && (
-        <DrillNegocio key={selectedId} variante="overlay" {...drillProps(selected)}
+        <DrillNegocio key={selectedId} variante="overlay" layout="accion" {...drillProps(selected)}
           onCerrar={() => setSelectedId(null)}
           acciones={drillAcciones(selected, () => setSelectedId(null))} />
       )}

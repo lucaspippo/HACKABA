@@ -1084,6 +1084,7 @@ export const ES = {
   "cardneg.drill_caveats": "¿Qué cambiaría esta conclusión?",
   "cardneg.drill_alternatives": "Otras explicaciones posibles",
   "cardneg.drill_method": "¿Cómo se calculó?",
+  "cardneg.drill_por_que": "Por qué lo creemos",
   "cardneg.drill_more": "+{n} más",
   "cardneg.drill_less": "Ver menos",
   "cardneg.conf_data": "datos",
