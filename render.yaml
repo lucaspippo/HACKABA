@@ -114,6 +114,16 @@ services:
       - key: ANGELA_MODEL_SIMPLE
         value: anthropic/claude-haiku-4.5
 
+      # EL TECHO DE LA RESPUESTA. El default del codigo es 1024 y se queda
+      # corto: medido contra este servicio, «dame un resumen completo del
+      # negocio» y «cuanto stock tengo de leche» terminaron con
+      # `stop=max_tokens` y la frase CORTADA a la mitad («...margen que», «| La»).
+      # Un jurado que pregunta algo amplio ve una respuesta truncada, que se
+      # lee como que el producto se rompio. 2048 cubre las respuestas largas
+      # con tabla sin volverlas eternas.
+      - key: POLPILOT_MAX_TOKENS
+        value: "2048"
+
       # RECORTE DE HERRAMIENTAS POR TEMA: queda PRENDIDO (default del codigo).
       #
       # Intente apagarlo con una hipotesis —el bloque de tools lleva el

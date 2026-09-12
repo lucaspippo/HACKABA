@@ -28,7 +28,7 @@
 //    hairlines y la misma tipografía que el resto.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
-import { forceCollide } from "d3-force-3d";
+import { forceCollide, forceX, forceY } from "d3-force-3d";
 import { X, Maximize2, Mic, Square } from "lucide-react";
 import { api } from "../../lib/api";
 import { cerebroBus } from "../../lib/cerebroBus";
@@ -49,6 +49,28 @@ const COLOR_TIPO = {
   conocimiento: "#c79a1e",
 };
 const GRIS = "#8b8fa8";
+
+// LAS ISLAS. Cada dominio tiene su lugar, y eso es lo que convierte una nube
+// en una red: sin esto, 605 nodos repartidos por fuerzas son confeti — el
+// numero «605 entidades · 2062 relaciones» queda desmentido por lo que se ve.
+//
+// El orden del circulo no es al azar: se lee como la cadena del negocio.
+// proveedores -> productos -> depósito -> locales -> clientes, y el
+// conocimiento y las notas (lo que dijo la gente) en el centro-arriba, que es
+// lo que cruza todo lo demas.
+const ISLAS = {
+  proveedor:    { a: -150, r: 0.80 },
+  producto:     { a: -100, r: 0.10 },
+  rubro:        { a:  -70, r: 0.88 },
+  ubicacion:    { a:  -20, r: 0.86 },
+  local:        { a:   20, r: 0.72 },
+  cliente:      { a:   62, r: 0.86 },
+  cuenta:       { a:   96, r: 0.90 },
+  remito:       { a:  140, r: 0.82 },
+  nota:         { a:  180, r: 0.78 },
+  persona:      { a: -175, r: 0.72 },
+  conocimiento: { a: 205, r: 0.80 },
+};
 
 // Cuánto dura el viaje de cámara desde el cerebro entero hasta el caso.
 const MS_ZOOM = 1500;
@@ -86,7 +108,10 @@ const tiposDe = (tools, mapa) => {
 // vez que alguien abre el cerebro —o sea SIEMPRE en el escenario del demo,
 // porque se prueba antes— pinta ya quieto.
 // =============================================================================
-const LLAVE_POS = "polpilot.cerebro.posiciones.v1";
+// La VERSION va en la llave: al cambiar el layout, las posiciones guardadas de
+// la version anterior taparian el cambio —se pintaria quieto el dibujo viejo—
+// y nadie entenderia por que. Subir el numero al tocar las fuerzas.
+const LLAVE_POS = "polpilot.cerebro.posiciones.v2";
 let _posiciones = null;
 
 function leerGuardadas(n) {
@@ -133,14 +158,54 @@ function GrafoCompleto({ datos, w, h, apagado, refGrafo, encendidos }) {
         ...(p ? { x: p[0], y: p[1] } : {}),
       };
     });
+    // los ocho mas conectados llevan nombre
+    [...nodes].sort((a, b) => (b.grado || 0) - (a.grado || 0)).slice(0, 8)
+      .forEach((n) => { n._rotulo = (n.nombre || "").slice(0, 26); });
     return { nodes, links: datos.aristas.map((a, i) => ({ ...a, _i: i })), _pre: !!guardadas };
   }, [datos]);
 
   useEffect(() => {
     const fg = refGrafo.current;
     if (!fg || !gd) return;
-    fg.d3Force("charge")?.strength(-70).distanceMax(320);
-    fg.d3Force("collide", forceCollide((n) => n._r + 1.2));
+    fg.d3Force("charge")?.strength(-58).distanceMax(300);
+    fg.d3Force("collide", forceCollide((n) => n._r + 1.4));
+    // cada nodo tira hacia el centro de SU dominio: las islas emergen solas y
+    // las aristas que las cruzan quedan tendidas entre ellas, que es
+    // exactamente lo que hay que ver.
+    // El radio de cada isla lo da su TAMANIO: `producto` son 427 de los 605
+    // nodos, asi que si todas las islas tiran al mismo radio esa se come la
+    // pantalla y las demas quedan de adorno pegadas al borde. La grande va al
+    // centro con mucho aire; las chicas, afuera.
+    const R = 560;
+    const centro = (n) => {
+      const i = ISLAS[n.tipo];
+      if (!i) return { x: 0, y: 0 };
+      const rad = (i.a * Math.PI) / 180;
+      return { x: Math.cos(rad) * R * i.r, y: Math.sin(rad) * R * i.r };
+    };
+    fg.d3Force("islaX", forceX((n) => centro(n).x).strength(0.11));
+    fg.d3Force("islaY", forceY((n) => centro(n).y).strength(0.11));
+    // NOTA HONESTA SOBRE LAS ISLAS. La idea era que cada dominio formara su
+    // propia isla. NO FUNCIONA con estos datos, y la razon es la proporcion:
+    // 427 de los 605 nodos son `producto`. Una isla con el 70% de la poblacion
+    // no es una isla, es el continente — las otras diez quedan de adorno
+    // pegadas al borde y el centro sigue siendo el mismo bollo.
+    //
+    // Probado: fuerza de isla 0.11 / 0.42, carga -58 / -130, colision +1.4 /
+    // +5, resorte de arista 0.035 / 0.02, radios por dominio. Ninguna
+    // combinacion separo nada; las mas agresivas lo COMPACTARON todavia mas.
+    //
+    // Se deja la fuerza suave: ordena un poco sin deformar, y no cuesta nada.
+    // Lo que SI hizo la diferencia son los puentes de abajo. Si algun dia hay
+    // que insistir con las islas, el camino no es tocar fuerzas: es no dibujar
+    // los 427 productos —muestrear los N mas pesados— para que las
+    // proporciones entre dominios sean comparables.
+    // SIN ESTO NO PASA NADA. Las fuerzas se registran en la simulacion, pero la
+    // simulacion ya venia enfriandose desde el mount: se quedaba con el alpha
+    // en cero y jamas volvia a tickear, asi que el layout salia identico al de
+    // antes por mas que se cambiaran los numeros. Verificado: el modulo servido
+    // tenia los valores nuevos y el dibujo era el mismo pixel por pixel.
+    fg.d3ReheatSimulation?.();
   }, [gd, refGrafo]);
 
   const alParar = useCallback(() => {
@@ -166,8 +231,22 @@ function GrafoCompleto({ datos, w, h, apagado, refGrafo, encendidos }) {
         enablePanInteraction={false}
         // LAS RELACIONES SE VEN. Tinta al 13% sobre papel: suficiente para que
         // el tejido se lea de lejos y no tanto como para tapar los nodos.
-        linkColor={() => (encendidos ? "rgba(33,32,29,.05)" : "rgba(33,32,29,.13)")}
-        linkWidth={0.7}
+        // LOS PUENTES. Lo que hace valioso a este grafo son las aristas que
+        // CRUZAN dominios —una nota que toca un proveedor, una regla que toca
+        // un producto—, y se pintaban igual que las dos mil internas. Ahora la
+        // interna casi no se ve y el puente si: la imagen pasa a decir «hay
+        // varios mundos y estos hilos los cruzan», que es la tesis.
+        linkColor={(l) => {
+          if (encendidos) return "rgba(33,32,29,.04)";
+          const a = typeof l.source === "object" ? l.source.tipo : null;
+          const b = typeof l.target === "object" ? l.target.tipo : null;
+          return a && b && a !== b ? "rgba(42,92,223,.30)" : "rgba(33,32,29,.07)";
+        }}
+        linkWidth={(l) => {
+          const a = typeof l.source === "object" ? l.source.tipo : null;
+          const b = typeof l.target === "object" ? l.target.tipo : null;
+          return a && b && a !== b ? 1.1 : 0.5;
+        }}
         nodeCanvasObject={(n, ctx) => {
           if (!Number.isFinite(n.x)) return;
           // Con una respuesta en curso, lo que Ángela consultó se enciende y
@@ -186,6 +265,18 @@ function GrafoCompleto({ datos, w, h, apagado, refGrafo, encendidos }) {
           ctx.arc(n.x, n.y, vivo && encendidos ? n._r * 1.45 : n._r, 0, 2 * Math.PI);
           ctx.fillStyle = vivo ? base : "rgba(33,32,29,.10)";
           ctx.fill();
+
+          // UNOS POCOS CON NOMBRE. Un grafo sin una sola palabra es abstracto;
+          // ocho nombres le dan escala humana — deja de ser «puntos» y pasa a
+          // ser «Lácteos Campo Alegre». Solo los mas conectados, y solo en
+          // reposo: con una respuesta en curso el texto competiria con lo que
+          // se esta encendiendo.
+          if (!encendidos && n._rotulo) {
+            ctx.font = "600 7px 'Hanken Grotesk', system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(33,32,29,.62)";
+            ctx.fillText(n._rotulo, n.x, n.y - n._r - 4);
+          }
         }}
       />
     </div>

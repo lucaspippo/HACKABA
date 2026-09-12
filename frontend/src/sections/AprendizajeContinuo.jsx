@@ -206,23 +206,12 @@ export default function AprendizajeContinuo({ onPreguntar }) {
         </div>
       )}
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
-          {t("aprendizaje.proximamente_titulo")}
-        </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {UPCOMING.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={f.t} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
-                <Icon size={18} className="text-tinta-suave" />
-                <p className="mt-2 font-display text-base font-bold leading-tight">{t(f.t)}</p>
-                <p className="mt-1 text-sm leading-snug text-tinta-suave">{t(f.d)}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* «LO QUE VIENE» NO SE MUESTRA MAS.
+          Eran cuatro tarjetas de roadmap —features que todavia no existen— y
+          delante de un jurado eso RESTA: entre hallazgos reales que la maquina
+          encontro sola, mete cuatro promesas, y la pantalla deja de probar algo
+          para pasar a pedir credito. `UPCOMING` y sus textos quedan en el
+          codigo: cuando alguna de esas cosas exista, se muestra sola. */}
 
       <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-papel">
         <AngelaMark size={36} />

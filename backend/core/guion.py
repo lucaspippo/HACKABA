@@ -102,6 +102,15 @@ def _texto(esc: dict, lang: str) -> list[str]:
     # SALE de esa regla, porque es ahi donde prueba algo — que el procedimiento
     # no lo invento, se lo enseñaron. Sin esto la respuesta del demo era la
     # unica del producto que citaba una regla sin mostrarlo.
+    # EL FORMATO ES `#memoria-<id>`, CON NUMERAL Y GUION.
+    # Lo escribi como `memoria:<id>` y quedo roto desde el primer dia: el
+    # parser es `citedId()` en knowledgeStore.ts y exige exactamente
+    # CITATION_SCHEME = "#memoria-". Con la otra forma el marcador no se
+    # reconoce y MarkdownText lo pinta como un LINK comun — o sea que se veia
+    # un «[·]» inerte donde tenia que estar el cerebrito. Peor: mi verificacion
+    # conto iconos de cerebro en el panel y encontro el del boton «La memoria
+    # del negocio», del header, y di por bueno algo que no funcionaba.
+    #
     # DOS citas, no una: la regla y EL PORQUE DE LA REGLA.
     #
     # La primera abre la pieza k23 —«a Campo Alegre el reclamo va por mail, con
@@ -115,9 +124,9 @@ def _texto(esc: dict, lang: str) -> list[str]:
     # como lo que es: el negocio le enseño algo despues de perder plata.
     cita = ""
     if esc.get("regla_id"):
-        cita += f" [·](memoria:{esc['regla_id']})"
+        cita += f" [·](#memoria-{esc['regla_id']})"
     if esc.get("regla_origen_id"):
-        cita += f"[·](memoria:{esc['regla_origen_id']})"
+        cita += f"[·](#memoria-{esc['regla_origen_id']})"
     if lang == "en":
         partes = [
             f"The supplier is {PROVEEDOR}. Their claims go by email, with a photo "
