@@ -1,7 +1,49 @@
 """Alert-only card types must carry real drill data (chart, involucrados
 with a real product id) instead of an empty/blank drill — see design spec
 2026-09-01."""
+import json
+import os
+import subprocess
+import sys
+
 from core import priorities
+
+_DEMO_INBOX = None
+
+
+def _demo_inbox():
+    """The real demo dataset's inbox, fetched once per module.
+
+    This suite's fixture pins tenant `piloto` over a near-empty scratch dataset
+    (tests/conftest.py), so an in-process `inbox()` returns almost no cards and
+    every per-card assertion below would pass vacuously or skip. Card-shape
+    assertions only mean anything against the seeded dataset, so this follows
+    the repo's established subprocess pattern (test_priorities.py::_en_demo).
+    Fetched once and cached — the subprocess costs seconds and every test here
+    reads the same payload.
+    """
+    global _DEMO_INBOX
+    if _DEMO_INBOX is None:
+        backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        data_demo = os.path.join(os.path.dirname(backend), "data-demo")
+        env = {**os.environ, "POLPILOT_TENANT": "demo",
+               "POLPILOT_DATA_DIR": data_demo,
+               "POLPILOT_DEMO_TODAY": "2026-07-07", "PYTHONIOENCODING": "utf-8"}
+        env.pop("ANTHROPIC_API_KEY", None)
+        expr = ("__import__('core.priorities', fromlist=['x']).inbox('es', "
+                "['alertas','oportunidades','cuentas','inventario','deposito',"
+                "'finanzas','caja','evolucion'])")
+        r = subprocess.run(
+            [sys.executable, "-c", f"import json; print(json.dumps({expr}))"],
+            cwd=backend, env=env, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, r.stderr[-800:]
+        _DEMO_INBOX = json.loads(r.stdout.strip().splitlines()[-1])
+    return _DEMO_INBOX
+
+
+def _card(cid):
+    d = _demo_inbox()
+    return next((c for c in d["act"] + d["watch"] if c["id"] == cid), None)
 
 
 def test_dep_vencidos_drill_has_product_involucrados(monkeypatch):
@@ -92,26 +134,33 @@ def test_pago_vencido_drill_has_chart_and_text_involucrados(monkeypatch):
     assert "Proveedor Uno" in iv["nombre"]
 
 
-def test_moroso_atraso_drill_has_client_involucrado(monkeypatch):
-    from core import cuentas
-    monkeypatch.setattr(cuentas, "listar", lambda: [
-        {"id": 9, "nombre": "Cliente Atraso", "en_mora": True, "dias_sin_pagar": 120,
-         "atraso_vs_promedio": 200, "promedio_pago_dias": 30, "saldo": 40_000}])
-    out = priorities._alerts_cuentas("es")
-    ma = next(i for i in out if i["id"] == "moroso_atraso")
-    iv = ma["drill"]["involucrados"][0]
-    assert iv["id"] == 9 and iv["kind"] == "client"
+def test_moroso_atraso_states_the_deviation_as_a_metric():
+    c = _card("moroso_atraso") or _card("cobrar_morosos")
+    assert c, "expected a debtor card in the demo dataset"
+    ins = c["insight"]
+    assert ins["pattern"]["label"]
+    days = next(e for e in ins["evidence"] if e["id"] == "days_overdue")
+    assert days["unit"] == "days"
+    assert days["baseline"]["value"] > 0, "the client's own payment average"
+    assert days["deviation"]["direction"] == "up"
+    assert days["method"]["label"], "every metric explains how it was computed"
 
 
-def test_quiebre_drill_has_product_involucrados(monkeypatch):
-    from core import ventas
-    monkeypatch.setattr(ventas, "panorama", lambda lang: {
-        "disponible": True,
-        "quiebre": {"cantidad": 1, "items": [
-            {"codigo": "P4", "descripcion": "Prod Cuatro", "stock": 3,
-             "dias_cobertura": 2.5, "demanda_diaria": 1.2}]},
-    })
-    out = priorities._alerts_ventas("es")
-    q = next(i for i in out if i["id"] == "quiebre")
-    iv = q["drill"]["involucrados"][0]
-    assert iv["id"] == "P4" and iv["kind"] == "product"
+def test_debtor_card_links_real_client_records():
+    c = _card("moroso_atraso") or _card("cobrar_morosos")
+    rows = [r for e in c["insight"]["evidence"] for r in e["records"]]
+    assert rows, "the debtors must be listed as clickable records"
+    assert all(r["kind"] == "client" and r["id"] is not None for r in rows)
+
+
+def test_stockout_card_lists_products_as_records():
+    c = _card("quiebre") or _card("quiebre_inminente")
+    assert c, "expected a stockout card in the demo dataset"
+    rows = [r for e in c["insight"]["evidence"] for r in e["records"]]
+    assert all(r["kind"] == "product" and r["id"] is not None for r in rows)
+
+
+def test_no_alert_card_emits_an_empty_pattern():
+    d = _demo_inbox()
+    for c in d["act"] + d["watch"]:
+        assert c["insight"]["pattern"] and c["insight"]["pattern"]["label"], c["id"]

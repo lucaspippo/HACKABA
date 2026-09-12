@@ -3253,6 +3253,58 @@ CATALOGO: dict[str, dict[str, str]] = {
                               "en": "What do I need to restock now?"},
     "core.prio.quiebre_i": {"es": "{dias} días de cobertura",
                             "en": "{dias} days of coverage"},
+    "core.method.mora_total": {
+        "es": "Suma de saldos vencidos de clientes con al menos un comprobante impago pasada su fecha.",
+        "en": "Sum of overdue balances for clients with at least one unpaid invoice past its due date.",
+    },
+    "core.method.dias_mora": {
+        "es": "Días entre la última cobranza registrada del cliente y hoy.",
+        "en": "Days between the client's last recorded payment and today.",
+    },
+    "core.method.prom_pago": {
+        "es": "Promedio de días entre cobranzas de ese cliente en su historia.",
+        "en": "That client's historical average days between payments.",
+    },
+    "core.method.quiebre_conteo": {
+        "es": "Artículos cuya cobertura proyectada, al ritmo de venta actual, es menor al lead time del proveedor.",
+        "en": "Items whose projected coverage at the current sales rate is below supplier lead time.",
+    },
+    "core.prio.morosos_hyp": {
+        "es": "La mora está concentrada: son pocos clientes, no una caída general de la cobranza.",
+        "en": "The overdue balance is concentrated — a few clients, not a general collections slump.",
+    },
+    "core.prio.atraso_hyp": {
+        "es": "{nombre} cambió su comportamiento de pago, no necesariamente su capacidad.",
+        "en": "{nombre}'s payment behaviour changed — not necessarily their ability to pay.",
+    },
+    "core.prio.atraso_alt": {
+        "es": "Puede haber un pago hecho y todavía no registrado.",
+        "en": "There may be a payment made but not yet recorded.",
+    },
+    "core.prio.atraso_fals": {
+        "es": "Un comprobante de pago posterior a la última cobranza registrada.",
+        "en": "A payment receipt dated after the last recorded collection.",
+    },
+    "core.prio.mora_sup": {
+        "es": "Asumo que no hubo pagos en efectivo sin registrar.",
+        "en": "I assume there were no unrecorded cash payments.",
+    },
+    "core.prio.mora_sup_if": {
+        "es": "La mora real sería menor.",
+        "en": "The real overdue figure would be lower.",
+    },
+    "core.prio.quiebre_hyp": {
+        "es": "El faltante es de reposición, no de demanda: se vende igual que siempre.",
+        "en": "This is a restocking gap, not a demand drop — sales are unchanged.",
+    },
+    "core.prio.quiebre_risk": {
+        "es": "Venta perdida mientras el artículo no esté en góndola.",
+        "en": "Lost sales for as long as the item is off the shelf.",
+    },
+    "core.prio.mora_risk": {
+        "es": "Capital inmovilizado en la calle.",
+        "en": "Working capital stuck with customers.",
+    },
     "core.prio.pago_vencido_t": {"es": "Pagos a proveedores ya vencidos",
                                 "en": "Vendor payments already due"},
     "core.prio.pago_vencido_r": {"es": "{n} pagos, {monto}.",
