@@ -356,3 +356,16 @@ def test_rest_cualquier_usuario_puede_proponer_via_chat(tokens):
                            estado="pendiente", origen={"quien": "vendedor", "cuando": "2026-09-02"})
     assert p["estado"] == "pendiente"
     assert p["origen"]["quien"] == "vendedor"
+
+
+def test_enriquecer_returns_raw_tolerance_pieces_when_exceso():
+    from core import cuentas
+    _pieza(texto="Tolerale 45 días", tipo="regla", ambito="cliente",
+           nodo="clientes", efecto="contexto_para_angela",
+           entidad="Despensa Doña Elsa", params={"tolerancia_dias": 45})
+    c = {"nombre": "Despensa Doña Elsa", "saldo": 100_000, "limite_credito": 500_000,
+         "plazo_dias": 30, "dias_sin_pagar": 66, "promedio_pago_dias": 30}
+    enriquecido = cuentas._enriquecer(c)
+    assert enriquecido.get("piezas_conocimiento")
+    assert enriquecido["piezas_conocimiento"][0]["id"]  # a real piece dict
+    assert enriquecido["exceso_tolerancia"] == 21
