@@ -1109,44 +1109,45 @@ function ConocimientoNodo({ piezas, nodoLabel, t, onNavegar }) {
   );
 }
 
-// La cola de revisión de lo que cualquier usuario dejó vía el chat de Ángela
-// (proponer_conocimiento) — no viene en `conocimiento` (ese prop ya trae solo
-// piezas CONFIRMADAS, agregado server-side); se pide aparte porque nadie más
-// en este panel necesita saber que existen propuestas sin revisar. El scope
-// por nodo/feature lo aplica el propio backend (GET /api/conocimiento/pendientes
-// reusa visibles_para) — acá no se filtra nada de nuevo.
-function PropuestasPendientes({ t }) {
-  const [piezas, setPiezas] = useState(null); // null = cargando
-  const [enCurso, setEnCurso] = useState(null); // id de la pieza con acción en vuelo
+// The review queue for what any user left via Ángela's chat
+// (proponer_conocimiento) — not part of `conocimiento` (that prop already
+// carries only CONFIRMED pieces, aggregated server-side); fetched separately
+// because nobody else in this panel needs to know unreviewed proposals
+// exist. Node/feature scope is enforced by the backend itself
+// (GET /api/conocimiento/pendientes reuses visibles_para) — nothing gets
+// filtered again here.
+function PendingKnowledgeQueue({ t }) {
+  const [pieces, setPieces] = useState(null); // null = loading
+  const [actionInFlight, setActionInFlight] = useState(null); // id of the piece with an action in flight
 
   useEffect(() => {
-    let vivo = true;
-    api.conocimientoPendientes().then((r) => { if (vivo) setPiezas(r.piezas); })
-      .catch(() => { if (vivo) setPiezas([]); });
-    return () => { vivo = false; };
+    let alive = true;
+    api.conocimientoPendientes().then((r) => { if (alive) setPieces(r.piezas); })
+      .catch(() => { if (alive) setPieces([]); });
+    return () => { alive = false; };
   }, []);
 
-  const revisar = async (pid, accion) => {
-    setEnCurso(pid);
+  const review = async (pid, action) => {
+    setActionInFlight(pid);
     try {
-      if (accion === "aprobar") await api.conocimientoAprobar(pid);
+      if (action === "approve") await api.conocimientoAprobar(pid);
       else await api.conocimientoRechazar(pid);
-      setPiezas((prev) => prev.filter((p) => p.id !== pid));
+      setPieces((prev) => prev.filter((p) => p.id !== pid));
     } catch {
       toast(t("memoria_chips.error"), "error");
     } finally {
-      setEnCurso(null);
+      setActionInFlight(null);
     }
   };
 
-  if (!piezas || piezas.length === 0) return null;
+  if (!pieces || pieces.length === 0) return null;
   return (
     <div className="border-b border-linea bg-violeta/[0.04] px-5 py-3">
       <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-violeta">
-        {t("conocimiento_pendiente.titulo")} · {piezas.length}
+        {t("conocimiento_pendiente.titulo")} · {pieces.length}
       </p>
       <div className="mt-2 space-y-1.5">
-        {piezas.map((p) => (
+        {pieces.map((p) => (
           <div key={p.id} className="rounded-lg border border-violeta/20 bg-crema px-3 py-2">
             <p className="text-[0.82rem] leading-snug text-tinta">{p.texto}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -1155,13 +1156,13 @@ function PropuestasPendientes({ t }) {
                 {p.origen?.quien && ` · ${t("conocimiento_pendiente.propuesto_por", { actor: p.origen.quien })}`}
               </span>
               <div className="ml-auto flex gap-1.5">
-                <button onClick={() => revisar(p.id, "rechazar")} disabled={enCurso === p.id}
+                <button onClick={() => review(p.id, "reject")} disabled={actionInFlight === p.id}
                   className="rounded-full border border-linea px-2.5 py-1 text-[0.72rem] font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
                   {t("conocimiento_pendiente.rechazar")}
                 </button>
-                <button onClick={() => revisar(p.id, "aprobar")} disabled={enCurso === p.id}
+                <button onClick={() => review(p.id, "approve")} disabled={actionInFlight === p.id}
                   className="inline-flex items-center gap-1 rounded-full bg-violeta px-2.5 py-1 text-[0.72rem] font-semibold text-crema disabled:opacity-50">
-                  {enCurso === p.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                  {actionInFlight === p.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                   {t("conocimiento_pendiente.aprobar")}
                 </button>
               </div>
@@ -1201,7 +1202,7 @@ function PanelConocimientoFull({ conocimiento, t, onNavegar, onCerrar }) {
           </div>
           <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
         </div>
-        <PropuestasPendientes t={t} />
+        <PendingKnowledgeQueue t={t} />
         <div className="flex flex-wrap gap-1.5 px-5 py-3">
           <Chip activo={fTipo === "todos"} onClick={() => setFTipo("todos")}>{t("mapa.kpanel_todos")}</Chip>
           <Chip activo={fTipo === "prof"} onClick={() => setFTipo("prof")}>{t("mapa.kpanel_profundas")}</Chip>

@@ -1,7 +1,7 @@
-"""proponer_conocimiento — el tool de chat que deja una propuesta de
-conocimiento del negocio "pendiente" (core/conocimiento.py's staging state),
-open a CUALQUIER usuario. Ver tests/test_conocimiento.py para el modelo y la
-capa REST de aprobar/rechazar; acá solo la vía de entrada por chat."""
+"""proponer_conocimiento — the chat tool that leaves a business-knowledge
+proposal "pendiente" (core/conocimiento.py's staging state), open to ANY
+user. See tests/test_conocimiento.py for the model and the REST layer's
+approve/reject; this file covers only the chat entry point."""
 from __future__ import annotations
 
 import pytest
@@ -34,11 +34,11 @@ def test_cualquier_usuario_puede_proponer(db_tenant, monkeypatch):
     pieza = result["pieza"]
     assert pieza["estado"] == "pendiente"
     assert pieza["origen"]["quien"] == "vendedor"
-    # tipo/efecto NUNCA los elige el modelo — quedan fijos, inertes hasta
-    # que alguien los confirme (mismo principio que pattern_feedback.learn()).
+    # tipo/efecto are NEVER chosen by the model — they stay fixed, inert
+    # until someone confirms them (same principle as pattern_feedback.learn()).
     assert pieza["tipo"] == "contexto"
     assert pieza["efecto"] == "contexto_para_angela"
-    # y no tiene efecto todavía: no aparece entre las aplicables
+    # and has no effect yet: doesn't show up among the applicable pieces
     assert conocimiento.aplicables(nodo="clientes") == []
 
 

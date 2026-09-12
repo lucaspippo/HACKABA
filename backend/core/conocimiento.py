@@ -6,19 +6,22 @@ excepción, protocolos ante eventos y contexto que explica los datos. Vive hoy e
 la cabeza del dueño; acá se vuelve un registro real, consultable y con efecto
 verificable en lo que el usuario ve (ver core/*.py que llaman a `aplicables`).
 
-Persiste en Postgres, una fila por pieza (tabla `business_knowledge_pieces`,
-migración 0039 — ver `core/db/business_knowledge_repo.py`). El único tenant
-sembrado desde un archivo es demo (<DATA_DIR>/conocimiento_negocio.json, el
-piloto no tiene archivo → git diff de data-demo/ queda en cero); esa siembra
-corre una sola vez, la primera vez que el tenant lee sin filas propias
-todavía. Es conocimiento COMPARTIDO del negocio (no memoria por-usuario): el
-dueño ve todo y escribe; cada empleado ve lo de su ámbito (ver `visibles_para`).
+Persists in Postgres, one row per piece (table `business_knowledge_pieces`,
+migration 0039 — see `core/db/business_knowledge_repo.py`). The only tenant
+seeded from a file is demo (<DATA_DIR>/conocimiento_negocio.json — the
+piloto tenant has no file, so git diff of data-demo/ stays at zero); that
+seed runs once, the first time the tenant reads with no rows of its own yet.
+This is SHARED business knowledge (not per-user memory): the owner sees and
+writes everything; each employee sees only their scope (see `visibles_para`).
 
-Además de que el dueño la escriba a mano, una pieza puede nacer de un
-hallazgo que Ángela detectó y el dueño confirmó — ver `pattern_feedback.learn()`,
-el mecanismo genérico de "Enseñar a Ángela" que cualquier motor de
-detección (core/patrones.py, core/oportunidades_neg.py, y lo que se agregue
-después) puede usar sin código nuevo acá.
+Besides the owner writing one by hand, a piece can also be born from a
+finding Ángela detected and the owner confirmed — see `pattern_feedback.learn()`,
+the generic "Teach Ángela" mechanism any detection engine (core/patrones.py,
+core/oportunidades_neg.py, and whatever gets added later) can use with no
+new code here. A piece can also start as a chat-proposed "pendiente" state —
+see `crear()`/`aprobar()`/`rechazar()` below and angela.py's
+proponer_conocimiento tool — never active until someone with that node
+reviews it.
 
 Diseño del contador `veces_aplicada`: es acumulado y PERSISTIDO, se siembra con
 la historia real de la pieza y solo lo mueve un evento discreto (re-enseñar /
@@ -98,14 +101,14 @@ def _norm(s) -> str:
 def listar(nodo: str | None = None, tipo: str | None = None,
            entidad: str | None = None, ambito: str | None = None,
            incluir_pausadas: bool = True, estado: str | None = None) -> list[dict]:
-    """Piezas que matchean los filtros. Por defecto incluye las pausadas (Mi
-    perfil las lista para reactivarlas) pero NUNCA las pendientes — una
-    propuesta sin revisar no es lo mismo que una pieza pausada, y mezclarla
-    en el listado general la mostraría como si ya fuera conocimiento
-    confirmado. Los motores piden incluir_pausadas=False vía `aplicables`
-    (que tampoco ve pendientes: sigue exigiendo estado=="activo"). Para ver
-    las pendientes hay que pedirlas explícito con estado="pendiente" (ver
-    `pendientes`), que además ignora incluir_pausadas."""
+    """Pieces matching the filters. Includes paused ones by default (Mi perfil
+    lists them so they can be reactivated) but NEVER pending ones — an
+    unreviewed proposal isn't the same as a paused piece, and mixing it into
+    the general listing would show it as if it were already confirmed
+    knowledge. Engines ask for incluir_pausadas=False via `aplicables`
+    (which also never sees pending ones: it still requires estado=="activo").
+    To see pending pieces, ask explicitly with estado="pendiente" (see
+    `pendientes`), which also ignores incluir_pausadas."""
     piezas = _todas()
     out = []
     for p in piezas:
@@ -130,12 +133,12 @@ def listar(nodo: str | None = None, tipo: str | None = None,
 
 
 def pendientes(nodo: str | None = None) -> list[dict]:
-    """Propuestas sin revisar — lo que un usuario dejó vía `proponer_conocimiento`
-    (angela.py) y todavía no se activó ni se rechazó. El scope por rol lo
-    aplica el que llama con `visibles_para(usuario, conocimiento.pendientes())`:
-    el mismo criterio de nodo/feature que ya rige qué conocimiento ACTIVO ve
-    cada uno rige también qué le toca revisar — sin un catálogo de permisos
-    aparte."""
+    """Unreviewed proposals — what a user left via `proponer_conocimiento`
+    (angela.py) and nobody has activated or rejected yet. Role scope is
+    applied by the caller via `visibles_para(usuario, conocimiento.pendientes())`:
+    the same node/feature criterion that already governs which ACTIVE
+    knowledge each user sees also governs what's theirs to review — no
+    separate permission catalog."""
     return listar(nodo=nodo, estado="pendiente")
 
 
@@ -249,11 +252,11 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
           efecto_profundo: bool = False, origen: dict | None = None,
           params: dict | None = None, estado: str = "activo",
           veces_aplicada: int = 0) -> dict:
-    """Crea y persiste una pieza validada. `origen` = {quien, cuando} (quién la
-    enseñó y cuándo — un humano, u origen.quien="Ángela" cuando la pieza viene
-    de un hallazgo aprendido, ver pattern_feedback.learn()). Lanza
-    ConocimientoInvalido si algún campo cae fuera de catálogo — el que llama
-    decide qué mensaje mostrar."""
+    """Creates and persists a validated piece. `origen` = {quien, cuando}
+    (who taught it and when — a human, or origen.quien="Ángela" when the
+    piece comes from a learned finding, see pattern_feedback.learn()). Raises
+    ConocimientoInvalido if any field falls outside the catalog — the caller
+    decides what message to show."""
     if not (texto or "").strip():
         raise ConocimientoInvalido("el texto no puede estar vacío")
     _validar(tipo, ambito, nodo, efecto, estado)
@@ -297,8 +300,8 @@ def borrar(pid: str) -> bool:
 
 
 def aprobar(pid: str, actor: str) -> dict | None:
-    """Un revisor confirma una propuesta pendiente: pasa a activa (recién ahí
-    `aplicables()`/`para()` la ven) y queda auditado con quién la aprobó."""
+    """A reviewer confirms a pending proposal: it becomes active (only then
+    do `aplicables()`/`para()` see it), audited with who approved it."""
     pieza = set_estado(pid, "activo")
     if pieza:
         from .audit import AuditLog
@@ -308,9 +311,9 @@ def aprobar(pid: str, actor: str) -> dict | None:
 
 
 def rechazar(pid: str, actor: str) -> bool:
-    """Un revisor descarta una propuesta pendiente — se borra, no queda
-    pausada (no hay nada útil en reactivar algo que nunca llegó a confirmarse).
-    La auditoría es el registro permanente, no la fila."""
+    """A reviewer discards a pending proposal — it's deleted, not paused
+    (there's nothing useful about reactivating something that never got
+    confirmed). The audit log is the permanent record, not the row."""
     pieza = detalle(pid)
     ok = borrar(pid)
     if ok:

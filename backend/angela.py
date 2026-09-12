@@ -785,22 +785,22 @@ TOOLS = [
     },
     {
         "name": "proponer_conocimiento",
-        "description": "Dejá anotada una regla, excepción o contexto del NEGOCIO (no una "
-        "preferencia de vista de este usuario — para eso usá 'recordar') que surgió en la "
-        "conversación y vale la pena que el sistema recuerde siempre: cómo tratar a un cliente, "
-        "por qué algo es distinto a lo normal, un protocolo ante cierto evento. Cualquier usuario "
-        "puede proponerla — queda PENDIENTE de revisión (nunca activa de una), y quien tenga el "
-        "módulo de ese nodo la aprueba o la descarta antes de que afecte algo. Usala cuando lo que "
-        "te dijeron es del negocio en general, no solo de esta charla — y ofrecela vos misma si "
-        "notás algo así de valioso, sin esperar que te lo pidan explícito.",
+        "description": "Note down a rule, exception, or BUSINESS context (not this user's own "
+        "view preference — use 'recordar' for that) that came up in the conversation and is "
+        "worth the system remembering permanently: how to treat a customer, why something is "
+        "different from normal, a protocol for a given event. Any user can propose one — it "
+        "lands PENDING review (never active right away), and whoever has that node's module "
+        "approves or discards it before it affects anything. Use it when what you were told is "
+        "about the business in general, not just this chat — and offer it yourself when you "
+        "notice something that valuable, without waiting to be asked.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "texto": {"type": "string", "description": "la regla/excepción/contexto, en la voz de quien la contó"},
+                "texto": {"type": "string", "description": "the rule/exception/context, in the words of whoever told you"},
                 "nodo": {"type": "string", "enum": ["ventas", "inventario", "deposito", "proveedores",
                                                     "clientes", "caja", "equipo", "contexto"],
-                        "description": "a qué área del negocio se refiere"},
-                "entidad": {"type": "string", "description": "cliente/proveedor/categoría/empleado puntual, si aplica (vacío = regla global)"},
+                        "description": "which area of the business this is about"},
+                "entidad": {"type": "string", "description": "a specific customer/supplier/category/employee, if it applies (empty = a global rule)"},
                 "ambito": {"type": "string", "enum": ["cliente", "proveedor", "categoria", "empleado", "global"]},
             },
             "required": ["texto", "nodo"],
