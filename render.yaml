@@ -114,6 +114,26 @@ services:
       - key: ANGELA_MODEL_SIMPLE
         value: anthropic/claude-haiku-4.5
 
+      # RECORTE DE HERRAMIENTAS POR TEMA: APAGADO, y con datos.
+      #
+      # La idea era que mandarle 18 herramientas en vez de 50 le hiciera elegir
+      # mejor y ahorrara RONDAS de tool-use, que es donde está el tiempo. Medido
+      # contra este servicio, no pasa: las preguntas reales resuelven en UNA
+      # ronda con o sin recorte, así que no hay ronda que ahorrar.
+      #
+      # Y sí tiene un costo que se ve en el log. El bloque de tools lleva el
+      # breakpoint de prompt caching, así que al cambiar de tamaño en cada
+      # pregunta el prefijo cambia y NUNCA pega:
+      #
+      #   round=0 tools=26 cache_write=20634 cache_read=0
+      #   round=0 tools=18 cache_write=17623 cache_read=0
+      #
+      # Con el catálogo entero el bloque es idéntico siempre y `round=0` pasa a
+      # leer del cache en vez de escribirlo. Se prende con =1 si algún día las
+      # preguntas empiezan a necesitar varias rondas.
+      - key: POLPILOT_TOOLS_POR_TEMA
+        value: "0"
+
       # ======================================================================
       # 3 · QUÉ TENANT ES ESTE SERVICIO
       # ======================================================================
