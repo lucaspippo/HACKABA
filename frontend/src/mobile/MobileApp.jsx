@@ -8,6 +8,7 @@ import { resaltarPorId } from "../lib/navGuiada";
 import Hoy from "./Hoy";
 import MiDia from "./MiDia";
 import Parada from "./Parada";
+import Armado from "./Armado";
 import EquipoMobile from "./EquipoMobile";
 import InsightsMobile from "./InsightsMobile";
 import MapaSimpleMobile from "./MapaSimpleMobile";
@@ -21,7 +22,7 @@ import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { authStore, useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
-import { tieneVistaHerramienta } from "../lib/roles";
+import { rolDe, tieneVistaHerramienta } from "../lib/roles";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
 import Campanita from "../components/Campanita";
@@ -44,6 +45,8 @@ const MCAT = {
   mapa: { lk: "nav.mapa", icon: Waypoints },
   // C2 — la parada enriquecida: una parada por pantalla, no una lista.
   parada: { lk: "mnav.parada", icon: MapPin },
+  // El armado de pedidos: la primera superficie del oficio de Brian.
+  armado: { lk: "mnav.armado", icon: ClipboardList },
 };
 
 // Nombres "de dueño" que Ángela usa para navegar → vista mobile real.
@@ -66,7 +69,12 @@ function resolveView(raw, { piso, user, navIds }) {
   // Continuous learning is education, not a data view gated by a role
   // feature — reachable from a link (Hoy's teaser), not the tab bar.
   if (destino === "aprendizaje") return "aprendizaje";
-  if (MCAT[destino]) return navIds.includes(destino) ? destino : null;
+  // `armado` y `parada` no son features: son vistas de un oficio que ya tiene
+  // el módulo `logistica`. El gate real está en el endpoint.
+  if (destino === "armado" || destino === "parada") {
+    return user.features.includes("logistica") ? destino : null;
+  }
+    if (MCAT[destino]) return navIds.includes(destino) ? destino : null;
   return null;
 }
 
@@ -78,6 +86,9 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // acciones de su oficio y los chips de Ángela), no en el chat vacío ni en el
   // Today del dueño. El dueño sigue con su panel.
   const piso = tieneVistaHerramienta(user);
+  // El id del oficio: lo usa la barra para elegir entre destinos que salen
+  // del mismo módulo (armado vs. ruta, los dos de `logistica`).
+  const rolId = rolDe(user)?.id;
   // P24·D1 — Ángela primero: en el celular la pantalla inicial es el CHAT (la
   // interfaz natural del teléfono); la bottom-nav queda para moverse. Para el de
   // a pie, la pantalla inicial es "Mi día".
@@ -154,7 +165,13 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
     // C2 — LA PARADA, para quien hace calle. Va antes que "Depósito" porque el
     // chofer y el preventista no entran al galpón: su pantalla es la puerta del
     // cliente. Sale de `logistica`, que es justo lo que tienen los dos.
-    tiene("logistica") && { id: "parada", lk: "mnav.parada", icon: MapPin },
+    // Los dos salen de `logistica`; los distingue el OFICIO, que ya está
+    // partido en lib/roles.js. El que arma no sale a la calle y el que sale a
+    // la calle no arma: darles el mismo destino sería volver al problema que
+    // la regex partida vino a arreglar.
+    tiene("logistica") && (rolId === "deposito_armado"
+      ? { id: "armado", lk: "mnav.armado", icon: ClipboardList }
+      : { id: "parada", lk: "mnav.parada", icon: MapPin }),
     tiene("deposito") && { id: "deposito", lk: "mnav.deposito", icon: PackageX },
     tiene("equipo") && { id: "equipo", lk: "mnav.equipo", icon: Users },
   ].filter(Boolean);
@@ -184,6 +201,8 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         return <Administracion data={data} onPreguntar={(t) => { setConsultaAngela(t); setView("angela"); }} />;
       // P35·E6 — el mapa en mobile es la VISTA SIMPLE read-only (sin React Flow),
       // accesible solo desde "Ver el mapa" de Today. Volver → Today.
+      case "armado":
+        return <Armado onCerrada={onRecargar} />;
       case "parada":
         // El transporte se filtra por el NOMBRE de la persona: el chofer no
         // tiene por qué saber cómo se escribe su camión en el export del TMS.
