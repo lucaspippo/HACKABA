@@ -44,8 +44,14 @@ npm run dev          # http://localhost:5173
 Or everything at once, with seeding and a healthcheck: `python start_demo.py`.
 
 - **Users:** the fictional team lives in `backend/usuarios_demo.py` (`aldo` is
-  the owner). Passwords are generated on first boot, printed to the console,
-  and left in `data-demo/credenciales.json` (gitignored).
+  the owner). **Log in with the fixed seeded password: `demo-password`**
+  (override with `POLPILOT_DEMO_PASSWORD`; always set it for any deployment
+  reachable from outside a dev machine). Only bcrypt hashes are persisted, in
+  Postgres `auth_credentials` — plaintext is never written to disk, and there
+  is no `credenciales.json`. `data-demo/seed_db.py` re-asserts the fixed
+  password on every seed, so a drifted hash is repaired by re-seeding.
+  A user with no row yet still gets a random password, held only in the
+  running process's memory; `POLPILOT_PRINT_CREDS=1` prints those.
 - **Ángela (AI chat):** optional. Export `ANTHROPIC_API_KEY` before starting the
   backend; without it, everything else still works — the analyses are
   deterministic and don't depend on the LLM.
@@ -87,6 +93,24 @@ Single test: `pytest tests/test_<name>.py -k <pattern>`.
 The suite runs against the `piloto` tenant over `data-demo/` (see
 `tests/conftest.py`). **Careful:** tests write into the data dir — after
 running them, restore the seeds with `git checkout -- data-demo/`.
+
+**The suite has its own database.** `tests/dbsetup.py` derives a sibling name
+from `DATABASE_URL` (`polpilot` → `polpilot_test`), creates it, replicates the
+app role's grants, migrates it to head, and repoints
+`DATABASE_URL`/`APP_DATABASE_URL` in `os.environ` before `core.db.engine` is
+imported — so spawned subprocesses inherit it too. Override with
+`POLPILOT_TEST_DATABASE_URL` / `POLPILOT_TEST_APP_DATABASE_URL`.
+
+Never point the suite at the dev database: `conftest.py` deletes and reseeds
+the `demo` tenant's `auth_credentials` at *import* time, so while the two were
+shared, merely collecting tests silently rewrote every demo user's dev login
+password and left no record of the plaintext. `tests/test_test_db_isolation.py`
+guards this and will fail loudly if the isolation is ever lost.
+
+**Local Postgres ports:** `docker-compose.yml` publishes **5434**, matching
+`backend/.env`. Don't move it to 5432 — other Postgres containers on a typical
+dev machine hold that port, and the collision makes this service come up with
+no published port and an apparently empty schema.
 
 ## Deploy
 
