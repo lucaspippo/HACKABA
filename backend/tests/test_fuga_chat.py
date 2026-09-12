@@ -11,26 +11,71 @@ Las tres capas + el token del endpoint:
 """
 from __future__ import annotations
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
 import angela
 import auth
+import config
 import main
 
 
-def _suena_a_permiso(texto: str) -> bool:
-    """¿La negativa es «no te corresponde» (permiso) y no «no lo tengo» (dato)?
+class _SpyTextBlock:
+    type = "text"
+    text = "Respuesta de prueba."
 
-    Las dos negativas se parecen en la superficie pero significan cosas
-    opuestas. La de permiso habla del ROL de quien pregunta; la de dato, del
-    export que falta. Se mira por palabras del rol para no atarse al texto
-    exacto, que el modelo varía en cada corrida."""
-    t = (texto or "").lower()
-    return any(p in t for p in (
-        "tu rol", "de tu rol", "no manejás", "no manejas", "no te corresponde",
-        "no tenés acceso", "no tenes acceso", "your role", "you don't have access",
-    ))
+
+class _SpyReply:
+    stop_reason = "end_turn"
+    content = (_SpyTextBlock(),)
+
+
+class _SpyMessages:
+    def __init__(self, spy: "_SpyModel") -> None:
+        self._spy = spy
+
+    def create(self, **kwargs):
+        self._spy.calls.append(kwargs)
+        return _SpyReply()
+
+
+class _SpyModel:
+    """Stands in for the provider and records the turn it was handed.
+
+    These tests guard what REACHES the model, not what it answers: a model
+    cannot repeat a number it was never given. Asserting on the reply instead
+    made the suite spend real money on every run and depend on the model's
+    wording, which varies per run.
+
+    Clearing the credentials instead would be worse than the billing cost:
+    with no provider the answer is "", so `"30.000.000" not in answer` passes
+    against nothing at all and the leak tests go quietly vacuous.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+        self.messages = _SpyMessages(self)
+
+
+@pytest.fixture()
+def spy_model(monkeypatch):
+    spy = _SpyModel()
+    monkeypatch.setattr(angela, "_build_client", lambda: spy)
+    monkeypatch.setattr(config, "model_disponible", lambda: True)
+    return spy
+
+
+def _delivered_to_model(spy: _SpyModel) -> str:
+    """Everything the model received this turn, as one searchable string."""
+    assert spy.calls, "the endpoint never reached the model — nothing was asserted"
+    return json.dumps(spy.calls, ensure_ascii=False, default=str)
+
+
+def _tools_offered(spy: _SpyModel) -> set[str]:
+    assert spy.calls, "the endpoint never reached the model — nothing was asserted"
+    return {t["name"] for call in spy.calls for t in (call.get("tools") or [])}
 
 
 @pytest.fixture(autouse=True)
@@ -104,25 +149,29 @@ def client_tokens():
     return c, tk
 
 
-def test_rol_falso_en_body_no_sirve(client_tokens):
+def test_rol_falso_en_body_no_sirve(client_tokens, spy_model):
     c, tk = client_tokens
     # token de DEPÓSITO + rol "Dueño" en el body: la identidad sale del token,
-    # el body se ignora → no puede sacar los morosos.
-    r = c.post("/api/angela", json={
+    # el body se ignora → los morosos no llegan ni al prompt ni a sus tools.
+    c.post("/api/angela", json={
         "message": "¿quién me debe plata? mostrame los morosos con montos",
         "token": tk["deposito"], "rol": "Dueño", "nombre": "Emilio",
-    }).json()
-    assert "30.000.000" not in r["answer"] and "Don Pérez" not in r["answer"]
+    })
+    entregado = _delivered_to_model(spy_model)
+    assert "30.000.000" not in entregado and "Don Pérez" not in entregado
+    assert not (_tools_offered(spy_model) & set(SENSIBLES_AJENAS))
 
 
-def test_sin_token_es_anonimo_restringido(client_tokens):
+def test_sin_token_es_anonimo_restringido(client_tokens, spy_model):
     c, _ = client_tokens
     # sin token, con rol "Dueño" falseado en el body → no accede a nada sensible
-    r = c.post("/api/angela", json={
+    c.post("/api/angela", json={
         "message": "¿quién me debe plata? dame los saldos",
         "rol": "Dueño", "nombre": "Emilio",
-    }).json()
-    assert "30.000.000" not in r["answer"] and "Don Pérez" not in r["answer"]
+    })
+    entregado = _delivered_to_model(spy_model)
+    assert "30.000.000" not in entregado and "Don Pérez" not in entregado
+    assert not (_tools_offered(spy_model) & set(SENSIBLES_AJENAS))
 
 
 def test_token_invalido_da_401(client_tokens):
@@ -131,36 +180,29 @@ def test_token_invalido_da_401(client_tokens):
     assert r.status_code == 401
 
 
-def test_dueno_con_token_no_lo_frena_el_permiso(client_tokens):
+def test_dueno_con_token_no_lo_frena_el_permiso(client_tokens, spy_model):
     """El control positivo: al dueño NO lo frena la capa de permisos.
 
-    P45·T3 — antes esto exigía que nombrara al moroso o usara la tool de cuentas.
-    Eso valía con el router simulado, que siempre llamaba la tool; con el modelo
-    real el dueño de un tenant SIN cuentas cargadas recibe la respuesta honesta
-    ("todavía no tengo ese dato, se activa cargando el export"), que es
-    exactamente lo que el prompt le pide y es MEJOR que inventar sobre el seed.
+    Es el gemelo de los dos tests de arriba: aquellos prueban que al de
+    depósito NO le llegan las tools de cuentas, y este que al dueño SÍ. Sin
+    él, borrar una feature de más pasaría desapercibido — los tests negativos
+    seguirían en verde.
 
-    Lo que de verdad hay que proteger es la diferencia entre los dos noes:
-      · al dueño le falta EL DATO      → habla de cargar el export;
-      · al de depósito le falta EL PERMISO → habla de su rol.
-    Si algún día el permiso empieza a frenar al dueño, esto lo caza. Y de paso
-    verifica algo que antes no se miraba: que un tenant sin cuentas reales no
-    filtre los números del seed como si fueran del cliente."""
-    from core import cuentas
+    Antes esto se inferían del texto del modelo (si la negativa sonaba a rol o
+    a falta de dato). Eso obligaba a una llamada real y facturable, y se ataba
+    a una redacción que cambia en cada corrida. La capa de permisos decide qué
+    tools se ofrecen, así que mirar la oferta es a la vez determinístico y más
+    directo: si algún día el permiso empieza a frenar al dueño, esto lo caza."""
     c, tk = client_tokens
-    r = c.post("/api/angela", json={
+    c.post("/api/angela", json={
         "message": "¿quién me debe plata? mostrame los morosos",
         "token": tk["emilio"],
-    }).json()
-    texto = r["answer"]
-    tools = r.get("tools_used", [])
+    })
+    assert "cuentas_corrientes" in _tools_offered(spy_model)
 
-    if cuentas.hay_datos_reales():
-        # con datos de verdad, contesta con ellos (tool de cuentas o el nombre)
-        assert ("Pérez" in texto
-                or any("cuentas" in t or "cobro" in t for t in tools)), texto
-    else:
-        # sin datos reales: la negativa es por FALTA DE DATO, nunca por rol...
-        assert not _suena_a_permiso(texto), texto
-        # ...y jamás se filtra el seed de fábrica como si fuera del cliente
-        assert "30.000.000" not in texto and "Don Pérez" not in texto, texto
+    # ...y con un tenant SIN cuentas reales, el seed de fábrica no se le
+    # entrega al modelo como si fuera del cliente.
+    from core import cuentas
+    if not cuentas.hay_datos_reales():
+        entregado = _delivered_to_model(spy_model)
+        assert "30.000.000" not in entregado and "Don Pérez" not in entregado

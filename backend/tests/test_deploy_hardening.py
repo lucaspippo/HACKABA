@@ -13,6 +13,7 @@ import subprocess
 import sys
 from types import SimpleNamespace
 
+import config
 import main
 
 
@@ -66,7 +67,17 @@ def test_demo_sin_token_401_y_cap_por_ip():
            "POLPILOT_DEMO_TODAY": "2026-07-07", "POLPILOT_DEMO_AUTOLOGIN": "1",
            "POLPILOT_DEMO_IP_CAP": "2", "POLPILOT_DEMO_MSG_CAP": "35",
            "PYTHONIOENCODING": "utf-8"}
-    env.pop("ANTHROPIC_API_KEY", None)  # modo simulado: no gasta ni un token real
+    # No real tokens: clear EVERY provider credential, and clear them by
+    # setting them EMPTY rather than removing them. Two traps, both verified:
+    # popping only ANTHROPIC_API_KEY leaves AI_GATEWAY_API_KEY configured
+    # (config.credential_vars() is the whole set), and a *removed* var is
+    # simply re-read from backend/.env by load_dotenv() in the child, which
+    # only skips names already present in the environment. Empty satisfies
+    # both, since a provider counts as configured only when its var is
+    # non-empty. The IP cap this test measures is applied before any model
+    # call (main.py's /api/angela), so no provider is needed here.
+    for _var in config.credential_vars():
+        env[_var] = ""
     code = r"""
 from fastapi.testclient import TestClient
 import main
