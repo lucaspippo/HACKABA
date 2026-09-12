@@ -27,14 +27,28 @@ def _path() -> str:
     return os.path.join(paths.DATA_DIR, "finanzas.json")
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
     if not os.path.exists(_path()):
         return {"pagos_proveedores": [], "tarjeta_cuotas": [], "cheques": []}
-    with open(_path(), encoding="utf-8") as f:
-        d = json.load(f)
-    return {"pagos_proveedores": d.get("pagos_proveedores", []),
-            "tarjeta_cuotas": d.get("tarjeta_cuotas", []),
-            "cheques": d.get("cheques", [])}
+    try:
+        with open(_path(), encoding="utf-8") as f:
+            d = json.load(f)
+        return {"pagos_proveedores": d.get("pagos_proveedores", []),
+                "tarjeta_cuotas": d.get("tarjeta_cuotas", []),
+                "cheques": d.get("cheques", [])}
+    except Exception:
+        return {"pagos_proveedores": [], "tarjeta_cuotas": [], "cheques": []}
+
+
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("finance_data", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("finance_data", tid, data)
+    return data
 
 
 # P24·F1 — la proyección 30/60/90 es TRABAJO de PolPilot, no data a cargar.

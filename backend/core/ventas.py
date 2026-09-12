@@ -21,7 +21,6 @@ documentada ahí; el validador existe precisamente para atraparla con el dueño.
 """
 from __future__ import annotations
 
-import datetime
 import json
 import os
 
@@ -30,9 +29,7 @@ from . import esquema, evolucion, normalizacion, rotacion, store
 from .fechas import parse_fecha
 from . import fechas
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-VALIDACION_JSON = os.path.join(DATA_DIR, "ventas_validacion.json")
+VALIDACION_JSON = os.path.join(paths.DATA_DIR, "ventas_validacion.json")
 
 UMBRAL_SOSPECHA_PCT = 20.0  # diferencia contra lo que el dueño esperaba
 
@@ -47,16 +44,31 @@ def hay_datos() -> bool:
 
 # --- Validador de montos -------------------------------------------------------
 
-def _val_load() -> dict:
+def _val_seed_inicial() -> dict:
+    if not os.path.exists(VALIDACION_JSON):
+        return {"estado": "sin_datos"}
     try:
-        return json.load(open(VALIDACION_JSON, encoding="utf-8"))
+        with open(VALIDACION_JSON, encoding="utf-8") as f:
+            return json.load(f)
     except Exception:
         return {"estado": "sin_datos"}
 
 
+def _val_load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("sales_validation", tid)
+    if data is None:
+        data = _val_seed_inicial()
+        blob_repo.save_blob("sales_validation", tid, data)
+    return data
+
+
 def _val_save(d: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(d, open(VALIDACION_JSON, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("sales_validation", _tenant.current_tenant_id(), d)
     # P11·B4: validar/desvalidar ventas prende o apaga TODOS los análisis.
     from . import analisis_cache
     analisis_cache.datos_cambiaron()

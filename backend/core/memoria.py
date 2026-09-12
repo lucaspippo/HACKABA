@@ -11,13 +11,6 @@ Persiste en data/memoria.json. Compatible con `aprobar_categoria` del Plan 2.
 from __future__ import annotations
 
 import json
-import os
-
-from . import paths
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-MEMORIA_JSON = os.path.join(DATA_DIR, "memoria.json")
 
 _VACIO = {
     "preferencias": {},
@@ -30,19 +23,15 @@ _VACIO = {
 
 
 def _load() -> dict:
-    if not os.path.exists(MEMORIA_JSON):
-        return {}
-    try:
-        with open(MEMORIA_JSON, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("user_memory", _tenant.current_tenant_id()) or {}
 
 
 def _save(data: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(MEMORIA_JSON, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("user_memory", _tenant.current_tenant_id(), data)
 
 
 def _usuario(data: dict, usuario: str) -> dict:

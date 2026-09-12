@@ -31,12 +31,25 @@ def _norm(s) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).lower().strip()
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    if not os.path.exists(VENTAS_CLIENTE_JSON):
+        return {}
     try:
         with open(VENTAS_CLIENTE_JSON, encoding="utf-8") as f:
             return json.load(f) or {}
     except Exception:  # noqa: BLE001 — sin archivo, el módulo se calla
         return {}
+
+
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("client_sales_data", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("client_sales_data", tid, data)
+    return data
 
 
 def hay_datos() -> bool:

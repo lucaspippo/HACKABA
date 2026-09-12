@@ -19,16 +19,11 @@ Nada entra sin el sí explícito del humano (la tesis del producto).
 from __future__ import annotations
 
 import datetime
-import json
-import os
 import re
 import unicodedata
 
-from . import esquema, paths, store, validacion
+from . import esquema, store, validacion
 from .fechas import parse_fecha, hoy
-
-DATA_DIR = paths.DATA_DIR
-PROVEEDORES_JSON = os.path.join(DATA_DIR, "proveedores.json")
 
 TIPOS_COMPROBANTE = ("factura", "remito", "orden_compra", "recibo")
 
@@ -66,16 +61,15 @@ def _ahora() -> str:
 # --- Cuenta corriente del proveedor -------------------------------------------
 
 def _prov_load() -> list[dict]:
-    try:
-        return json.load(open(PROVEEDORES_JSON, encoding="utf-8"))
-    except Exception:
-        return []
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("supplier_accounts", _tenant.current_tenant_id()) or []
 
 
 def _prov_save(items: list[dict]) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    json.dump(items, open(PROVEEDORES_JSON, "w", encoding="utf-8"),
-              ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("supplier_accounts", _tenant.current_tenant_id(), items)
 
 
 def proveedores_conocidos() -> set[str]:

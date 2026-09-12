@@ -38,12 +38,26 @@ def _norm(s) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).lower().strip()
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    """The tenant's REAL notes if they exist on disk (e.g. data-demo/
+    notas_equipo.json), used ONLY to seed Postgres the first time (once per
+    tenant). This module has no write API — {} is the fallback for a tenant
+    with no file at all, same as the old missing-file behavior."""
     try:
         with open(NOTAS_JSON, encoding="utf-8") as f:
             return json.load(f) or {}
     except Exception:  # noqa: BLE001 — sin archivo, el módulo se calla
         return {}
+
+
+def _load() -> dict:
+    from core.db import team_notes_repo, tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = team_notes_repo.get_data(tid)
+    if data is None:
+        data = _seed_inicial()
+        team_notes_repo.save_data(tid, data)
+    return data
 
 
 def hay_datos() -> bool:

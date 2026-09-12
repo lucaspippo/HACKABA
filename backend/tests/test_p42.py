@@ -205,24 +205,30 @@ def test_el_hilo_cuenta_la_historia_en_orden():
     """El «y después qué pasó»: las acciones sobre el mismo sujeto, de la más
     vieja a la más nueva.
 
-    El registro es append-only por diseño (esa es la garantía), así que el test
-    escribe de verdad y después deja el archivo como estaba: el dataset del demo
-    no se ensucia con clientes inventados."""
-    import json
+    El registro es append-only por diseño (esa es la garantía, ahora en
+    Postgres — ver core/db/audit_repo.py), así que el test escribe de verdad
+    y después borra sólo las dos filas que agregó (por id): el dataset del
+    demo no se ensucia con clientes inventados."""
+    from sqlalchemy import text as _text
+
     from core import store
+    from core.db import tenant as _tenant_mod
+    from core.db.engine import tenant_connection
+
     cliente = "Hilo Test SA"
-    crudo_antes = json.load(open(store.audit.path, encoding="utf-8")) \
-        if __import__("os").path.exists(store.audit.path) else []
+    n_antes = len(store.audit.list())
+    ev1 = store.audit.record("Tester", "cobranza_recordado", None, {"cliente": cliente})
+    ev2 = store.audit.record("Tester", "cobranza_pagado", None, {"cliente": cliente})
     try:
-        store.audit.record("Tester", "cobranza_recordado", None, {"cliente": cliente})
-        store.audit.record("Tester", "cobranza_pagado", None, {"cliente": cliente})
         h = auditoria.hilo(cliente, "es")
         assert [x["accion"] for x in h] == ["cobranza_recordado", "cobranza_pagado"]
         assert all(x["en_hilo"] == 2 for x in h)
-        assert len(store.audit.list()) == len(crudo_antes) + 2
+        assert len(store.audit.list()) == n_antes + 2
     finally:
-        json.dump(crudo_antes, open(store.audit.path, "w", encoding="utf-8"),
-                  ensure_ascii=False, indent=2)
+        tid = _tenant_mod.current_tenant_id()
+        with tenant_connection(tid) as conn:
+            conn.execute(_text("DELETE FROM audit_events WHERE id IN (:a, :b)"),
+                        {"a": ev1["id"], "b": ev2["id"]})
     assert auditoria.hilo(cliente, "es") == []
 
 

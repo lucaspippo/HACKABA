@@ -26,12 +26,25 @@ from . import esquema, fechas, paths
 TRASLADOS_JSON = os.path.join(paths.DATA_DIR, "traslados_internos.json")
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
+    if not os.path.exists(TRASLADOS_JSON):
+        return {}
     try:
         with open(TRASLADOS_JSON, encoding="utf-8") as f:
             return json.load(f) or {}
     except Exception:  # noqa: BLE001
         return {}
+
+
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("internal_transfers", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("internal_transfers", tid, data)
+    return data
 
 
 def hay_datos() -> bool:

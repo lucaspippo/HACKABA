@@ -12,15 +12,8 @@ from __future__ import annotations
 
 import csv
 import io
-import json
-import os
 
-from . import paths
 from . import store, pricing
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
-BASELINE_JSON = os.path.join(DATA_DIR, "inventory.json")  # lo que vino de Faro (origen)
 
 # Campos que viajan en el delta (los que PolPilot corrige sobre un producto).
 CAMPOS_EXPORT = ["pvp", "costo_iva", "stock", "estado", "valor_peso"]
@@ -43,11 +36,14 @@ def set_source_of_truth(campo: str, sistema: str) -> None:
 
 
 def _baseline() -> dict:
-    try:
-        data = json.load(open(BASELINE_JSON, encoding="utf-8"))
-        return {d.get("codigo"): d for d in data["articulos"]}
-    except Exception:
-        return {}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    articulos = blob_repo.get_blob("inventory_baseline", tid)
+    if articulos is None:
+        articulos = store._load_seed()
+        blob_repo.save_blob("inventory_baseline", tid, articulos)
+    return {d.get("codigo"): d for d in articulos}
 
 
 def deltas() -> list[dict]:

@@ -15,23 +15,36 @@ from . import pricing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = paths.DATA_DIR  # por-tenant: env POLPILOT_DATA_DIR o data/ (ver core/paths.py)
+# ORIGINAL catalog, immutable on disk (generar.py produces it) — the seed the
+# Postgres working copy (inventory_working, see core/db/inventory_repo.py)
+# starts from the first time a tenant is touched, and the one
+# resetear_actual() reverts to. Same role data-demo/cuentas.json plays for
+# core/cuentas.py — see core/db/MIGRATING_A_MODULE.md.
 INVENTORY_JSON = os.path.join(DATA_DIR, "inventory.json")
-# Copia viva sobre la que se aplican las correcciones (saneamiento).
-# Arranca del inventory.json original y queda restaurable vía VersionStore.
-WORKING_JSON = os.path.join(DATA_DIR, "inventory_actual.json")
 
 versiones = VersionStore(DATA_DIR)
 audit = AuditLog(DATA_DIR)
 
 
+def _load_seed() -> list[dict]:
+    with open(INVENTORY_JSON, encoding="utf-8") as f:
+        data = json.load(f)
+    return data["articulos"]
+
+
 @lru_cache(maxsize=1)
 def _cache_raw() -> tuple:
-    """Lista cruda de artículos (dicts). Usa la copia de trabajo si existe."""
-    fuente = WORKING_JSON if os.path.exists(WORKING_JSON) else INVENTORY_JSON
-    with open(fuente, encoding="utf-8") as f:
-        data = json.load(f)
+    """Raw article list (dicts), from the Postgres working copy — seeded
+    once from INVENTORY_JSON if the tenant has no row yet."""
+    from core.db import inventory_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    articulos = inventory_repo.get_articles(tid)
+    if articulos is None:
+        articulos = _load_seed()
+        inventory_repo.save_articles(tid, articulos)
     # tuple para que sea hasheable bajo lru_cache; se reconvierte a list al leer.
-    return tuple(json.dumps(d) for d in data["articulos"])
+    return tuple(json.dumps(d) for d in articulos)
 
 
 def raw_actual() -> list[dict]:
@@ -48,8 +61,9 @@ _panorama_cache: dict | None = None
 def guardar(raw: list[dict]) -> None:
     """Persiste la copia de trabajo y refresca los caches."""
     global _panorama_cache
-    with open(WORKING_JSON, "w", encoding="utf-8") as f:
-        json.dump({"articulos": raw}, f, ensure_ascii=False)
+    from core.db import inventory_repo
+    from core.db import tenant as _tenant
+    inventory_repo.save_articles(_tenant.current_tenant_id(), raw)
     _cache_raw.cache_clear()
     _panorama_cache = None
     from . import analisis_cache
@@ -59,8 +73,9 @@ def guardar(raw: list[dict]) -> None:
 def resetear_actual() -> None:
     """Descarta las correcciones y vuelve al inventory.json original."""
     global _panorama_cache
-    if os.path.exists(WORKING_JSON):
-        os.remove(WORKING_JSON)
+    from core.db import inventory_repo
+    from core.db import tenant as _tenant
+    inventory_repo.save_articles(_tenant.current_tenant_id(), _load_seed())
     _cache_raw.cache_clear()
     _panorama_cache = None
     from . import analisis_cache

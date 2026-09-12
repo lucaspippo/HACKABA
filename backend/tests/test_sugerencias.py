@@ -87,13 +87,15 @@ def test_auditoria_sugerencias_demo():
       walter → cuentas/cobranzas (cobra el contado en la ruta)
       diego → logistica (levanta pedidos para el reparto) + inventario (góndolas)
       lucia → logistica (su cartera es una ruta de reparto)
-      vanesa → inventario (vive mirando los precios de balanza)
 
-    P16: la sugerencia de vanesa se materializó como SOLICITUD pendiente
-    (sembrada por generar.py) — mientras esté pendiente, sugerir_modulos no la
-    repite (comportamiento correcto). El test acepta cualquiera de los dos
-    estados, pero exige que la defensa exista: sugerencia visible O solicitud
-    pendiente por ese mismo módulo."""
+    vanesa NO aparece: igual que tomas, la capa del empleado de a pie le
+    OTORGÓ "inventario" como feature de lectura de base (responde precios de
+    balanza a Ángela desde el mostrador — ver su descripción y
+    usuarios_demo.py). Ya no hay nada que sugerirle ni pedirle: el viejo P16
+    ("solicitud pendiente sembrada por generar.py") quedó obsoleto el día que
+    esa feature se agregó a su seed — sembrar_solicitud() ya no puede crear
+    la solicitud (ValueError: el módulo ya lo tiene) y falla en silencio, así
+    que este test siguió esperando una defensa que ya no podía existir."""
     import json as _json
     import os as _os
     import subprocess as _sp
@@ -109,23 +111,18 @@ import auth
 from core import perfiles
 out = {u: [s["modulo"] for s in perfiles.sugerir_modulos(u)]
        for u, v in auth.USUARIOS.items() if not v.get("interno")}
-pend = [(s["usuario"], s["modulo"]) for s in perfiles.solicitudes(estado="pendiente")]
-print(json.dumps({"sugerencias": out, "pendientes": pend}))
+print(json.dumps({"sugerencias": out}))
 """], cwd=backend, env=env, capture_output=True, text=True, encoding="utf-8", timeout=120)
     assert r.returncode == 0, r.stderr[-800:]
     d = _json.loads(r.stdout)
     sugerencias = d["sugerencias"]
-    pendientes = {tuple(p) for p in d["pendientes"]}
-    # vanesa: sugerencia visible O solicitud pendiente (según el estado del demo)
-    vanesa = sugerencias.pop("vanesa")
-    assert vanesa == ["inventario"] or ("vanesa", "inventario") in pendientes, \
-        f"vanesa sin defensa: sugerencias={vanesa}, pendientes={pendientes}"
     assert sugerencias == {
         "aldo": [], "marta": [], "celeste": [], "ramon": [],
-        # tomas ya NO recibe la sugerencia de inventario: la capa del empleado de
-        # a pie se lo OTORGÓ como feature de lectura (responde stock/negativos a
-        # Ángela desde el piso). Su descripción sigue justificándolo; ahora lo tiene.
-        "brian": [], "nahuel": [], "tomas": [],
+        # tomas y vanesa ya NO reciben la sugerencia de inventario: la capa del
+        # empleado de a pie se lo OTORGÓ como feature de lectura (responde
+        # stock/negativos o precios de balanza a Ángela desde el piso/mostrador).
+        # Sus descripciones siguen justificándolo; ahora lo tienen.
+        "brian": [], "nahuel": [], "tomas": [], "vanesa": [],
         # P·onboarding — el que recién entró tampoco necesita pedir nada: entra
         # con las mismas features que el resto del depósito de a pie.
         "kevin": [],

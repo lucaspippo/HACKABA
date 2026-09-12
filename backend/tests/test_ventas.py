@@ -6,11 +6,11 @@ de mostrar números, (c) el dry-run no compromete nada y Evolución sigue viva.
 from __future__ import annotations
 
 import datetime
-import os
 
 import pytest
 
 from core import esquema, evolucion, staging, store, ventas
+from tests.conftest import limpiar_tabla_tenant
 
 HOY = datetime.date.today()
 
@@ -21,19 +21,14 @@ def d(n):
 
 @pytest.fixture(autouse=True)
 def limpio():
-    files = [esquema.APARTADOS_JSON, staging.STAGING_JSON, ventas.VALIDACION_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    limpiar_tabla_tenant("staging_batches")
+    limpiar_tabla_tenant("data_sections")
+    limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("staging_batches")
+    limpiar_tabla_tenant("data_sections")
+    limpiar_tabla_tenant("sales_validation")
     store.resetear_actual()
 
 

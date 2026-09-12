@@ -12,13 +12,13 @@ Cubren el flujo completo prometido en las métricas de éxito:
 from __future__ import annotations
 
 import datetime
-import os
 
 import pytest
 
 import angela
 import auth
 from core import staging, store, esquema, deposito, logistica, recordatorios
+from tests.conftest import limpiar_tabla_tenant
 
 HOY = datetime.date.today()
 
@@ -29,21 +29,16 @@ def d(n: int) -> str:
 
 @pytest.fixture(autouse=True)
 def limpio():
-    """Aísla apartados/recordatorios/staging: guarda lo que hubiera y lo restaura."""
-    files = [esquema.APARTADOS_JSON, recordatorios.RECORDATORIOS_JSON, staging.STAGING_JSON]
-    backup = {}
-    for f in files:
-        if os.path.exists(f):
-            backup[f] = open(f, encoding="utf-8").read()
-            os.remove(f)
+    """Aísla apartados/recordatorios/staging."""
+    limpiar_tabla_tenant("staging_batches")
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
+    limpiar_tabla_tenant("reminders")
     yield
-    for f in files:
-        if os.path.exists(f):
-            os.remove(f)
-        if f in backup:
-            open(f, "w", encoding="utf-8").write(backup[f])
+    limpiar_tabla_tenant("staging_batches")
+    limpiar_tabla_tenant("data_sections")
     store.resetear_actual()
+    limpiar_tabla_tenant("reminders")
 
 
 def _articulos(n=3):

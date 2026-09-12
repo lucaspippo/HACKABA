@@ -55,7 +55,7 @@ NODO_FEATURE = {
 }
 
 
-def _load() -> dict:
+def _seed_inicial() -> dict:
     if not os.path.exists(CONOCIMIENTO_JSON):
         return {"piezas": []}
     try:
@@ -69,10 +69,21 @@ def _load() -> dict:
         return {"piezas": []}
 
 
+def _load() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("business_knowledge", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("business_knowledge", tid, data)
+    return data
+
+
 def _save(data: dict) -> None:
-    os.makedirs(DATA_DIR, exist_ok=True)
-    with open(CONOCIMIENTO_JSON, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("business_knowledge", _tenant.current_tenant_id(), data)
 
 
 def _norm(s) -> str:

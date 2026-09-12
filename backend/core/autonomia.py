@@ -30,13 +30,6 @@ escribe ni la interpreta.
 """
 from __future__ import annotations
 
-import json
-import os
-
-from . import paths
-
-AUTONOMIA_JSON = os.path.join(paths.DATA_DIR, "autonomia.json")
-
 NIVELES = ("pide_ok", "agrupa")
 
 # clase → hasta dónde puede llegar. `tope` None = clavada en el default.
@@ -51,17 +44,15 @@ POLITICA = {
 
 
 def _load() -> dict:
-    try:
-        with open(AUTONOMIA_JSON, encoding="utf-8") as f:
-            return json.load(f) or {}
-    except Exception:
-        return {}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("automation_policies", _tenant.current_tenant_id()) or {}
 
 
 def _save(d: dict) -> None:
-    os.makedirs(paths.DATA_DIR, exist_ok=True)
-    with open(AUTONOMIA_JSON, "w", encoding="utf-8") as f:
-        json.dump(d, f, ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("automation_policies", _tenant.current_tenant_id(), d)
 
 
 def nivel_de(clase: str) -> str:

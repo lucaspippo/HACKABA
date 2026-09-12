@@ -35,12 +35,7 @@ existe cuando un humano aprobó.
 """
 from __future__ import annotations
 
-import json
-import os
-
-from . import cuentas, fechas, paths, store
-
-GESTIONES_JSON = os.path.join(paths.DATA_DIR, "cobranza.json")
+from . import cuentas, fechas, store
 
 # Estados de una gestión. Deliberadamente pocos: cada uno tiene que significar
 # algo distinto para el que mira la lista un lunes a la mañana.
@@ -48,17 +43,15 @@ ESTADOS = ("pendiente", "recordado", "promesa", "pagado", "sin_respuesta")
 
 
 def _load() -> dict:
-    try:
-        with open(GESTIONES_JSON, encoding="utf-8") as f:
-            return json.load(f) or {}
-    except Exception:
-        return {}
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    return blob_repo.get_blob("collection_actions", _tenant.current_tenant_id()) or {}
 
 
 def _save(d: dict) -> None:
-    os.makedirs(paths.DATA_DIR, exist_ok=True)
-    with open(GESTIONES_JSON, "w", encoding="utf-8") as f:
-        json.dump(d, f, ensure_ascii=False, indent=2)
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    blob_repo.save_blob("collection_actions", _tenant.current_tenant_id(), d)
 
 
 def gestion_de(cliente_id: str) -> dict:

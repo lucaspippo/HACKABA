@@ -44,31 +44,30 @@ from . import paths
 
 EXTRACCIONES_JSON = os.path.join(paths.DATA_DIR, "comprobantes", "extracciones.json")
 
-_cache: dict | None = None
-_cache_mtime: float | None = None
 
-
-def _muestras() -> dict:
-    """{sha256: extraccion}. Se relee si el archivo cambia (regenerar las
-    muestras no obliga a reiniciar el backend)."""
-    global _cache, _cache_mtime
-    try:
-        mtime = os.path.getmtime(EXTRACCIONES_JSON)
-    except OSError:
-        _cache, _cache_mtime = {}, None
+def _seed_inicial() -> dict:
+    """{sha256: extraccion}, leído una vez de disco."""
+    if not os.path.exists(EXTRACCIONES_JSON):
         return {}
-    if _cache is not None and _cache_mtime == mtime:
-        return _cache
     try:
         with open(EXTRACCIONES_JSON, encoding="utf-8") as f:
             datos = json.load(f)
-        _cache = {m["sha256"]: m["extraccion"]
-                  for m in (datos.get("muestras") or {}).values()
-                  if m.get("sha256") and m.get("extraccion")}
+        return {m["sha256"]: m["extraccion"]
+                for m in (datos.get("muestras") or {}).values()
+                if m.get("sha256") and m.get("extraccion")}
     except Exception:
-        _cache = {}
-    _cache_mtime = mtime
-    return _cache
+        return {}
+
+
+def _muestras() -> dict:
+    from core.db import blob_repo
+    from core.db import tenant as _tenant
+    tid = _tenant.current_tenant_id()
+    data = blob_repo.get_blob("sample_extractions", tid)
+    if data is None:
+        data = _seed_inicial()
+        blob_repo.save_blob("sample_extractions", tid, data)
+    return data
 
 
 def _muestra_por_hash(crudo: bytes) -> dict | None:

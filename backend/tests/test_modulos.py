@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from core import cuentas, caja
@@ -9,12 +7,10 @@ from tests.conftest import limpiar_cuentas_db
 @pytest.fixture(autouse=True)
 def limpio():
     limpiar_cuentas_db()
-    if os.path.exists(caja.CAJA_JSON):
-        os.remove(caja.CAJA_JSON)
+    caja.resetear()
     yield
     limpiar_cuentas_db()
-    if os.path.exists(caja.CAJA_JSON):
-        os.remove(caja.CAJA_JSON)
+    caja.resetear()
 
 
 # --- Plan 6: cuentas corrientes ---
