@@ -589,7 +589,17 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
     except Exception:  # noqa: BLE001 — sin notas, el grafo es el de siempre
         pass
 
-    # --- lo que el dueño le enseñó a Ángela, pegado a su entidad ---------------
+    # --- LA MEMORIA DE LA CASA, COMO NODO --------------------------------------
+    #
+    # Antes esto colgaba el id de la pieza como ATRIBUTO de la entidad, así que
+    # la regla existía en el dato y no en el dibujo: no se podía encender, no
+    # se podía recorrer, y el camino de un hallazgo no podía pasar por ella.
+    #
+    # Y es justo el eslabón que contesta la pregunta que más nos van a hacer:
+    # «¿y esto de dónde lo sacó?». Que el procedimiento de un proveedor sea un
+    # nodo propio, con su autor y su fecha, es lo que convierte «el sistema lo
+    # sabe» en «se lo enseñó Celeste el 18 de junio, porque nos rechazaron un
+    # reclamo».
     try:
         from . import conocimiento
         for p in conocimiento.listar():
@@ -599,8 +609,26 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
             objetivo = next((nid for nid, n in nodos.items()
                              if n["tipo"] in ("producto", "cliente", "proveedor")
                              and _norm(ent) in _norm(n["nombre"])), None)
-            if objetivo:
-                nodos[objetivo].setdefault("conocimiento", []).append(p.get("id"))
+            if not objetivo:
+                continue
+            kid = f"conocimiento:{p.get('id')}"
+            origen = p.get("origen") or {}
+            nodos[kid] = _nodo(
+                kid, "conocimiento", p.get("texto") or p.get("id"),
+                seccion=p.get("nodo") or "contexto",
+                texto=p.get("texto"), texto_en=p.get("texto_en"),
+                efecto=p.get("efecto"), params=p.get("params") or {},
+                quien=origen.get("quien"), cuando=origen.get("cuando"),
+                metricas=[{"k": "quien", "v": origen.get("quien"), "fmt": "texto"},
+                          {"k": "cuando", "v": origen.get("cuando"), "fmt": "fecha"},
+                          {"k": "veces", "v": p.get("veces_aplicada"), "fmt": "num"}])
+            add_arista(kid, objetivo, "aplica_a")
+            # y quién la enseñó: la regla también sale de una persona
+            quien = personas_por_usuario.get(origen.get("quien"))
+            if quien:
+                add_arista(quien, kid, "enseño")
+            # se conserva el atributo: el panel de la entidad ya lo leía
+            nodos[objetivo].setdefault("conocimiento", []).append(p.get("id"))
     except Exception:
         pass
 
@@ -670,6 +698,19 @@ def _resolver(nombre: str, indice: dict, tipos: tuple) -> str | None:
                  if x["tipo"] in tipos and (n in _norm(x["nombre"]) or _norm(x["nombre"]) in n)), None)
 
 
+def _resolver_exacto(x, indice: dict) -> str | None:
+    """Un eslabón declarado por un cruce. Puede venir como id ya armado
+    (`persona:nahuel`) o como `("tipo", "nombre")` para que el cruce no tenga
+    que conocer cómo se arman los ids del grafo."""
+    if isinstance(x, str):
+        return x if x in indice else None
+    try:
+        tipo, nombre = x
+    except Exception:  # noqa: BLE001
+        return None
+    return _resolver(nombre, indice, (tipo,))
+
+
 def _record_names(card: dict) -> list[str]:
     """Names of the entities a card's evidence points at, seeding this
     finding's graph nodes.
@@ -728,6 +769,32 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
 
         semillas = list(dict.fromkeys(semillas))
         if not semillas:
+            continue
+
+        # --- UN CAMINO PUEDE DECLARAR SUS NODOS, Y ENTONCES MANDA ÉL --------
+        #
+        # La expansión automática es buena para un hallazgo genérico y mala para
+        # uno que se va a proyectar: aunque se filtre por relevancia, arrastra
+        # vecinos que no explican nada. El reclamo del demo salía con veinte
+        # nodos, y cuatro eran yerba, papas y dos reglas sobre otra cosa.
+        #
+        # Cuando un cruce sabe exactamente qué eslabones cuentan su historia,
+        # los declara en `datos.camino_exacto` y acá no se expande nada. No es
+        # un caso especial escondido: es el cruce diciendo «esto, y nada más»,
+        # y se ve en su propio archivo.
+        exacto = datos.get("camino_exacto")
+        if exacto:
+            conjunto = {nid for nid in
+                        [_resolver_exacto(x, indice) for x in exacto if x] if nid}
+            ids_aristas = [i for i, a in enumerate(g["aristas"])
+                           if a["source"] in conjunto and a["target"] in conjunto]
+            salida.append({
+                "id": card.get("id"), "titulo": card.get("titulo"),
+                "tipo": card.get("tipo"), "naturaleza": card.get("naturaleza"),
+                "monto": None,
+                "semillas": [n for n in semillas if n in conjunto] or sorted(conjunto)[:1],
+                "nodos": sorted(conjunto), "aristas": ids_aristas,
+            })
             continue
 
         conjunto = set(semillas)

@@ -72,3 +72,20 @@ def precalentar() -> None:
         # el Cerebro cruza 10 años de canastas para la co-venta: ~5s la primera
         # vez. Que los pague el arranque y no el que abre la vista en la demo.
         get_o_computar("grafo", lang, lambda l=lang: _grafo.completo(l))
+        # EL MAPA Y LAS PRIORIDADES TAMBIÉN. Medido: en frío el mapa tardaba
+        # 5,2 s y prioridades 14,7 s — y son las dos primeras pantallas del
+        # guion. Que las pague el arranque es la diferencia entre entrar y
+        # esperar quince segundos con el proyector encendido.
+        try:
+            from . import mapa_operacion as _mapa
+            get_o_computar("mapa_operacion", lang, lambda l=lang: _mapa.mapa(l))
+        except Exception:  # noqa: BLE001 — el precalc nunca rompe el arranque
+            pass
+        try:
+            # `inbox` ya cachea su parte cara bajo la llave "prioridades" y
+            # recorta por rol en cada request. Se la llama a ella y no a
+            # `_compose` para no tener dos caminos que llenen la misma llave.
+            from . import priorities as _prio
+            _prio.inbox(lang, None)
+        except Exception:  # noqa: BLE001
+            pass

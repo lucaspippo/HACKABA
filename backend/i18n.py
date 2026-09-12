@@ -1735,6 +1735,36 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.cru.f_wms": {"es": "ubicaciones del depósito", "en": "warehouse locations"},
     "core.cru.f_ordenes": {"es": "órdenes de compra abiertas", "en": "open purchase orders"},
     "core.cru.f_oferta": {"es": "la oferta del proveedor", "en": "the supplier's offer"},
+    "core.cru.f_conocimiento": {"es": "las reglas que enseñó el equipo",
+                                "en": "the rules the team taught"},
+
+    # 8 · el reclamo de una devolución
+    "core.cru.reclamo_t": {
+        "es": "Reclamo a {proveedor}: falta {n} cosa para mandarlo",
+        "en": "Claim to {proveedor}: {n} thing missing to send it"},
+    "core.cru.reclamo_r": {
+        "es": "El sistema ya tiene {tiene} de los datos que pide {proveedor}. Falta {falta}.",
+        "en": "The system already has {tiene} of what {proveedor} asks for. Missing: {falta}."},
+    "core.cru.reclamo_p1": {
+        "es": "{autor} lo avisó por {canal}: «{texto}»",
+        "en": "{autor} flagged it over {canal}: “{texto}”"},
+    "core.cru.reclamo_p2": {
+        "es": "{proveedor} pide {requisitos}, por {canal}, dentro de {plazo} días.",
+        "en": "{proveedor} asks for {requisitos}, over {canal}, within {plazo} days."},
+    "core.cru.reclamo_p3": {
+        "es": "Ya lo tiene: {tiene}. Le falta: {falta}.",
+        "en": "Already has: {tiene}. Missing: {falta}."},
+    "core.cru.reclamo_p4": {
+        "es": "Esa regla la enseñó {quien} el {cuando}: {porque}",
+        "en": "{quien} taught that rule on {cuando}: {porque}"},
+    "core.cru.reclamo_i1": {"es": "lo avisó por {canal}", "en": "flagged it over {canal}"},
+    "core.cru.reclamo_i2": {"es": "reclamo por {canal}, {plazo} días de plazo",
+                            "en": "claim over {canal}, {plazo}-day window"},
+    "core.cru.reclamo_i3": {"es": "la orden abierta de donde sale el remito",
+                            "en": "the open order the delivery note comes from"},
+    "core.cru.reclamo_chat": {
+        "es": "¿qué le reclamo a {proveedor}?",
+        "en": "what do I claim from {proveedor}?"},
     "core.cru.f_ventas12": {"es": "ventas de los últimos 12 meses",
                             "en": "the last 12 months of sales"},
 

@@ -70,7 +70,9 @@ const TIPOS_ORDEN = ["producto", "cliente", "proveedor", "rubro", "local", "remi
 // el color de la insignia sólo lo acelera.
 const CANAL_MARCA = {
   whatsapp: "#25D366",
-  email: "#e8e4dc",
+  // el mail no tiene una marca única, así que va en el papel del sistema: lo
+  // que lo hace reconocible es la forma del sobre, no el color
+  email: "#f4f1ea",
   foto: "#e8e4dc",
   voz: "#e8e4dc",
   chat: "#e8e4dc",
@@ -221,26 +223,37 @@ function dibujarGlifoCanal(ctx, canal, x, y, r) {
       }
       break;
     }
-    case "whatsapp": {                       // burbuja con cola
-      ctx.moveTo(x - k, y - k * 0.7);
-      ctx.lineTo(x + k, y - k * 0.7);
-      ctx.lineTo(x + k, y + k * 0.25);
-      ctx.lineTo(x - k * 0.25, y + k * 0.25);
-      ctx.lineTo(x - k * 0.72, y + k * 0.92);
-      ctx.lineTo(x - k * 0.6, y + k * 0.25);
-      ctx.lineTo(x - k, y + k * 0.25);
+    case "whatsapp": {
+      // LA MARCA DE VERDAD: burbuja redonda con la cola abajo a la izquierda
+      // y el tubo de teléfono adentro. Es la silueta que se reconoce sin leer
+      // — que es todo el punto — y se dibuja a trazo, no con un PNG, para que
+      // escale en el lienzo y siga nítida proyectada.
+      ctx.arc(x, y - k * 0.05, k * 0.92, Math.PI * 0.62, Math.PI * 0.28, false);
+      ctx.lineTo(x - k * 0.95, y + k * 1.05);   // la cola
       ctx.closePath();
+      ctx.stroke();
+      // el tubo: dos bocinas unidas por una diagonal
+      ctx.beginPath();
+      ctx.moveTo(x - k * 0.34, y - k * 0.36);
+      ctx.quadraticCurveTo(x - k * 0.1, y - k * 0.12, x - k * 0.02, y - k * 0.02);
+      ctx.quadraticCurveTo(x + k * 0.16, y + k * 0.18, x + k * 0.38, y + k * 0.34);
+      ctx.lineWidth = Math.max(0.4, r * 0.16);
       break;
     }
-    case "email": {                          // sobre: rectángulo y solapa
-      ctx.moveTo(x - k, y - k * 0.68);
-      ctx.lineTo(x + k, y - k * 0.68);
-      ctx.lineTo(x + k, y + k * 0.68);
-      ctx.lineTo(x - k, y + k * 0.68);
+    case "email": {
+      // El sobre, con la solapa en V que es lo que lo hace reconocible. La
+      // proporción es 3:2 como un sobre real: cuadrado se lee como "nota".
+      const w = k * 1.05, h = k * 0.7;
+      ctx.moveTo(x - w, y - h);
+      ctx.lineTo(x + w, y - h);
+      ctx.lineTo(x + w, y + h);
+      ctx.lineTo(x - w, y + h);
       ctx.closePath();
-      ctx.moveTo(x - k, y - k * 0.68);
-      ctx.lineTo(x, y + k * 0.1);
-      ctx.lineTo(x + k, y - k * 0.68);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - w, y - h);
+      ctx.lineTo(x, y + h * 0.22);
+      ctx.lineTo(x + w, y - h);
       break;
     }
     case "foto": {                           // cámara: cuerpo y lente
@@ -1475,7 +1488,15 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               // nodos todavía no tienen x/y: createRadialGradient con NaN lanza y
               // se lleva puesto el componente entero. Ese frame se saltea.
               if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) return;
-              const r = n._r * (presentar ? PRESENTAR.nodo : 1);
+              // POCOS Y GRANDES. Con un camino encendido, sus nodos crecen
+              // de verdad: el camino del reclamo son ocho, y ocho nodos en un
+              // lienzo entero tienen que verse como fichas, no como puntos.
+              // El resto del grafo no crece — el contraste es parte de la
+              // lectura: lo que importa es grande, el fondo sigue siendo fondo.
+              const enCamino = camino && nodosCamino.has(n.id);
+              const kTam = (presentar ? PRESENTAR.nodo : 1)
+                * (enCamino ? (nodosCamino.size <= 12 ? 3.1 : 2.1) : 1);
+              const r = n._r * kTam;
               const esFoco = n.id === foco;
               const dentro = hayResalte ? (camino ? enEtapa(n.id) : enfocado(n.id)) : true;
               const semilla = camino && semillasCamino.has(n.id);

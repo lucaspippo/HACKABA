@@ -1,453 +1,526 @@
 {
-  "piezas": [
-    {
-      "id": "k01",
-      "texto": "A Despensa Doña Elsa tolerale hasta 45 días — es cliente desde 2011 y nunca me falló.",
-      "texto_en": "Give Despensa Doña Elsa up to 45 days — a customer since 2011 who never let me down.",
-      "tipo": "regla",
-      "ambito": "cliente",
-      "entidad": "Despensa Doña Elsa",
-      "nodo": "clientes",
-      "efecto": "ajusta_umbral",
-      "params": {
-        "tolerancia_dias": 45,
-        "desde_anio": 2011
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-05"
-      },
-      "estado": "activo",
-      "veces_aplicada": 7,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k02",
-      "texto": "A los clientes nuevos, máximo $5.000.000 de cuenta corriente en los primeros 6 meses.",
-      "texto_en": "New customers: max $5,000,000 of credit line in the first 6 months.",
-      "tipo": "regla",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "clientes",
-      "efecto": "ajusta_umbral",
-      "params": {
-        "tope_cc": 5000000,
-        "meses_antiguedad": 6
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-06"
-      },
-      "estado": "activo",
-      "veces_aplicada": 3,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k03",
-      "texto": "Si un moroso pasa los 60 días, prepará la intimación pero NO la mandes sin mi OK.",
-      "texto_en": "If an overdue account passes 60 days, prepare the demand letter but do NOT send it without my OK.",
-      "tipo": "protocolo",
-      "ambito": "cliente",
-      "entidad": "Despensa Doña Elsa",
-      "nodo": "clientes",
-      "efecto": "requiere_aprobacion",
-      "params": {
-        "dias_gatillo": 60
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-08"
-      },
-      "estado": "activo",
-      "veces_aplicada": 2,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k04",
-      "texto": "Los tres grandes concentran el 41% pero son los que pagan en fecha: el riesgo es de concentración, no de cobro.",
-      "texto_en": "The three big ones concentrate 41% but they're the ones who pay on time: the risk is concentration, not collection.",
-      "tipo": "contexto",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "clientes",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "marca": "concentracion"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-10"
-      },
-      "estado": "activo",
-      "veces_aplicada": 4,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k05",
-      "texto": "A Rotisería Avenida sí le vendemos por debajo del margen objetivo: nos compra el vencimiento corto que si no tiramos.",
-      "texto_en": "We do sell Rotisería Avenida below target margin: they buy the short-dated stock we'd otherwise throw out.",
-      "tipo": "excepcion",
-      "ambito": "cliente",
-      "entidad": "Rotisería Avenida",
-      "nodo": "clientes",
-      "efecto": "suprime_alerta",
-      "params": {
-        "motivo": "vencimiento_corto"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-12"
-      },
-      "estado": "activo",
-      "veces_aplicada": 5,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k06",
-      "texto": "El Comedor Escolar N°12 factura poco en enero: cierra por vacaciones de verano.",
-      "texto_en": "School Cafeteria No.12 bills little in January: it closes for summer break.",
-      "tipo": "contexto",
-      "ambito": "cliente",
-      "entidad": "Comedor Escolar N°12",
-      "nodo": "clientes",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "mes_cierre": 1
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-13"
-      },
-      "estado": "activo",
-      "veces_aplicada": 2,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k07",
-      "texto": "Los viernes no se hacen pedidos: el depósito está a media dotación.",
-      "texto_en": "No orders on Fridays: the warehouse runs at half staff.",
-      "tipo": "regla",
-      "ambito": "proveedor",
-      "entidad": "Lácteos Campo Alegre",
-      "nodo": "proveedores",
-      "efecto": "ajusta_umbral",
-      "params": {
-        "evitar_dia": "viernes",
-        "motivo": "media_dotacion"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-15"
-      },
-      "estado": "activo",
-      "veces_aplicada": 6,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k08",
-      "texto": "Lácteos Campo Alegre sube la lista todos los meses desde hace un año.",
-      "texto_en": "Lácteos Campo Alegre raises its price list every month, for the past year.",
-      "tipo": "contexto",
-      "ambito": "proveedor",
-      "entidad": "Lácteos Campo Alegre",
-      "nodo": "proveedores",
-      "efecto": "contexto_para_angela",
-      "params": {},
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-15"
-      },
-      "estado": "activo",
-      "veces_aplicada": 8,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k09",
-      "texto": "Si una lista de precios sube más del 15%, no la apliques: avisame y la negocio.",
-      "texto_en": "If a price list rises more than 15%, don't apply it: tell me and I'll negotiate it.",
-      "tipo": "protocolo",
-      "ambito": "proveedor",
-      "entidad": null,
-      "nodo": "proveedores",
-      "efecto": "requiere_aprobacion",
-      "params": {
-        "umbral_suba_pct": 15
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-18"
-      },
-      "estado": "activo",
-      "veces_aplicada": 3,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k10",
-      "texto": "A Frigorífico La Ribera se le paga a 30 días, no a 60 como al resto.",
-      "texto_en": "Frigorífico La Ribera is paid at 30 days, not 60 like the rest.",
-      "tipo": "regla",
-      "ambito": "proveedor",
-      "entidad": "Frigorífico La Ribera",
-      "nodo": "caja",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "plazo_pago_dias": 30
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-20"
-      },
-      "estado": "activo",
-      "veces_aplicada": 4,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k11",
-      "texto": "GASEOSA COLA LA RIBERA nunca puede quebrar: trae gente al local.",
-      "texto_en": "GASEOSA COLA LA RIBERA can never run out: it brings people into the store.",
-      "tipo": "regla",
-      "ambito": "categoria",
-      "entidad": "GASEOSA COLA LA RIBERA",
-      "nodo": "inventario",
-      "efecto": "genera_alerta",
-      "params": {
-        "critico": true
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-22"
-      },
-      "estado": "activo",
-      "veces_aplicada": 9,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k12",
-      "texto": "La balanza 2 desvía siempre un poco: si es menos del 1%, no me alertes.",
-      "texto_en": "Scale 2 always drifts a bit: if it's under 1%, don't alert me.",
-      "tipo": "excepcion",
-      "ambito": "categoria",
-      "entidad": "balanza",
-      "nodo": "deposito",
-      "efecto": "suprime_alerta",
-      "params": {
-        "balanza": 2,
-        "umbral_pct": 1.0
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-24"
-      },
-      "estado": "activo",
-      "veces_aplicada": 11,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k13",
-      "texto": "Si la cámara de frío pasa de 4°C por más de 2 horas, avisame a mí primero, no al depósito.",
-      "texto_en": "If the cold room goes above 4°C for more than 2 hours, tell me first, not the warehouse.",
-      "tipo": "protocolo",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "deposito",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "umbral_c": 4,
-        "horas": 2,
-        "responsable": "aldo"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-25"
-      },
-      "estado": "activo",
-      "veces_aplicada": 1,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k14",
-      "texto": "El stock dormido de limpieza es de una compra grande que hicimos por precio: no es error de gestión.",
-      "texto_en": "The dormant cleaning stock is from a big buy we made on price: it's not a management error.",
-      "tipo": "contexto",
-      "ambito": "categoria",
-      "entidad": "limpieza y perfumería",
-      "nodo": "inventario",
-      "efecto": "contexto_para_angela",
-      "params": {},
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-27"
-      },
-      "estado": "activo",
-      "veces_aplicada": 3,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k15",
-      "texto": "Fiambres: nunca más de 15 días de stock, se vencen.",
-      "texto_en": "Cold cuts: never more than 15 days of stock, they spoil.",
-      "tipo": "regla",
-      "ambito": "categoria",
-      "entidad": "fiambres y quesos (balanza)",
-      "nodo": "inventario",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "dias_max_stock": 15
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-28"
-      },
-      "estado": "activo",
-      "veces_aplicada": 4,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k16",
-      "texto": "Los precios de fiambres los revisa Vanesa antes de aplicarlos.",
-      "texto_en": "Cold-cut prices are reviewed by Vanesa before they're applied.",
-      "tipo": "regla",
-      "ambito": "empleado",
-      "entidad": "vanesa",
-      "nodo": "equipo",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "categoria": "fiambres y quesos (balanza)",
-        "revisor": "vanesa"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-06-29"
-      },
-      "estado": "activo",
-      "veces_aplicada": 6,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k17",
-      "texto": "Tomás maneja depósito los martes y jueves nada más.",
-      "texto_en": "Tomás runs the warehouse on Tuesdays and Thursdays only.",
-      "tipo": "contexto",
-      "ambito": "empleado",
-      "entidad": "tomas",
-      "nodo": "equipo",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "dias": [
-          "martes",
-          "jueves"
-        ]
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-01"
-      },
-      "estado": "activo",
-      "veces_aplicada": 2,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k18",
-      "texto": "Las correcciones de stock en lote las aprueba solo el dueño.",
-      "texto_en": "Batch stock corrections are approved only by the owner.",
-      "tipo": "protocolo",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "equipo",
-      "efecto": "requiere_aprobacion",
-      "params": {
-        "accion": "correccion_stock_lote"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-02"
-      },
-      "estado": "activo",
-      "veces_aplicada": 3,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k19",
-      "texto": "Diego es el que más consulta cobranzas: es su tema.",
-      "texto_en": "Diego is the one who checks collections the most: it's his thing.",
-      "tipo": "contexto",
-      "ambito": "empleado",
-      "entidad": "diego",
-      "nodo": "equipo",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "tema": "cobranzas"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-03"
-      },
-      "estado": "activo",
-      "veces_aplicada": 5,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k20",
-      "texto": "El IPC que uso para deflactar es el oficial, no el de la cámara.",
-      "texto_en": "The CPI I use to deflate is the official one, not the chamber's.",
-      "tipo": "regla",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "contexto",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "ipc": "oficial"
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-04"
-      },
-      "estado": "activo",
-      "veces_aplicada": 3,
-      "efecto_profundo": false
-    },
-    {
-      "id": "k21",
-      "texto": "Nunca dejes la caja por debajo de $10.000.000: es el colchón de sueldos.",
-      "texto_en": "Never let cash drop below $10,000,000: it's the payroll cushion.",
-      "tipo": "regla",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "caja",
-      "efecto": "genera_alerta",
-      "params": {
-        "piso": 10000000
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-05"
-      },
-      "estado": "activo",
-      "veces_aplicada": 4,
-      "efecto_profundo": true
-    },
-    {
-      "id": "k22",
-      "texto": "En junio y diciembre hay aguinaldo: la caja de esos meses no se compara con el resto.",
-      "texto_en": "June and December have the 13th-salary: those months' cash isn't comparable to the rest.",
-      "tipo": "contexto",
-      "ambito": "global",
-      "entidad": null,
-      "nodo": "caja",
-      "efecto": "contexto_para_angela",
-      "params": {
-        "meses_aguinaldo": [
-          6,
-          12
-        ]
-      },
-      "origen": {
-        "quien": "aldo",
-        "cuando": "2026-07-06"
-      },
-      "estado": "activo",
-      "veces_aplicada": 2,
-      "efecto_profundo": true
+ "piezas": [
+  {
+   "id": "k01",
+   "texto": "A Despensa Doña Elsa tolerale hasta 45 días — es cliente desde 2011 y nunca me falló.",
+   "texto_en": "Give Despensa Doña Elsa up to 45 days — a customer since 2011 who never let me down.",
+   "tipo": "regla",
+   "ambito": "cliente",
+   "entidad": "Despensa Doña Elsa",
+   "nodo": "clientes",
+   "efecto": "ajusta_umbral",
+   "params": {
+    "tolerancia_dias": 45,
+    "desde_anio": 2011
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-05"
+   },
+   "estado": "activo",
+   "veces_aplicada": 7,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k02",
+   "texto": "A los clientes nuevos, máximo $5.000.000 de cuenta corriente en los primeros 6 meses.",
+   "texto_en": "New customers: max $5,000,000 of credit line in the first 6 months.",
+   "tipo": "regla",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "clientes",
+   "efecto": "ajusta_umbral",
+   "params": {
+    "tope_cc": 5000000,
+    "meses_antiguedad": 6
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-06"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k03",
+   "texto": "Si un moroso pasa los 60 días, prepará la intimación pero NO la mandes sin mi OK.",
+   "texto_en": "If an overdue account passes 60 days, prepare the demand letter but do NOT send it without my OK.",
+   "tipo": "protocolo",
+   "ambito": "cliente",
+   "entidad": "Despensa Doña Elsa",
+   "nodo": "clientes",
+   "efecto": "requiere_aprobacion",
+   "params": {
+    "dias_gatillo": 60
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-08"
+   },
+   "estado": "activo",
+   "veces_aplicada": 2,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k04",
+   "texto": "Los tres grandes concentran el 41% pero son los que pagan en fecha: el riesgo es de concentración, no de cobro.",
+   "texto_en": "The three big ones concentrate 41% but they're the ones who pay on time: the risk is concentration, not collection.",
+   "tipo": "contexto",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "clientes",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "marca": "concentracion"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-10"
+   },
+   "estado": "activo",
+   "veces_aplicada": 4,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k05",
+   "texto": "A Rotisería Avenida sí le vendemos por debajo del margen objetivo: nos compra el vencimiento corto que si no tiramos.",
+   "texto_en": "We do sell Rotisería Avenida below target margin: they buy the short-dated stock we'd otherwise throw out.",
+   "tipo": "excepcion",
+   "ambito": "cliente",
+   "entidad": "Rotisería Avenida",
+   "nodo": "clientes",
+   "efecto": "suprime_alerta",
+   "params": {
+    "motivo": "vencimiento_corto"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-12"
+   },
+   "estado": "activo",
+   "veces_aplicada": 5,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k06",
+   "texto": "El Comedor Escolar N°12 factura poco en enero: cierra por vacaciones de verano.",
+   "texto_en": "School Cafeteria No.12 bills little in January: it closes for summer break.",
+   "tipo": "contexto",
+   "ambito": "cliente",
+   "entidad": "Comedor Escolar N°12",
+   "nodo": "clientes",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "mes_cierre": 1
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-13"
+   },
+   "estado": "activo",
+   "veces_aplicada": 2,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k07",
+   "texto": "Los viernes no se hacen pedidos: el depósito está a media dotación.",
+   "texto_en": "No orders on Fridays: the warehouse runs at half staff.",
+   "tipo": "regla",
+   "ambito": "proveedor",
+   "entidad": "Lácteos Campo Alegre",
+   "nodo": "proveedores",
+   "efecto": "ajusta_umbral",
+   "params": {
+    "evitar_dia": "viernes",
+    "motivo": "media_dotacion"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-15"
+   },
+   "estado": "activo",
+   "veces_aplicada": 6,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k08",
+   "texto": "Lácteos Campo Alegre sube la lista todos los meses desde hace un año.",
+   "texto_en": "Lácteos Campo Alegre raises its price list every month, for the past year.",
+   "tipo": "contexto",
+   "ambito": "proveedor",
+   "entidad": "Lácteos Campo Alegre",
+   "nodo": "proveedores",
+   "efecto": "contexto_para_angela",
+   "params": {},
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-15"
+   },
+   "estado": "activo",
+   "veces_aplicada": 8,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k09",
+   "texto": "Si una lista de precios sube más del 15%, no la apliques: avisame y la negocio.",
+   "texto_en": "If a price list rises more than 15%, don't apply it: tell me and I'll negotiate it.",
+   "tipo": "protocolo",
+   "ambito": "proveedor",
+   "entidad": null,
+   "nodo": "proveedores",
+   "efecto": "requiere_aprobacion",
+   "params": {
+    "umbral_suba_pct": 15
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-18"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k10",
+   "texto": "A Frigorífico La Ribera se le paga a 30 días, no a 60 como al resto.",
+   "texto_en": "Frigorífico La Ribera is paid at 30 days, not 60 like the rest.",
+   "tipo": "regla",
+   "ambito": "proveedor",
+   "entidad": "Frigorífico La Ribera",
+   "nodo": "caja",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "plazo_pago_dias": 30
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-20"
+   },
+   "estado": "activo",
+   "veces_aplicada": 4,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k11",
+   "texto": "GASEOSA COLA LA RIBERA nunca puede quebrar: trae gente al local.",
+   "texto_en": "GASEOSA COLA LA RIBERA can never run out: it brings people into the store.",
+   "tipo": "regla",
+   "ambito": "categoria",
+   "entidad": "GASEOSA COLA LA RIBERA",
+   "nodo": "inventario",
+   "efecto": "genera_alerta",
+   "params": {
+    "critico": true
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-22"
+   },
+   "estado": "activo",
+   "veces_aplicada": 9,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k12",
+   "texto": "La balanza 2 desvía siempre un poco: si es menos del 1%, no me alertes.",
+   "texto_en": "Scale 2 always drifts a bit: if it's under 1%, don't alert me.",
+   "tipo": "excepcion",
+   "ambito": "categoria",
+   "entidad": "balanza",
+   "nodo": "deposito",
+   "efecto": "suprime_alerta",
+   "params": {
+    "balanza": 2,
+    "umbral_pct": 1.0
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-24"
+   },
+   "estado": "activo",
+   "veces_aplicada": 11,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k13",
+   "texto": "Si la cámara de frío pasa de 4°C por más de 2 horas, avisame a mí primero, no al depósito.",
+   "texto_en": "If the cold room goes above 4°C for more than 2 hours, tell me first, not the warehouse.",
+   "tipo": "protocolo",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "deposito",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "umbral_c": 4,
+    "horas": 2,
+    "responsable": "aldo"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-25"
+   },
+   "estado": "activo",
+   "veces_aplicada": 1,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k14",
+   "texto": "El stock dormido de limpieza es de una compra grande que hicimos por precio: no es error de gestión.",
+   "texto_en": "The dormant cleaning stock is from a big buy we made on price: it's not a management error.",
+   "tipo": "contexto",
+   "ambito": "categoria",
+   "entidad": "limpieza y perfumería",
+   "nodo": "inventario",
+   "efecto": "contexto_para_angela",
+   "params": {},
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-27"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k15",
+   "texto": "Fiambres: nunca más de 15 días de stock, se vencen.",
+   "texto_en": "Cold cuts: never more than 15 days of stock, they spoil.",
+   "tipo": "regla",
+   "ambito": "categoria",
+   "entidad": "fiambres y quesos (balanza)",
+   "nodo": "inventario",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "dias_max_stock": 15
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-28"
+   },
+   "estado": "activo",
+   "veces_aplicada": 4,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k16",
+   "texto": "Los precios de fiambres los revisa Vanesa antes de aplicarlos.",
+   "texto_en": "Cold-cut prices are reviewed by Vanesa before they're applied.",
+   "tipo": "regla",
+   "ambito": "empleado",
+   "entidad": "vanesa",
+   "nodo": "equipo",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "categoria": "fiambres y quesos (balanza)",
+    "revisor": "vanesa"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-06-29"
+   },
+   "estado": "activo",
+   "veces_aplicada": 6,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k17",
+   "texto": "Tomás maneja depósito los martes y jueves nada más.",
+   "texto_en": "Tomás runs the warehouse on Tuesdays and Thursdays only.",
+   "tipo": "contexto",
+   "ambito": "empleado",
+   "entidad": "tomas",
+   "nodo": "equipo",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "dias": [
+     "martes",
+     "jueves"
+    ]
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-01"
+   },
+   "estado": "activo",
+   "veces_aplicada": 2,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k18",
+   "texto": "Las correcciones de stock en lote las aprueba solo el dueño.",
+   "texto_en": "Batch stock corrections are approved only by the owner.",
+   "tipo": "protocolo",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "equipo",
+   "efecto": "requiere_aprobacion",
+   "params": {
+    "accion": "correccion_stock_lote"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-02"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k19",
+   "texto": "Diego es el que más consulta cobranzas: es su tema.",
+   "texto_en": "Diego is the one who checks collections the most: it's his thing.",
+   "tipo": "contexto",
+   "ambito": "empleado",
+   "entidad": "diego",
+   "nodo": "equipo",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "tema": "cobranzas"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-03"
+   },
+   "estado": "activo",
+   "veces_aplicada": 5,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k20",
+   "texto": "El IPC que uso para deflactar es el oficial, no el de la cámara.",
+   "texto_en": "The CPI I use to deflate is the official one, not the chamber's.",
+   "tipo": "regla",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "contexto",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "ipc": "oficial"
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-04"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": false
+  },
+  {
+   "id": "k21",
+   "texto": "Nunca dejes la caja por debajo de $10.000.000: es el colchón de sueldos.",
+   "texto_en": "Never let cash drop below $10,000,000: it's the payroll cushion.",
+   "tipo": "regla",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "caja",
+   "efecto": "genera_alerta",
+   "params": {
+    "piso": 10000000
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-05"
+   },
+   "estado": "activo",
+   "veces_aplicada": 4,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k22",
+   "texto": "En junio y diciembre hay aguinaldo: la caja de esos meses no se compara con el resto.",
+   "texto_en": "June and December have the 13th-salary: those months' cash isn't comparable to the rest.",
+   "tipo": "contexto",
+   "ambito": "global",
+   "entidad": null,
+   "nodo": "caja",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "meses_aguinaldo": [
+     6,
+     12
+    ]
+   },
+   "origen": {
+    "quien": "aldo",
+    "cuando": "2026-07-06"
+   },
+   "estado": "activo",
+   "veces_aplicada": 2,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k23",
+   "texto": "A Lácteos Campo Alegre el reclamo va por mail, con foto del lote y el número de remito. Cinco días de plazo.",
+   "texto_en": "Claims to Lácteos Campo Alegre go by email, with a photo of the lot and the delivery-note number. Five-day window.",
+   "tipo": "protocolo",
+   "ambito": "proveedor",
+   "entidad": "Lácteos Campo Alegre",
+   "nodo": "proveedores",
+   "efecto": "exige_evidencia",
+   "params": {
+    "reclamo": {
+     "requisitos": [
+      "foto_lote",
+      "numero_remito"
+     ],
+     "canal": "email",
+     "plazo_dias": 5
     }
-  ]
+   },
+   "origen": {
+    "quien": "celeste",
+    "cuando": "2026-06-18"
+   },
+   "estado": "activo",
+   "veces_aplicada": 3,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k24",
+   "texto": "A Frigorífico La Ribera le alcanza el número de remito por WhatsApp. Cuarenta y ocho horas.",
+   "texto_en": "Frigorífico La Ribera only needs the delivery-note number over WhatsApp. Forty-eight hours.",
+   "tipo": "protocolo",
+   "ambito": "proveedor",
+   "entidad": "Frigorífico La Ribera",
+   "nodo": "proveedores",
+   "efecto": "exige_evidencia",
+   "params": {
+    "reclamo": {
+     "requisitos": [
+      "numero_remito"
+     ],
+     "canal": "whatsapp",
+     "plazo_dias": 2
+    }
+   },
+   "origen": {
+    "quien": "celeste",
+    "cuando": "2026-06-20"
+   },
+   "estado": "activo",
+   "veces_aplicada": 2,
+   "efecto_profundo": true
+  },
+  {
+   "id": "k25",
+   "texto": "Campo Alegre nos rechazó un reclamo por mandarlo sin la foto del lote. Desde entonces la pedimos siempre.",
+   "texto_en": "Campo Alegre rejected a claim because we sent it without the lot photo. We have asked for it ever since.",
+   "tipo": "contexto",
+   "ambito": "proveedor",
+   "entidad": "Lácteos Campo Alegre",
+   "nodo": "proveedores",
+   "efecto": "contexto_para_angela",
+   "params": {
+    "origen_regla": "k23"
+   },
+   "origen": {
+    "quien": "celeste",
+    "cuando": "2026-06-18"
+   },
+   "estado": "activo",
+   "veces_aplicada": 1,
+   "efecto_profundo": false
+  }
+ ]
 }

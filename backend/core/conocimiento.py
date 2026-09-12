@@ -46,7 +46,15 @@ TIPOS = {"regla", "excepcion", "protocolo", "contexto"}
 AMBITOS = {"cliente", "proveedor", "categoria", "empleado", "global"}
 # Qué hace la pieza en el producto (el efecto verificable).
 EFECTOS = {"ajusta_umbral", "suprime_alerta", "genera_alerta",
-           "contexto_para_angela", "requiere_aprobacion"}
+           "contexto_para_angela", "requiere_aprobacion",
+           # exige_evidencia — el efecto que faltaba, y es el de las
+           # devoluciones: no cambia un umbral ni silencia una alerta, cambia
+           # QUÉ LE PIDE LA APP A UNA PERSONA. Reutilizar `requiere_aprobacion`
+           # sería mentir: eso significa «no lo ejecutes sin un OK», y eso ya
+           # es cierto de todo reclamo. Los requisitos viajan en `params`, que
+           # ya es un dict libre que cada motor lee con su clave (cuentas lee
+           # tolerancia_dias, depósito lee umbral_pct).
+           "exige_evidencia"}
 # Dominio del mapa donde nace la pieza (los 8 nodos del Business Map).
 NODOS = {"ventas", "inventario", "deposito", "proveedores",
          "clientes", "caja", "equipo", "contexto"}

@@ -364,6 +364,8 @@ export const ES = {
   "cerebro.dom_deposito": "Depósito",
   "cerebro.dom_proveedores": "Proveedores",
   "cerebro.dom_inventario": "Inventario",
+  "cerebro.dom_conocimiento": "Reglas de la casa",
+  "cerebro.dom_documentos": "Documentos",
   "cerebro.dom_notas": "Notas del equipo",
   "cerebro.dom_logistica": "Entregas",
   "cerebro.dom_compras": "Compras",
