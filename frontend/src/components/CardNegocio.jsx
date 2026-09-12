@@ -245,16 +245,24 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
   const panel = variante === "panel";
   const dialogRef = useRef(null);
 
+  // Every caller passes an inline arrow for `onCerrar`, so its identity
+  // changes on each render. Depending on it would re-run this effect —
+  // yanking focus back to the dialog — on any parent re-render (toggling the
+  // working flag while approving, for one). Keep the latest handler in a ref
+  // and depend only on `panel`, so focus is set once when the dialog opens.
+  const onCerrarRef = useRef(onCerrar);
+  onCerrarRef.current = onCerrar;
+
   // Self-contained so every caller (desktop panel+overlay, mobile overlay)
   // gets the same behavior instead of each screen re-implementing Escape and
   // initial focus: on open, move focus into the dialog; Esc closes it.
   useEffect(() => {
-    if (panel || !onCerrar) return;
+    if (panel) return;
     dialogRef.current?.focus();
-    const onKey = (e) => { if (e.key === "Escape") onCerrar(); };
+    const onKey = (e) => { if (e.key === "Escape") onCerrarRef.current?.(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [panel, onCerrar]);
+  }, [panel]);
   const contenido = (
     <>
         <div className="flex items-start justify-between gap-3">
@@ -325,9 +333,15 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             {grafico.meta?.ventana && (
               <p className="mt-1 text-[0.7rem] text-tinta-suave">{grafico.meta.ventana}</p>
             )}
-            <Metrics items={metrics} />
           </div>
         )}
+
+        {/* Outside the chart block on purpose: a tenant with no complete
+            months of history gets `grafico = None` (see _card_quiebre_inminente
+            in backend/core/oportunidades_neg.py) and would otherwise lose the
+            coverage / lead-time / negotiating-window stats entirely — exactly
+            the tenant who needs them most. */}
+        <Metrics items={metrics} />
 
         {involucrados.length > 0 && (
           <>

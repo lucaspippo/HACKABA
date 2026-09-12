@@ -309,6 +309,57 @@ def test_executed_cards_sort_after_open_ones():
     assert [i["id"] for i in act] == ["despertar_dormido", "quiebre_inminente"]
 
 
+def test_inbox_sees_an_order_created_after_the_first_call(monkeypatch):
+    """Regression: `action_taken` must NOT be derived inside `_compose`.
+
+    `_compose` is memoized by core/analisis_cache.py for the LIFETIME OF THE
+    PROCESS, so deriving there froze the first request's answer ("no order
+    yet") into a global cache: the user approved the proposal, the UI
+    refetched, hit the cache and still rendered the card as pending until the
+    process restarted. Only a SECOND `inbox()` call after a real order exists
+    exercises that — asserting on `with_action_taken` directly never would.
+    """
+    from core import ordenes
+    from core.db import purchase_orders_repo  # noqa: F401 — table must exist
+    from tests.conftest import limpiar_tabla_tenant
+
+    limpiar_tabla_tenant("purchase_orders")
+
+    propuesta = {"tipo": "orden_compra", "codigo": 4242, "producto": "Harina",
+                 "proveedor": "Molinos SA", "cantidad": 50}
+    monkeypatch.setattr(opn, "cards", lambda lang=None: [{
+        "id": "quiebre_inminente",
+        "titulo": "Se queda sin Harina en 4 días",
+        "resumen": "Cobertura 7 días, reposición 3 días",
+        "monto": 1_000_000,
+        "naturaleza": "accionable",
+        "tipo": "comprar",
+        "fuentes": [],
+        "propuesta": propuesta,
+        "drill": {"porque": [], "grafico": None, "involucrados": [],
+                  "supuestos": []},
+    }])
+
+    features = ("inventario", "oportunidades", "alertas")
+    before = priorities.inbox("es", features=features)
+    card_before = next(c for c in before["act"] if c["id"] == "quiebre_inminente")
+    assert card_before["action_taken"] is None
+    badge_before = before["badge"]
+
+    ordenes.preparar(producto=propuesta["producto"],
+                     codigo=card_before["propuesta"]["codigo"],
+                     cantidad=propuesta["cantidad"],
+                     proveedor=propuesta["proveedor"], actor="emilio",
+                     motivo=card_before["titulo"], origen="quiebre_inminente")
+
+    after = priorities.inbox("es", features=features)
+    card_after = next(c for c in after["act"] if c["id"] == "quiebre_inminente")
+    assert card_after["action_taken"], "the approved order must reach the card"
+    assert card_after["action_taken"]["label"].startswith("OC-")
+    assert card_after["action_taken"]["actor"] == "emilio"
+    assert after["badge"] == badge_before - 1
+
+
 def test_badge_counts_only_open_act_cards():
     done = _item("quiebre_inminente")
     done["action_taken"] = {"label": "OC-2026-0901"}

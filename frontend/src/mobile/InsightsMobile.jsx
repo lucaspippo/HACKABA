@@ -87,7 +87,11 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const t = useT();
   const langKey = useSession()?.usuario?.idioma || "es";
   const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
-  const [abierta, setAbierta] = useState(null);
+  // Only the id, never the row object: after reload() replaces `data`, a
+  // stored snapshot would keep rendering pre-approval state (no `actionTaken`)
+  // for as long as the drill stays open. Desktop's Prioridades.jsx does the
+  // same — id in state, row derived from the freshest data each render.
+  const [abiertaId, setAbiertaId] = useState(null);
   const [filtro, setFiltro] = useState(null);
   const [proposalWorking, setProposalWorking] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
@@ -121,10 +125,17 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const vacio = !cargando && actRaw.length === 0 && watchRaw.length === 0;
   const filtroVacio = !vacio && filtro && act.length === 0 && watch.length === 0;
 
+  const abierta = [...act, ...watch].find((r) => r.id === abiertaId) || null;
+
+  // Close the drill when the active filter stops matching the open card.
+  // Reads the RAW item (not `abierta`, which the filter already excluded) so
+  // the id is actually dropped instead of lingering and re-opening the drill
+  // the moment the filter is cleared.
   useEffect(() => {
-    if (!abierta || !filtro) return;
-    if (accionDe(abierta) !== filtro) setAbierta(null);
-  }, [filtro, abierta]);
+    if (!abiertaId || !filtro) return;
+    const raw = todos.find((i) => i.id === abiertaId);
+    if (!raw || accionDe(raw) !== filtro) setAbiertaId(null);
+  }, [filtro, abiertaId, todos]);
 
   const accAbierta = abierta ? estiloAccion(abierta) : null;
 
@@ -157,7 +168,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
     api.patronFeedback(item.id, action)
       .then(() => {
         toast(t("aprendizaje.feedback_ok"));
-        setAbierta(null);
+        setAbiertaId(null);
         reload();
       })
       .catch(() => toast(t("aprendizaje.feedback_error"), "error"))
@@ -174,7 +185,13 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       <header>
         <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
         <p className="mt-1 text-[0.9rem] text-tinta-suave">
-          {actRaw.length > 0 ? t("prioridades.sub_count", { n: actRaw.length }) : t("prioridades.sub")}
+          {/* `badge`, not actRaw.length: `act` keeps executed cards visible
+              (greyed out, stamped "Hecho") while the badge counts only open
+              work — the header must agree with the sidebar, not with the row
+              count. Falls back to the length for a payload without a badge. */}
+          {actRaw.length > 0
+            ? t("prioridades.sub_count", { n: data?.badge ?? actRaw.length })
+            : t("prioridades.sub")}
           {data?.recuperable?.disponible && (
             <span className="plata ml-2 font-semibold text-salvia">
               · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
@@ -208,7 +225,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       {act.length > 0 && (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
           {act.map((item) => (
-            <Fila key={item.id} item={item} selected={abierta?.id === item.id} onOpen={setAbierta} />
+            <Fila key={item.id} item={item} selected={abiertaId === item.id} onOpen={(it) => setAbiertaId(it.id)} />
           ))}
         </div>
       )}
@@ -220,7 +237,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           </h2>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-oro/30 bg-crema px-3 sombra-papel">
             {watch.map((item) => (
-              <Fila key={item.id} item={item} selected={abierta?.id === item.id} onOpen={setAbierta} />
+              <Fila key={item.id} item={item} selected={abiertaId === item.id} onOpen={(it) => setAbiertaId(it.id)} />
             ))}
           </div>
         </section>
@@ -261,12 +278,12 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           chip={abierta.chip}
           chipIcon={accAbierta.icon}
           chipCls={accAbierta.cls}
-          onCerrar={() => setAbierta(null)}
+          onCerrar={() => setAbiertaId(null)}
           acciones={
             <>
               {abierta.chat && (
                 <button
-                  onClick={() => { onPreguntar?.(abierta.chat); setAbierta(null); }}
+                  onClick={() => { onPreguntar?.(abierta.chat); setAbiertaId(null); }}
                   className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema"
                 >
                   <AngelaMark size={15} /> {t("insights.accionar_angela")}
@@ -274,7 +291,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
               )}
               {abierta.navegar && (
                 <button
-                  onClick={() => { onNavegar?.(abierta.navegar); setAbierta(null); }}
+                  onClick={() => { onNavegar?.(abierta.navegar); setAbiertaId(null); }}
                   className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta"
                 >
                   {t("insights.ver_analisis")} <ArrowRight size={13} />
