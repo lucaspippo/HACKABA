@@ -346,7 +346,7 @@ export const ES = {
   "cerebro.tab_mapa_ay": "Las ocho fuentes y sus cortes",
   "cerebro.tab_cerebro_ay": "Cada producto, cliente y proveedor, y cómo se cruzan",
   "cerebro.titulo": "El cerebro de tu negocio",
-  "cerebro.expandir": "Tocá el producto: hay más colgando",
+  "cerebro.expandir": "Tocá el producto o el proveedor: hay más",
   "cerebro.contraer": "Volver al camino",
   "cerebro.bajada": "{nodos} entidades reales cruzadas por {aristas} relaciones. Las más conectadas se van solas al centro: ese núcleo es tu negocio.",
   "cerebro.cargando": "Cruzando entidades…",

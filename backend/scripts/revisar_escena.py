@@ -93,15 +93,23 @@ def main() -> None:
     # pantalla visiblemente pisada: lo que se solapaba eran las ETIQUETAS de
     # las relaciones contra los chips de al lado. Una etiqueta que no se chequea
     # es una etiqueta que se va a pisar.
-    exp = esc.get("expansion") or {}
-    for gr in exp.get("grupos", []):
-        cajas.append((f"rel:«{gr['rel']}»",
-                      rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
-        for m in gr["nodos"]:
-            # el racimo va en el nombre: dos chips del MISMO racimo se apilan a
-            # proposito y no son un choque.
-            cajas.append((f"chip:{gr['rel']}:{m['nombre'][:24]}",
-                          rect(m["x"], m["y"], ANCHO_CHIP(m["nombre"]), 30)))
+    # CADA expansion se chequea POR SEPARADO contra la escena: nunca se abren
+    # dos a la vez, asi que que dos expansiones se pisen entre si no importa.
+    for cual, exp in (esc.get("expansiones") or {}).items():
+        for gr in exp.get("grupos", []):
+            cajas.append((f"rel:{cual}:«{gr['rel']}»",
+                          rect(gr["x"], gr["y"], len(gr["rel"]) * 6.0 + 16, 20)))
+            for m in gr["nodos"]:
+                cajas.append((f"chip:{cual}|{gr['rel']}:{m['nombre'][:24]}",
+                              rect(m["x"], m["y"], ANCHO_CHIP(m["nombre"]), 30)))
+
+    # LA PILDORA DE LA PISTA. Vive abajo a la izquierda, fuera del grupo que se
+    # transforma, asi que no se achica con la escena: en coordenadas del lienzo
+    # base ocupa siempre el mismo lugar y cualquier expansion que llegue ahi la
+    # pisa. Paso: el racimo del proveedor le caia encima.
+    # La pildora de la pista YA NO se chequea: dejo de vivir adentro del SVG y
+    # pasó a ser HTML posicionado contra el panel (ver EscenaReclamo.jsx). No
+    # comparte sistema de coordenadas con nada de esto, asi que no puede chocar.
 
     choques = []
     for i, (n1, r1) in enumerate(cajas):
@@ -116,9 +124,12 @@ def main() -> None:
             # dos chips del MISMO racimo se apilan a proposito: estan pegadas
             # una debajo de la otra y eso se lee bien. Lo que no puede pasar es
             # que se pisen entre racimos, con una etiqueta, o con la escena.
+            cual = lambda x: x.split(":")[1].split("|")[0] if ":" in x else ""
+            if (de_exp(n1) and de_exp(n2)) and cual(n1) != cual(n2):
+                continue     # expansiones distintas: nunca coexisten
             if (n1.startswith("chip:") and n2.startswith("chip:")
-                    and n1.split(":")[1] == n2.split(":")[1]):
-                continue
+                    and n1.split(":", 1)[1].split(":")[0] == n2.split(":", 1)[1].split(":")[0]):
+                continue     # mismo racimo: apilado a proposito
             if chocan(r1, r2):
                 choques.append((n1, n2))
 

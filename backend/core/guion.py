@@ -102,7 +102,22 @@ def _texto(esc: dict, lang: str) -> list[str]:
     # SALE de esa regla, porque es ahi donde prueba algo — que el procedimiento
     # no lo invento, se lo enseñaron. Sin esto la respuesta del demo era la
     # unica del producto que citaba una regla sin mostrarlo.
-    cita = f" [·](memoria:{esc['regla_id']})" if esc.get("regla_id") else ""
+    # DOS citas, no una: la regla y EL PORQUE DE LA REGLA.
+    #
+    # La primera abre la pieza k23 —«a Campo Alegre el reclamo va por mail, con
+    # foto del lote»— con quien la enseño y cuando. La segunda abre k25, que es
+    # de donde salio: «Campo Alegre nos rechazo un reclamo por mandarlo sin la
+    # foto del lote. Desde entonces la pedimos siempre.»
+    #
+    # Esa segunda es la que convierte el cerebrito en prueba. Una regla sola se
+    # puede leer como un dato que alguien cargo para que el demo funcione; una
+    # regla CON su origen —un reclamo rechazado, una fecha, una persona— se lee
+    # como lo que es: el negocio le enseño algo despues de perder plata.
+    cita = ""
+    if esc.get("regla_id"):
+        cita += f" [·](memoria:{esc['regla_id']})"
+    if esc.get("regla_origen_id"):
+        cita += f"[·](memoria:{esc['regla_origen_id']})"
     if lang == "en":
         partes = [
             f"The supplier is {PROVEEDOR}. Their claims go by email, with a photo "

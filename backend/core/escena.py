@@ -247,8 +247,13 @@ def reclamo(lang: str = "es") -> dict:
         # El id de la pieza de conocimiento, para que el guion pueda CITARLA
         # en el texto ([·](memoria:k23)) y el chat pinte el cerebrito.
         "regla_id": regla_caso.get("id"),
-        # lo que aparece al TOCAR el producto (precargado: ver expansion())
-        "expansion": expansion(lang),
+        # la pieza que explica POR QUE existe esa regla (el reclamo rechazado)
+        "regla_origen_id": _origen_de(regla_caso),
+        # QUE APARECE AL TOCAR CADA NODO, precargado (ver expansion()).
+        # Indexado por id de nodo de la escena: hoy el producto y el proveedor.
+        "expansiones": {k: v for k, v in
+                        (("producto", expansion(lang)),
+                         ("proveedor", expansion_proveedor(lang))) if v},
         "producto": producto_nombre,
         "cruce_id": "cruce_reclamo_devolucion",
         "procedencia": {
@@ -420,6 +425,81 @@ def expansion(lang: str = "es") -> dict:
         "grupos": grupos,
         "lienzo_abierto": vb,
     }
+
+
+def expansion_proveedor(lang: str = "es") -> dict:
+    """LAS REGLAS DE ESTE PROVEEDOR, colgando del rombo.
+
+    La respuesta cita UNA regla. Pero el negocio le enseño CUATRO cosas sobre
+    Lacteos Campo Alegre, y que se vean juntas cambia lo que se entiende: no es
+    que alguien cargo un dato suelto para que el demo funcione — hay un cuerpo
+    de conocimiento sobre cada proveedor, y la respuesta uso la que
+    correspondia. Son cuatro, asi que entran de una y no hace falta agrupar.
+    """
+    from . import grafo as _grafo
+
+    g = _grafo.completo(lang)
+    nodos_g = {n["id"]: n for n in g["nodos"]}
+    pid = next((nid for nid, n in nodos_g.items()
+                if n["tipo"] == "proveedor"
+                and (n.get("nombre") or "") == PROVEEDOR_CASO), None)
+    if not pid:
+        return {}
+
+    reglas = []
+    for a in g["aristas"]:
+        otro = (a["target"] if a["source"] == pid
+                else a["source"] if a["target"] == pid else None)
+        if otro and nodos_g.get(otro, {}).get("tipo") == "conocimiento":
+            reglas.append({"id": otro, "tipo": "conocimiento",
+                           "nombre": nodos_g[otro].get("nombre") or otro})
+    if not reglas:
+        return {}
+    reglas.sort(key=lambda r: r["id"])
+    reglas = reglas[:5]
+
+    # DEBAJO del rombo, fuera del lienzo base. Pegado al proveedor caia sobre
+    # el propio rombo y sobre la orden de compra (verificado: 3 choques). El
+    # lienzo se agranda al abrir igual, asi que hay lugar abajo y ahi no hay
+    # nada que pisar.
+    x, y0 = 540, 600
+    for i, r in enumerate(reglas):
+        r["x"], r["y"] = x, y0 + i * 40
+    grupos = [{"rel": _t("escena.rel_le_enseñaron", lang), "x": x, "y": y0 - 36,
+               "nodos": reglas}]
+
+    ancho_chip = lambda n: max(112.0, len(n) * 5.75 + 46)
+    x0 = min([0] + [r["x"] - ancho_chip(r["nombre"]) / 2 for r in reglas])
+    x1 = max([ANCHO] + [r["x"] + ancho_chip(r["nombre"]) / 2 for r in reglas])
+    y1 = max([ALTO] + [r["y"] + 19 for r in reglas])
+    m_ = 46
+    return {
+        "desde": "proveedor",
+        "titulo": _t("escena.expansion_prov", lang, proveedor=PROVEEDOR_CASO),
+        "grupos": grupos,
+        "lienzo_abierto": [x0 - m_, -m_, (x1 - x0) + m_ * 2, y1 + m_ * 2],
+    }
+
+
+def _origen_de(regla: dict) -> str | None:
+    """La pieza que cuenta de donde salio esta regla, si la hay.
+
+    Se busca por entidad: otra pieza del mismo proveedor que NO sea la regla
+    misma y que no exija evidencia — o sea, el relato del hecho que la origino.
+    """
+    ent = (regla.get("entidad") or "").strip().lower()
+    if not ent:
+        return None
+    for p in conocimiento.listar():
+        if p.get("id") == regla.get("id"):
+            continue
+        if (p.get("entidad") or "").strip().lower() != ent:
+            continue
+        if p.get("efecto") == "exige_evidencia":
+            continue
+        if "rechaz" in (p.get("texto") or "").lower():
+            return p.get("id")
+    return None
 
 
 def _nombre_de(usuario: str | None) -> str:

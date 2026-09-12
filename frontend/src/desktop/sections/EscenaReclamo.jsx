@@ -432,10 +432,11 @@ function Expansion({ datos, desde, visible }) {
 
 export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
   const [paso, setPaso] = useState(trazar ? 0 : 99);
-  const [abierto, setAbierto] = useState(false);
+  // QUE nodo esta abierto (null = ninguno). Son varios los que se pueden
+  // tocar: el producto y el proveedor, cada uno con lo suyo.
+  const [abiertoId, setAbiertoId] = useState(null);
   const t = useT();
-  // al volver a la escena (otra pregunta) se cierra sola
-  useEffect(() => { setAbierto(false); }, [escena, trazar]);
+  useEffect(() => { setAbiertoId(null); }, [escena, trazar]);
 
   const nodos = useMemo(() => {
     const m = {};
@@ -474,11 +475,14 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
   //
   // No se anima el viewBox (no es animable por CSS): el viewBox queda fijo y se
   // transforma el grupo de adentro, que si transiciona suave.
-  const exp = escena.expansion || null;
-  const puedeAbrir = !!exp?.grupos?.length && paso >= (escena.aristas || []).length;
+  const expansiones = escena.expansiones || {};
+  const listo = paso >= (escena.aristas || []).length;
+  const seAbre = (id) => listo && !!expansiones[id]?.grupos?.length;
+  const hayAlgunaAbrible = Object.keys(expansiones).some(seAbre);
+  const exp = abiertoId ? expansiones[abiertoId] : null;
   const vb = exp?.lienzo_abierto;
   let encuadre = "";
-  if (abierto && vb) {
+  if (abiertoId && vb) {
     const [ox, oy, ow, oh] = vb;
     const k = Math.min(ancho / ow, alto / oh);
     // EN CSS, NO EN SINTAXIS SVG. `translate(184 150)` es valido como atributo
@@ -490,9 +494,10 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
     // del elemento y la cuenta de arriba no cierra).
     encuadre = `translate(${ancho / 2 - k * (ox + ow / 2)}px, ${alto / 2 - k * (oy + oh / 2)}px) scale(${k})`;
   }
-  const nodoDesde = nodos[exp?.desde];
+  const nodoDesde = nodos[abiertoId];
 
   return (
+    <div className="relative h-full w-full">
     <svg viewBox={`0 0 ${ancho} ${alto}`} className="h-full w-full"
          style={{ background: FONDO }}>
       <defs>
@@ -516,20 +521,22 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
 
         {/* Lo que hay detras, DEBAJO de los nodos del caso: el camino nunca
             queda tapado por lo que se sumo — se suma, no lo reemplaza. */}
-        <Expansion datos={exp} desde={nodoDesde} visible={abierto} />
+        <Expansion datos={exp} desde={nodoDesde} visible={!!abiertoId} />
 
         {(escena.nodos || []).map((n) => {
           const F = FORMAS[n.tipo];
           if (!F) return null;
-          // el producto es el unico que se toca: abre y cierra
-          const esElQueAbre = puedeAbrir && n.id === exp.desde;
+          // se tocan los que tienen algo detras: hoy el producto y el proveedor
+          const esElQueAbre = seAbre(n.id);
           return (
             <g key={n.id}
-               onClick={() => (esElQueAbre ? setAbierto((v) => !v) : onNodo?.(n))}
+               onClick={() => (esElQueAbre
+                 ? setAbiertoId((v) => (v === n.id ? null : n.id))
+                 : onNodo?.(n))}
                style={{ cursor: esElQueAbre || onNodo ? "pointer" : "default" }}>
               {/* un halo que late una sola vez cuando ya se puede tocar: sin
                   esto nadie adivina que ese nodo hace algo */}
-              {esElQueAbre && !abierto && (
+              {esElQueAbre && !abiertoId && (
                 <circle cx={n.x} cy={n.y} r="66" fill="none" stroke={AZUL_IA}
                         strokeWidth="2" opacity=".55">
                   <animate attributeName="r" values="60;74;60" dur="2.2s"
@@ -544,20 +551,24 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
         })}
       </g>
 
-      {/* LA PISTA, y tambien la puerta de vuelta. Sin una linea que lo diga,
-          que el producto se pueda tocar no lo descubre nadie en un pitch de
-          dos minutos y medio. Va FUERA del grupo que se transforma: no se
-          achica con la escena. */}
-      {puedeAbrir && (
-        <g onClick={() => setAbierto((v) => !v)} style={{ cursor: "pointer" }}>
-          <rect x="18" y={alto - 46} width={abierto ? 168 : 268} height="30" rx="15"
-                fill={FONDO} stroke={abierto ? AZUL_IA : LINEA} strokeWidth="1.5" />
-          <text x="34" y={alto - 26}
-                fill={abierto ? AZUL_IA : "rgba(33,32,29,.62)"} fontSize="12.5">
-            {abierto ? `← ${t("cerebro.contraer")}` : t("cerebro.expandir")}
-          </text>
-        </g>
-      )}
     </svg>
+
+      {/* LA PISTA, y tambien la puerta de vuelta. EN HTML, NO ADENTRO DEL SVG.
+          Adentro vivia en coordenadas del lienzo, pero al abrir una expansion
+          TODO el contenido se escala para entrar y la pildora no — asi que dos
+          cajas separadas por 90px terminaban superpuestas en pantalla, y un
+          chequeo en coordenadas del lienzo daba cero. Afuera el problema no
+          existe: se posiciona contra el panel y nada la puede alcanzar. */}
+      {hayAlgunaAbrible && (
+        <button
+          onClick={() => abiertoId && setAbiertoId(null)}
+          className={`absolute bottom-4 left-4 rounded-full border px-3.5 py-1.5 text-[12.5px]
+                      ${abiertoId
+                        ? "border-violeta/60 bg-crema text-violeta"
+                        : "cursor-default border-linea bg-crema text-tinta-suave"} sombra-papel`}>
+          {abiertoId ? `← ${t("cerebro.contraer")}` : t("cerebro.expandir")}
+        </button>
+      )}
+    </div>
   );
 }
