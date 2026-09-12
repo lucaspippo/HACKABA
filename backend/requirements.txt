@@ -19,3 +19,6 @@ psycopg[binary]>=3.1
 alembic>=1.13
 passlib[bcrypt]>=1.7
 cryptography>=41.0
+
+# MCP server (backend/mcp_server.py) — see MCP.md
+mcp>=1.9,<2.0

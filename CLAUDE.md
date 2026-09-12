@@ -71,6 +71,11 @@ deploy/     production boot (single service: API + compiled frontend)
   example tenants, both fictional: `demo` (Distribuidora del Litoral, the
   default) and `piloto` (Supermercados Horizonte, the small seed in
   `backend/auth.py`).
+- **MCP server (`backend/mcp_server.py`, mounted at `/mcp`):** a read-only
+  bridge for users to query their PolPilot data from an external LLM
+  (Claude Desktop, claude.ai, any MCP client). Every tool wraps
+  `angela._run_tool` — no calculation of its own — and is gated by the same
+  per-user `features` Ángela's chat tools already respect. See `backend/MCP.md`.
 
 ## Tests
 

@@ -228,6 +228,8 @@ export const api = {
   articulos: () => get("/api/articulos"),
   imported: () => get("/api/imported"),
   inventarioTop: (n = 10) => get(`/api/inventario/top?n=${n}`),
+  inventarioViz: () => get("/api/inventario/viz"),
+  inventarioBurn: (codigo) => get(`/api/inventario/burn/${codigo}`),
   calidad: () => get("/api/calidad"),
   anomalias: () => get("/api/anomalias"),
   anomaliasAplicar: (tipo, accion, params = {}) => post("/api/anomalias/aplicar", { tipo, accion, params }),

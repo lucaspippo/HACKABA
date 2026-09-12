@@ -14,6 +14,8 @@ Endpoints:
     GET  /api/grupo/{nombre}          listado de un grupo de problemas
     GET  /api/buscar?q=texto          búsqueda de artículos
     POST /api/angela                  conversación con Ángela
+    /mcp                              servidor MCP de sólo lectura para LLMs
+                                       externos — ver mcp_server.py y MCP.md
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ import authz
 import config
 import data_store as ds
 import i18n
+import mcp_server
 from authz import require_admin, require_any_feature, require_feature, usuario_actual
 from core import (store, saneamiento, fase, memoria, importer, staging, anomalias,
                   organizacion, documentos, cuentas, caja, sync, conectores,
@@ -93,7 +96,11 @@ async def lifespan(app: FastAPI):
         analisis_cache.precalentar()
     except Exception:
         pass  # sin precalc el endpoint computa on-demand: nunca rompe el arranque
-    yield
+    # The MCP server (/mcp) needs its task group alive for the whole process
+    # (StreamableHTTPSessionManager.run()) — nested here so it shares the
+    # rest of the app's startup/shutdown lifecycle.
+    async with mcp_server.session_manager.run():
+        yield
 
 
 app = FastAPI(title="PolPilot", version="0.2.0", lifespan=lifespan)
@@ -109,6 +116,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Read-only MCP server (Claude Desktop, claude.ai, any MCP client) — see
+# mcp_server.py and MCP.md. Each request carries its own identity in
+# Authorization: Bearer <token>; none of this goes through browser CORS
+# (remote MCP clients call server-to-server), so it's kept separate from the
+# middleware above.
+app.mount("/mcp", mcp_server.mcp_asgi_app)
 
 
 class ChatTurn(BaseModel):
@@ -2728,6 +2742,24 @@ def cobranza_registrar(req: CobranzaRegistrarRequest,
         raise HTTPException(status_code=404, detail="cliente inexistente")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.get("/api/inventario/viz")
+def inventario_viz(u: dict = Depends(require_feature("inventario"))):
+    """Cuts of idle capital, rotation, expiry, seasonality, GMROI, aging and
+    lead-time truth. Cached like the other analyses; numbers still come from
+    core/, never from the model."""
+    from core import analisis_cache, stock_viz
+    lang = _lang(u)
+    return analisis_cache.get_o_computar("stock_viz", lang, lambda: stock_viz.pack(lang))
+
+
+@app.get("/api/inventario/burn/{codigo}")
+def inventario_burn(codigo: int, u: dict = Depends(require_feature("inventario"))):
+    """60-day projected stock for one SKU: on-hand decaying at daily rate,
+    inbound PO as a step at the supplier lead."""
+    from core import stock_viz
+    return stock_viz.product_burn(codigo, _lang(u))
 
 
 @app.get("/api/reponer")
