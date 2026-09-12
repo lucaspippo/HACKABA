@@ -844,65 +844,138 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
 
   // --- LA CÁMARA -------------------------------------------------------
   //
-  // Hay TRES cosas que quieren mover el encuadre y si cada una lo hace por su
-  // cuenta se pelean:
+  // POR QUÉ ESTÁ ESCRITA A MANO Y NO USA `fitView`.
   //
-  //   · el contenedor cambia de tamaño (abrir el panel le come 420 px, plegar
-  //     el riel se los devuelve, pantalla completa lo cambia todo);
-  //   · alguien toca una tarjeta y hay que acercarse a ella;
-  //   · alguien toca «centrar» o el fondo y hay que volver a ver todo.
+  // Medido contra el deploy, llamando los métodos sobre la instancia real que
+  // devuelve `onInit` (28 nodos, todos medidos, bounds 1514×856 correctos):
   //
-  // El caso que lo hacía obvio: tocar una tarjeta abre el panel, el panel
-  // achica el lienzo, el ResizeObserver ve el cambio y hacía `fitView` de TODO
-  // — o sea que deshacía el acercamiento 80 ms después de hacerlo. Por eso el
-  // observer no reencuadra «todo»: llama a `encuadrar`, que mira si hay una
-  // tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
+  //     zoomIn()                        0,80 -> 0,96   anda
+  //     zoomIn({duration:180})          0,80 -> 0,80   NO HACE NADA
+  //     setViewport(v)                  anda
+  //     setViewport(v,{duration:600})   NO HACE NADA
+  //     fitBounds(b,{duration:0})       anda
+  //     setCenter(x,y,{duration:0})     anda
+  //     fitView(...)                    NO HACE NADA, con o sin duración
+  //
+  // O sea: TODO lo que anima por d3-transition es mudo en esta app, y
+  // `fitView` usa ese camino siempre. No tira un solo error. Eso significa que
+  // el reencuadre por tamaño que había antes —`Reencuadre`, que llamaba
+  // `fitView({duration:220})`— tampoco funcionaba nunca: se veía encuadrado
+  // sólo por el `fitView` inicial del propio <ReactFlow>, que corre por otro
+  // camino.
+  //
+  // Así que el encuadre se calcula acá y se anima con requestAnimationFrame
+  // sobre `setViewport` sin duración, que sí responde. De paso queda control
+  // fino de la curva, que es lo que pide un movimiento de cámara: lo que hace
+  // entender que te acercaste a una parte de algo más grande es el MOVIMIENTO,
+  // no el destino.
   const refFoco = useRef(null);
   refFoco.current = nodoFoco;
   const refAristas = useRef(edges);
   refAristas.current = edges;
+  const refAnim = useRef(0);
+  const pane = useRef(null);
+
+  const animarA = useCallback((destino, duracion) => {
+    const rf = rfRef.current;
+    if (!rf) return;
+    cancelAnimationFrame(refAnim.current);
+    const desde = rf.getViewport();
+    if (duracion <= 0) { rf.setViewport(destino); return; }
+    const t0 = performance.now();
+    const paso = (ahora) => {
+      const p = Math.min(1, (ahora - t0) / duracion);
+      // easeInOutCubic: arranca y frena suave, que es como se mueve una cámara
+      const e = p < 0.5 ? 4 * p * p * p : 1 - ((-2 * p + 2) ** 3) / 2;
+      rf.setViewport({
+        x: desde.x + (destino.x - desde.x) * e,
+        y: desde.y + (destino.y - desde.y) * e,
+        zoom: desde.zoom + (destino.zoom - desde.zoom) * e,
+      });
+      if (p < 1) refAnim.current = requestAnimationFrame(paso);
+    };
+    refAnim.current = requestAnimationFrame(paso);
+  }, []);
+
+  /** El viewport que encuadra `caja` dejando `relleno` de aire alrededor. */
+  const vistaDe = useCallback((caja, relleno, zoomMax) => {
+    const el = pane.current;
+    if (!el || !caja || caja.width <= 0) return null;
+    const w = el.clientWidth, h = el.clientHeight;
+    const z = Math.min(
+      w / (caja.width * (1 + relleno * 2)),
+      h / (caja.height * (1 + relleno * 2)),
+      zoomMax,
+    );
+    const zz = Math.min(Math.max(z, 0.25), 1.5);   // los mismos topes del flow
+    return {
+      x: w / 2 - (caja.x + caja.width / 2) * zz,
+      y: h / 2 - (caja.y + caja.height / 2) * zz,
+      zoom: zz,
+    };
+  }, []);
 
   const encuadrar = useCallback((duracion = 620) => {
     const rf = rfRef.current;
     if (!rf) return;
+    const todos = rf.getNodes();
+    if (!todos.length) return;
     const id = refFoco.current;
-    if (!id) { rf.fitView({ padding: 0.06, duration: duracion }); return; }
-    // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada se
-    // ve grande y sin contexto, que es lo contrario de lo que se quiere: lo
-    // que hay que leer es esa parte del mapa y de qué se conecta.
-    const vecinas = new Set([id]);
-    for (const e of refAristas.current || []) {
-      if (e.source === id) vecinas.add(e.target);
-      else if (e.target === id) vecinas.add(e.source);
-    }
-    rf.fitView({
-      nodes: [...vecinas].map((x) => ({ id: x })),
+    let cajas = todos, relleno = 0.06, zoomMax = 1.5;
+    if (id) {
+      // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada
+      // se ve grande y sin contexto, que es lo contrario de lo que se quiere:
+      // lo que hay que leer es esa parte del mapa y de qué se conecta.
+      const vecinas = new Set([id]);
+      for (const e of refAristas.current || []) {
+        if (e.source === id) vecinas.add(e.target);
+        else if (e.target === id) vecinas.add(e.source);
+      }
+      cajas = todos.filter((n) => vecinas.has(n.id));
+      if (!cajas.length) return;
       // con vecinas hace falta menos aire; una tarjeta sola pide más para no
-      // ocupar la pantalla entera
-      padding: vecinas.size > 1 ? 0.22 : 0.42,
-      // el techo evita que una tarjeta chica se agrande hasta verse pixelada
-      maxZoom: 1.3,
-      duration: duracion,
-    });
-  }, []);
+      // ocupar la pantalla entera. El techo evita que una tarjeta chica se
+      // agrande hasta verse pixelada.
+      relleno = cajas.length > 1 ? 0.18 : 0.42;
+      zoomMax = 1.3;
+    }
+    const destino = vistaDe(rf.getNodesBounds(cajas), relleno, zoomMax);
+    if (destino) animarA(destino, duracion);
+  }, [animarA, vistaDe]);
 
   // CENTRAR vuelve a ver todo DESDE DONDE SEA. No alcanza con soltar la
   // tarjeta enfocada: si el foco ya era null —alguien que hizo zoom con la
-  // rueda— el estado no cambia y el efecto no se dispara, así que no pasaría
-  // nada. Encuadra explícito.
+  // rueda— el estado no cambia, el efecto no se dispara y no pasaría nada.
   const encuadrarTodo = useCallback(() => {
-    rfRef.current?.fitView({ padding: 0.06, duration: 520 });
-  }, []);
+    refFoco.current = null;
+    encuadrar(520);
+  }, [encuadrar]);
 
-  // El tamaño del contenedor. Los 80 ms son para no encuadrar en cada paso de
-  // un arrastre del borde de la ventana.
+  const zoomPor = useCallback((factor) => {
+    const rf = rfRef.current;
+    const el = pane.current;
+    if (!rf || !el) return;
+    const v = rf.getViewport();
+    const z = Math.min(Math.max(v.zoom * factor, 0.25), 1.5);
+    // se acerca al CENTRO de lo que se está viendo, no al origen del lienzo
+    const cx = el.clientWidth / 2, cy = el.clientHeight / 2;
+    animarA({ x: cx - ((cx - v.x) / v.zoom) * z, y: cy - ((cy - v.y) / v.zoom) * z, zoom: z }, 200);
+  }, [animarA]);
+
+  // Hay TRES cosas que quieren mover el encuadre —el contenedor que cambia de
+  // tamaño, el acercamiento a una tarjeta, y el volver a todo— y si cada una
+  // lo hace por su cuenta se pelean. El caso que lo hacía obvio: tocar una
+  // tarjeta abre el panel, el panel achica el lienzo, el observer ve el cambio
+  // y encuadraba TODO, o sea que deshacía el acercamiento 90 ms después de
+  // hacerlo. Por eso el observer no encuadra «todo»: llama a `encuadrar`, que
+  // mira si hay una tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
   useEffect(() => {
     const el = lienzo.current;
     if (!el || typeof ResizeObserver === "undefined") return undefined;
     let t = null;
     const ro = new ResizeObserver(() => {
       clearTimeout(t);
-      t = setTimeout(() => encuadrar(220), 80);
+      t = setTimeout(() => encuadrar(260), 90);
     });
     ro.observe(el);
     return () => { ro.disconnect(); clearTimeout(t); };
@@ -912,22 +985,20 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // contenedor observado cambie de tamaño en el mismo tick: el riel se anima
   // 200 ms, así que el observer ve el paso intermedio o no ve nada.
   useEffect(() => {
-    const t = setTimeout(() => encuadrar(220), 260);
+    const t = setTimeout(() => encuadrar(260), 280);
     return () => clearTimeout(t);
   }, [completo, riel, encuadrar]);
 
-  // Y el acercamiento propiamente dicho. Duración larga a propósito: el
-  // MOVIMIENTO es lo que hace entender que te acercaste a una parte de algo
-  // más grande; un salto sólo cambia lo que hay en pantalla.
-  //
-  // La PRIMERA vez no: al montar, `nodoFoco` ya es null y encuadrar acá sería
-  // pelearse con el `fitView` inicial de <ReactFlow> — dos encuadres en el
-  // primer frame se ven como un parpadeo al entrar.
+  // Y el acercamiento propiamente dicho. La PRIMERA vez no: al montar,
+  // `nodoFoco` ya es null y encuadrar acá sería pelearse con el `fitView`
+  // inicial de <ReactFlow>, que es lo único de esa familia que sí corre.
   const primerEncuadre = useRef(true);
   useEffect(() => {
     if (primerEncuadre.current) { primerEncuadre.current = false; return; }
     encuadrar(620);
   }, [nodoFoco, encuadrar]);
+
+  useEffect(() => () => cancelAnimationFrame(refAnim.current), []);
 
   // Arriving from a Home card: the finding is pre-chosen. Its path lights and
   // its panel opens as soon as data lands, so the first second on the map is
@@ -1034,7 +1105,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
          className={`relative flex overflow-hidden border border-linea bg-papel
                      ${completo ? "min-h-0 flex-1 rounded-xl" : "h-[700px] rounded-2xl"}`}>
       {rielJsx}
-      <div className="relative min-w-0 flex-1">
+      <div ref={pane} className="relative min-w-0 flex-1">
         <RotulosDeCapa capas={d.capas} />
         <ReactFlowProvider>
         <ReactFlow
@@ -1064,8 +1135,8 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
           <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
         <Controles completo={completo} onCompleto={setCompleto}
-                   onAcercar={() => rfRef.current?.zoomIn({ duration: 180 })}
-                   onAlejar={() => rfRef.current?.zoomOut({ duration: 180 })}
+                   onAcercar={() => zoomPor(1.25)}
+                   onAlejar={() => zoomPor(1 / 1.25)}
                    onCentrar={() => { setNodoFoco(null); encuadrarTodo(); }}
                    t={t} />
         </ReactFlowProvider>
