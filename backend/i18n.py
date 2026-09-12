@@ -3380,6 +3380,66 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.venc_riesgo_i": {"es": "vence en {dias} días", "en": "expires in {dias} days"},
     "core.prio.venc_riesgo_s": {"es": "Ritmo de venta = unidades de los últimos 12 meses / 365.",
                                 "en": "Sale pace = last 12 months' units / 365."},
+    "core.prio.dep_discrep_p": {
+        "es": "{n} artículo(s) tienen diferencia entre el stock del sistema y el del depósito.",
+        "en": "{n} item(s) differ between system stock and warehouse stock.",
+    },
+    "core.method.dep_discrep": {
+        "es": "Comparación entre la existencia registrada y el último conteo de depósito.",
+        "en": "Recorded stock compared against the latest warehouse count.",
+    },
+    "core.prio.dep_porvencer_hyp": {
+        "es": "Es un problema de rotación, no de compra de más: el lote entró y no salió a tiempo.",
+        "en": "A turnover problem, not over-buying — the lot came in and did not move in time.",
+    },
+    "core.method.payables_overdue": {
+        "es": "Suma de facturas de proveedores en estado pendiente cuya fecha de vencimiento ya pasó.",
+        "en": "Sum of pending vendor bills whose due date has already passed.",
+    },
+    "core.method.payables_week": {
+        "es": "Suma de facturas de proveedores en estado pendiente que vencen dentro de los próximos 7 días.",
+        "en": "Sum of pending vendor bills due within the next 7 days.",
+    },
+    "core.method.checks": {
+        "es": "Suma de cheques recibidos que todavía no fueron cobrados.",
+        "en": "Sum of received checks not yet collected.",
+    },
+    "core.method.expired_lots": {
+        "es": "Lotes de depósito cuya fecha de vencimiento ya pasó, valuados al costo con IVA del catálogo.",
+        "en": "Warehouse lots past their expiration date, valued at the catalog's cost including VAT.",
+    },
+    "core.method.expiring_lots": {
+        "es": "Lotes de depósito que vencen dentro de la ventana de alerta, valuados al costo con IVA del catálogo.",
+        "en": "Warehouse lots expiring within the alert window, valued at the catalog's cost including VAT.",
+    },
+    "core.method.at_risk": {
+        "es": "Lotes cuyo ritmo de venta actual no alcanza para agotarlos antes de vencer.",
+        "en": "Lots whose current sale pace won't clear them before they expire.",
+    },
+    "core.prio.pago_vencido_risk": {
+        "es": "Intereses o corte de suministro del proveedor si no se paga.",
+        "en": "Interest charges or a supplier cutting off supply if left unpaid.",
+    },
+    "core.prio.pago_semana_risk": {
+        "es": "Quiebre de caja si el pago no se planifica con anticipación.",
+        "en": "A cash crunch if the payment isn't planned for ahead of time.",
+    },
+    "core.prio.cheques_risk": {
+        "es": "Plata en cartera hasta la fecha de cobro de cada cheque.",
+        "en": "Money held up until each check's collection date.",
+    },
+    "core.prio.dep_vencidos_risk": {
+        "es": "Mercadería vencida que ya no se puede vender.",
+        "en": "Expired merchandise that can no longer be sold.",
+    },
+    "core.prio.dep_porvencer_risk": {
+        "es": "Se pierde si no rota antes de la fecha de vencimiento.",
+        "en": "Lost if it doesn't turn over before its expiration date.",
+    },
+    "core.prio.venc_riesgo_risk": {
+        "es": "Plata inmovilizada en lotes que no llegan a venderse a tiempo.",
+        "en": "Money tied up in lots that won't sell in time.",
+    },
     "core.prio.costo_viejo_t": {"es": "Costos sin actualizar hace más de un año",
                                "en": "Costs not updated in over a year"},
     "core.prio.costo_viejo_r": {"es": "{n} productos con costo viejo. El margen que ves no es real.",
