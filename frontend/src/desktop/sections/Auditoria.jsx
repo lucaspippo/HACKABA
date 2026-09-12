@@ -339,7 +339,7 @@ function Hilo({ hilo, hoyISO, t, onCerrar }) {
         <p className="font-display text-[1.02rem] font-bold leading-tight">
           {t("audit.hilo_titulo", { sujeto: hilo.sujeto })}
         </p>
-        <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
+        <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
       <ol className="space-y-2.5 border-l-2 border-linea pl-4">
         {hilo.eventos.map((e) => (

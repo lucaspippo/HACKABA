@@ -146,8 +146,8 @@ export default function Movimientos({ onNavegar, highlight }) {
         )}
         acciones={(l) => (
           <div className="flex items-center justify-end gap-2">
-            <button type="button" onClick={() => setModal(l)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
-            <button type="button" onClick={() => eliminar(l.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
+            <button type="button" onClick={() => setModal(l)} aria-label={t("common.editar")} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
+            <button type="button" onClick={() => eliminar(l.id)} aria-label={t("common.eliminar")} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
           </div>
         )}
       />
@@ -209,7 +209,7 @@ function ModalMovimiento({ inicial, onClose, onGuardado }) {
       <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <h2 className="font-display text-xl font-bold">{t(inicial ? "movimientos.editar" : "movimientos.nuevo")}</h2>
-          <button type="button" onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button type="button" onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
         {CAMPOS.map(([campo, lk, tipo]) => (
           <div key={campo}>

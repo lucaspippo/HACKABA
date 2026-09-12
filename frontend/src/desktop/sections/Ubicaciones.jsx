@@ -69,8 +69,8 @@ export default function Ubicaciones() {
         onLimpiar={q ? () => setQ("") : undefined}
         acciones={(u) => (
           <div className="flex items-center justify-end gap-2">
-            <button type="button" onClick={() => setModal(u)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
-            <button type="button" onClick={() => eliminar(u.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
+            <button type="button" onClick={() => setModal(u)} aria-label={t("common.editar")} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
+            <button type="button" onClick={() => eliminar(u.id)} aria-label={t("common.eliminar")} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
           </div>
         )}
       />
@@ -113,7 +113,7 @@ function ModalUbicacion({ inicial, onClose, onGuardado }) {
       <div className="w-full max-w-md rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <h2 className="font-display text-xl font-bold">{t(inicial ? "ubicaciones.editar" : "ubicaciones.nueva")}</h2>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
         <label className="mt-4 block text-[0.82rem] font-semibold text-tinta-suave">{t("ubicaciones.nombre")}</label>
         <input value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus

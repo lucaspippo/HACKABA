@@ -127,7 +127,7 @@ export default function FacturaFlow({ onCerrar, onCargado, onPreguntar, onAngela
           <h2 className="flex items-center gap-2 font-display text-[1.05rem] font-bold">
             <Camera size={18} className="text-violeta" /> {t("foto.titulo")}
           </h2>
-          <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
+          <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
