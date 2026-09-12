@@ -40,8 +40,8 @@ const CATALOGO = [
     match: /compras/i,
     acciones: [
       { id: "preparar_oc", icon: "ClipboardList", need: ["oportunidades"], kind: "navegar",
-        a: "oportunidades", destaca: true },
-      { id: "ver_ofertas", icon: "Tag", need: ["oportunidades"], kind: "navegar", a: "oportunidades" },
+        a: "prioridades", destaca: true },
+      { id: "ver_ofertas", icon: "Tag", need: ["oportunidades"], kind: "navegar", a: "prioridades" },
     ],
     chips: [
       { k: "rol.chip_por_quebrar", need: ["inventario"] },
