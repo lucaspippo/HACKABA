@@ -110,7 +110,13 @@ CANAL_OTROS = "otros"
 # without writing it.
 ORDEN_CANAL = {"whatsapp": 0, "email": 1, "foto": 2, "voz": 3, "chat": 4,
                "reporte": 5}
-DE_AFUERA = ("whatsapp", "email", "foto")
+# Los canales que el sistema de gestión NO ve. `voz` entró acá después de
+# mirarlo en la demo: estaba marcado como interno, y un audio que manda alguien
+# del depósito con las manos ocupadas es exactamente lo que ningún ERP captura
+# — es el canal más nuestro de todos. Con la voz adentro son 21 de 31 avisos,
+# no 14. `chat` y `reporte` sí quedan afuera de la lista: ésos ocurren DENTRO
+# de PolPilot, así que el sistema los ve por definición.
+DE_AFUERA = ("whatsapp", "email", "foto", "voz")
 
 # How each audit action reads for a person (i18n key suffix per action). What
 # is not in the dict shows raw: better than hiding it. Only actions that WRITE

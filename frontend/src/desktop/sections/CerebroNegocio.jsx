@@ -19,8 +19,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { forceCollide, forceX, forceY } from "d3-force-3d";
-import { Search, Crosshair, Maximize2, X, ArrowRight, Sparkles, FlaskConical,
-         Play, Presentation, UserMinus } from "lucide-react";
+import { Search, Crosshair, Maximize2, Minimize2, Expand, X, ArrowRight, Sparkles,
+         FlaskConical, Play, Presentation, UserMinus, ChevronDown } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import PanelEvals from "./PanelEvals";
 import { api } from "../../lib/api";
@@ -46,8 +46,36 @@ const COLOR_TIPO = {
   // lo NO estructurado: lo que el equipo le contó a Ángela. Va en el amarillo
   // del post-it a propósito — es lo único acá que no salió de una tabla.
   nota: "#e8c86a",
+  // LA CAPA HUMANA Y LA FÍSICA, las dos nuevas.
+  // La persona va en el mismo amarillo que su nota, un punto más claro: son la
+  // misma historia (alguien dijo algo) y el ojo tiene que agruparlas sin que se
+  // lo expliquen. Todo lo demás del lienzo es frío; lo humano es lo cálido.
+  persona: "#f2d98c",
+  // El lugar es piedra: no opina, no vende, sólo está. Gris cálido para que
+  // sostenga sin competir con lo que pasó ahí.
+  ubicacion: "#9a938a",
 };
-const TIPOS_ORDEN = ["producto", "cliente", "proveedor", "rubro", "local", "remito", "cuenta", "nota"];
+const TIPOS_ORDEN = ["producto", "cliente", "proveedor", "rubro", "local", "remito",
+                     "cuenta", "nota", "persona", "ubicacion"];
+
+// --- LO QUE ENTRÓ DE AFUERA, RECONOCIBLE SIN LEER ---------------------------
+//
+// La insignia de canal es lo ÚNICO del lienzo que usa color de marca ajeno, y
+// queda confinada a un disco de pocos píxeles pegado al post-it. Nunca al
+// cuerpo del nodo, nunca a una arista: si el verde de WhatsApp pintara un nodo
+// entero, el lienzo perdería la regla de que el color significa una cosa sola
+// (DESIGN.md) y el azul dejaría de leerse como Ángela.
+//
+// El reconocimiento lo hace la FORMA del glifo, que funciona en blanco y negro;
+// el color de la insignia sólo lo acelera.
+const CANAL_MARCA = {
+  whatsapp: "#25D366",
+  email: "#e8e4dc",
+  foto: "#e8e4dc",
+  voz: "#e8e4dc",
+  chat: "#e8e4dc",
+  reporte: "#e8e4dc",
+};
 
 const COLOR_REL = {
   coventa: "rgba(74,168,191,0.34)",
@@ -63,9 +91,34 @@ const COLOR_REL = {
   compra: "rgba(95,191,143,0.40)",
   // la nota del equipo, colgada de lo que nombra
   menciona: "rgba(232,200,106,0.40)",
+  // quién la dijo. Va en el mismo amarillo y MÁS fuerte que menciona: es el
+  // único trazo del lienzo que sale de una persona.
+  dijo: "rgba(242,217,140,0.58)",
+  // qué guarda cada lugar
+  guarda: "rgba(154,147,138,0.30)",
+  // la regla de la casa aplicada a una entidad
+  aplica_a: "rgba(232,200,106,0.30)",
   // la inferida sobrevive sólo de respaldo: se dibuja punteada, como siempre
   afinidad: "rgba(95,191,143,0.26)",
 };
+
+// --- JERARQUÍA DE ARISTA: no todas las relaciones importan igual ------------
+//
+// El grafo tiene 2.044 aristas y tres relaciones se llevan el 72%: coventa,
+// pertenece y provee. Son verdaderas y son decorado — que dos productos se
+// vendan juntos no explica nunca por qué hay un problema hoy.
+//
+// Así que el trazo dice de qué clase es la relación antes de que nadie lea
+// una etiqueta: lo que EXPLICA va grueso y opaco, lo que es ESTRUCTURA va fino
+// y casi transparente. Es la misma idea del mapa de la operación, donde el
+// tránsito sin confirmar es el único punteado rojo.
+const PESO_REL = {
+  dijo: 2.2, menciona: 2.0, guarda: 1.4, aplica_a: 1.4,
+  debe: 1.3, pide: 1.2, ordena: 1.2, entrega: 1.2,
+  compra: 1.0, provee: 0.75, vende: 0.6,
+  coventa: 0.4, pertenece: 0.35, traslado: 0.35,
+};
+const PESO_REL_DEFAULT = 0.8;
 
 const SECCION_LK = {
   inventario: "nav.inventario", cuentas: "nav.cuentas", finanzas: "nav.finanzas",
@@ -109,6 +162,25 @@ function dibujarForma(ctx, tipo, x, y, r) {
       ctx.moveTo(x - k, y - k); ctx.lineTo(x + k, y - k);
       ctx.lineTo(x + k, y + k * 0.35); ctx.lineTo(x + k * 0.35, y + k);
       ctx.lineTo(x - k, y + k); ctx.closePath();
+      return;
+    }
+    case "persona": { // cabeza y hombros: la silueta que se lee a cualquier tamaño
+      const k = r * 1.15;
+      ctx.arc(x, y - k * 0.38, k * 0.46, 0, 2 * Math.PI);          // la cabeza
+      ctx.moveTo(x - k * 0.82, y + k);
+      // los hombros, como un arco: no un rectángulo, que se confunde con cliente
+      ctx.quadraticCurveTo(x, y - k * 0.1, x + k * 0.82, y + k);
+      ctx.closePath();
+      return;
+    }
+    case "ubicacion": { // estante: dos travesaños. Es un lugar, no una cosa
+      const w = r * 1.15, h = r * 0.95;
+      ctx.moveTo(x - w, y - h); ctx.lineTo(x + w, y - h);          // balda de arriba
+      ctx.lineTo(x + w, y - h * 0.28); ctx.lineTo(x - w, y - h * 0.28);
+      ctx.closePath();
+      ctx.moveTo(x - w, y + h * 0.28); ctx.lineTo(x + w, y + h * 0.28);
+      ctx.lineTo(x + w, y + h); ctx.lineTo(x - w, y + h);          // balda de abajo
+      ctx.closePath();
       return;
     }
     default: // producto y cuenta: círculo (la cuenta se dibuja hueca aparte)
@@ -209,6 +281,32 @@ function dibujarGlifoCanal(ctx, canal, x, y, r) {
   ctx.restore();
 }
 
+// LA INSIGNIA DE CANAL: un disco chico pegado al post-it, arriba a la derecha.
+//
+// Es lo único del lienzo que usa color de marca ajeno, y por eso está acotado
+// a un disco de r*0.62 con el glifo adentro. El cuerpo del nodo sigue siendo
+// el amarillo del post-it y las aristas siguen siendo las de la casa: la regla
+// de DESIGN.md (un color, un significado; el azul es de Ángela) no se toca.
+//
+// Se dibuja SOBRE el borde para que se lea aunque el nodo esté chico, y sólo
+// cuando el radio da: por debajo de eso, el glifo del interior alcanza.
+function dibujarInsigniaCanal(ctx, canal, x, y, r) {
+  const rr = r * 0.62;
+  const cx = x + r * 0.92, cy = y - r * 0.92;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, rr, 0, 2 * Math.PI);
+  ctx.fillStyle = CANAL_MARCA[canal] || "#e8e4dc";
+  ctx.fill();
+  // aro oscuro: despega la insignia del cuerpo amarillo del post-it
+  ctx.lineWidth = Math.max(0.22, r * 0.11);
+  ctx.strokeStyle = "rgba(15,17,19,0.85)";
+  ctx.stroke();
+  ctx.clip();
+  dibujarGlifoCanal(ctx, canal, cx, cy, rr * 1.5);
+  ctx.restore();
+}
+
 // El globo de una nota semilla: lo que la persona dijo, con su nombre y su
 // canal. Se dibuja en el lienzo y no en un panel al costado a propósito — si
 // hay que mover el ojo a otra parte de la pantalla, la frase deja de ser parte
@@ -268,11 +366,66 @@ function dibujarGloboNota(ctx, n, r, escala, presentar) {
 // Ninguno de estos números toca lo que el motor calcula. Es tinta, no verdad.
 const PRESENTAR = {
   texto: 2.2,        // 4,1 px de grafo se vuelven 9
-  arista: 2.6,       // 0,55 se vuelve 1,4; el camino, 4,4
+  arista: 1.9,       // suficiente para leerse proyectado sin tapar los nodos
   nodo: 1.35,
   atenuado: 0.05,    // lo que queda de contexto casi desaparece
   saltos: 2,         // cuántos saltos alrededor del camino se siguen dibujando
 };
+
+// Por debajo de esto no se lee nada: es el piso al que se sube la cámara
+// cuando hay que traer un nodo y el usuario está mirando desde muy lejos.
+const ZOOM_MINIMO_LEGIBLE = 1.1;
+
+// --- PANTALLA COMPLETA -------------------------------------------------------
+//
+// No existía, y la API del navegador estaba ahí sin usar. Sin esto el lienzo
+// vive en una franja de la página con 713 px de texto encima: proyectado, el
+// grafo entra abajo del fold y hay que scrollear en vivo para verlo.
+//
+// Se usa la Fullscreen API del contenedor (no una clase CSS de "casi pantalla
+// completa") porque es la única que saca la barra del navegador, que en un
+// proyector son 80 px de cromo ajeno arriba del contenido.
+// Y UNA RED, porque `requestFullscreen` puede fallar por razones que no
+// controlamos: exige activación de usuario reciente y hay contextos que la
+// rechazan con "Permissions check failed" (pasó probándolo acá). Si la API dice
+// que no, el lienzo igual se va a ocupar la ventana entera por CSS. Se pierden
+// los 80 px de cromo del navegador y nada más — que es infinitamente mejor que
+// un botón que no hace nada delante de un jurado.
+function usarPantallaCompleta(ref) {
+  const [nativa, setNativa] = useState(false);
+  const [caida, setCaida] = useState(false);   // el modo por CSS
+  useEffect(() => {
+    const onCambio = () => {
+      const enFS = document.fullscreenElement === ref.current;
+      setNativa(enFS);
+      if (!enFS) setCaida(false);   // salir con Esc apaga las dos
+    };
+    document.addEventListener("fullscreenchange", onCambio);
+    return () => document.removeEventListener("fullscreenchange", onCambio);
+  }, [ref]);
+
+  // Esc cierra el modo CSS, que si no queda atrapado sin la salida del navegador.
+  useEffect(() => {
+    if (!caida) return;
+    const onKey = (e) => { if (e.key === "Escape") setCaida(false); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [caida]);
+
+  const alternar = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (document.fullscreenElement === el) { document.exitFullscreen?.(); return; }
+    if (caida) { setCaida(false); return; }
+    try {
+      const p = el.requestFullscreen?.();
+      if (p?.catch) p.catch(() => setCaida(true));
+      else if (!p) setCaida(true);
+    } catch { setCaida(true); }
+  }, [ref, caida]);
+
+  return { pantallaCompleta: nativa || caida, alternarPantallaCompleta: alternar };
+}
 
 // el mismo glifo en HTML, para la leyenda y el panel
 function Glifo({ tipo, size = 11 }) {
@@ -380,6 +533,17 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   const [sinNotas, setSinNotas] = useState([]);  // las evidencias que el jurado quitó
   const { datos, error } = useGrafo(langKey, sinNotas);
   const { ref: caja, el: lienzoEl, w, h } = useMedida();
+  const contenedorRef = useRef(null);
+  const { pantallaCompleta, alternarPantallaCompleta } = usarPantallaCompleta(contenedorRef);
+  // Callback ref ESTABLE que hace las dos cosas: medir (useMedida) y guardar el
+  // nodo para pedirle pantalla completa. Tiene que ser estable sí o sí — una
+  // función inline se recrea en cada render, React la vuelve a invocar, `medir`
+  // hace setState y el componente entra en bucle. El propio useMedida lo avisa
+  // en su comentario; lo rompí una vez y lo dice ahí escrito.
+  const refLienzo = useCallback((el) => {
+    caja(el);
+    contenedorRef.current = el;
+  }, [caja]);
   const grafoRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -389,6 +553,9 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   const [leyenda, setLeyenda] = useState(false);  // el detalle de la leyenda, a pedido
   const [listo, setListo] = useState(false);     // la simulación ya se asentó
   const [verEvals, setVerEvals] = useState(false); // la evidencia sobre el motor
+  // Las entidades del camino arrancan PLEGADAS: sólo las semillas. Ver el
+  // comentario del bloque que las dibuja.
+  const [verTodasLasEntidades, setVerTodasLasEntidades] = useState(false);
   // --- lo que sigue existe para PROYECTAR, no para trabajar de cerca -------
   // El grafo está diseñado para un monitor y un mouse. Un jurado a cuatro
   // metros ve manchas. Estos tres estados son la diferencia entre las dos
@@ -492,6 +659,70 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   // secuencia anterior sobre un camino nuevo se lee como un error.
   useEffect(() => { setEtapa(null); }, [camino]);
 
+  // --- EL ESTADO INICIAL TIENE QUE ENSEÑAR ---------------------------------
+  //
+  // Abría con 593 nodos sueltos: una nube de puntitos de 2 px que además tarda
+  // en asentarse, con el 70% del lienzo vacío. El primer segundo decide si el
+  // que mira se engancha, y lo gastaba una mancha moviéndose.
+  //
+  // Ahora entra con un hallazgo YA encendido y en modo proyectar. El resto del
+  // grafo sigue ahí, tenue, porque la escala es parte de lo que impresiona —
+  // pero el foco está puesto desde el primer instante, sin tocar nada.
+  //
+  // Cuál se elige: el que más evidencia humana cruza (más notas en el camino).
+  // No es un hallazgo fijo por id — si mañana cambia el dataset, sigue
+  // eligiendo el que mejor cuenta la tesis en vez de quedar apuntando a un
+  // caso que ya no existe.
+  // --- EL CAMINO SE ENCIENDE CON UNA PREGUNTA ------------------------------
+  //
+  // El mecanismo, listo para que lo dispare cualquiera. Cuando alguien le
+  // pregunta algo a Ángela y la respuesta sale de un hallazgo, el que atiende
+  // esa respuesta emite:
+  //
+  //     window.dispatchEvent(new CustomEvent("polpilot:encender-camino",
+  //                          { detail: { hallazgo: "cruce_espacio_camara" } }))
+  //
+  // y el grafo enciende ese recorrido, apaga el resto y lo encuadra. Es un
+  // evento y no una prop porque el que sabe qué contestó Ángela vive en otro
+  // árbol (el panel de chat), y pasarlo por props obligaría a cablear el id a
+  // través de media aplicación para un caso que además es puntual.
+  //
+  // `detail.hallazgo` acepta el id exacto; si no viene, se puede mandar
+  // `detail.texto` y se busca por coincidencia en el título — que es lo que va
+  // a hacer falta cuando la pregunta sea en lenguaje natural.
+  useEffect(() => {
+    const onEncender = (e) => {
+      const d = e.detail || {};
+      const lista = datos?.caminos || [];
+      let elegido = d.hallazgo && lista.find((c) => c.id === d.hallazgo);
+      if (!elegido && d.texto) {
+        const q = String(d.texto).toLowerCase();
+        elegido = lista.find((c) => (c.titulo || "").toLowerCase().includes(q))
+          || lista.find((c) => q.includes((c.id || "").replace(/_/g, " ")));
+      }
+      if (!elegido) return;
+      setCamino(elegido.id);
+      setFoco(null);
+      setPresentar(true);
+      lienzoEl.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (d.animar !== false) setEtapa(0);
+    };
+    window.addEventListener("polpilot:encender-camino", onEncender);
+    return () => window.removeEventListener("polpilot:encender-camino", onEncender);
+  }, [datos, lienzoEl]);
+
+  const yaArranco = useRef(false);
+  useEffect(() => {
+    if (yaArranco.current || !datos?.caminos?.length || !gd) return;
+    yaArranco.current = true;
+    const conNotas = (c) => (c.nodos || []).filter((id) => String(id).startsWith("nota:")).length;
+    const mejor = [...datos.caminos].sort((a, b) => conNotas(b) - conNotas(a))[0];
+    if (mejor && conNotas(mejor) > 0) {
+      setCamino(mejor.id);
+      setPresentar(true);
+    }
+  }, [datos, gd]);
+
   const semillasCamino = useMemo(
     () => new Set(caminoActual?.semillas || []), [caminoActual]);
 
@@ -587,21 +818,39 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
   //    que el buscador "no hacía nada"; ahora reintenta un par de frames.
   //  · los atajos del núcleo viven DEBAJO del lienzo: si no se trae la vista al
   //    grafo, el usuario toca un chip y no ve moverse nada.
-  const irAlNodo = useCallback((id) => {
+  // LA VISTA NO SE RESETEA AL TOCAR ALGO.
+  //
+  // Antes esto hacía `centerAt` + `zoom(2.6)` SIEMPRE: te habías acercado a una
+  // zona, tocabas un nodo, y la cámara te tiraba a otro lado con un zoom fijo.
+  // En vivo era fatal — pasó en la prueba: toqué una nota del camino y el nodo
+  // quedó solo en un lienzo negro, con el camino perdido de vista.
+  //
+  // Ahora: si el nodo YA se ve, sólo se selecciona y la cámara no se mueve. Si
+  // está fuera de cuadro, se lo trae con un paneo suave y SIN tocar el zoom
+  // (salvo que estés tan lejos que no se vea nada, donde se acerca a un mínimo
+  // legible). El zoom del presentador es del presentador.
+  const irAlNodo = useCallback((id, { forzar = false } = {}) => {
     setFoco(id);
     lienzoEl.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     let intentos = 0;
     const apuntar = () => {
       const n = indice.get(id);
-      if (n && Number.isFinite(n.x) && Number.isFinite(n.y)) {
-        grafoRef.current?.centerAt(n.x, n.y, 800);
-        grafoRef.current?.zoom(2.6, 800);
+      const fg = grafoRef.current;
+      if (n && fg && Number.isFinite(n.x) && Number.isFinite(n.y)) {
+        const zAhora = fg.zoom();
+        const p = fg.graph2ScreenCoords(n.x, n.y);
+        const margen = 60;
+        const fuera = !p || p.x < margen || p.y < margen
+          || p.x > (w || 0) - margen || p.y > (h || 0) - margen;
+        if (forzar || fuera) fg.centerAt(n.x, n.y, 600);
+        // Sólo se corrige el zoom cuando está tan lejos que nada es legible.
+        if (zAhora < ZOOM_MINIMO_LEGIBLE) fg.zoom(ZOOM_MINIMO_LEGIBLE, 600);
         return;
       }
       if (++intentos < 12) setTimeout(apuntar, 120);
     };
     apuntar();
-  }, [indice, lienzoEl]);
+  }, [indice, lienzoEl, w, h]);
 
   // al encender un camino, encuadrar SOLO ese camino: el hallazgo se ve entero
   useEffect(() => {
@@ -970,11 +1219,26 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                   ))}
                 </ul>
               )}
-              <div className="text-sm text-tinta-suave">
-                {t("cerebro.camino_recorrer", { n: nodosCamino.size })}
-              </div>
+              {/* LAS ENTIDADES DEL CAMINO, PLEGADAS.
+                  Estaban todas abiertas: con el camino de la cámara eran 41
+                  chips en cinco filas, y las cuatro personas que avisaron
+                  quedaban enterradas entre MAYONESA LA RIBERA y LENTEJAS DON
+                  TIMOTEO. Peor: esas cinco filas empujaban el lienzo abajo del
+                  fold, así que para ver el grafo había que scrollear.
+                  Ahora se muestran SÓLO LAS SEMILLAS —lo que disparó el
+                  hallazgo, que es lo que se cuenta— y el resto se abre a
+                  pedido. */}
+              <button onClick={() => setVerTodasLasEntidades((v) => !v)}
+                className="flex items-center gap-1 text-sm text-tinta-suave hover:text-tinta">
+                <ChevronDown className={`size-3.5 transition-transform ${verTodasLasEntidades ? "rotate-180" : ""}`} />
+                {verTodasLasEntidades
+                  ? t("cerebro.camino_recorrer", { n: nodosCamino.size })
+                  : t("cerebro.camino_semillas", { n: (caminoActual.semillas || []).length })}
+              </button>
               <div className="mt-1.5 flex flex-wrap gap-1">
-                {[...nodosCamino].map((id) => {
+                {(verTodasLasEntidades
+                  ? [...nodosCamino]
+                  : (caminoActual.semillas || [])).map((id) => {
                   const n = indice.get(id);
                   if (!n) return null;
                   const esSemilla = (caminoActual.semillas || []).includes(id);
@@ -1003,9 +1267,10 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
       {/* la altura se calcula contra lo que hay ARRIBA (encabezado + chips de
           hallazgos): con 68vh fijo el lienzo entraba pero quedaba cortado por el
           borde de la pantalla, y el cerebro es lo que hay que ver sin scrollear */}
-      <div ref={caja}
-        className="relative h-[clamp(440px,calc(100vh-395px),820px)] overflow-hidden
-                   rounded-card border border-linea"
+      <div ref={refLienzo}
+        className={pantallaCompleta
+          ? "fixed inset-0 z-[120] h-screen w-screen overflow-hidden"
+          : "relative h-[clamp(440px,calc(100vh-395px),820px)] overflow-hidden rounded-card border border-linea"}
         style={{ background: TINTA_OSCURA }}>
 
         {/* BUSCADOR — el acceso principal al cerebro.
@@ -1066,12 +1331,27 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
             </BotonLienzo>
           )}
           {foco && (
-            <BotonLienzo onClick={() => irAlNodo(foco)}>
+            <BotonLienzo onClick={() => irAlNodo(foco, { forzar: true })}>
               <Crosshair className="size-3.5" /> {t("cerebro.centrar")}
+            </BotonLienzo>
+          )}
+          {/* Volver a encuadrar el camino sin apagarlo: el botón que hacía
+              falta cuando te fuiste caminando y querés la foto entera otra vez */}
+          {camino && (
+            <BotonLienzo onClick={() => grafoRef.current?.zoomToFit(700, 90,
+                                          (n) => nodosCamino.has(n.id))}>
+              <Crosshair className="size-3.5" /> {t("cerebro.reencuadrar")}
             </BotonLienzo>
           )}
           <BotonLienzo onClick={() => grafoRef.current?.zoomToFit(800, 70)}>
             <Maximize2 className="size-3.5" /> {t("cerebro.toda_la_red")}
+          </BotonLienzo>
+          {/* PANTALLA COMPLETA. Va último y siempre visible: es lo primero que
+              se toca antes de proyectar. */}
+          <BotonLienzo onClick={alternarPantallaCompleta}>
+            {pantallaCompleta ? <Minimize2 className="size-3.5" />
+                              : <Expand className="size-3.5" />}
+            {pantallaCompleta ? t("cerebro.salir_pantalla") : t("cerebro.pantalla_completa")}
           </BotonLienzo>
         </div>
 
@@ -1162,7 +1442,15 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
             }}
             linkWidth={(l) => {
               const k = presentar ? PRESENTAR.arista : 1;
-              return (enEtapaLink(l) ? 1.7 : 0.55) * k;
+              // El grosor dice de qué CLASE es la relación: lo que explica va
+              // grueso, la estructura de fondo (coventa, pertenece) va fina.
+              //
+              // El peso SUMA, no multiplica: multiplicando, una arista del
+              // camino con peso 2,2 en modo proyectar daba casi 10 px y el
+              // camino se veía como una autopista de bandas azules que tapaban
+              // los nodos. La jerarquía tiene que notarse, no gritar.
+              const peso = PESO_REL[l.rel] ?? PESO_REL_DEFAULT;
+              return (enEtapaLink(l) ? 1.5 + peso * 0.4 : 0.5 * peso) * k;
             }}
             // punteada = hipótesis, no dato (ver meta.derivados.afinidad)
             linkLineDash={(l) => (l.inferida ? [2, 3] : null)}
@@ -1234,7 +1522,12 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               }
 
               // el canal, adentro del post-it: voz, whatsapp, foto, mail, chat
-              if (n.tipo === "nota" && r > 2.4) dibujarGlifoCanal(ctx, n.canal, n.x, n.y, r);
+              if (n.tipo === "nota" && r > 2.4) {
+                dibujarGlifoCanal(ctx, n.canal, n.x, n.y, r);
+                // y la insignia de marca afuera, sólo cuando hay lugar para
+                // que se lea: por debajo de esto sería una mancha de color.
+                if (r > 4.2) dibujarInsigniaCanal(ctx, n.canal, n.x, n.y, r);
+              }
 
               // anillo = señal. Rojo SOLO problema real, ámbar = para mirar.
               if (n.riesgo === "riesgo" || n.riesgo === "atencion") {
