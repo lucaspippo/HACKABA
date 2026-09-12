@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Boxes, Pencil, Trash2, X } from "lucide-react";
+import { Boxes, Pencil, Trash2, X, ArrowRight, Sparkles } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { num, peso } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
+import { contarACorregir } from "../../lib/alertas";
 import { useT } from "../../lib/i18n";
 
 const ERRORES_DATO = ["fantasma", "negativo", "sin_precio", "balanza", "costo_viejo"];
@@ -18,7 +19,7 @@ const ESTADO_CAL = {
   costo_viejo: { lk: "inventario.estado_costo_viejo", cls: "bg-oro/20 text-oro-tinta" },
 };
 
-export default function Productos({ data, highlight }) {
+export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
   const t = useT();
   const [filtro, setFiltro] = useState("todos");
   const [errSel, setErrSel] = useState("todos");
@@ -27,14 +28,18 @@ export default function Productos({ data, highlight }) {
 
   useEffect(() => {
     if (!highlight) return;
-    if (highlight === "balanza" || highlight === "balanzas") setFiltro("balanza");
+    if (highlight.startsWith("err:")) {
+      setFiltro("a_corregir");
+      setErrSel(highlight.slice(4));
+    } else if (highlight === "balanza" || highlight === "balanzas") setFiltro("balanza");
     else if (highlight === "a_corregir") setFiltro("a_corregir");
-    else if (["fantasma", "negativo", "sin_precio", "balanza", "costo_viejo"].includes(highlight)) {
+    else if (["fantasma", "negativo", "sin_precio", "costo_viejo"].includes(highlight)) {
       setFiltro("a_corregir");
       setErrSel(highlight);
     }
   }, [highlight]);
 
+  const qHighlight = highlight?.startsWith("q:") ? highlight.slice(2) : "";
   const fetcher = useCallback(
     (p) => api.productos({
       ...p,
@@ -45,9 +50,12 @@ export default function Productos({ data, highlight }) {
   );
   const page = usePagedList(fetcher);
 
-  const alertas = data?.alertas || {};
-  const nACorregir = ["fantasmas", "negativos", "sin_pvp", "balanza"]
-    .reduce((a, k) => a + (alertas[k]?.cantidad || 0), 0);
+  useEffect(() => {
+    if (qHighlight) page.setQ(qHighlight);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qHighlight]);
+
+  const nACorregir = contarACorregir(data);
 
   const eliminar = async (codigo) => {
     try {
@@ -87,13 +95,48 @@ export default function Productos({ data, highlight }) {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center gap-2">
-        <Boxes size={24} className="text-tinta-suave" />
-        <div>
-          <h1 className="font-display text-2xl font-bold leading-none">{t("productos.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("productos.subtitulo")}</p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Boxes size={24} className="text-tinta-suave" />
+          <div>
+            <h1 className="font-display text-2xl font-bold leading-none">{t("productos.titulo")}</h1>
+            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("productos.subtitulo")}</p>
+          </div>
         </div>
+        {onNavegar && (
+          <button
+            type="button"
+            onClick={() => onNavegar("inventario")}
+            className="inline-flex shrink-0 items-center gap-1.5 text-[0.84rem] font-semibold text-hielo hover:underline"
+          >
+            {t("productos.volver_parte")} <ArrowRight size={13} />
+          </button>
+        )}
       </header>
+
+      {filtro === "a_corregir" && nACorregir > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.05] px-4 py-3">
+          <p className="flex-1 text-[0.88rem] text-tinta">{t("inventario.corregir_intro")}</p>
+          {onPreguntar && (
+            <button
+              type="button"
+              onClick={() => onPreguntar(t("productos.corregir_angela_q"))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.82rem] font-semibold text-crema"
+            >
+              <Sparkles size={13} /> {t("inventario.corregir_resolver")}
+            </button>
+          )}
+          {onNavegar && (
+            <button
+              type="button"
+              onClick={() => onNavegar("saneamiento")}
+              className="inline-flex items-center gap-1 rounded-full border border-linea px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta"
+            >
+              {t("productos.ir_saneamiento")} <ArrowRight size={12} />
+            </button>
+          )}
+        </div>
+      )}
 
       <TablaCRUD
         titulo={t("inventario.tabla_titulo")}

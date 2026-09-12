@@ -15,7 +15,7 @@ import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 
-export default function Reponer({ onPreguntar }) {
+export default function Reponer({ onPreguntar, onNavegar }) {
   const t = useT();
   const [d, setD] = useState(null);
 
@@ -68,14 +68,28 @@ export default function Reponer({ onPreguntar }) {
               <tr key={i.codigo} className="border-b border-linea/60 last:border-0">
                 <td className="px-4 py-2">
                   <p className="font-medium">
-                    {i.producto}
+                    {onNavegar ? (
+                      <button
+                        type="button"
+                        onClick={() => onNavegar("productos", `q:${i.codigo}`)}
+                        className="text-left hover:underline"
+                      >
+                        {i.producto}
+                      </button>
+                    ) : i.producto}
                     {i.stockout_risk && (
                       <span className="ml-2 rounded-full bg-rojo/12 px-1.5 py-0.5 text-[0.68rem] font-semibold text-rojo align-middle">
                         {t("reponer.stockout")}
                       </span>
                     )}
                   </p>
-                  <p className="text-[0.72rem] text-tinta-suave">{i.proveedor}</p>
+                  <p className="text-[0.72rem] text-tinta-suave">
+                    {onNavegar ? (
+                      <button type="button" onClick={() => onNavegar("proveedores")} className="hover:underline">
+                        {i.proveedor}
+                      </button>
+                    ) : i.proveedor}
+                  </p>
                   {(i.incoming_qty || i.outgoing_qty) ? (
                     <p className="text-[0.72rem] text-tinta-suave">
                       {t("reponer.pipeline", {
@@ -147,11 +161,31 @@ export default function Reponer({ onPreguntar }) {
         <AngelaMark size={30} />
         <div className="min-w-0 flex-1">
           <p className="text-[0.92rem] leading-snug text-tinta">{t("reponer.angela")}</p>
-          <button onClick={() => onPreguntar?.(t("reponer.angela_preguntar"))}
-            className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2
-                       text-[0.86rem] font-semibold text-crema">
-            {t("reponer.angela_cta")} <ArrowRight size={14} />
-          </button>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            <button onClick={() => onPreguntar?.(t("reponer.angela_preguntar"))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2
+                         text-[0.86rem] font-semibold text-crema">
+              {t("reponer.angela_cta")} <ArrowRight size={14} />
+            </button>
+            {onNavegar && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onNavegar("ordenes_compra")}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.86rem] font-semibold text-tinta"
+                >
+                  {t("reponer.ir_ordenes")} <ArrowRight size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavegar("proveedores")}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.86rem] font-semibold text-tinta-suave"
+                >
+                  {t("reponer.ir_proveedores")}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

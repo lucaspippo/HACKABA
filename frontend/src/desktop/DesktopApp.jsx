@@ -524,7 +524,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
-                {section === "productos" && <Productos data={data} highlight={highlight} />}
+                {section === "productos" && <Productos data={data} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "ventas" && <Ventas />}
                 {section === "recepciones" && <Recepciones />}
                 {section === "movimientos" && <Movimientos onNavegar={navegar} highlight={highlight} />}
