@@ -1,0 +1,69 @@
+"""main.py's /api/angela + /api/angela/stream persistence side effect, and
+the /api/angela/conversaciones read endpoints. No LLM call needed: these
+tests run with no provider configured (the tests suite's default), which
+angela.responder/stream_response already turn into a clean "unavailable"
+result — see tests/test_chat_protocol.py. That is enough to prove the USER
+side of the turn gets persisted even when Ángela can't answer, and lets the
+suite stay network-free."""
+import config
+import pytest
+from fastapi.testclient import TestClient
+
+import auth
+import main
+
+client = TestClient(main.app)
+
+
+def _no_provider(monkeypatch):
+    for var in config.credential_vars():
+        monkeypatch.delenv(var, raising=False)
+
+
+@pytest.fixture
+def aldo_token():
+    creds = auth.cargar_o_generar_credenciales()
+    return client.post("/api/login", json={"username": "aldo", "password": creds["aldo"]}).json()["token"]
+
+
+@pytest.fixture
+def marta_token():
+    creds = auth.cargar_o_generar_credenciales()
+    return client.post("/api/login", json={"username": "marta", "password": creds["marta"]}).json()["token"]
+
+
+def _h(tok):
+    return {"Authorization": f"Bearer {tok}"}
+
+
+def test_chat_persists_the_user_side_of_the_turn(aldo_token, monkeypatch):
+    _no_provider(monkeypatch)
+    r = client.post("/api/angela", json={"message": "¿cuánto vendimos hoy?", "token": aldo_token})
+    assert r.status_code == 200
+
+    got = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
+                     params={"actor": "aldo"})
+    assert got.status_code == 200
+    convs = got.json()["conversaciones"]
+    assert convs, "expected a persisted conversation for aldo"
+
+    full = client.get(f"/api/angela/conversaciones/{convs[0]['id']}", headers=_h(aldo_token))
+    assert full.status_code == 200
+    mensajes = full.json()["mensajes"]
+    assert any(m["role"] == "user" and m["content"] == "¿cuánto vendimos hoy?"
+              for m in mensajes)
+
+
+def test_conversaciones_requires_auditoria_feature(marta_token):
+    r = client.get("/api/angela/conversaciones", headers=_h(marta_token))
+    assert r.status_code == 403
+
+
+def test_conversaciones_requires_auth():
+    r = client.get("/api/angela/conversaciones")
+    assert r.status_code == 401
+
+
+def test_missing_conversation_is_404(aldo_token):
+    r = client.get("/api/angela/conversaciones/no-existe", headers=_h(aldo_token))
+    assert r.status_code == 404

@@ -2325,6 +2325,15 @@ def chat(req: ChatRequest, request: Request):
                                         "ms": _ms})
         except Exception:  # noqa: BLE001
             pass
+        # El transcript CRUDO — texto completo, no el resumen de arriba — para
+        # poder volver a mirarlo. Ver core/angela_transcripts.py.
+        try:
+            from core import angela_transcripts
+            angela_transcripts.registrar_turno(
+                u["username"], req.message, r.get("answer") or "",
+                tools_used=r.get("tools_used"))
+        except Exception:  # noqa: BLE001
+            pass
         return r
     # (A) Sin token en el DEMO público: se rechaza limpio, SIN llamar a Claude.
     # La UI siempre manda token (autologin), así que esto solo frena el abuso
@@ -2380,11 +2389,17 @@ def chat_stream(req: ChatRequest, request: Request):
             import time as _time
             _t0 = _time.monotonic()
             result = None
+            # El evento `done` no lleva el texto (D5: redundante con las
+            # partes de texto ya emitidas) — para el transcript hace falta
+            # juntarlo acá, de los mismos deltas que ya recibió el cliente.
+            texto = []
             for ev in angela.stream_response(
                 req.message, history, role=u.get("rol"),
                 name=u.get("username"), features=u.get("features"),
             ):
-                if ev.get("type") == "done":
+                if ev.get("type") == "text":
+                    texto.append(ev.get("delta") or "")
+                elif ev.get("type") == "done":
                     result = ev.get("result") or {}
                 yield line(ev)
             _ms = round((_time.monotonic() - _t0) * 1000)
@@ -2395,6 +2410,13 @@ def chat_stream(req: ChatRequest, request: Request):
                 store.audit.record(actor=u["username"], accion="consulta_angela",
                                    despues={"tools": (result.get("tools_used") or [])[:4],
                                             "ms": _ms})
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                from core import angela_transcripts
+                angela_transcripts.registrar_turno(
+                    u["username"], req.message, "".join(texto),
+                    tools_used=result.get("tools_used"))
             except Exception:  # noqa: BLE001
                 pass
 
@@ -2409,6 +2431,28 @@ def chat_stream(req: ChatRequest, request: Request):
             yield line(ev)
 
     return StreamingResponse(generate_guest(), media_type="application/x-ndjson")
+
+
+# --- El transcript crudo de Ángela, para auditoría ---------------------------
+# Mismo gate que /api/auditoria: solo quien tiene la feature ve el historial
+# COMPLETO (el propio, o el de cualquiera — es una herramienta de auditoría,
+# no "mi historial"). Ver core/angela_transcripts.py.
+
+@app.get("/api/angela/conversaciones")
+def angela_conversaciones(actor: str | None = None, canal: str | None = None,
+                          limite: int = 100, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    return {"conversaciones": angela_transcripts.listar_conversaciones(
+        actor=actor, channel=canal, limit=max(1, min(limite, 500)))}
+
+
+@app.get("/api/angela/conversaciones/{conversation_id}")
+def angela_conversacion(conversation_id: str, u: dict = Depends(require_feature("auditoria"))):
+    from core import angela_transcripts
+    conv = angela_transcripts.obtener_transcripcion(conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="conversación inexistente")
+    return conv
 
 
 @app.get("/api/oportunidades")
