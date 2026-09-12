@@ -926,30 +926,51 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
 
   const encuadrar = useCallback((duracion = 620) => {
     const rf = rfRef.current;
-    if (!rf) return;
+    const el = pane.current;
+    if (!rf || !el) return;
     const todos = rf.getNodes();
     if (!todos.length) return;
+
+    // El encuadre del mapa entero sirve para dos cosas: es el destino cuando
+    // no hay nada enfocado, y es el PISO de zoom cuando sí lo hay — acercarse
+    // a una tarjeta nunca puede terminar alejando más que ver todo.
+    const vistaTodo = vistaDe(rf.getNodesBounds(todos), 0.06, 1.5);
     const id = refFoco.current;
-    let cajas = todos, relleno = 0.06, zoomMax = 1.5;
-    if (id) {
-      // Encuadrar una tarjeta es encuadrarla CON SUS VECINAS. Sola y centrada
-      // se ve grande y sin contexto, que es lo contrario de lo que se quiere:
-      // lo que hay que leer es esa parte del mapa y de qué se conecta.
-      const vecinas = new Set([id]);
-      for (const e of refAristas.current || []) {
-        if (e.source === id) vecinas.add(e.target);
-        else if (e.target === id) vecinas.add(e.source);
-      }
-      cajas = todos.filter((n) => vecinas.has(n.id));
-      if (!cajas.length) return;
-      // con vecinas hace falta menos aire; una tarjeta sola pide más para no
-      // ocupar la pantalla entera. El techo evita que una tarjeta chica se
-      // agrande hasta verse pixelada.
-      relleno = cajas.length > 1 ? 0.18 : 0.42;
-      zoomMax = 1.3;
+    if (!id || !vistaTodo) { if (vistaTodo) animarA(vistaTodo, duracion); return; }
+
+    const nodo = todos.find((n) => n.id === id);
+    if (!nodo) { animarA(vistaTodo, duracion); return; }
+    const medida = (n) => [n.measured?.width || 0, n.measured?.height || 0];
+    const [nw, nh] = medida(nodo);
+    const cx = nodo.position.x + nw / 2;
+    const cy = nodo.position.y + nh / 2;
+
+    // LA CAJA ES SIMÉTRICA ALREDEDOR DE LA TARJETA, y eso es lo que hace que
+    // la tarjeta quede EN EL CENTRO y no apenas dentro del cuadro. Encuadrar
+    // el grupo «tarjeta + vecinas» tal cual la dejaba corrida hasta 183 px del
+    // medio —medido—, porque el grupo casi nunca es simétrico. Acá el radio se
+    // toma desde la tarjeta hacia la vecina más lejana, en cada eje.
+    const vecinas = new Set([id]);
+    for (const e of refAristas.current || []) {
+      if (e.source === id) vecinas.add(e.target);
+      else if (e.target === id) vecinas.add(e.source);
     }
-    const destino = vistaDe(rf.getNodesBounds(cajas), relleno, zoomMax);
-    if (destino) animarA(destino, duracion);
+    let rx = nw / 2, ry = nh / 2;
+    for (const n of todos) {
+      if (!vecinas.has(n.id)) continue;
+      const [w, h] = medida(n);
+      rx = Math.max(rx, Math.abs(n.position.x + w / 2 - cx) + w / 2);
+      ry = Math.max(ry, Math.abs(n.position.y + h / 2 - cy) + h / 2);
+    }
+    const conVecinas = vistaDe(
+      { x: cx - rx, y: cy - ry, width: rx * 2, height: ry * 2 },
+      vecinas.size > 1 ? 0.1 : 0.42,
+      1.3,   // el techo evita que una tarjeta chica se agrande hasta pixelarse
+    );
+    // el piso: si las vecinas están desparramadas, gana ver la tarjeta grande
+    const z = Math.max(conVecinas ? conVecinas.zoom : 0, vistaTodo.zoom);
+    animarA({ x: el.clientWidth / 2 - cx * z, y: el.clientHeight / 2 - cy * z, zoom: z },
+            duracion);
   }, [animarA, vistaDe]);
 
   // CENTRAR vuelve a ver todo DESDE DONDE SEA. No alcanza con soltar la
