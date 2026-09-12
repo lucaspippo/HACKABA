@@ -35,8 +35,10 @@ The consequences are not only cosmetic:
   cannot let the owner expand a claim to the records behind it, and cannot
   explain how any metric was computed.
 - Ángela's `listar_prioridades` tool (`backend/angela.py:1950-1966`) returns a
-  *slimmed* card with no reasoning at all. The agent therefore has no evidence
-  to reason over — the richest part of the deterministic core never reaches it.
+  *slimmed* card with no reasoning at all, so the richest part of the
+  deterministic core never reaches the agent. This spec makes structured
+  evidence *available* to expose but does not expose it — see "Deferred:
+  exposing evidence to Ángela".
 - Confidence is a single coarse level (`core/confidence.py`) that mixes a data
   signal (chart points) with a hypothesis signal (assumption count) into one
   number, so a finding backed by twelve months of data but resting on three
@@ -412,22 +414,20 @@ not styling.
 
 ## Ángela and MCP
 
-`listar_prioridades` returning full insights for twenty cards would be a large
-payload on every "¿qué hago ahora?". So:
+**No new tool in this pass.** `listar_prioridades` keeps its current shape and
+its `_slim` projection (`angela.py:1950-1966`), gaining only `deadline.urgency`
+and `risk.level` — two scalars, so Ángela can speak about urgency without
+inventing it. `explicar_prioridad(id)` was considered and deliberately not
+added; see "Deferred" below.
 
-- **`listar_prioridades` stays slim**, gaining only `deadline.urgency` and
-  `risk.level` so Ángela can speak about urgency without inventing it.
-- **New tool `explicar_prioridad(id)`** returns one card's complete insight.
-
-This matches how the owner actually talks — "¿qué hago ahora?" then "¿por qué
-esa?" — and it is what makes better agent analysis possible: evidence arrives
-as typed data with baselines and methods rather than prose to re-parse.
-
-The new tool needs an entry in `TOOL_FEATURE` or the same special case as
-`listar_prioridades` (`angela.py:124-134`); adding it to `READ_ONLY_TOOLS`
-(`mcp_server.py:44-53`) exposes it over MCP with no further work.
+`mcp_server.py` needs no change: `listar_prioridades` is already in
+`READ_ONLY_TOOLS` (`:44-53`) and its schema is unchanged.
 
 The prompt rule is unchanged: Ángela cites, never re-ranks, never computes.
+
+The consequence, stated plainly: the structured evidence this spec builds does
+**not** reach the agent in this pass. The contract makes it possible; exposing
+it is a separate decision.
 
 ## Testing
 
@@ -491,9 +491,30 @@ Two things the implementing session must know:
 `insight.owner` and `insight.deadline` are shaped so assignment and tracking
 layer on top without reshaping them.
 
+## Deferred: exposing evidence to Ángela
+
+Also recorded rather than built. Once the contract is real and the UI proves
+the shape, the agent should be able to reason over evidence instead of prose.
+Two options, with the trade-off already mapped:
+
+1. **A second tool, `explicar_prioridad(id)`**, returning one card's complete
+   insight while `listar_prioridades` stays slim. Matches how the owner talks
+   ("¿qué hago ahora?" then "¿por qué esa?") and keeps the common call cheap.
+   Needs an entry in `TOOL_FEATURE` or the same special case as
+   `listar_prioridades` (`angela.py:124-134`), plus `READ_ONLY_TOOLS`
+   (`mcp_server.py:44-53`) to expose it over MCP.
+2. **Widening `_slim`** to carry the full insight. Simpler — no new tool, no
+   permission wiring — but every "¿qué hago ahora?" then ships twenty full
+   insights, which is a large payload for a question that only needs titles.
+
+Whichever is chosen, the deterministic invariant is what makes it safe:
+evidence reaches the model as typed data with baselines and methods, so it
+narrates and cites rather than re-deriving numbers from prose.
+
 ## Out of scope
 
-- Any stored state (see Deferred).
+- Any stored state (see "Deferred: action workflow and insight lifecycle").
+- Any new Ángela or MCP tool; `listar_prioridades` keeps its schema.
 - Renaming card-envelope fields (`titulo`, `resumen`, `tono`, `origen`,
   `propuesta`) — only `drill` is replaced.
 - Changes to ranking, merge *policy*, `recuperable`, or `autonomia`.
@@ -512,8 +533,7 @@ layer on top without reshaping them.
 | `backend/core/patrones.py` | 2 builders emit `insight` |
 | `backend/core/piso.py` | `propuestas()` emits `insight` |
 | `backend/i18n.py` | new `method`/`alternatives`/`falsifiers` keys; i18n-direction TODO |
-| `backend/angela.py` | slim card gains urgency/risk; new `explicar_prioridad` tool |
-| `backend/mcp_server.py` | expose `explicar_prioridad` |
+| `backend/angela.py` | `_slim` gains `deadline.urgency` and `risk.level`; no new tool |
 | `frontend/src/components/CardNegocio.jsx` | `DrillNegocio` restructured around the insight |
 | `frontend/src/sections/Prioridades.jsx` | `drillProps`; deadline chip on `WorkRow` |
 | `frontend/src/mobile/InsightsMobile.jsx` | `rowOf` maps the new shape |
