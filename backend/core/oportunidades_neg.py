@@ -115,6 +115,10 @@ def _ctx(lang) -> dict:
         ctx["clientes"] = cuentas.listar()
     except Exception:  # noqa: BLE001
         ctx["clientes"] = []
+    ctx["product_id_by_name"] = {a.get("descripcion"): a.get("codigo")
+                                 for a in ctx["arts"] if a.get("descripcion")}
+    ctx["client_id_by_name"] = {c.get("nombre"): c.get("id")
+                                for c in ctx["clientes"] if c.get("nombre")}
     try:
         if not ventas.hay_datos() or not ventas.montos_confirmados():
             return ctx
@@ -491,7 +495,8 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
         for a, b in zip(s2[:-1], s2[1:]):
             r2 = r2 + 1 if b < a else 0
         if r2 >= RACHA_MIN_MESES:
-            otros.append({"nombre": p2, "monto": None,
+            otros.append({"id": ctx["product_id_by_name"].get(p2), "kind": "product",
+                          "nombre": p2, "monto": None,
                           "detalle": _t("core.opn.estrella_i", lang, n=r2)})
     grafico = _grafico(prod, [{"x": m, "y": v} for m, v in zip(meses, serie)],
                        "$", True, f"{meses[0]} → {meses[-1]}")
@@ -751,7 +756,8 @@ def _card_concentracion(lang, ctx) -> dict | None:
                           monto=_pesos(monto, lang)),
                        _t("core.opn.conc_q2", lang)],
             "grafico": grafico,
-            "involucrados": [{"nombre": n, "monto": round(v, 2),
+            "involucrados": [{"id": ctx["client_id_by_name"].get(n), "kind": "client",
+                              "nombre": n, "monto": round(v, 2),
                               "detalle": _t("core.opn.conc_i", lang,
                                             pct=f"{v / total * 100:.0f}")}
                              for n, v in top3],
