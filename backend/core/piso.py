@@ -61,6 +61,30 @@ TIPOS = tuple(ACCION)
 # (core.piso.motivo_*), nunca se guarda traducido.
 MOTIVOS = ("roto", "faltante", "vencido", "no_pedido")
 
+# Estados de un reporte. `visto` es el acuse, y existe porque sin él "no lo
+# tomó nadie" y "lo tomó alguien y todavía no lo abrió" se leen igual desde el
+# lado del que reportó — y esa diferencia es la que lo hace volver al WhatsApp.
+ESTADOS = ("nuevo", "visto", "resuelto")
+
+# A QUIÉN LE LLEGA CADA COSA, por OFICIO y no por nombre.
+#
+# Nadie en la cámara de frío tiene que elegir un destinatario de una lista de
+# catorce nombres: Ángela propone y la persona confirma con un toque. Esto es
+# la propuesta, y por eso es determinista y chica — el modelo no elige a quién
+# le llega un reclamo de plata.
+#
+# El match es contra el TEXTO del rol, igual que lib/roles.js: una persona
+# nueva con el mismo oficio hereda los avisos sin tocar código, y un tenant que
+# nombre distinto sus puestos cae en el dueño en vez de romperse.
+DESTINO = {
+    "faltante": r"compras",
+    "conteo": r"encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito",
+    "entrega": r"encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito",
+    "reposicion": r"encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito",
+    "pedido": r"administraci",
+    "presupuesto": r"administraci",
+}
+
 
 def _load() -> list[dict]:
     from core.db import floor_reports_repo
@@ -108,11 +132,38 @@ def adjunto_path(rid: str) -> str | None:
 
 # --- reportar (el empleado) -----------------------------------------------------
 
-def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
+def destinatario_sugerido(tipo: str) -> str | None:
+    """El username que Ángela PROPONE para este tipo de aviso, o el dueño.
+
+    Nunca se manda solo: el que reporta lo confirma o lo cambia. Si Ángela se
+    equivoca y nadie lo ve, el aviso se muere en silencio y la persona no vuelve
+    a usar la app — que es exactamente lo que pasaba cuando no había
+    destinatario en absoluto.
+    """
+    import re
+    import auth
+    patron = DESTINO.get(tipo)
+    gente = [(u, d) for u, d in auth.USUARIOS.items() if not d.get("interno")]
+    if patron:
+        for username, d in gente:
+            if re.search(patron, d.get("rol") or "", re.I):
+                return username
+    # Sin nadie con ese oficio, el dueño. Es la única caída que no pierde el
+    # aviso, y es honesta: alguien lo va a leer.
+    return next((u for u, d in gente if d.get("es_admin")), None)
+
+
+def reportar(tipo: str, actor: str, datos: dict | None = None,
+             destinatario: str | None = None) -> dict:
     """Guarda un hecho del piso. NO toca stock ni ERP — es un reporte, no un ajuste.
 
     `datos` cambia por tipo, pero todos comparten lo que hace falta para cruzar:
     codigo/producto cuando aplica, cantidad, y el texto libre de la persona.
+
+    `destinatario` es a quién le llega. Va explícito y no por default: lo elige
+    quien reporta, confirmando lo que Ángela le propuso. Un reporte sin
+    destinatario sigue siendo válido —es el pozo común de siempre, que el dueño
+    ve— pero es el caso viejo, no el que la interfaz produce.
     """
     if tipo not in TIPOS:
         raise ValueError(f"tipo de reporte desconocido: {tipo!r}")
@@ -144,9 +195,11 @@ def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
         "actor": actor,
         "cuando": _ahora(),
         "fecha": fechas.hoy().isoformat(),
-        "estado": "nuevo",          # nuevo → resuelto (lo cierra el dueño)
+        "estado": "nuevo",          # nuevo → visto → resuelto
         "datos": d,
     }
+    if destinatario:
+        r["destinatario"] = destinatario
     if prueba:
         r["adjunto"] = _guardar_adjunto(rid, prueba)
     from core.db import floor_reports_repo
@@ -156,7 +209,29 @@ def reportar(tipo: str, actor: str, datos: dict | None = None) -> dict:
                   {k: v for k, v in d.items() if k in
                    ("producto", "codigo", "cantidad", "contado", "motivo",
                     "cliente", "local", "nota", "canal", "telefono", "items")})
+    if destinatario:
+        _avisar(destinatario, "piso.recibido", rid,
+                quien=_nombre(actor), tipo=tipo)
     return r
+
+
+def _avisar(para: str, clave: str, rid: str, **params) -> None:
+    """Un evento por la campanita, sin que un fallo de entrega tire el reporte.
+
+    El hecho ya está guardado cuando esto corre: si la notificación falla, se
+    perdió el aviso, no el dato. Al revés sería inaceptable.
+    """
+    try:
+        import i18n
+        from . import notificaciones, perfiles
+        lang = perfiles.idioma_de(para)
+        notificaciones.emitir(
+            para=para,
+            titulo=i18n.t(clave + "_t", lang, **params),
+            cuerpo=i18n.t(clave + "_c", lang, **params),
+            tipo="piso_reporte", ref=rid)
+    except Exception:  # noqa: BLE001 — la entrega nunca rompe el registro
+        pass
 
 
 def listar(tipo: str | None = None, estado: str | None = None,
@@ -171,7 +246,31 @@ def listar(tipo: str | None = None, estado: str | None = None,
     return sorted(items, key=lambda r: r["cuando"], reverse=True)
 
 
+def ver(rid: str, actor: str) -> dict:
+    """El destinatario lo abrió. Esto es el acuse, y le vuelve al que reportó.
+
+    Es la mitad más barata de todo el circuito y la que más cambia: "Celeste lo
+    vio a las 9:31" es la diferencia entre haber cargado algo y haberlo tirado
+    a un pozo.
+    """
+    from core.db import floor_reports_repo
+    from core.db import tenant as _tenant
+    previo = floor_reports_repo.get(_tenant.current_tenant_id(), rid)
+    if previo is None:
+        raise KeyError("reporte inexistente")
+    r = floor_reports_repo.mark_seen(_tenant.current_tenant_id(), rid, actor,
+                                     _ahora())
+    # Sólo la primera vez: el aviso de "lo vieron" se manda una vez, y volver a
+    # abrirlo no le llena la campanita al que reportó.
+    if not previo.get("visto") and r.get("actor") != actor:
+        _avisar(r["actor"], "piso.visto", rid, quien=_nombre(actor))
+    return r
+
+
 def resolver(rid: str, actor: str, nota: str = "") -> dict:
+    """Se cerró. Y ACÁ VUELVE AL QUE LO ORIGINÓ, que es el punto donde este
+    producto se gana o se pierde: sin el resultado de vuelta, el que reportó no
+    confía y sigue preguntando por WhatsApp."""
     from core.db import floor_reports_repo
     from core.db import tenant as _tenant
     if floor_reports_repo.get(_tenant.current_tenant_id(), rid) is None:
@@ -180,7 +279,26 @@ def resolver(rid: str, actor: str, nota: str = "") -> dict:
                                     nota, _ahora())
     _audit.record(actor, "resolver_reporte_piso",
                   antes={"reporte": rid, "tipo": r["tipo"]}, despues={"estado": "resuelto"})
+    if r.get("actor") != actor:
+        _avisar(r["actor"], "piso.resuelto", rid, quien=_nombre(actor),
+                nota=nota or "")
     return r
+
+
+def mios(username: str, incluir_resueltos: bool = True) -> dict:
+    """Lo que esta persona mandó y lo que le mandaron, separado.
+
+    Las dos preguntas que se hace alguien del piso, y son distintas: "¿qué pasó
+    con lo que dije?" y "¿qué está esperando por mí?".
+    """
+    todos = listar()
+    return {
+        "reporte": [r for r in todos if r["actor"] == username
+                    and (incluir_resueltos or r["estado"] != "resuelto")],
+        "me_mandaron": [r for r in todos if r.get("destinatario") == username
+                        and r["actor"] != username
+                        and (incluir_resueltos or r["estado"] != "resuelto")],
+    }
 
 
 # --- el cruce (Ángela) ----------------------------------------------------------

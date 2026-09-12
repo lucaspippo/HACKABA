@@ -5,6 +5,7 @@ import { Ghost, Scale, TriangleAlert, PackageCheck, MessageCircle, ArrowRight, C
 import AngelaMark from "../components/AngelaMark";
 import Onboarding from "../components/Onboarding";
 import ReporteForm from "./ReporteForm";
+import LoQueReporte from "./LoQueReporte";
 import { derivarTareas } from "../lib/piso";
 import { accionesDe, chipsDe, muestrasDe, reportaPorVoz } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
@@ -180,6 +181,12 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
       {session?.usuario?.antiguedad?.nuevo && (
         <Onboarding onPreguntar={(texto) => onAbrirAngela?.(texto)} />
       )}
+
+      {/* P·círculo — QUÉ PASÓ CON LO QUE DIJE. Va primero, arriba de todo: es
+          lo único de esta pantalla que le devuelve algo a la persona por haber
+          cargado, y es la diferencia entre volver a la app o volver al grupo de
+          WhatsApp. Se esconde solo cuando no hay nada. */}
+      <LoQueReporte onCambio={onCerrada} />
 
       {/* P41·4 — LO QUE TE ASIGNARON: tareas concretas con nombre y apellido, que
           alguien te dejó. Van ARRIBA de las derivadas: son las que te pidieron. */}

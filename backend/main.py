@@ -1243,6 +1243,10 @@ def logistica_exposicion(
 class ReporteRequest(BaseModel):
     tipo: str
     datos: dict = {}
+    # A quién le llega. Opcional en el contrato y obligatorio en la práctica:
+    # la interfaz siempre manda uno (el que Ángela propuso y la persona
+    # confirmó), pero un reporte viejo sin destinatario sigue siendo válido.
+    destinatario: str | None = None
 
 
 class ResolverReporteRequest(BaseModel):
@@ -1261,9 +1265,27 @@ def piso_reportar(req: ReporteRequest, u: dict = Depends(usuario_actual)):
         raise HTTPException(status_code=403,
                             detail=i18n.t("authz.sin_feature", _lang(u), feature=requiere))
     try:
-        return piso.reportar(req.tipo, u["username"], req.datos)
+        return piso.reportar(req.tipo, u["username"], req.datos,
+                             destinatario=req.destinatario)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/piso/destinatario")
+def piso_destinatario(tipo: str, u: dict = Depends(usuario_actual)):
+    """A quién PROPONE Ángela mandar este tipo de aviso.
+
+    Se consulta antes de mandar para poder mostrar «esto lo ve Celeste, ¿lo
+    mando?». La propuesta es determinista (core/piso.DESTINO): el modelo no
+    elige a quién le llega un reclamo con plata adentro.
+    """
+    username = piso.destinatario_sugerido(tipo)
+    if not username:
+        return {"sugerido": None}
+    import auth
+    d = auth.USUARIOS.get(username) or {}
+    return {"sugerido": {"username": username, "nombre": d.get("nombre") or username,
+                         "rol": d.get("rol") or ""}}
 
 
 class VozRequest(BaseModel):
@@ -1337,14 +1359,69 @@ def voz_confirmar(req: VozConfirmarRequest, u: dict = Depends(usuario_actual)):
 @app.get("/api/piso/reportes")
 def piso_reportes(tipo: str | None = None, estado: str | None = None,
                   u: dict = Depends(usuario_actual)):
-    """El dueño ve todo lo que reportó el equipo; cada empleado, lo suyo."""
-    actor = None if u.get("es_admin") else u["username"]
-    return {"reportes": piso.listar(tipo=tipo, estado=estado, actor=actor)}
+    """El dueño ve todo; cada empleado ve lo suyo Y lo que le dirigieron.
+
+    Antes filtraba sólo por autor, así que a un destinatario no le llegaba nada:
+    el reporte le estaba dirigido y no lo podía leer. Mismo criterio que
+    `recordatorios.listar`, que ya mira `para` y `creado_por`.
+    """
+    if u.get("es_admin"):
+        return {"reportes": piso.listar(tipo=tipo, estado=estado)}
+    yo = u["username"]
+    return {"reportes": [r for r in piso.listar(tipo=tipo, estado=estado)
+                         if r["actor"] == yo or r.get("destinatario") == yo]}
+
+
+@app.get("/api/piso/mios")
+def piso_mios(u: dict = Depends(usuario_actual)):
+    """Lo que mandé y lo que me mandaron, con lo que salió de cada cosa.
+
+    ESTE ENDPOINT ES EL PUNTO DEL PRODUCTO. `api.piso.reportes` existía y
+    ninguna pantalla lo llamaba, así que el que reportaba ocho cajas rotas no
+    se enteraba nunca de que se reclamaron: volvía al grupo de WhatsApp, donde
+    por lo menos alguien contesta.
+    """
+    from core import mis_avisos
+    return mis_avisos.de(u["username"], _lang(u))
+
+
+@app.post("/api/piso/reportes/{rid}/visto")
+def piso_visto(rid: str, u: dict = Depends(usuario_actual)):
+    """El destinatario lo abrió. Sólo él o el dueño: un acuse de un tercero no
+    acusa nada."""
+    r = next((x for x in piso.listar() if x["id"] == rid), None)
+    if not r:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.reporte_inexistente", _lang(u)))
+    if not u.get("es_admin") and r.get("destinatario") != u["username"]:
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("api.reporte_ajeno", _lang(u)))
+    return piso.ver(rid, u["username"])
 
 
 @app.post("/api/piso/reportes/{rid}/resolver")
 def piso_resolver(rid: str, req: ResolverReporteRequest,
-                  u: dict = Depends(require_admin)):
+                  u: dict = Depends(usuario_actual)):
+    """Lo cierra el dueño, o la persona a la que se lo dirigieron.
+
+    NO ES UN NIVEL DE PERMISO NUEVO — es la misma dueñez de fila que ya tiene
+    `recordatorios.completar` ("una tarea la cierra SU destinatario, o el
+    dueño"). Un aviso dirigido a Celeste que sólo Aldo puede cerrar convierte
+    al dueño en el cuello de botella que el producto vino a sacar, y deja al
+    que reportó esperando por alguien que ni siquiera es el que lo tiene.
+
+    Lo que NO se toca acá: que el encargado de depósito pueda decidir sobre
+    SU dominio —diferencias, faltantes de su gente— sigue necesitando un
+    tercer nivel en `authz`, y ese es un cambio de seguridad que decide
+    Agustín. Está diseñado (design/mobile/00-MODELO-FLUJO.md) y no construido.
+    """
+    r = next((x for x in piso.listar() if x["id"] == rid), None)
+    if not r:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.reporte_inexistente", _lang(u)))
+    if not u.get("es_admin") and r.get("destinatario") != u["username"]:
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("api.reporte_ajeno", _lang(u)))
     try:
         return piso.resolver(rid, u["username"], req.nota)
     except KeyError:
