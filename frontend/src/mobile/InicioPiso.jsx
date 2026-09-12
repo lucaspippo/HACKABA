@@ -211,13 +211,11 @@ export default function InicioPiso({ nombre, lugar, pct, tareas, proxima,
   const t = useT();
   return (
     <div className="space-y-2.5">
-      <div className="px-0.5">
-        <h1 className="font-display text-[19px] font-bold leading-tight text-tinta">
-          {t("piso.hola", { nombre })}
-        </h1>
-        {lugar && <p className="text-[12px] leading-tight text-tinta-suave">{lugar}</p>}
-      </div>
-
+      {/* SIN SALUDO. «¡Hola, Aldo! · Dueño» ocupaba ~60px de los ~680 que hay
+          arriba del pliegue en un teléfono, y no cambia nada de lo que la
+          persona va a hacer: ya sabe cómo se llama y qué rol tiene. El nombre
+          y el rol siguen en la cabecera de la app y en Perfil.
+          `nombre` y `lugar` se siguen aceptando: los usa el layout ancho. */}
       <Banda pct={pct} onAbrir={onAbrirTareas} />
       {tareas.length > 0 && <Detalle items={tareas} onTarea={onTarea} />}
       <Acciones onAccion={onAccion} />

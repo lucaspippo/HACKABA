@@ -138,10 +138,6 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
         onCta: () => onGestionar({ titulo: riesgo.titulo, accion_chat: riesgo.accion_chat }) }
     : null;
 
-  // LO QUE SIGUE, para el dueño: el hallazgo de más peso del día. No es «la
-  // próxima entrega» —él no entrega— sino lo próximo que va a tener enfrente.
-  const masPeso = importantes[0] || cruces[0];
-
   // TU TRABAJO: la cola que queda después de la card de arriba, más lo que el
   // equipo tiene asignado. Es la lista, no la decisión: la decisión está arriba.
   const trabajo = [
@@ -161,6 +157,11 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
     api.paradasProximas().then((d) => setParadas(d.paradas || [])).catch(() => setParadas([]));
   }, [session?.token]);
 
+  // Lo que ya se muestra en «Detalle de tareas» NO se repite mas abajo. Sin
+  // esto, la primera fila de arriba y la tarjeta grande de «Lo de mas peso hoy»
+  // eran literalmente la misma card, con el mismo titulo y el mismo subtitulo,
+  // a dos dedos de distancia — y lo mismo con el bloque de «Lo mas importante».
+  // En un telefono eso es media pantalla gastada en decir dos veces lo mismo.
   // De donde salen las tres filas, en orden de prioridad. Con el dueño del
   // demo `decisiones` viene VACÍA —no tiene nada pendiente de decidir— y la
   // tarjeta desaparecía, dejando la banda de progreso sin nada debajo. Los
@@ -173,6 +174,15 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
     estado: i === 0 ? "curso" : "proxima",
     pct: i === 0 ? 65 : i === 1 ? 30 : 8,
   }));
+  const yaArriba = new Set(filasInicio.map((x) => x.id));
+  const importantesAbajo = importantes.filter((c) => !yaArriba.has(c.id));
+  const trabajoAbajo = trabajo.filter((x) => !yaArriba.has(x.id));
+
+  // LO QUE SIGUE, para el dueño: el hallazgo de más peso del día. No es «la
+  // próxima entrega» —él no entrega— sino lo próximo que va a tener enfrente.
+  // Va DESPUÉS de `yaArriba` y no antes: usarlo arriba daba un ReferenceError
+  // en runtime (`const` se hoistea pero no se inicializa) y esbuild no lo ve.
+  const masPeso = [...importantes, ...cruces].find((x) => !yaArriba.has(x.id));
   // El progreso del día: lo cerrado contra lo que había. `hechoN` ya cuenta lo
   // que Ángela y el equipo resolvieron — no es un número decorativo.
   const hechoHoy = (ini?.actividad?.feed || []).length;
@@ -238,10 +248,10 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
 
       {/* 4 · Tu trabajo — la lista, con su detalle. La decisión de arriba ya
           salió de acá, así que no se repite. */}
-      {trabajo.length > 0 && (
+      {trabajoAbajo.length > 0 && (
         <Bloque titulo={t("hoy.trabajo_titulo")}>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
-            {trabajo.map((x) => (
+            {trabajoAbajo.map((x) => (
               <button key={x.id} onClick={x.onClick}
                 className="flex w-full items-start gap-3 border-b border-linea px-1 py-3 text-left last:border-0">
                 <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-oro" />
@@ -294,10 +304,10 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
       </Bloque>
 
       {/* 4 · Lo más importante de hoy — máx 3 filas + ver todo → Insights */}
-      {importantes.length > 0 && (
+      {importantesAbajo.length > 0 && (
         <Bloque titulo={t("hoy.importante_titulo")} accion={t("hoy.ver_todo")} onAccion={() => onTab("insights")}>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
-            {importantes.map((c) => (
+            {importantesAbajo.map((c) => (
               <Fila key={c.id} icon={Sparkles} tono="salvia" titulo={c.titulo} monto={c.monto}
                 onClick={() => onGestionar({ titulo: c.titulo, accion_chat: c.accion_chat })} />
             ))}
