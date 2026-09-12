@@ -33,7 +33,7 @@ export default function Brand({ variant = "desktop" }) {
         />
       </span>
     ) : (
-      <span className="truncate font-display text-[0.95rem] font-bold leading-tight text-hielo">
+      <span className="truncate font-display text-base font-bold leading-tight text-hielo">
         {empresa}
       </span>
     );
@@ -48,7 +48,7 @@ export default function Brand({ variant = "desktop" }) {
         draggable="false"
       />
       <div className="flex items-center gap-2">
-        <span className="text-[0.66rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+        <span className="text-2xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
           {t("brand.para")}
         </span>
         {!resuelto ? (
@@ -61,7 +61,7 @@ export default function Brand({ variant = "desktop" }) {
             draggable="false"
           />
         ) : (
-          <span className="font-display text-[0.95rem] font-bold leading-tight text-hielo">
+          <span className="font-display text-base font-bold leading-tight text-hielo">
             {empresa}
           </span>
         )}

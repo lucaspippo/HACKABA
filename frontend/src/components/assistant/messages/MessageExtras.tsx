@@ -125,7 +125,7 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
               key={k}
               onClick={() => aui.thread.append(op.enviar)}
               disabled={isRunning}
-              className="rounded-xl border border-violeta/30 bg-crema px-3 py-2 text-left text-[0.86rem] font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema disabled:opacity-50"
+              className="rounded-xl border border-violeta/30 bg-crema px-3 py-2 text-left text-sm font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema disabled:opacity-50"
             >
               {op.label}
             </button>

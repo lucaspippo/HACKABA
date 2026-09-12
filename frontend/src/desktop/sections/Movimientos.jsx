@@ -57,15 +57,15 @@ export default function Movimientos({ onNavegar, highlight }) {
           <PackageSearch size={24} className="text-tinta-suave" />
           <div>
             <h1 className="font-display text-2xl font-bold leading-none">{t("movimientos.titulo")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("movimientos.subtitulo")}</p>
+            <p className="mt-1 text-sm text-tinta-suave">{t("movimientos.subtitulo")}</p>
           </div>
         </div>
         {onNavegar && (
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={() => onNavegar("conciliacion")} className="text-[0.84rem] font-semibold text-hielo">
+            <button type="button" onClick={() => onNavegar("conciliacion")} className="text-sm font-semibold text-hielo">
               {t("conc.titulo")}
             </button>
-            <button type="button" onClick={() => onNavegar("deposito")} className="text-[0.84rem] font-semibold text-hielo">
+            <button type="button" onClick={() => onNavegar("deposito")} className="text-sm font-semibold text-hielo">
               {t("lotes.ver_vencimientos")}
             </button>
           </div>
@@ -213,19 +213,19 @@ function ModalMovimiento({ inicial, onClose, onGuardado }) {
         </div>
         {CAMPOS.map(([campo, lk, tipo]) => (
           <div key={campo}>
-            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <label className="mt-3 block text-sm font-semibold text-tinta-suave">{t(lk)}</label>
             <input type={tipo} value={form[campo]} onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
               autoFocus={campo === "producto"}
-              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40" />
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm outline-none focus:border-tinta/40" />
           </div>
         ))}
-        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        {error && <p className="mt-2 text-sm text-rojo-hondo">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+          <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
           <button type="button" onClick={guardar} disabled={!form.producto.trim() || !form.ubicacion.trim() || guardando}
-            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>
         </div>

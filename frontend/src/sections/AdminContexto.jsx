@@ -48,7 +48,7 @@ export default function AdminContexto() {
         <ShieldAlert size={22} className="text-tinta-suave" />
         <div>
           <h1 className="font-display text-2xl font-bold leading-none">{t("contexto.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("contexto.sub")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("contexto.sub")}</p>
         </div>
       </header>
 
@@ -57,7 +57,7 @@ export default function AdminContexto() {
           <div className="flex flex-wrap gap-2">
             {TIPOS.map((tp) => (
               <button key={tp.id} onClick={() => setTipo(tp.id)}
-                className={`rounded-full px-3 py-1.5 text-[0.8rem] font-semibold ${tipo === tp.id ? "bg-tinta text-crema" : "border border-linea bg-crema text-tinta-suave"}`}>
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold ${tipo === tp.id ? "bg-tinta text-crema" : "border border-linea bg-crema text-tinta-suave"}`}>
                 {t(tp.lk)}
               </button>
             ))}
@@ -70,27 +70,27 @@ export default function AdminContexto() {
             className="grid cursor-pointer place-items-center rounded-[var(--radius-card)] border-2 border-dashed border-linea bg-crema p-6 text-center focus-visible:border-violeta/40">
             <input ref={fileRef} type="file" accept=".txt,.csv,.md" className="hidden" onChange={(e) => leer(e.target.files?.[0])} />
             <UploadCloud size={24} className="text-tinta-suave" />
-            <p className="mt-1.5 text-[0.86rem] font-semibold">{t("contexto.solta_txt")}</p>
-            <p className="text-[0.76rem] text-tinta-suave">{nombre || t("contexto.ningun_archivo")}</p>
+            <p className="mt-1.5 text-sm font-semibold">{t("contexto.solta_txt")}</p>
+            <p className="text-xs text-tinta-suave">{nombre || t("contexto.ningun_archivo")}</p>
           </div>
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={6}
             placeholder={t("contexto.ph_pegar")}
-            className="w-full rounded-[var(--radius-card)] border border-linea bg-crema p-3 text-[0.9rem] outline-none focus:border-violeta/40" />
+            className="w-full rounded-[var(--radius-card)] border border-linea bg-crema p-3 text-sm outline-none focus:border-violeta/40" />
           <button onClick={guardar} disabled={!texto.trim()}
-            className="rounded-full bg-violeta px-5 py-2.5 text-[0.9rem] font-semibold text-crema disabled:opacity-40">
+            className="rounded-full bg-violeta px-5 py-2.5 text-sm font-semibold text-crema disabled:opacity-40">
             {t("contexto.aprender")}
           </button>
           {confirm && (
             <div className="flex items-start gap-2.5 rounded-[var(--radius-card)] border border-salvia/30 bg-salvia/[0.06] p-3">
-              <AngelaMark size={26} /><p className="text-[0.88rem] text-tinta">{confirm}</p>
+              <AngelaMark size={26} /><p className="text-sm text-tinta">{confirm}</p>
             </div>
           )}
         </div>
 
         <div>
-          <h2 className="mb-2 font-display text-[1.1rem] font-bold">{t("contexto.cargado_titulo")}</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("contexto.cargado_titulo")}</h2>
           {items.length === 0 ? (
-            <p className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4 text-[0.86rem] text-tinta-suave">
+            <p className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4 text-sm text-tinta-suave">
               {t("contexto.vacio")}
             </p>
           ) : (
@@ -98,7 +98,7 @@ export default function AdminContexto() {
               {items.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 border-b border-linea px-4 py-2.5 last:border-0">
                   <FileText size={16} className="text-salvia" />
-                  <div className="min-w-0 flex-1"><p className="truncate text-[0.88rem] font-medium">{c.nombre}</p><p className="text-[0.74rem] text-tinta-suave">{t("contexto.item_meta", { tipo: c.tipo, chars: c.chars })}</p></div>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{c.nombre}</p><p className="text-xs text-tinta-suave">{t("contexto.item_meta", { tipo: c.tipo, chars: c.chars })}</p></div>
                   <Check size={15} className="text-salvia" />
                 </div>
               ))}

@@ -30,7 +30,7 @@ export function Citation({
         delay={0}
         render={<button type="button" aria-label={ariaLabel} />}
         className={cn(
-          "mx-0.5 inline-flex h-4 min-w-4 translate-y-[-2px] cursor-default items-center justify-center rounded-[5px] px-1 align-middle font-mono text-[10px] font-medium tabular-nums transition-colors",
+          "mx-0.5 inline-flex h-4 min-w-4 translate-y-[-2px] cursor-default items-center justify-center rounded-[5px] px-1 align-middle font-mono text-xs font-medium tabular-nums transition-colors",
           tone === "knowledge"
             ? open
               ? "bg-oro-tinta text-crema"
@@ -54,13 +54,13 @@ export function Citation({
             )}
           >
             <div className="flex items-center gap-1.5">
-              <span className="bg-foreground/[0.06] text-foreground/45 flex size-4 items-center justify-center rounded text-[9px] font-medium">
+              <span className="bg-foreground/[0.06] text-foreground/45 flex size-4 items-center justify-center rounded text-xs font-medium">
                 {source.domain[0]?.toUpperCase()}
               </span>
               <span className={cn(mono, "text-foreground/40")}>{source.domain}</span>
             </div>
-            <p className="mt-2 text-[13px] leading-snug font-medium">{source.title}</p>
-            <p className="text-foreground/50 mt-1 text-[13px] leading-relaxed">
+            <p className="mt-2 text-lg leading-snug font-medium">{source.title}</p>
+            <p className="text-foreground/50 mt-1 text-lg leading-relaxed">
               {source.snippet}
             </p>
           </PreviewCard.Popup>

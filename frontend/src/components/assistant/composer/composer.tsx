@@ -218,7 +218,7 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
               placeholder={isRunning ? t("angela.ph_trabajando") : t("angela.ph_input")}
               // The ring belongs to the bar: the global focus style would
               // draw an 8px-radius box inside the bar's 24px one.
-              className="min-h-11 w-full resize-none bg-transparent px-3 py-2.5 text-[0.95rem] leading-snug caret-violeta outline-none focus-visible:shadow-none placeholder:text-tinta-suave/70"
+              className="min-h-11 w-full resize-none bg-transparent px-3 py-2.5 text-base leading-snug caret-violeta outline-none focus-visible:shadow-none placeholder:text-tinta-suave/70"
             />
           )}
 

@@ -31,7 +31,7 @@ function Cifra({ monto, texto, cls, label }) {
     <p className={`plata mt-3 text-2xl font-medium ${cls}`}>
       {monto != null ? pesoCorto(monto) : texto}
       {/* P30·A2 — etiqueta del $ cuando NO es plata a cobrar (facturación, etc.) */}
-      {label && <span className="ml-1.5 align-middle text-[0.66rem] font-normal text-tinta-suave">{label}</span>}
+      {label && <span className="ml-1.5 align-middle text-2xs font-normal text-tinta-suave">{label}</span>}
     </p>
   );
 }
@@ -43,18 +43,18 @@ export function CardNegocio({ tono = "salvia", icon: Icon, chip, chipCls, titulo
   return (
     <button onClick={onClick}
       className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema p-5 text-left sombra-papel">
-      <span className={`inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ${chipCls || a.chip}`}>
+      <span className={`inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-xs font-semibold ${chipCls || a.chip}`}>
         {Icon && <Icon size={12} />} {chip}
       </span>
-      <p className="mt-2.5 font-display text-[1.05rem] font-bold leading-tight">{titulo}</p>
-      {dato && <p className="mt-1 flex-1 text-[0.82rem] leading-snug text-tinta-suave">{dato}</p>}
+      <p className="mt-2.5 font-display text-lg font-bold leading-tight">{titulo}</p>
+      {dato && <p className="mt-1 flex-1 text-sm leading-snug text-tinta-suave">{dato}</p>}
       <Cifra monto={monto} texto={cifraTexto} cls={a.cifra} label={montoLabel} />
       {fuentes?.length > 0 && (
-        <p className="mt-2 text-[0.7rem] leading-snug text-tinta-suave/80">
+        <p className="mt-2 text-xs leading-snug text-tinta-suave/80">
           {t("cardneg.cruce")} {fuentes.join(" · ")}
         </p>
       )}
-      <span className="mt-2 inline-flex items-center gap-1 self-start text-[0.8rem] font-semibold text-tinta">
+      <span className="mt-2 inline-flex items-center gap-1 self-start text-sm font-semibold text-tinta">
         {accion || t("cardneg.ver_por_que")} <ArrowRight size={13} />
       </span>
     </button>
@@ -86,18 +86,18 @@ export function FindingFeedback({ onFeedback, busy }) {
   const [confirming, setConfirming] = useState(false);
   return (
     <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
-      <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
+      <p className="text-sm font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
       <div className="mt-2.5 flex flex-wrap gap-2">
         {FEEDBACK_ACTIONS.map((f) => {
           if (f.action === "dismissed" && confirming) {
             return (
               <span key={f.action} className="inline-flex items-center gap-1.5">
                 <button disabled={busy} onClick={() => onFeedback("dismissed")}
-                  className="rounded-full border border-rojo/40 bg-rojo/10 px-3.5 py-1.5 text-[0.82rem] font-semibold text-rojo disabled:opacity-50">
+                  className="rounded-full border border-rojo/40 bg-rojo/10 px-3.5 py-1.5 text-sm font-semibold text-rojo disabled:opacity-50">
                   {t("aprendizaje.feedback_dismiss_confirm")}
                 </button>
                 <button disabled={busy} onClick={() => setConfirming(false)}
-                  className="text-[0.82rem] font-semibold text-tinta-suave hover:text-tinta">
+                  className="text-sm font-semibold text-tinta-suave hover:text-tinta">
                   {t("aprendizaje.feedback_cancel")}
                 </button>
               </span>
@@ -106,7 +106,7 @@ export function FindingFeedback({ onFeedback, busy }) {
           return (
             <button key={f.action} disabled={busy}
               onClick={() => (f.action === "dismissed" ? setConfirming(true) : onFeedback(f.action))}
-              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
+              className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-sm font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
               {t(f.lk)}
             </button>
           );
@@ -127,7 +127,7 @@ function FuentePill({ label, onClick }) {
     <Tag
       type={clickable ? "button" : undefined}
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-2.5 py-1 text-[0.74rem] font-medium text-tinta-suave ${
+      className={`inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-2.5 py-1 text-xs font-medium text-tinta-suave ${
         clickable ? "transition-colors hover:border-hielo/40 hover:text-hielo" : ""
       }`}
     >
@@ -157,7 +157,7 @@ function ConfidenceBadge({ confidence, axis }) {
   return (
     <span
       title={confidence.reason}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.7rem] ${cls}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${cls}`}
     >
       {axis && <span className="opacity-70">{t(`cardneg.conf_${axis}`)}</span>}
       <span className="font-semibold">{t(`cardneg.conf_level_${confidence.level}`)}</span>
@@ -171,7 +171,7 @@ function ConfidenceBadge({ confidence, axis }) {
 function ConfidenceReason({ confidence }) {
   if (!confidence?.level || !confidence?.reason) return null;
   return (
-    <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{confidence.reason}</p>
+    <p className="mt-1 text-xs leading-snug text-tinta-suave">{confidence.reason}</p>
   );
 }
 
@@ -184,7 +184,7 @@ function BasedOn({ origins = [] }) {
   const [expanded, setExpanded] = useState(false);
   if (origins.length < 2) return null;
   return (
-    <div className="mt-3 text-[0.76rem] text-tinta-suave">
+    <div className="mt-3 text-xs text-tinta-suave">
       <button type="button" onClick={() => setExpanded((v) => !v)}
         className="inline-flex items-center gap-1 font-semibold hover:text-tinta">
         <Link2 size={11} /> {t("cardneg.based_on", { n: origins.length })}
@@ -208,7 +208,7 @@ function InvolucradoRow({ iv, onClick }) {
     <Tag
       type={clickable ? "button" : undefined}
       onClick={clickable ? () => onClick(iv) : undefined}
-      className={`flex w-full items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-left text-[0.86rem] last:border-0 ${
+      className={`flex w-full items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-left text-sm last:border-0 ${
         clickable ? "transition-colors hover:bg-papel-hondo/50" : ""
       }`}
     >
@@ -229,7 +229,7 @@ function InvolucradoRow({ iv, onClick }) {
 // claim openable down to the rows behind it → the risk → the move → what we
 // assumed and what would change our mind.
 
-const SECTION_LABEL = "text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave";
+const SECTION_LABEL = "text-xs font-semibold uppercase tracking-wide text-tinta-suave";
 
 // One section: heading, an optional aside (the confidence badges), body.
 // More air above the heading than below it, so a section reads as a unit.
@@ -276,11 +276,11 @@ function MethodDisclosure({ method }) {
   if (!method?.label) return null;
   return (
     <details className="group mt-1.5">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[0.76rem] font-semibold text-tinta-suave hover:text-tinta [&::-webkit-details-marker]:hidden">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-semibold text-tinta-suave hover:text-tinta [&::-webkit-details-marker]:hidden">
         <ChevronRight size={11} className="transition-transform duration-150 group-open:rotate-90" />
         {t("cardneg.drill_method")}
       </summary>
-      <p className="mt-1 pl-[15px] text-[0.78rem] leading-snug text-tinta-suave">{method.label}</p>
+      <p className="mt-1 pl-[15px] text-xs leading-snug text-tinta-suave">{method.label}</p>
     </details>
   );
 }
@@ -295,12 +295,12 @@ function EvidenceChart({ chart }) {
     <div className="mt-2 rounded-xl border border-linea bg-papel p-3">
       {(serie?.nombre || chart.meta?.unidad) && (
         <div className="mb-1 flex items-baseline justify-between gap-2">
-          {serie?.nombre && <p className="truncate text-[0.8rem] font-semibold text-tinta">{serie.nombre}</p>}
-          {chart.meta?.unidad && <p className="shrink-0 text-[0.68rem] text-tinta-suave">{chart.meta.unidad}</p>}
+          {serie?.nombre && <p className="truncate text-sm font-semibold text-tinta">{serie.nombre}</p>}
+          {chart.meta?.unidad && <p className="shrink-0 text-2xs text-tinta-suave">{chart.meta.unidad}</p>}
         </div>
       )}
       <CuerpoConsulta resultado={chart} t={t} />
-      {chart.meta?.ventana && <p className="mt-1 text-[0.7rem] text-tinta-suave">{chart.meta.ventana}</p>}
+      {chart.meta?.ventana && <p className="mt-1 text-xs text-tinta-suave">{chart.meta.ventana}</p>}
     </div>
   );
 }
@@ -324,15 +324,15 @@ function EvidenceItem({ item, onVerInvolucrado }) {
   return (
     <div className="border-t border-linea/60 pt-3 first:border-t-0 first:pt-0">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="min-w-0 flex-1 text-[0.92rem] leading-snug text-tinta">{item.label}</p>
+        <p className="min-w-0 flex-1 text-sm leading-snug text-tinta">{item.label}</p>
         {shown && (
-          <span className={`shrink-0 text-[0.92rem] font-semibold text-tinta ${item.unit === "ars" ? "plata" : ""}`}>
+          <span className={`shrink-0 text-sm font-semibold text-tinta ${item.unit === "ars" ? "plata" : ""}`}>
             {shown}
           </span>
         )}
       </div>
       {(dev || item.baseline?.label) && (
-        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[0.78rem] text-tinta-suave">
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-tinta-suave">
           {dev && (
             <span className="inline-flex items-center gap-0.5 font-semibold">
               <DevIcon size={12} aria-hidden="true" />{dev.pct}%
@@ -375,7 +375,7 @@ function Evidence({ items, onVerInvolucrado }) {
       ))}
       {rest.length > 0 && (
         <button type="button" onClick={() => setExpanded((v) => !v)}
-          className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+          className="inline-flex items-center gap-1 text-sm font-semibold text-tinta-suave hover:text-tinta">
           <ChevronDown size={13} className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
           {expanded ? t("cardneg.drill_less") : t("cardneg.drill_more", { n: rest.length })}
         </button>
@@ -399,10 +399,10 @@ function Caveats({ alternatives = [], falsifiers = [] }) {
       <div className="mt-2 space-y-2 pl-[15px]">
         {alternatives.length > 0 && (
           <div>
-            <p className="text-[0.78rem] font-semibold text-tinta">{t("cardneg.drill_alternatives")}</p>
+            <p className="text-xs font-semibold text-tinta">{t("cardneg.drill_alternatives")}</p>
             <ul className="mt-1 space-y-1">
               {alternatives.map((c, i) => (
-                <li key={i} className="text-[0.82rem] leading-snug text-tinta-suave">{labelOf(c)}</li>
+                <li key={i} className="text-sm leading-snug text-tinta-suave">{labelOf(c)}</li>
               ))}
             </ul>
           </div>
@@ -410,7 +410,7 @@ function Caveats({ alternatives = [], falsifiers = [] }) {
         {falsifiers.length > 0 && (
           <ul className="space-y-1">
             {falsifiers.map((c, i) => (
-              <li key={i} className="text-[0.82rem] leading-snug text-tinta-suave">{labelOf(c)}</li>
+              <li key={i} className="text-sm leading-snug text-tinta-suave">{labelOf(c)}</li>
             ))}
           </ul>
         )}
@@ -428,7 +428,7 @@ function OwnerLine({ owner, deadline }) {
   if (!owner && !deadline?.date) return null;
   const late = deadline?.urgency === "overdue" || deadline?.urgency === "today";
   return (
-    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-linea pt-3 text-[0.78rem] text-tinta-suave">
+    <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-linea pt-3 text-xs text-tinta-suave">
       <span className="inline-flex items-center gap-1.5">
         <UserRound size={13} aria-hidden="true" />
         {owner ? t("cardneg.drill_owner", { name: owner.suggested }) : t("cardneg.drill_no_owner")}
@@ -505,7 +505,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
         <div className="flex items-start justify-between gap-3">
           <div>
             {chip && (
-              <span className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ${chipCls || a.chip}`}>
+              <span className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${chipCls || a.chip}`}>
                 {ChipIcon && <ChipIcon size={12} />} {chip}
               </span>
             )}
@@ -513,7 +513,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             {(monto != null || cifraTexto) && (
               <p className={`plata mt-1 text-3xl font-medium ${a.cifra}`}>
                 {monto != null ? peso(monto) : cifraTexto}
-                {montoLabel && <span className="ml-2 align-middle text-[0.72rem] font-normal text-tinta-suave">{montoLabel}</span>}
+                {montoLabel && <span className="ml-2 align-middle text-xs font-normal text-tinta-suave">{montoLabel}</span>}
               </p>
             )}
           </div>
@@ -529,13 +529,13 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             {/* A step larger than every other body line in the panel: the
                 observation is what the owner came here to read. */}
             {pattern?.label && (
-              <p className="mt-1.5 text-[1rem] leading-snug text-tinta">{pattern.label}</p>
+              <p className="mt-1.5 text-base leading-snug text-tinta">{pattern.label}</p>
             )}
             {pattern?.since && (
-              <p className="mt-1 text-[0.78rem] text-tinta-suave">{pattern.since}</p>
+              <p className="mt-1 text-xs text-tinta-suave">{pattern.since}</p>
             )}
             {macro?.inflacion != null && (
-              <p className="mt-2 rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-[0.84rem] text-hielo">
+              <p className="mt-2 rounded-lg border border-hielo/25 bg-hielo/[0.06] px-3 py-2 text-sm text-hielo">
                 {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
               </p>
             )}
@@ -555,7 +555,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               </span>
             )}
           >
-            <p className="mt-1.5 text-[0.92rem] leading-snug text-tinta">{hypothesis.label}</p>
+            <p className="mt-1.5 text-sm leading-snug text-tinta">{hypothesis.label}</p>
             {/* Repeated as text because the badges' `reason` is only a hover
                 title — invisible on touch, which is half these users. */}
             <ConfidenceReason confidence={confidence?.data} />
@@ -580,7 +580,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
         {(risk?.label || recommendation?.label || recommendation?.detail || proposal || actionTaken) && (
           <DrillSection title={t("cardneg.drill_recommend")}>
             {risk?.label && (
-              <p className={`rounded-lg px-3 py-2 text-[0.88rem] leading-snug ${
+              <p className={`rounded-lg px-3 py-2 text-sm leading-snug ${
                 risk.level === "high"
                   ? "border border-rojo/25 bg-rojo/[0.06] text-rojo-hondo"
                   : "bg-papel-hondo/50 text-tinta"
@@ -592,10 +592,10 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               </p>
             )}
             {recommendation?.label && (
-              <p className={`text-[0.92rem] font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
+              <p className={`text-sm font-semibold leading-snug text-tinta ${risk?.label ? "mt-2" : "mt-1.5"}`}>{recommendation.label}</p>
             )}
             {recommendation?.detail && (
-              <p className="mt-1 text-[0.88rem] leading-snug text-tinta-suave">{recommendation.detail}</p>
+              <p className="mt-1 text-sm leading-snug text-tinta-suave">{recommendation.detail}</p>
             )}
             {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador
                 firmado. Human-in-the-loop visible. */}
@@ -613,7 +613,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           <DrillSection title={t("cardneg.drill_assumptions")}>
             <ul className="mt-1.5 space-y-1.5">
               {assumptions.map((s, i) => (
-                <li key={i} className="rounded-lg bg-papel-hondo/50 px-3 py-2 text-[0.8rem] leading-snug text-tinta-suave">
+                <li key={i} className="rounded-lg bg-papel-hondo/50 px-3 py-2 text-sm leading-snug text-tinta-suave">
                   {labelOf(s)}
                   {s?.if_wrong && <span className="mt-0.5 block text-tinta-suave/80">{s.if_wrong}</span>}
                 </li>

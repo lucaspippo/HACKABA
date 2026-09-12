@@ -56,7 +56,7 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
       >
         <Bell size={18} />
         {noLeidas > 0 && (
-          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-[0.66rem] font-bold text-crema ring-2 ring-papel">
+          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-oro px-1 text-2xs font-bold text-crema ring-2 ring-papel">
             {noLeidas}
           </span>
         )}
@@ -64,11 +64,11 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
 
       {open && (
         <div className="absolute right-0 top-12 z-40 w-80 rounded-[var(--radius-card)] border border-linea bg-crema p-2 sombra-alta">
-          <p className="px-2 pb-1.5 pt-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+          <p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
             {t("campanita.titulo")}
           </p>
           {items.length === 0 ? (
-            <p className="px-2 pb-2 text-[0.86rem] text-tinta-suave">{t("campanita.vacio")}</p>
+            <p className="px-2 pb-2 text-sm text-tinta-suave">{t("campanita.vacio")}</p>
           ) : (
             <div className="max-h-80 space-y-1 overflow-y-auto">
               {items.slice(0, 12).map((n) => (
@@ -77,13 +77,13 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
                   onClick={() => clickNotif(n)}
                   className={`block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-papel-hondo/60 ${n.leida ? "opacity-60" : ""}`}
                 >
-                  <p className="text-[0.85rem] font-semibold leading-tight">
+                  <p className="text-sm font-semibold leading-tight">
                     {!n.leida && <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-oro" />}
                     {n.titulo}
                   </p>
-                  <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{n.cuerpo}</p>
+                  <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{n.cuerpo}</p>
                   {n.tipo === "solicitud_modulo" && esAdmin && (
-                    <span className="mt-1 inline-block text-[0.78rem] font-semibold text-oro-tinta">{t("campanita.ver_solicitud")} →</span>
+                    <span className="mt-1 inline-block text-xs font-semibold text-oro-tinta">{t("campanita.ver_solicitud")} →</span>
                   )}
                 </button>
               ))}

@@ -115,7 +115,7 @@ export default function App() {
       return (
         <Centro>
           <AngelaMark size={48} pulse />
-          <p className="mt-4 text-[0.9rem] text-tinta-suave">{t("app.leyendo")}</p>
+          <p className="mt-4 text-sm text-tinta-suave">{t("app.leyendo")}</p>
         </Centro>
       );
     }
@@ -126,13 +126,13 @@ export default function App() {
     return (
       <Centro>
         <AngelaMark size={48} pulse />
-        <p className="mt-4 max-w-xs text-center text-[0.95rem] text-tinta">
+        <p className="mt-4 max-w-xs text-center text-base text-tinta">
           {t("app.sin_conexion")}
         </p>
-        <p className="mt-1 max-w-xs text-center text-[0.88rem] font-medium text-tinta-suave">
+        <p className="mt-1 max-w-xs text-center text-sm font-medium text-tinta-suave">
           {t("app.reintentando")}
         </p>
-        <p className="mt-3 max-w-xs text-center text-[0.82rem] text-tinta-suave">
+        <p className="mt-3 max-w-xs text-center text-sm text-tinta-suave">
           {t("app.levanta_backend")} <code className="rounded bg-papel-hondo px-1">python start_demo.py</code>.
         </p>
       </Centro>
@@ -143,7 +143,7 @@ export default function App() {
     return (
       <Centro>
         <AngelaMark size={48} pulse />
-        <p className="mt-4 text-[0.9rem] text-tinta-suave">{t("app.leyendo")}</p>
+        <p className="mt-4 text-sm text-tinta-suave">{t("app.leyendo")}</p>
       </Centro>
     );
   }

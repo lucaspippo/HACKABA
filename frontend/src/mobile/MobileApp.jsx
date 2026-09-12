@@ -208,7 +208,7 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
         className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5"
       >
         <Icon size={21} className={activo ? "text-violeta" : "text-tinta-suave"} strokeWidth={activo ? 2.4 : 2} />
-        <span className={`text-[0.62rem] font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
+        <span className={`text-2xs font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
       </Link>
     );
   };
@@ -277,7 +277,7 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
               <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
                 <MessageCircle size={18} />
               </span>
-              <span className={`-mt-1 text-[0.62rem] font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+              <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
             </button>
             {derNav.map((s) => <TabBtn key={s.id} slot={s} />)}
           </div>

@@ -39,7 +39,7 @@ export default function Documentos({ onPreguntar }) {
       <div className="space-y-4">
         <header>
           <h1 className="font-display text-3xl font-bold">{t("documentos.titulo")}</h1>
-          <p className="mt-1 text-[0.95rem] text-tinta-suave">{t("documentos.grid_sub")}</p>
+          <p className="mt-1 text-base text-tinta-suave">{t("documentos.grid_sub")}</p>
         </header>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {/* P39·2 — el reporte de cierres por local: LA tarea semanal que una
@@ -64,7 +64,7 @@ export default function Documentos({ onPreguntar }) {
         {/* Los PDFs YA generados: fecha + quién los pidió, re-descargables */}
         {generados.length > 0 && (
           <section>
-            <h2 className="mb-2 mt-6 font-display text-[1.1rem] font-bold">{t("documentos.generados_t")}</h2>
+            <h2 className="mb-2 mt-6 font-display text-lg font-bold">{t("documentos.generados_t")}</h2>
             <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-papel">
               {generados.map((g) => (
                 <div key={g.id} className="flex items-center gap-3 border-b border-linea px-4 py-2.5 last:border-0">
@@ -73,11 +73,11 @@ export default function Documentos({ onPreguntar }) {
                     {/* P43·C5.3 — el label sigue el idioma de la pantalla; el
                         PDF conserva el suyo. Cuando no coinciden se avisa, en
                         vez de mostrar un título en otro idioma sin explicación. */}
-                    <p className="truncate text-[0.9rem] font-semibold text-tinta">{g.label || g.titulo}</p>
-                    <p className="text-[0.76rem] text-tinta-suave">
+                    <p className="truncate text-sm font-semibold text-tinta">{g.label || g.titulo}</p>
+                    <p className="text-xs text-tinta-suave">
                       {t("documentos.generado_meta", { fecha: g.fecha, usuario: g.usuario })}
                       {g.lang && lang && g.lang !== lang && (
-                        <span className="ml-1.5 rounded-full border border-linea px-1.5 py-px text-[0.68rem] uppercase">
+                        <span className="ml-1.5 rounded-full border border-linea px-1.5 py-px text-2xs uppercase">
                           {t("documentos.pdf_en_idioma", { idioma: g.lang.toUpperCase() })}
                         </span>
                       )}
@@ -87,7 +87,7 @@ export default function Documentos({ onPreguntar }) {
                     onClick={() => api.blob(`/api/documentos/archivo/${g.id}`)
                       .then((b) => bajarBlob(b, `${g.tipo}-${g.fecha}.pdf`))
                       .catch(() => toast(t("api.error_generico"), "error"))}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta"
                   >
                     <Download size={13} /> PDF
                   </button>
@@ -104,10 +104,10 @@ function CartaDoc({ icon: Icon, titulo, detalle, onGenerar, cta }) {
   return (
     <div className="flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
       <Icon size={20} className="text-violeta" />
-      <h3 className="mt-2 font-display text-[1.05rem] font-bold leading-tight">{titulo}</h3>
-      <p className="mt-1 flex-1 text-[0.86rem] leading-snug text-tinta-suave">{detalle}</p>
+      <h3 className="mt-2 font-display text-lg font-bold leading-tight">{titulo}</h3>
+      <p className="mt-1 flex-1 text-sm leading-snug text-tinta-suave">{detalle}</p>
       <button onClick={onGenerar}
-        className="mt-3 inline-flex items-center gap-1.5 self-start rounded-full border border-violeta/30 px-4 py-1.5 text-[0.84rem] font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema">
+        className="mt-3 inline-flex items-center gap-1.5 self-start rounded-full border border-violeta/30 px-4 py-1.5 text-sm font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema">
         {cta} <ArrowRight size={13} />
       </button>
     </div>
@@ -120,15 +120,15 @@ function CartaDocInput({ icon: Icon, titulo, detalle, placeholder, cta, onGenera
   return (
     <div className={`flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel ${ancho}`}>
       <Icon size={20} className="text-violeta" />
-      <h3 className="mt-2 font-display text-[1.05rem] font-bold leading-tight">{titulo}</h3>
-      <p className="mt-1 flex-1 text-[0.86rem] leading-snug text-tinta-suave">{detalle}</p>
+      <h3 className="mt-2 font-display text-lg font-bold leading-tight">{titulo}</h3>
+      <p className="mt-1 flex-1 text-sm leading-snug text-tinta-suave">{detalle}</p>
       <div className="mt-3 flex gap-2">
         <input value={valor} onChange={(e) => setValor(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && mandar()}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-full border border-linea bg-papel px-3.5 py-1.5 text-[0.84rem] outline-none focus:border-tinta/40" />
+          className="min-w-0 flex-1 rounded-full border border-linea bg-papel px-3.5 py-1.5 text-sm outline-none focus:border-tinta/40" />
         <button onClick={mandar} disabled={!valor.trim()}
-          className="shrink-0 rounded-full border border-violeta/30 px-4 py-1.5 text-[0.84rem] font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema disabled:opacity-40">
+          className="shrink-0 rounded-full border border-violeta/30 px-4 py-1.5 text-sm font-semibold text-violeta transition-colors hover:bg-violeta hover:text-crema disabled:opacity-40">
           {cta}
         </button>
       </div>
@@ -139,9 +139,9 @@ function CartaDocInput({ icon: Icon, titulo, detalle, placeholder, cta, onGenera
 function Campo({ label, valor, onChange }) {
   return (
     <label className="block">
-      <span className="text-[0.74rem] font-semibold uppercase tracking-wide text-tinta-suave">{label}</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{label}</span>
       <input value={valor} onChange={(e) => onChange(e.target.value)}
-        className="mt-0.5 w-full rounded border border-linea bg-transparent px-2 py-1 text-[0.9rem] text-tinta outline-none focus:border-tinta/40 print:border-0" />
+        className="mt-0.5 w-full rounded border border-linea bg-transparent px-2 py-1 text-sm text-tinta outline-none focus:border-tinta/40 print:border-0" />
     </label>
   );
 }

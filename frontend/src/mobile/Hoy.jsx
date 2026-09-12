@@ -23,8 +23,8 @@ function Fila({ icon: Icon, tono, titulo, monto, onClick, chevron }) {
     <button onClick={onClick} className="flex w-full items-center gap-3 border-b border-linea px-1 py-3 text-left last:border-0">
       {tono ? <span className={`h-2 w-2 shrink-0 rounded-full ${DOT[tono] || "bg-tinta-suave"}`} /> : null}
       {Icon && <Icon size={17} className="shrink-0 text-tinta-suave" />}
-      <span className="min-w-0 flex-1 text-[0.9rem] leading-snug text-tinta line-clamp-2">{titulo}</span>
-      {monto ? <span className="plata shrink-0 text-[0.92rem] font-medium text-tinta">{pesoCorto(monto)}</span> : null}
+      <span className="min-w-0 flex-1 text-sm leading-snug text-tinta line-clamp-2">{titulo}</span>
+      {monto ? <span className="plata shrink-0 text-sm font-medium text-tinta">{pesoCorto(monto)}</span> : null}
       {chevron && <ChevronRight size={16} className="shrink-0 text-tinta-suave" />}
     </button>
   );
@@ -34,9 +34,9 @@ function Bloque({ titulo, accion, onAccion, children }) {
   return (
     <section>
       <div className="mb-2 flex items-baseline justify-between">
-        <h2 className="font-display text-[1.05rem] font-bold">{titulo}</h2>
+        <h2 className="font-display text-lg font-bold">{titulo}</h2>
         {accion && (
-          <button onClick={onAccion} className="text-[0.8rem] font-semibold text-violeta">{accion}</button>
+          <button onClick={onAccion} className="text-sm font-semibold text-violeta">{accion}</button>
         )}
       </div>
       {children}
@@ -101,13 +101,13 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
         <div className="flex items-center gap-2.5">
           <AngelaMark size={32} estado={decisiones.length ? "esperando" : "idle"} />
           <div className="min-w-0">
-            <p className="font-display text-[1.05rem] font-bold leading-tight">{t("hoy.saludo", { nombre })}</p>
-            <p className="text-[0.85rem] text-tinta-suave">{t("hoy.trabajo_hecho")}</p>
+            <p className="font-display text-lg font-bold leading-tight">{t("hoy.saludo", { nombre })}</p>
+            <p className="text-sm text-tinta-suave">{t("hoy.trabajo_hecho")}</p>
           </div>
         </div>
         <button
           onClick={() => onTab("angela")}
-          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+          className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
         >
           {t("hoy.hablar_angela")} <ArrowRight size={15} />
         </button>
@@ -116,7 +116,7 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
       {/* 2 · Caja de hoy — solo si el dato existe (nunca inventar) */}
       {caja != null && (
         <section className="flex items-center justify-between rounded-[var(--radius-card)] border border-linea bg-crema px-4 py-3.5 sombra-papel">
-          <span className="text-[0.9rem] text-tinta-suave">{t("hoy.caja_hoy")}</span>
+          <span className="text-sm text-tinta-suave">{t("hoy.caja_hoy")}</span>
           <span className="plata text-xl font-medium text-tinta">{peso(caja)}</span>
         </section>
       )}
@@ -128,7 +128,7 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
             {cruces.map((c) => (
               <div key={c.id} className="flex items-center gap-2.5 border-b border-linea py-2.5 last:border-0">
                 <Waypoints size={15} className="shrink-0 text-violeta" />
-                <span className="min-w-0 flex-1 text-[0.86rem] leading-snug text-tinta line-clamp-1">{c.titulo}</span>
+                <span className="min-w-0 flex-1 text-sm leading-snug text-tinta line-clamp-1">{c.titulo}</span>
               </div>
             ))}
           </div>
@@ -141,7 +141,7 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
       <Bloque titulo={t("hoy.aprendizaje_titulo")} accion={t("hoy.ver_aprendizaje")} onAccion={() => onTab("aprendizaje")}>
         <div className="flex items-center gap-2.5 rounded-[var(--radius-card)] border border-violeta/25 bg-violeta/[0.05] px-4 py-3">
           <Lightbulb size={16} className="shrink-0 text-violeta" />
-          <span className="min-w-0 flex-1 text-[0.86rem] leading-snug text-tinta">{t("aprendizaje.combo_titulo")}</span>
+          <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">{t("aprendizaje.combo_titulo")}</span>
         </div>
       </Bloque>
 
@@ -177,7 +177,7 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
             ))}
           </div>
           {decMas > 0 && (
-            <p className="mt-2 px-1 text-[0.8rem] text-tinta-suave">{t("hoy.decision_mas", { n: decMas })}</p>
+            <p className="mt-2 px-1 text-sm text-tinta-suave">{t("hoy.decision_mas", { n: decMas })}</p>
           )}
         </Bloque>
       )}
@@ -186,15 +186,15 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar }) {
       <Bloque titulo={t("hoy.equipo_hoy")} accion={t("hoy.ver_equipo")} onAccion={() => onTab("equipo")}>
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema px-3 sombra-papel">
           {equipoHoy.length === 0 ? (
-            <div className="flex items-center gap-2 py-3 text-[0.88rem] text-tinta-suave">
+            <div className="flex items-center gap-2 py-3 text-sm text-tinta-suave">
               <CheckCircle2 size={16} className="text-salvia" /> {t("hoy.al_dia")}
             </div>
           ) : (
             equipoHoy.map((x) => (
               <div key={x.id} className="flex items-center gap-3 border-b border-linea py-3 last:border-0">
                 <Users size={15} className="shrink-0 text-tinta-suave" />
-                <span className="min-w-0 flex-1 text-[0.88rem] leading-snug text-tinta line-clamp-1">{x.texto}</span>
-                <span className="shrink-0 text-[0.74rem] font-semibold text-tinta-suave">{x.quien}</span>
+                <span className="min-w-0 flex-1 text-sm leading-snug text-tinta line-clamp-1">{x.texto}</span>
+                <span className="shrink-0 text-xs font-semibold text-tinta-suave">{x.quien}</span>
               </div>
             ))
           )}

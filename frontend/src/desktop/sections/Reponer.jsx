@@ -26,7 +26,7 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
   if (!d || !d.disponible) {
     return (
       <p className="rounded-[var(--radius-card)] border border-linea bg-crema p-8 text-center
-                    text-[0.9rem] text-tinta-suave">
+                    text-sm text-tinta-suave">
         {d?.motivo || t("reponer.sin_datos")}
       </p>
     );
@@ -46,23 +46,23 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
         <div className="flex flex-wrap items-center gap-3 border-b border-linea bg-rojo/[0.04] px-4 py-3">
           <TrendingDown size={18} className="text-rojo" />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-[1.05rem] font-bold leading-tight">
+            <p className="font-display text-lg font-bold leading-tight">
               {t("reponer.titulo", { n: num(d.ya_tarde) })}
             </p>
-            <p className="text-[0.82rem] text-tinta-suave">
+            <p className="text-sm text-tinta-suave">
               {t("reponer.sub", { zona: num(d.total_en_zona), tiempo: num(d.con_tiempo) })}
               {d.stockout_mes > 0 ? ` ${t("reponer.stockout_n", { n: num(d.stockout_mes) })}` : ""}
             </p>
           </div>
           <div className="shrink-0 text-right">
             <p className="plata text-xl font-medium text-rojo">{pesoCorto(d.plata_total)}</p>
-            <p className="text-[0.7rem] text-tinta-suave">{t("reponer.plata")}</p>
+            <p className="text-xs text-tinta-suave">{t("reponer.plata")}</p>
           </div>
         </div>
 
-        <table className="w-full text-[0.85rem]">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-linea text-[0.68rem] uppercase tracking-wide text-tinta-suave">
+            <tr className="border-b border-linea text-2xs uppercase tracking-wide text-tinta-suave">
               <th className="px-4 py-2 text-left font-semibold">{t("inventario.col_producto")}</th>
               <th className="px-3 py-2 text-right font-semibold">{t("reponer.col_cobertura")}</th>
               <th className="px-3 py-2 text-right font-semibold">{t("reponer.col_lead")}</th>
@@ -86,12 +86,12 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                       </button>
                     ) : i.producto}
                     {i.stockout_risk && (
-                      <span className="ml-2 rounded-full bg-rojo/12 px-1.5 py-0.5 text-[0.68rem] font-semibold text-rojo align-middle">
+                      <span className="ml-2 rounded-full bg-rojo/12 px-1.5 py-0.5 text-2xs font-semibold text-rojo align-middle">
                         {t("reponer.stockout")}
                       </span>
                     )}
                   </p>
-                  <p className="text-[0.72rem] text-tinta-suave">
+                  <p className="text-xs text-tinta-suave">
                     {onNavegar ? (
                       <button
                         type="button"
@@ -103,7 +103,7 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                     ) : i.proveedor}
                   </p>
                   {(i.incoming_qty || i.outgoing_qty) ? (
-                    <p className="text-[0.72rem] text-tinta-suave">
+                    <p className="text-xs text-tinta-suave">
                       {t("reponer.pipeline", {
                         mano: num(i.stock),
                         inc: i.incoming_qty ? t("reponer.pipeline_inc", { n: num(i.incoming_qty) }) : "",
@@ -134,7 +134,7 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
             ))}
           </tbody>
         </table>
-        <p className="border-t border-linea px-4 py-2.5 text-[0.76rem] leading-snug text-tinta-suave">
+        <p className="border-t border-linea px-4 py-2.5 text-xs leading-snug text-tinta-suave">
           {t("reponer.nota_cuenta")}
         </p>
       </div>
@@ -143,9 +143,9 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
         <div className="flex items-center gap-2">
           <Truck size={16} className="text-hielo" />
-          <p className="font-display text-[1rem] font-bold">{t("reponer.prov_titulo")}</p>
+          <p className="font-display text-base font-bold">{t("reponer.prov_titulo")}</p>
         </div>
-        <p className="mt-0.5 text-[0.84rem] text-tinta-suave">{t("reponer.prov_sub")}</p>
+        <p className="mt-0.5 text-sm text-tinta-suave">{t("reponer.prov_sub")}</p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {d.proveedores.slice(0, 6).map((g) => (
             <div
@@ -157,18 +157,18 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                   <button
                     type="button"
                     onClick={() => onNavegar("proveedores", g.proveedor)}
-                    className="min-w-0 truncate text-left text-[0.9rem] font-semibold hover:underline"
+                    className="min-w-0 truncate text-left text-sm font-semibold hover:underline"
                   >
                     {g.proveedor}
                   </button>
                 ) : (
-                  <span className="min-w-0 truncate text-[0.9rem] font-semibold">{g.proveedor}</span>
+                  <span className="min-w-0 truncate text-sm font-semibold">{g.proveedor}</span>
                 )}
-                <span className="plata shrink-0 text-[0.9rem] font-medium text-rojo">
+                <span className="plata shrink-0 text-sm font-medium text-rojo">
                   {pesoCorto(g.plata_en_riesgo)}
                 </span>
               </div>
-              <p className="mt-0.5 flex items-center gap-1.5 text-[0.78rem] text-tinta-suave">
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-tinta-suave">
                 <Clock size={12} />
                 {t("reponer.prov_detalle", { n: num(g.items), lead: num(g.lead_dias) })}
               </p>
@@ -177,7 +177,7 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                   <button
                     type="button"
                     onClick={() => onNavegar("ordenes_compra", g.proveedor)}
-                    className="text-[0.76rem] font-semibold text-hielo hover:underline"
+                    className="text-xs font-semibold text-hielo hover:underline"
                   >
                     {t("reponer.ir_ordenes")}
                   </button>
@@ -185,7 +185,7 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                 <button
                   type="button"
                   onClick={() => onPreguntar?.(t("reponer.prov_preguntar", { proveedor: g.proveedor }))}
-                  className="text-[0.76rem] font-semibold text-violeta hover:underline"
+                  className="text-xs font-semibold text-violeta hover:underline"
                 >
                   {t("inventario.acc_preguntar")}
                 </button>
@@ -200,11 +200,11 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                       bg-violeta/[0.04] p-4">
         <AngelaMark size={30} />
         <div className="min-w-0 flex-1">
-          <p className="text-[0.92rem] leading-snug text-tinta">{t("reponer.angela")}</p>
+          <p className="text-sm leading-snug text-tinta">{t("reponer.angela")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
             <button onClick={() => onPreguntar?.(t("reponer.angela_preguntar"))}
               className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2
-                         text-[0.86rem] font-semibold text-crema">
+                         text-sm font-semibold text-crema">
               {t("reponer.angela_cta")} <ArrowRight size={14} />
             </button>
             {onNavegar && (
@@ -212,14 +212,14 @@ export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
                 <button
                   type="button"
                   onClick={() => onNavegar("ordenes_compra")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.86rem] font-semibold text-tinta"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta"
                 >
                   {t("reponer.ir_ordenes")} <ArrowRight size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={() => onNavegar("proveedores")}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.86rem] font-semibold text-tinta-suave"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave"
                 >
                   {t("reponer.ir_proveedores")}
                 </button>

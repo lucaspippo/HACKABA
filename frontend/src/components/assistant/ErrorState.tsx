@@ -35,11 +35,11 @@ export default function ErrorState() {
       role="alert"
       className="mt-2 rounded-2xl border border-rojo/30 bg-rojo/5 px-3.5 py-2.5"
     >
-      <p className="flex items-center gap-2 text-[0.86rem] font-semibold text-rojo-hondo">
+      <p className="flex items-center gap-2 text-sm font-semibold text-rojo-hondo">
         <AlertTriangle size={15} className="shrink-0" />
         {t(`chat.error.${code}.titulo`)}
       </p>
-      <p className="mt-1 text-[0.8rem] leading-snug text-tinta-suave">
+      <p className="mt-1 text-sm leading-snug text-tinta-suave">
         {t(`chat.error.${code}.detalle`)}
       </p>
       <button
@@ -48,7 +48,7 @@ export default function ErrorState() {
         onClick={() =>
           isSession ? authStore.logout({ manual: true }) : aui.message.reload()
         }
-        className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-rojo/40 px-3 py-1.5 text-[0.8rem] font-semibold text-rojo-hondo transition-colors hover:bg-rojo/10 disabled:opacity-50"
+        className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-rojo/40 px-3 py-1.5 text-sm font-semibold text-rojo-hondo transition-colors hover:bg-rojo/10 disabled:opacity-50"
       >
         {!isSession && (
           <RotateCw

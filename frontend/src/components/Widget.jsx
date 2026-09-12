@@ -80,15 +80,15 @@ export default function Widget({ widget, data, onQuitar }) {
       // La card del dueño: número grande + el contexto honesto; tabla/barras
       // muestran el detalle (top productos de esa plata parada).
       if (!ext.disponible) {
-        cuerpoAsync = <p className="py-4 text-[0.85rem] text-tinta-suave">{ext.motivo || t("widget.sin_datos")}</p>;
+        cuerpoAsync = <p className="py-4 text-sm text-tinta-suave">{ext.motivo || t("widget.sin_datos")}</p>;
       } else if (widget.tipo === "tabla") {
         cuerpoAsync = (
-          <table className="w-full text-left text-[0.85rem]">
+          <table className="w-full text-left text-sm">
             <tbody>
               {ext.top.map((f, i) => (
                 <tr key={i} className="border-b border-linea/60 last:border-0">
                   <td className="py-1.5">{f.producto}</td>
-                  <td className="plata py-1.5 text-right text-[0.78rem] text-tinta-suave">
+                  <td className="plata py-1.5 text-right text-xs text-tinta-suave">
                     {f.dias != null ? t("widget.parada_dias", { n: num(f.dias) }) : t("widget.parada_sin_venta")}
                   </td>
                   <td className="plata py-1.5 text-right font-medium text-hielo">{pesoCorto(f.inmovilizado)}</td>
@@ -117,7 +117,7 @@ export default function Widget({ widget, data, onQuitar }) {
         cuerpoAsync = (
           <div>
             <p className="plata text-3xl font-medium text-hielo">{pesoCorto(ext.monto)}</p>
-            <p className="mt-1 text-[0.82rem] text-tinta-suave">
+            <p className="mt-1 text-sm text-tinta-suave">
               {t("widget.parada_sub", { n: num(ext.productos), dias: num(ext.dias_min), pct: ext.pct_del_stock })}
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function Widget({ widget, data, onQuitar }) {
     } else if (widget.datos_fuente === "evolucion_serie") {
       const filasSerie = (ext.serie || []).slice(-24);
       cuerpoAsync = filasSerie.length === 0 ? (
-        <p className="py-8 text-center text-[0.85rem] text-tinta-suave">{t("widget.sin_datos")}</p>
+        <p className="py-8 text-center text-sm text-tinta-suave">{t("widget.sin_datos")}</p>
       ) : (
         <div className="h-56">
           <ResponsiveContainer>
@@ -157,11 +157,11 @@ export default function Widget({ widget, data, onQuitar }) {
       }).filter((f) => f.value != null);
       const anios = ext.estacionalidad?.anios_analizados;
       cuerpoAsync = filasMes.length === 0 ? (
-        <p className="py-8 text-center text-[0.85rem] text-tinta-suave">{t("widget.sin_datos")}</p>
+        <p className="py-8 text-center text-sm text-tinta-suave">{t("widget.sin_datos")}</p>
       ) : (
         <div>
           {anios > 0 && (
-            <p className="mb-1 text-[0.76rem] text-tinta-suave">{t("widget.est_sub", { n: anios })}</p>
+            <p className="mb-1 text-xs text-tinta-suave">{t("widget.est_sub", { n: anios })}</p>
           )}
           <div className="h-56">
             <ResponsiveContainer>
@@ -198,12 +198,12 @@ export default function Widget({ widget, data, onQuitar }) {
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
             <Sparkles size={13} className="text-violeta" /> {widget.titulo}
           </p>
           {/* P21 — la metadata honesta del widget generativo (unidad · ventana) */}
           {widget.subtitulo && (
-            <p className="mt-0.5 text-[0.74rem] text-tinta-suave">{widget.subtitulo}</p>
+            <p className="mt-0.5 text-xs text-tinta-suave">{widget.subtitulo}</p>
           )}
         </div>
         {onQuitar && (
@@ -216,7 +216,7 @@ export default function Widget({ widget, data, onQuitar }) {
       {esAsync ? (
         cuerpoAsync
       ) : widget.tipo === "tabla" ? (
-        <table className="w-full text-left text-[0.85rem]">
+        <table className="w-full text-left text-sm">
           <tbody>
             {filas.map((f, i) => (
               <tr key={i} className="border-b border-linea/60 last:border-0">
@@ -229,7 +229,7 @@ export default function Widget({ widget, data, onQuitar }) {
       ) : widget.tipo === "card" ? (
         <div>
           <p className="plata text-3xl font-medium text-hielo">{fmt(filas[0]?.value || 0)}</p>
-          <p className="text-[0.82rem] text-tinta-suave">{filas[0]?.name}</p>
+          <p className="text-sm text-tinta-suave">{filas[0]?.name}</p>
         </div>
       ) : widget.tipo === "donut" ? (
         <div className="h-56">
@@ -267,14 +267,14 @@ export default function Widget({ widget, data, onQuitar }) {
 // gráfico histórico con ESTE renderer (cero código de chart nuevo).
 export function CuerpoConsulta({ resultado, tipo, t }) {
   if (!resultado.ok) {
-    return <p className="py-4 text-[0.85rem] text-tinta-suave">{resultado.motivo || t("widget.sin_datos")}</p>;
+    return <p className="py-4 text-sm text-tinta-suave">{resultado.motivo || t("widget.sin_datos")}</p>;
   }
   const { series, meta } = resultado;
   const esPlata = (meta.unidad || "").includes("$");
   const fmtY = (v) => (meta.unidad === "%" ? `${v}%` : esPlata ? pesoCorto(v) : num(v));
   const s0 = series[0]?.puntos || [];
   if (!s0.length) {
-    return <p className="py-4 text-[0.85rem] text-tinta-suave">{t("widget.sin_datos")}</p>;
+    return <p className="py-4 text-sm text-tinta-suave">{t("widget.sin_datos")}</p>;
   }
 
   if (tipo === "card") {
@@ -286,14 +286,14 @@ export function CuerpoConsulta({ resultado, tipo, t }) {
     return (
       <div>
         <p className="plata text-3xl font-medium text-hielo">{fmtY(Math.round(total * 100) / 100)}</p>
-        <p className="mt-1 text-[0.82rem] text-tinta-suave">{sub}</p>
+        <p className="mt-1 text-sm text-tinta-suave">{sub}</p>
       </div>
     );
   }
 
   if (tipo === "tabla") {
     return (
-      <table className="w-full text-left text-[0.85rem]">
+      <table className="w-full text-left text-sm">
         <tbody>
           {s0.slice(0, 15).map((p, i) => (
             <tr key={i} className="border-b border-linea/60 last:border-0">

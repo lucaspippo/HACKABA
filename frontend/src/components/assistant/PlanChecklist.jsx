@@ -25,7 +25,7 @@ export default function PlanChecklist({ plan, onExecutingChange }) {
   return (
     <div className="mt-2.5 space-y-1.5 border-t border-linea/70 pt-2.5">
       {steps.slice(0, visibleCount).map((p, i) => (
-        <div key={i} className="flex items-start gap-2 text-[0.88rem]">
+        <div key={i} className="flex items-start gap-2 text-sm">
           {p.ok ? (
             <Check size={15} className="mt-0.5 shrink-0 text-salvia" />
           ) : (
@@ -39,7 +39,7 @@ export default function PlanChecklist({ plan, onExecutingChange }) {
         </div>
       ))}
       {visibleCount < steps.length && (
-        <p className="plata text-[0.78rem] font-semibold text-tinta-suave">
+        <p className="plata text-xs font-semibold text-tinta-suave">
           {visibleCount}/{steps.length}…
         </p>
       )}

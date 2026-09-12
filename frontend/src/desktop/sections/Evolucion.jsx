@@ -24,18 +24,18 @@ function CardComparacion({ titulo, comp }) {
   const positivo = real !== null && real >= 0;
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{titulo}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">{titulo}</p>
       {real !== null ? (
         <>
           <p className={`plata mt-1 text-3xl font-medium ${positivo ? "text-salvia" : "text-rojo"}`}>
             {real > 0 ? "+" : ""}{real}%
           </p>
-          <p className="text-[0.84rem] font-medium text-tinta">{t("evolucion.en_terminos_reales")}</p>
+          <p className="text-sm font-medium text-tinta">{t("evolucion.en_terminos_reales")}</p>
         </>
       ) : (
-        <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("evolucion.sin_indice")}</p>
+        <p className="mt-1 text-sm text-tinta-suave">{t("evolucion.sin_indice")}</p>
       )}
-      <p className="mt-2 text-[0.8rem] leading-snug text-tinta-suave">
+      <p className="mt-2 text-sm leading-snug text-tinta-suave">
         {t("evolucion.en_pesos_corrientes")} {nominal > 0 ? "+" : ""}{nominal}% ·{" "}
         {peso(comp.nominal_actual)} vs {peso(comp.nominal_anterior)}
       </p>
@@ -78,18 +78,18 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           <TrendingUp size={24} className="text-tinta-suave" />
           <div>
             <h1 className="font-display text-3xl font-bold leading-none">{t("evolucion.titulo")}</h1>
-            <p className="mt-1 text-[0.95rem] text-tinta-suave">{t("evolucion.subtitulo")}</p>
+            <p className="mt-1 text-base text-tinta-suave">{t("evolucion.subtitulo")}</p>
           </div>
         </header>
         <div className="flex items-start gap-4 rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-6">
           <AngelaMark size={40} />
           <div className="flex-1">
-            <p className="text-[1.02rem] leading-snug text-tinta">
+            <p className="text-lg leading-snug text-tinta">
               {t("evolucion.dormida_1")} <b>{t("evolucion.dormida_ventas")}</b> {t("evolucion.dormida_2")} <b>{t("evolucion.dormida_precios_hoy")}</b> {t("evolucion.dormida_3")}
             </p>
             <button
               onClick={() => (onNavegar ? onNavegar("cargar") : onPreguntar?.("¿Qué necesito cargar para ver la evolución del negocio?"))}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema transition-transform active:scale-95"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema transition-transform active:scale-95"
             >
               {t("evolucion.cargar_ventas")} <ArrowRight size={15} />
             </button>
@@ -103,8 +103,8 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           ].map(([tk, sk]) => (
             <div key={tk} className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-5">
               <TrendingUp size={18} className="text-tinta-suave" />
-              <p className="mt-2 font-display text-[1rem] font-bold leading-tight">{t(tk)}</p>
-              <p className="mt-1 text-[0.84rem] leading-snug text-tinta-suave">{t(sk)}</p>
+              <p className="mt-2 font-display text-base font-bold leading-tight">{t(tk)}</p>
+              <p className="mt-1 text-sm leading-snug text-tinta-suave">{t(sk)}</p>
             </div>
           ))}
         </div>
@@ -123,11 +123,11 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           <TrendingUp size={24} className="text-tinta-suave" />
           <div>
             <h1 className="font-display text-3xl font-bold leading-none">{t("evolucion.titulo")}</h1>
-            <p className="mt-1 text-[0.95rem] text-tinta-suave">{d.etiqueta_base}</p>
+            <p className="mt-1 text-base text-tinta-suave">{d.etiqueta_base}</p>
           </div>
         </div>
         {d.demo && (
-          <span className="rounded-full border border-oro/40 bg-oro/10 px-3 py-1 text-[0.74rem] font-semibold uppercase tracking-wide text-oro-tinta">
+          <span className="rounded-full border border-oro/40 bg-oro/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-oro-tinta">
             {t("evolucion.demo_badge")}
           </span>
         )}
@@ -136,7 +136,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
       {nQuiebre > 0 && (
         <button type="button" onClick={() => onNavegar?.("inventario", "reponer")}
           className="flex w-full items-center justify-between gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-crema px-5 py-4 text-left sombra-papel hover:border-rojo/40">
-          <p className="text-[0.9rem] font-semibold text-tinta">
+          <p className="text-sm font-semibold text-tinta">
             {t("evolucion.forecast_ir_reponer", { n: num(nQuiebre) })}
           </p>
           <ArrowRight size={16} className="shrink-0 text-rojo" />
@@ -150,11 +150,11 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 3xl:grid-cols-5">
           {kpis.crecimiento_pct != null && (
             <div className="card-hover rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_crec")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_crec")}</p>
               <p className={`plata mt-1 text-2xl font-medium leading-none ${kpis.crecimiento_pct >= 0 ? "text-salvia" : "text-rojo"}`}>
                 {kpis.crecimiento_pct >= 0 ? "↑" : "↓"} {kpis.crecimiento_pct > 0 ? "+" : ""}{kpis.crecimiento_pct}%
               </p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">{t("evolucion.kpi_crec_sub")}</p>
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">{t("evolucion.kpi_crec_sub")}</p>
               {(d.serie || []).length >= 6 && (
                 <div className="mt-2 h-8">
                   <ResponsiveContainer>
@@ -168,9 +168,9 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           )}
           {kpis.rotacion_dias != null && (
             <div className="card-hover rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_rot")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_rot")}</p>
               <p className="plata mt-1 text-2xl font-medium leading-none">{num(kpis.rotacion_dias)} {t("evolucion.kpi_dias")}</p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">{t("evolucion.kpi_rot_sub")}</p>
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">{t("evolucion.kpi_rot_sub")}</p>
             </div>
           )}
           {kpis.dormido && (
@@ -178,42 +178,42 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
               onClick={() => onNavegar?.("oportunidades")}
               className="card-hover rounded-[var(--radius-card)] border border-linea bg-crema p-4 text-left sombra-papel"
             >
-              <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_dormido")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_dormido")}</p>
               <p className="plata mt-1 text-2xl font-medium leading-none text-hielo">{kpis.dormido.pct}%</p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">
                 {t("evolucion.kpi_dormido_sub", { monto: pesoCorto(kpis.dormido.monto) })} →
               </p>
             </button>
           )}
           {kpis.margen_teorico && (
             <div className="card-hover rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_margen")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_margen")}</p>
               <p className="plata mt-1 text-2xl font-medium leading-none">{kpis.margen_teorico.pct}%</p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">
                 {t("evolucion.kpi_margen_sub", { n: kpis.margen_teorico.sin_pvp })}
               </p>
             </div>
           )}
           {kpis.cobro_dias != null && (
             <div className="card-hover rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-              <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_cobro")}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("evolucion.kpi_cobro")}</p>
               <p className="plata mt-1 text-2xl font-medium leading-none">{num(kpis.cobro_dias)} {t("evolucion.kpi_dias")}</p>
-              <p className="mt-1 text-[0.7rem] leading-snug text-tinta-suave">{t("evolucion.kpi_cobro_sub")}</p>
+              <p className="mt-1 text-xs leading-snug text-tinta-suave">{t("evolucion.kpi_cobro_sub")}</p>
             </div>
           )}
         </div>
       )}
 
       {d.aviso_indice && (
-        <p className="rounded-xl border border-oro/30 bg-oro/[0.07] px-3.5 py-2 text-[0.86rem]">{d.aviso_indice}</p>
+        <p className="rounded-xl border border-oro/30 bg-oro/[0.07] px-3.5 py-2 text-sm">{d.aviso_indice}</p>
       )}
 
       {(d.alertas || []).map((a) => (
         <div key={a.tipo} className="flex items-start gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-rojo/[0.05] p-4">
           <AlertTriangle size={18} className="mt-0.5 shrink-0 text-rojo" />
           <div>
-            <p className="font-display text-[0.98rem] font-bold">{a.titulo}</p>
-            <p className="mt-0.5 text-[0.88rem] leading-snug text-tinta">{a.detalle}</p>
+            <p className="font-display text-base font-bold">{a.titulo}</p>
+            <p className="mt-0.5 text-sm leading-snug text-tinta">{a.detalle}</p>
           </div>
         </div>
       ))}
@@ -221,7 +221,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
       <div className="flex gap-1.5 border-b border-linea">
         {[["resumen", "evolucion.tab_resumen"], ["estacionalidad", "evolucion.tab_estacionalidad"]].map(([id, lk]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`-mb-px border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
+            className={`-mb-px border-b-2 px-1 py-2.5 text-sm font-semibold transition-colors ${
               tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
             }`}>
             {t(lk)}
@@ -244,15 +244,15 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
       <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
               {t("evolucion.grafico_titulo")}
             </p>
-            <p className="text-[0.82rem] text-tinta-suave">{t("evolucion.ajuste_copy")} · {d.etiqueta_base}</p>
+            <p className="text-sm text-tinta-suave">{t("evolucion.ajuste_copy")} · {d.etiqueta_base}</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setVerNominal((v) => !v)}
-              className={`rounded-full border px-3 py-1 text-[0.78rem] font-semibold transition-colors ${
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                 verNominal ? "border-linea bg-papel-hondo/60 text-tinta" : "border-linea text-tinta-suave"
               }`}
             >
@@ -263,7 +263,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
                 <button
                   key={n}
                   onClick={() => setMeses(n)}
-                  className={`rounded-full px-3 py-1 text-[0.78rem] font-semibold ${
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
                     meses === n ? "bg-tinta text-crema" : "text-tinta-suave hover:bg-papel-hondo/60"
                   }`}
                 >
@@ -297,7 +297,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-[0.78rem] text-tinta-suave">
+        <p className="mt-2 text-xs text-tinta-suave">
           {t("evolucion.grafico_nota", { base: d.etiqueta_base })}
         </p>
       </div>
@@ -318,10 +318,10 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
         const cats = Object.keys(d.composicion[d.composicion.length - 1]).filter((k) => k !== "mes");
         return (
           <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
               {t("evolucion.comp_titulo")}
             </p>
-            <p className="mb-3 text-[0.82rem] text-tinta-suave">{t("evolucion.comp_nota")}</p>
+            <p className="mb-3 text-sm text-tinta-suave">{t("evolucion.comp_nota")}</p>
             <div className="h-64">
               <ResponsiveContainer>
                 <AreaChart data={d.composicion} margin={{ left: 4, right: 12, top: 6 }} stackOffset="expand">
@@ -344,10 +344,10 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
           (los DOS crecimientos interanuales, ya calculados y sanos) */}
       {kpis.crecimiento_pct != null && d.interanual?.variacion_real_pct != null && (
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
             {t("evolucion.vol_titulo")}
           </p>
-          <p className="mb-3 text-[0.82rem] text-tinta-suave">{t("evolucion.vol_nota")}</p>
+          <p className="mb-3 text-sm text-tinta-suave">{t("evolucion.vol_nota")}</p>
           <div className="grid grid-cols-2 gap-4">
             {[{ lk: "evolucion.vol_unidades", v: kpis.crecimiento_pct },
               { lk: "evolucion.vol_reales", v: d.interanual.variacion_real_pct }].map((b) => (
@@ -355,7 +355,7 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
                 <p className={`plata text-3xl font-medium ${b.v >= 0 ? "text-salvia" : "text-rojo"}`}>
                   {b.v >= 0 ? "+" : ""}{b.v}%
                 </p>
-                <p className="mt-1 text-[0.78rem] text-tinta-suave">{t(b.lk)}</p>
+                <p className="mt-1 text-xs text-tinta-suave">{t(b.lk)}</p>
               </div>
             ))}
           </div>
@@ -367,13 +367,13 @@ export default function Evolucion({ data, onNavegar, onPreguntar }) {
         <Widget widget={{ id: "def-estacionalidad", tipo: "barras", datos_fuente: "estacionalidad_meses", titulo: t("evolucion.def_estacionalidad") }} />
         {picos.length > 0 && (
           <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
-            <p className="flex items-center gap-1.5 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-tinta-suave">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-tinta-suave">
               <Sparkles size={13} className="text-violeta" /> {t("evolucion.picos_titulo")}
             </p>
             <ul className="mt-3 space-y-2.5">
               {picos.map((p, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-[0.88rem] leading-snug text-tinta">
-                  <span className="plata mt-0.5 shrink-0 rounded-full bg-oro/15 px-2 py-0.5 text-[0.78rem] font-semibold text-oro-tinta">{p.indice}×</span>
+                <li key={i} className="flex items-start gap-2.5 text-sm leading-snug text-tinta">
+                  <span className="plata mt-0.5 shrink-0 rounded-full bg-oro/15 px-2 py-0.5 text-xs font-semibold text-oro-tinta">{p.indice}×</span>
                   {p.aviso}
                 </li>
               ))}

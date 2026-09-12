@@ -31,7 +31,7 @@ export default function ToolCallCard(props: ToolCallMessagePartProps) {
 
   return (
     <div className="my-1.5 rounded-xl border border-linea/70 bg-papel/50 px-3 py-2">
-      <div className="flex items-center gap-2 text-[0.8rem] font-medium text-tinta-suave">
+      <div className="flex items-center gap-2 text-sm font-medium text-tinta-suave">
         {isRunning ? (
           <Loader2
             size={14}

@@ -52,7 +52,7 @@ export default function Proveedores({ highlight }) {
       render: (p) => (
         <span className="flex flex-col">
           <span className="font-medium text-tinta">{p.nombre}</span>
-          <span className="mt-0.5 flex gap-2 text-[0.78rem]">
+          <span className="mt-0.5 flex gap-2 text-xs">
             <CellLink to={paramLink("recepciones", "proveedor", p.nombre)}>{t("proveedores.ver_recepciones")}</CellLink>
             <CellLink to={qLink("ordenes_compra", p.nombre)}>{t("proveedores.ver_ordenes")}</CellLink>
           </span>
@@ -69,7 +69,7 @@ export default function Proveedores({ highlight }) {
         <Truck size={24} className="text-tinta-suave" />
         <div>
           <h1 className="font-display text-2xl font-bold leading-none">{t("proveedores.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("proveedores.subtitulo")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("proveedores.subtitulo")}</p>
         </div>
       </header>
 
@@ -144,19 +144,19 @@ function ModalProveedor({ inicial, onClose, onGuardado }) {
         </div>
         {CAMPOS.map(([campo, lk, phk]) => (
           <div key={campo}>
-            <label className="mt-3 block text-[0.82rem] font-semibold text-tinta-suave">{t(lk)}</label>
+            <label className="mt-3 block text-sm font-semibold text-tinta-suave">{t(lk)}</label>
             <input value={form[campo]} onChange={(e) => setForm({ ...form, [campo]: e.target.value })}
               autoFocus={campo === "nombre"} placeholder={t(phk)}
-              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.9rem] outline-none focus:border-tinta/40" />
+              className="mt-1 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm outline-none focus:border-tinta/40" />
           </div>
         ))}
-        {error && <p className="mt-2 text-[0.82rem] text-rojo-hondo">{error}</p>}
+        {error && <p className="mt-2 text-sm text-rojo-hondo">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave">
+          <button onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("proveedores.cancelar")}
           </button>
           <button onClick={guardar} disabled={!form.nombre.trim() || guardando}
-            className="rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema disabled:opacity-50">
+            className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("proveedores.guardar")}
           </button>
         </div>

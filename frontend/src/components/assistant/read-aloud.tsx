@@ -58,7 +58,7 @@ export function ReadAloud({
 
       {...props}
     >
-      <p className="text-[13.5px] leading-relaxed">
+      <p className="text-lg leading-relaxed">
         {words.map((word, i) => (
           <span
             key={`${i}-${word}`}

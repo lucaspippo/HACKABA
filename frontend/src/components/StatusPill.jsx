@@ -8,7 +8,7 @@ export default function StatusPill({ nivel, label }) {
   const s = map[nivel] || map.atencion;
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full bg-crema px-3 py-1 text-[0.8rem] font-semibold ring-1 ${s.ring} ${s.text}`}
+      className={`inline-flex items-center gap-2 rounded-full bg-crema px-3 py-1 text-sm font-semibold ring-1 ${s.ring} ${s.text}`}
     >
       <span className={`h-2 w-2 rounded-full ${s.dot}`} />
       {label}

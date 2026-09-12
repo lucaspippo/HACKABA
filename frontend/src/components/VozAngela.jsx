@@ -117,7 +117,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
         className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[var(--radius-card)]
                    border border-linea bg-papel sombra-alta sm:rounded-[var(--radius-card)]">
         <div className="flex items-center justify-between border-b border-linea bg-crema px-5 py-3">
-          <h2 className="flex items-center gap-2 font-display text-[1.05rem] font-bold">
+          <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <Mic size={18} className="text-violeta" /> {t("voz.titulo")}
           </h2>
           <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta">
@@ -129,10 +129,10 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
           {/* ---------------------------------------------- hablar */}
           {(paso === "listo" || paso === "escuchando") && (
             <div className="space-y-4">
-              <p className="text-[0.92rem] leading-snug text-tinta-suave">{t("voz.ayuda")}</p>
+              <p className="text-sm leading-snug text-tinta-suave">{t("voz.ayuda")}</p>
               <button onClick={paso === "escuchando" ? () => rec.current?.stop() : escuchar}
                 className={`flex w-full items-center justify-center gap-2.5 rounded-full px-5 py-4
-                            text-[1rem] font-semibold text-crema transition-colors ${
+                            text-base font-semibold text-crema transition-colors ${
                   paso === "escuchando" ? "bg-rojo" : "bg-violeta hover:bg-violeta-hondo"}`}>
                 {paso === "escuchando"
                   ? <><Square size={18} /> {t("voz.parar")}</>
@@ -140,14 +140,14 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
               </button>
               {paso === "escuchando" && (
                 <p className="rounded-xl border border-violeta/30 bg-violeta-suave px-3.5 py-2.5
-                              text-[0.95rem] italic text-tinta">
+                              text-base italic text-tinta">
                   {texto || t("voz.escuchando")}
                 </p>
               )}
               {/* el plan B honesto: sin Web Speech o sin red, la misma tubería */}
               {muestras.length > 0 && paso === "listo" && (
                 <div>
-                  <p className="text-[0.78rem] uppercase tracking-wide text-tinta-suave">
+                  <p className="text-xs uppercase tracking-wide text-tinta-suave">
                     {t("voz.muestras")}
                   </p>
                   <div className="mt-1.5 space-y-1">
@@ -156,10 +156,10 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                         className="block w-full rounded-xl border border-linea bg-crema px-3.5 py-2.5
                                    text-left hover:bg-papel-hondo/60">
                         {/* el título se traduce acá; la frase dictada es dato */}
-                        <span className="block text-[0.86rem] font-semibold text-tinta">
+                        <span className="block text-sm font-semibold text-tinta">
                           {t(`vozmuestra.${m.id}`)}
                         </span>
-                        <span className="block text-[0.8rem] italic leading-snug text-tinta-suave">
+                        <span className="block text-sm italic leading-snug text-tinta-suave">
                           «{m.texto}»
                         </span>
                       </button>
@@ -168,7 +168,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                 </div>
               )}
               {error && (
-                <p className="rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-[0.86rem]">
+                <p className="rounded-xl border border-oro/30 bg-oro/[0.08] px-3.5 py-2 text-sm">
                   {error}
                 </p>
               )}
@@ -178,23 +178,23 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
           {paso === "pensando" && (
             <div className="flex items-center justify-center gap-3 py-10">
               <AngelaMark size={30} estado="ejecutando" />
-              <p className="text-[0.92rem] text-tinta-suave">{t("voz.pensando")}</p>
+              <p className="text-sm text-tinta-suave">{t("voz.pensando")}</p>
             </div>
           )}
 
           {/* ------------------------------------------- la propuesta */}
           {paso === "propuesta" && prop && (
             <div className="space-y-4">
-              <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-[0.92rem] italic text-tinta-suave">
+              <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-sm italic text-tinta-suave">
                 «{prop.transcripcion}»
               </p>
 
               {prop.intencion === "consulta" ? (
                 <>
-                  <p className="text-[0.95rem] text-tinta">{t("voz.es_consulta")}</p>
+                  <p className="text-base text-tinta">{t("voz.es_consulta")}</p>
                   <button onClick={() => { onPreguntar?.(prop.transcripcion); onCerrar?.(); }}
                     className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2.5
-                               text-[0.9rem] font-semibold text-crema">
+                               text-sm font-semibold text-crema">
                     <MessageSquare size={15} /> {t("voz.preguntar")}
                   </button>
                 </>
@@ -202,7 +202,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                 <>
                   <div className="flex items-start gap-2.5">
                     <AngelaMark size={26} />
-                    <p className="text-[0.95rem] leading-snug text-tinta">
+                    <p className="text-base leading-snug text-tinta">
                       {t(`voz.entendi_${prop.intencion}`)}
                     </p>
                   </div>
@@ -210,14 +210,14 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                   {/* el producto: se elige, no se adivina */}
                   {prop.candidatos?.length > 0 && (
                     <div>
-                      <p className="text-[0.78rem] uppercase tracking-wide text-tinta-suave">
+                      <p className="text-xs uppercase tracking-wide text-tinta-suave">
                         {t("voz.f_producto")}
                       </p>
                       <div className="mt-1 space-y-1">
                         {prop.candidatos.map((c) => (
                           <button key={c.codigo} onClick={() => setElegido(c.codigo)}
                             className={`flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left
-                                        text-[0.88rem] ${elegido === c.codigo
+                                        text-sm ${elegido === c.codigo
                                 ? "border-violeta bg-violeta-suave font-semibold text-tinta"
                                 : "border-linea bg-crema text-tinta-suave hover:bg-papel-hondo/60"}`}>
                             <span className="min-w-0 flex-1 truncate">{c.descripcion}</span>
@@ -229,19 +229,19 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                   )}
 
                   <div className="flex items-center gap-3">
-                    <label className="text-[0.78rem] uppercase tracking-wide text-tinta-suave">
+                    <label className="text-xs uppercase tracking-wide text-tinta-suave">
                       {t("voz.f_cantidad")}
                     </label>
                     <input value={cantidad} inputMode="decimal"
                       onChange={(e) => setCantidad(e.target.value)}
                       className="plata w-24 rounded-lg border border-linea bg-crema px-2.5 py-1.5
-                                 text-right text-[0.95rem]" />
+                                 text-right text-base" />
                   </div>
 
                   {/* lo que el CÓDIGO frenó: se dice y se explica */}
                   {frenos.map((b, i) => (
                     <p key={i} className="flex gap-2 rounded-xl border border-oro/40 bg-oro/[0.09]
-                                          px-3.5 py-2.5 text-[0.86rem] leading-snug text-tinta">
+                                          px-3.5 py-2.5 text-sm leading-snug text-tinta">
                       <AlertTriangle size={15} className="mt-0.5 shrink-0 text-oro-tinta" />
                       {b.detalle}
                     </p>
@@ -250,12 +250,12 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                   <div className="flex flex-wrap gap-2 pt-1">
                     <button onClick={confirmar} disabled={!puedeConfirmar}
                       className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5
-                                 text-[0.9rem] font-semibold text-crema disabled:opacity-40">
+                                 text-sm font-semibold text-crema disabled:opacity-40">
                       <Check size={15} /> {t("voz.confirmar")}
                     </button>
                     <button onClick={() => { setProp(null); setPaso("listo"); }}
                       className="rounded-full border border-linea bg-crema px-4 py-2.5
-                                 text-[0.9rem] font-semibold text-tinta-suave">
+                                 text-sm font-semibold text-tinta-suave">
                       {t("voz.otra_vez")}
                     </button>
                   </div>
@@ -269,9 +269,9 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
               <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-salvia text-crema">
                 <Check size={20} />
               </span>
-              <p className="text-[0.98rem] text-tinta">{t("voz.anotado")}</p>
+              <p className="text-base text-tinta">{t("voz.anotado")}</p>
               <button onClick={onCerrar}
-                className="rounded-full border border-linea bg-crema px-4 py-2.5 text-[0.9rem]
+                className="rounded-full border border-linea bg-crema px-4 py-2.5 text-sm
                            font-semibold text-tinta-suave">
                 {t("voz.cerrar")}
               </button>

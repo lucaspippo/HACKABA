@@ -61,18 +61,18 @@ export default function HistoryDropdown() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("chat.history.search")}
-                className="w-full bg-transparent text-[0.82rem] text-tinta outline-none focus-visible:shadow-none placeholder:text-tinta-suave"
+                className="w-full bg-transparent text-sm text-tinta outline-none focus-visible:shadow-none placeholder:text-tinta-suave"
               />
             </div>
             <div className="max-h-80 overflow-y-auto">
               {groups.length === 0 && (
-                <p className="px-3 py-4 text-center text-[0.78rem] text-tinta-suave">
+                <p className="px-3 py-4 text-center text-xs text-tinta-suave">
                   {t("chat.history.empty")}
                 </p>
               )}
               {groups.map((group) => (
                 <div key={group.label} className="mb-2 last:mb-0">
-                  <div className="px-2 pb-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave/80">
+                  <div className="px-2 pb-1 text-2xs font-semibold uppercase tracking-[0.14em] text-tinta-suave/80">
                     {group.label}
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -84,7 +84,7 @@ export default function HistoryDropdown() {
                           setOpen(false);
                           aui.threads.switchToThread(thread.remoteId);
                         }}
-                        className="w-full truncate rounded-xl px-3 py-1.5 text-left text-[0.82rem] text-tinta hover:bg-papel"
+                        className="w-full truncate rounded-xl px-3 py-1.5 text-left text-sm text-tinta hover:bg-papel"
                       >
                         {thread.title}
                       </button>

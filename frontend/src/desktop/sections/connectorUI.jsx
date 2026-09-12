@@ -158,7 +158,7 @@ const PILL_VARIANTS = {
 export function ConnectorStatusPill({ variant = "pendiente", children }) {
   const s = PILL_VARIANTS[variant] || PILL_VARIANTS.pendiente;
   return (
-    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-crema px-2.5 py-1 text-[0.74rem] font-semibold ring-1 ${s.ring} ${s.text}`}>
+    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-crema px-2.5 py-1 text-xs font-semibold ring-1 ${s.ring} ${s.text}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {children}
     </span>
@@ -199,10 +199,10 @@ export function ConnectorCard({
         )}
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-2">
-            <span className="font-display text-[1.02rem] font-bold leading-tight text-tinta">{title}</span>
+            <span className="font-display text-lg font-bold leading-tight text-tinta">{title}</span>
             {status}
           </span>
-          {subtitle && <span className="mt-0.5 block truncate text-[0.82rem] text-tinta-suave">{subtitle}</span>}
+          {subtitle && <span className="mt-0.5 block truncate text-sm text-tinta-suave">{subtitle}</span>}
         </span>
         {interactive && (
           <ChevronDown size={17} className={`shrink-0 text-tinta-suave transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
@@ -220,13 +220,13 @@ export function ConnectorCard({
 
 export function ConnectorField({ label, hint, type = "text", value, onChange, placeholder, required = true }) {
   return (
-    <label className="block text-[0.8rem]">
+    <label className="block text-sm">
       <span className="mb-1 block font-semibold text-tinta">{label}</span>
       <input required={required} type={type} value={value} placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-[0.85rem]
+        className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-sm
                    text-tinta outline-none transition-colors focus:border-tinta/40" />
-      {hint && <span className="mt-1 block text-[0.74rem] leading-snug text-tinta-suave">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs leading-snug text-tinta-suave">{hint}</span>}
     </label>
   );
 }
@@ -245,7 +245,7 @@ export function ConnectorButton({ variant = "primary", icon: Icon, loading, chil
     <button
       {...props}
       disabled={props.disabled || loading}
-      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[0.8rem]
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm
                   font-semibold transition-colors active:scale-[0.99] ${BUTTON_VARIANTS[variant]} ${className}`}
     >
       {loading ? <Loader2 size={14} className="animate-spin" /> : Icon ? <Icon size={14} /> : null}
@@ -273,8 +273,8 @@ export function ConnectorSyncAction({
           </ConnectorButton>
         )}
       </div>
-      {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
-      {errorIngest && <p className="text-[0.8rem] text-rojo-hondo">{errorIngest}</p>}
+      {error && <p className="text-sm text-rojo-hondo">{error}</p>}
+      {errorIngest && <p className="text-sm text-rojo-hondo">{errorIngest}</p>}
       {children}
     </div>
   );
@@ -286,7 +286,7 @@ export function ConnectorEmptyState({ icon: Icon, children }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-linea px-4 py-7 text-center">
       {Icon && <Icon size={20} className="text-tinta-suave/60" />}
-      <p className="max-w-xs text-[0.82rem] leading-snug text-tinta-suave">{children}</p>
+      <p className="max-w-xs text-sm leading-snug text-tinta-suave">{children}</p>
     </div>
   );
 }

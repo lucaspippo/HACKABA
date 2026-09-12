@@ -450,10 +450,10 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
     <div className="space-y-4">
       {/* ------------------------------------------------------ encabezado */}
       <div>
-        <h2 className="font-display text-[22px] font-semibold tracking-tight text-tinta">
+        <h2 className="font-display text-3xl font-semibold tracking-tight text-tinta">
           {t("cerebro.titulo")}
         </h2>
-        <p className="mt-1 max-w-5xl text-[13px] leading-snug text-tinta-suave">
+        <p className="mt-1 max-w-5xl text-lg leading-snug text-tinta-suave">
           {t("cerebro.bajada", { nodos: num(meta.nodos), aristas: num(meta.aristas) })}
         </p>
       </div>
@@ -468,8 +468,8 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
         <div className="rounded-card border bg-crema p-4" style={{ borderColor: `${AZUL_IA}3d` }}>
           <div className="flex items-baseline gap-2">
             <AngelaMark size={14} />
-            <span className="text-[13px] font-semibold text-tinta">{t("cerebro.hallazgos")}</span>
-            <span className="text-[12px] text-tinta-suave">· {t("cerebro.hallazgos_ay")}</span>
+            <span className="text-lg font-semibold text-tinta">{t("cerebro.hallazgos")}</span>
+            <span className="text-base text-tinta-suave">· {t("cerebro.hallazgos_ay")}</span>
           </div>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {datos.caminos.map((c) => {
@@ -482,7 +482,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                     if (!on) lienzoEl.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
                   }}
                   aria-pressed={on}
-                  className={`rounded-full border px-3 py-1.5 text-left text-[12px] transition-colors ${
+                  className={`rounded-full border px-3 py-1.5 text-left text-base transition-colors ${
                     on ? "border-violeta bg-violeta text-white"
                        : "border-linea bg-papel text-tinta hover:border-violeta/50 hover:bg-violeta-suave"}`}>
                   {c.titulo}
@@ -501,7 +501,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
             })}
             {camino && (
               <button onClick={() => { setCamino(null); setFoco(null); }}
-                className="rounded-full px-3 py-1.5 text-[12px] text-tinta-suave underline underline-offset-2 hover:text-tinta">
+                className="rounded-full px-3 py-1.5 text-base text-tinta-suave underline underline-offset-2 hover:text-tinta">
                 {t("cerebro.camino_off")}
               </button>
             )}
@@ -516,19 +516,19 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                   acá se lee la cadena de razonamiento con los números que la
                   sostienen (los calcula el backend, no el modelo). */}
               {caminoActual.resumen && (
-                <p className="mb-2 text-[12.5px] leading-snug text-tinta">{caminoActual.resumen}</p>
+                <p className="mb-2 text-base leading-snug text-tinta">{caminoActual.resumen}</p>
               )}
               {caminoActual.dominios?.length > 0 && (
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11px] text-tinta-suave">{t("cerebro.cruzo")}</span>
+                  <span className="text-sm text-tinta-suave">{t("cerebro.cruzo")}</span>
                   {caminoActual.dominios.map((d) => (
                     <span key={d} className="rounded-full border border-violeta/30 bg-violeta-suave
-                                             px-2 py-0.5 text-[10.5px] font-semibold text-violeta-hondo">
+                                             px-2 py-0.5 text-sm font-semibold text-violeta-hondo">
                       {t(`cerebro.dom_${d}`)}
                     </span>
                   ))}
                   {caminoActual.no_estructurado && (
-                    <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                    <span className="rounded-full px-2 py-0.5 text-sm font-semibold"
                       style={{ background: "rgba(232,200,106,0.18)", color: "#8a6d1f" }}
                       title={t("cerebro.no_estructurado_ay")}>
                       {t("cerebro.no_estructurado")}
@@ -539,14 +539,14 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               {caminoActual.porque?.length > 0 && (
                 <ul className="mb-2.5 space-y-0.5">
                   {caminoActual.porque.map((p, i) => (
-                    <li key={i} className="flex gap-1.5 text-[11.5px] leading-snug text-tinta-suave">
+                    <li key={i} className="flex gap-1.5 text-sm leading-snug text-tinta-suave">
                       <span className="mt-[7px] size-1 shrink-0 rounded-full bg-violeta/60" />
                       <span>{p}</span>
                     </li>
                   ))}
                 </ul>
               )}
-              <div className="text-[11px] text-tinta-suave">
+              <div className="text-sm text-tinta-suave">
                 {t("cerebro.camino_recorrer", { n: nodosCamino.size })}
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1">
@@ -556,7 +556,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                   const esSemilla = (caminoActual.semillas || []).includes(id);
                   return (
                     <button key={id} onClick={() => irAlNodo(id)}
-                      className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11.5px]
+                      className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-sm
                                   transition-colors hover:border-violeta/50 hover:bg-violeta-suave ${
                         foco === id ? "border-violeta bg-violeta-suave text-tinta"
                                     : "border-linea bg-papel text-tinta"}`}>
@@ -596,18 +596,18 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
               onKeyDown={teclaBusqueda}
               placeholder={t("cerebro.buscar")}
               aria-label={t("cerebro.buscar")} autoComplete="off"
-              className="w-full bg-transparent text-[12.5px] text-white placeholder:text-white/35 focus:outline-none" />
+              className="w-full bg-transparent text-base text-white placeholder:text-white/35 focus:outline-none" />
             {busqueda
               ? <button onClick={() => { setBusqueda(""); inputRef.current?.focus(); }}
                   aria-label={t("cerebro.limpiar_busqueda")} className="text-white/45 hover:text-white">
                   <X className="size-3.5" /></button>
               // la pista de la barra "/" sólo mientras está vacío: después estorba
-              : <kbd className="shrink-0 rounded border border-white/15 px-1 text-[9.5px] leading-4 text-white/35">/</kbd>}
+              : <kbd className="shrink-0 rounded border border-white/15 px-1 text-xs leading-4 text-white/35">/</kbd>}
           </div>
           {busqueda.trim().length >= 2 && (
             <div className="mt-1.5 overflow-hidden rounded-xl border border-white/12 bg-black/85 backdrop-blur">
               {resultados.length === 0
-                ? <div className="px-3 py-2 text-[12px] text-white/45">{t("cerebro.sin_resultados")}</div>
+                ? <div className="px-3 py-2 text-base text-white/45">{t("cerebro.sin_resultados")}</div>
                 : resultados.map((n, i) => (
                   <button key={n.id} onClick={() => elegirResultado(n)}
                     onMouseEnter={() => setSel(i)}
@@ -615,17 +615,17 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                       i === sel ? "bg-white/12" : "hover:bg-white/8"}`}>
                     <span className="shrink-0"><Glifo tipo={n.tipo} /></span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] leading-tight text-white/90">{n.nombre}</span>
+                      <span className="block truncate text-base leading-tight text-white/90">{n.nombre}</span>
                       {/* qué es y cuánto se cruza: dos nombres parecidos se
                           distinguen acá, no después de haber navegado */}
-                      <span className="block truncate text-[10px] leading-tight text-white/40">
+                      <span className="block truncate text-xs leading-tight text-white/40">
                         {t(`cerebro.t_${n.tipo}`)} · {t(n.grado === 1 ? "cerebro.conexiones_1" : "cerebro.conexiones", { n: n.grado })}
                       </span>
                     </span>
                   </button>
                 ))}
               {totalMatches > resultados.length && (
-                <div className="border-t border-white/10 px-3 py-1 text-[10px] text-white/35">
+                <div className="border-t border-white/10 px-3 py-1 text-xs text-white/35">
                   {t("cerebro.mas_coincidencias", { n: totalMatches - resultados.length })}
                 </div>
               )}
@@ -657,34 +657,34 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
                         bg-black/60 p-2.5 backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {TIPOS_ORDEN.filter((tp) => meta.por_tipo?.[tp]).map((tp) => (
-              <span key={tp} className="flex items-center gap-1.5 text-[10.5px] text-white/70">
+              <span key={tp} className="flex items-center gap-1.5 text-sm text-white/70">
                 <Glifo tipo={tp} /> {t(`cerebro.t_${tp}_p`)}
                 <span className="tabular-nums text-white/35">{meta.por_tipo[tp]}</span>
               </span>
             ))}
             <button onClick={() => setLeyenda((v) => !v)}
               className="ml-auto flex size-4 items-center justify-center rounded-full border
-                         border-white/25 text-[9px] text-white/60 hover:border-white/60 hover:text-white"
+                         border-white/25 text-xs text-white/60 hover:border-white/60 hover:text-white"
               aria-label={t("cerebro.leyenda")} aria-expanded={leyenda}>
               {leyenda ? "×" : "?"}
             </button>
           </div>
           {leyenda && (
             <div className="mt-2 space-y-1.5 border-t border-white/10 pt-2">
-              <div className="flex items-start gap-1.5 text-[10.5px] text-white/55">
+              <div className="flex items-start gap-1.5 text-sm text-white/55">
                 <span className="mt-0.5 inline-block size-2.5 shrink-0 rounded-full border-[1.5px]"
                   style={{ borderColor: ROJO }} />
                 {t("cerebro.leyenda_riesgo")}
               </div>
-              <div className="text-[10.5px] text-white/45">{t("cerebro.leyenda_nucleo")}</div>
+              <div className="text-sm text-white/45">{t("cerebro.leyenda_nucleo")}</div>
               {!!meta.por_tipo?.nota && (
-                <div className="flex gap-1.5 text-[10.5px] text-white/45">
+                <div className="flex gap-1.5 text-sm text-white/45">
                   <span className="mt-0.5 shrink-0"><Glifo tipo="nota" /></span>
                   <span>{t("cerebro.nota_equipo")}</span>
                 </div>
               )}
               {!!meta.derivados?.afinidad?.aristas && (
-                <div className="flex gap-1.5 text-[10.5px] text-white/45">
+                <div className="flex gap-1.5 text-sm text-white/45">
                   <svg width="16" height="8" className="mt-1 shrink-0" aria-hidden>
                     <line x1="0" y1="4" x2="16" y2="4" stroke="rgba(95,191,143,.7)"
                       strokeWidth="1.2" strokeDasharray="2 3" />
@@ -702,7 +702,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
           <div className="pointer-events-none absolute left-1/2 top-4 z-20 max-w-[52%] -translate-x-1/2
                           rounded-full border px-4 py-1.5 backdrop-blur"
             style={{ borderColor: `${AZUL_IA}66`, background: "rgba(15,17,19,.8)" }}>
-            <span className="flex items-center gap-2 text-[12px] text-white/85">
+            <span className="flex items-center gap-2 text-base text-white/85">
               <Sparkles className="size-3.5 shrink-0" style={{ color: AZUL_IA }} />
               <span className="truncate">{caminoActual.titulo}</span>
               <span className="shrink-0 text-white/50">
@@ -824,8 +824,8 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
       {/* ------------------------------------ el núcleo, dicho con palabras */}
       <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
         <div className="rounded-card border border-linea bg-crema p-4">
-          <div className="text-[13px] font-semibold text-tinta">{t("cerebro.nucleo_titulo")}</div>
-          <div className="text-[12px] text-tinta-suave">{t("cerebro.nucleo_ay")}</div>
+          <div className="text-lg font-semibold text-tinta">{t("cerebro.nucleo_titulo")}</div>
+          <div className="text-base text-tinta-suave">{t("cerebro.nucleo_ay")}</div>
           {/* ATAJOS a lo más conectado. Viven abajo del lienzo, así que tocar
               uno trae la vista al grafo además de centrar el nodo (ver irAlNodo);
               si no, se toca un chip y aparentemente no pasa nada. */}
@@ -833,7 +833,7 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
             {(meta.nucleo || []).map((n) => (
               <button key={n.id} onClick={() => { setCamino(null); irAlNodo(n.id); }}
                 aria-pressed={foco === n.id}
-                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] text-tinta
+                className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-base text-tinta
                             transition-colors hover:border-violeta/50 hover:bg-violeta-suave ${
                   foco === n.id ? "border-violeta bg-violeta-suave" : "border-linea bg-papel"}`}>
                 <Glifo tipo={n.tipo} />
@@ -845,10 +845,10 @@ export default function CerebroNegocio({ onNavegar, onPreguntar }) {
         </div>
         {!!meta.derivados?.coventa?.pares && (
           <div className="rounded-card border border-linea bg-papel-hondo p-4 lg:max-w-[300px]">
-            <div className="text-[11px] uppercase tracking-wide text-tinta-suave">
+            <div className="text-sm uppercase tracking-wide text-tinta-suave">
               {t("cerebro.leyenda_formas")}
             </div>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-tinta-suave">
+            <p className="mt-1.5 text-base leading-relaxed text-tinta-suave">
               {t("cerebro.nota_derivado", { pares: num(meta.derivados.coventa.pares) })}
             </p>
           </div>
@@ -865,7 +865,7 @@ function BotonLienzo({ onClick, children }) {
   return (
     <button onClick={onClick}
       className="flex items-center gap-1.5 rounded-full border border-white/12 bg-black/45 px-3 py-1.5
-                 text-[12px] text-white/80 backdrop-blur transition-colors hover:border-white/30 hover:text-white">
+                 text-base text-white/80 backdrop-blur transition-colors hover:border-white/30 hover:text-white">
       {children}
     </button>
   );
@@ -889,12 +889,12 @@ function PanelEntidad({ nodo, relaciones, t, onIr, onCerrar, onNavegar, onPregun
       <div className="flex items-start gap-2.5 border-b border-white/10 p-4">
         <span className="mt-1 shrink-0"><Glifo tipo={nodo.tipo} size={13} /></span>
         <div className="min-w-0 flex-1">
-          <div className="text-[10.5px] uppercase tracking-wide text-white/40">
+          <div className="text-sm uppercase tracking-wide text-white/40">
             {t(`cerebro.t_${nodo.tipo}`)}
           </div>
-          <h3 className="text-[15.5px] font-semibold leading-snug text-white">{nodo.nombre}</h3>
+          <h3 className="text-lg font-semibold leading-snug text-white">{nodo.nombre}</h3>
           {(nodo.riesgo === "riesgo" || nodo.riesgo === "atencion") && (
-            <span className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10.5px]"
+            <span className="mt-1.5 inline-block rounded-full px-2 py-0.5 text-sm"
               style={{
                 color: nodo.riesgo === "riesgo" ? ROJO : ORO,
                 background: nodo.riesgo === "riesgo" ? `${ROJO}1f` : `${ORO}1f`,
@@ -913,7 +913,7 @@ function PanelEntidad({ nodo, relaciones, t, onIr, onCerrar, onNavegar, onPregun
             escribió una persona, y se lee tal cual lo dijo. */}
         {nodo.tipo === "nota" && (nodo.texto || nodo.texto_en) && (
           <p className="mb-3 rounded-lg border border-white/10 bg-white/[0.04] p-2.5
-                        text-[12.5px] italic leading-snug text-white/80">
+                        text-base italic leading-snug text-white/80">
             “{lang === "en" && nodo.texto_en ? nodo.texto_en : nodo.texto}”
           </p>
         )}
@@ -921,49 +921,49 @@ function PanelEntidad({ nodo, relaciones, t, onIr, onCerrar, onNavegar, onPregun
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
           {(nodo.metricas || []).filter((m) => m.v !== null && m.v !== undefined && m.v !== "").map((m) => (
             <div key={m.k}>
-              <div className="text-[10px] uppercase tracking-wide text-white/40">{t(`cerebro.m_${m.k}`)}</div>
-              <div className="mt-0.5 text-[13.5px] font-semibold tabular-nums text-white/90">
+              <div className="text-xs uppercase tracking-wide text-white/40">{t(`cerebro.m_${m.k}`)}</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums text-white/90">
                 {fmtValor(m, t)}
               </div>
             </div>
           ))}
           {nodo.vence && (
             <div>
-              <div className="text-[10px] uppercase tracking-wide text-white/40">{t("cerebro.m_vence")}</div>
-              <div className="mt-0.5 text-[13.5px] font-semibold tabular-nums" style={{ color: ORO }}>
+              <div className="text-xs uppercase tracking-wide text-white/40">{t("cerebro.m_vence")}</div>
+              <div className="mt-0.5 text-lg font-semibold tabular-nums" style={{ color: ORO }}>
                 {fmtFecha(nodo.vence)}
               </div>
             </div>
           )}
           <div>
-            <div className="text-[10px] uppercase tracking-wide text-white/40">{t("cerebro.m_grado")}</div>
-            <div className="mt-0.5 text-[13.5px] font-semibold tabular-nums text-white/90">{nodo.grado}</div>
+            <div className="text-xs uppercase tracking-wide text-white/40">{t("cerebro.m_grado")}</div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums text-white/90">{nodo.grado}</div>
           </div>
         </div>
 
         {/* con quién se cruza */}
         <div className="mt-5">
-          <div className="text-[11px] font-semibold text-white/70">
+          <div className="text-sm font-semibold text-white/70">
             {t("cerebro.relaciones", { n: relaciones.length })}
           </div>
           {relaciones.length === 0 && (
-            <div className="mt-1 text-[12px] text-white/40">{t("cerebro.sin_relaciones")}</div>
+            <div className="mt-1 text-base text-white/40">{t("cerebro.sin_relaciones")}</div>
           )}
           {grupos.map(([rel, items]) => (
             <div key={rel} className="mt-3">
-              <div className="text-[10.5px] uppercase tracking-wide text-white/35">{t(`cerebro.r_${rel}`)}</div>
+              <div className="text-sm uppercase tracking-wide text-white/35">{t(`cerebro.r_${rel}`)}</div>
               <div className="mt-1 space-y-0.5">
                 {items.slice(0, 12).map((r, i) => (
                   <button key={`${r.otro.id}-${i}`} onClick={() => onIr(r.otro.id)}
                     className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-white/6">
                     <Glifo tipo={r.otro.tipo} />
-                    <span className="min-w-0 flex-1 truncate text-[12px] text-white/80">{r.otro.nombre}</span>
-                    {r.lift && <span className="shrink-0 text-[10.5px] tabular-nums text-white/35">×{r.lift}</span>}
-                    {!r.lift && !!r.monto && <span className="shrink-0 text-[10.5px] tabular-nums text-white/35">{pesoCorto(r.monto)}</span>}
+                    <span className="min-w-0 flex-1 truncate text-base text-white/80">{r.otro.nombre}</span>
+                    {r.lift && <span className="shrink-0 text-sm tabular-nums text-white/35">×{r.lift}</span>}
+                    {!r.lift && !!r.monto && <span className="shrink-0 text-sm tabular-nums text-white/35">{pesoCorto(r.monto)}</span>}
                   </button>
                 ))}
                 {items.length > 12 && (
-                  <div className="px-1.5 text-[10.5px] text-white/30">+{items.length - 12}</div>
+                  <div className="px-1.5 text-sm text-white/30">+{items.length - 12}</div>
                 )}
               </div>
             </div>
@@ -976,13 +976,13 @@ function PanelEntidad({ nodo, relaciones, t, onIr, onCerrar, onNavegar, onPregun
         {lkSeccion && onNavegar && (
           <button onClick={() => onNavegar(seccion, null)}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-white/8 px-3 py-2
-                       text-[12px] text-white/85 transition-colors hover:bg-white/14">
+                       text-base text-white/85 transition-colors hover:bg-white/14">
             {t("cerebro.ir_a", { seccion: t(lkSeccion) })} <ArrowRight className="size-3.5" />
           </button>
         )}
         {onPreguntar && (
           <button onClick={() => onPreguntar(`contame todo sobre ${nodo.nombre}`)}
-            className="flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-medium
+            className="flex items-center justify-center gap-1.5 rounded-full px-3 py-2 text-base font-medium
                        transition-opacity hover:opacity-85"
             style={{ background: `${AZUL_IA}26`, color: AZUL_IA }}>
             <AngelaMark size={13} /> {t("cerebro.preguntar")}

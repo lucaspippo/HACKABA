@@ -114,16 +114,16 @@ export default function MapaSimpleMobile({ onPreguntar, onVolver }) {
   return (
     <div className="space-y-4 pb-2">
       <header>
-        <button onClick={onVolver} className="mb-2 inline-flex items-center gap-1 text-[0.82rem] font-semibold text-violeta">
+        <button onClick={onVolver} className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-violeta">
           <ArrowLeft size={15} /> {t("mapasimple.volver")}
         </button>
         <h1 className="font-display text-2xl font-bold leading-none">{t("nav.mapa")}</h1>
         {!cargando && (
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-papel-hondo px-3 py-1 text-[0.78rem] font-semibold text-tinta-suave">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-papel-hondo px-3 py-1 text-xs font-semibold text-tinta-suave">
               <Link2 size={13} /> {t("mapa.pulso_fuentes")} · {num(nFuentes)}
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-violeta-suave px-3 py-1 text-[0.78rem] font-semibold text-violeta">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violeta-suave px-3 py-1 text-xs font-semibold text-violeta">
               <Waypoints size={13} /> {t("mapasimple.cruces", { n: num(nCruces) })}
             </span>
           </div>
@@ -147,20 +147,20 @@ export default function MapaSimpleMobile({ onPreguntar, onVolver }) {
                 <button onClick={() => setAbierto(open ? null : d.id)} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${SEM[tono]}`} />
                   <Icon size={18} className="shrink-0 text-tinta-suave" />
-                  <span className="flex-1 font-display text-[0.98rem] font-bold leading-tight">{t(d.lk)}</span>
-                  <span className="plata shrink-0 text-[0.82rem] text-tinta-suave">{datoNodo[d.id]}</span>
+                  <span className="flex-1 font-display text-base font-bold leading-tight">{t(d.lk)}</span>
+                  <span className="plata shrink-0 text-sm text-tinta-suave">{datoNodo[d.id]}</span>
                   <ChevronDown size={16} className={`shrink-0 text-tinta-suave transition-transform ${open ? "rotate-180" : ""}`} />
                 </button>
                 {open && (
                   <div className="flex items-start gap-2.5 border-t border-linea bg-papel-hondo/40 px-4 py-3">
                     <AngelaMark size={22} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[0.88rem] leading-snug text-tinta">
+                      <p className="text-sm leading-snug text-tinta">
                         <b>{t(d.lk)}:</b> {datoNodo[d.id]}
                       </p>
                       <button
                         onClick={() => onPreguntar?.(t("mapasimple.preguntar_q", { dom: t(d.lk) }))}
-                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema"
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema"
                       >
                         <AngelaMark size={13} /> {t("mapasimple.preguntar")}
                       </button>
