@@ -2652,6 +2652,7 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.esquema.cuenta_corriente": {"es": "Cuentas corrientes", "en": "Customer accounts"},
     "core.esquema.deposito": {"es": "Depósito", "en": "Warehouse"},
     "core.esquema.logistica": {"es": "Logística", "en": "Logistics"},
+    "core.esquema.ordenes_compra": {"es": "Órdenes de compra", "en": "Purchase orders"},
     "core.esquema.activa_venta_0": {"es": "rotación por producto", "en": "turnover per product"},
     "core.esquema.activa_venta_1": {"es": "margen real por producto", "en": "real margin per product"},
     "core.esquema.activa_venta_2": {"es": "alertas de quiebre de stock", "en": "stock-out alerts"},
@@ -2670,6 +2671,8 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.esquema.activa_logistica_0": {"es": "estado de envío por cliente", "en": "shipment status per customer"},
     "core.esquema.activa_logistica_1": {"es": "alertas de entregas atrasadas", "en": "late delivery alerts"},
     "core.esquema.activa_logistica_2": {"es": "resumen del día de reparto", "en": "delivery day summary"},
+    "core.esquema.activa_ordenes_compra_0": {"es": "control remito ↔ orden de compra al recibir mercadería",
+                                              "en": "delivery-note vs. purchase-order matching on receipt"},
     # --- core/fase.py · la etapa del negocio --------------------------------------
     "core.fase.titulo_puesta": {"es": "Puesta a punto", "en": "Getting set up"},
     "core.fase.titulo_operacion": {"es": "En operación", "en": "Up and running"},
