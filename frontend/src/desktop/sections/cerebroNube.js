@@ -75,15 +75,20 @@ function normal(rnd) {
 // El catálogo va al CENTRO y el resto en anillo alrededor, repartidos cada
 // ~51 grados. La separación está verificada: ningún par de campos queda a
 // menos del 78% de la suma de sus radios (scripts de prueba en el commit).
+// LOS TAMANIOS SUMAN 602, mas los tres del caso: 605. Ese numero es el que el
+// encabezado dice en pantalla («605 entidades»), y es el del negocio de
+// verdad. Que el dibujo tenga otra cantidad no lo notaria nadie contando
+// puntos, pero el numero y la imagen tienen que decir lo mismo: ya paso una
+// vez que el encabezado prometiera algo que la pantalla desmentia.
 const COMUNIDADES = [
-  { tipo: "producto",     n: 116, ang: -102, r: 0.10 },
-  { tipo: "cliente",      n:  86, ang:   20, r: 0.95 },
-  { tipo: "local",        n:  34, ang:   71, r: 0.88 },
-  { tipo: "remito",       n:  70, ang:  122, r: 1.00 },
-  { tipo: "proveedor",    n:  56, ang:  173, r: 0.95 },
-  { tipo: "nota",         n:  44, ang:  224, r: 0.90 },
-  { tipo: "persona",      n:  20, ang:  275, r: 0.74 },
-  { tipo: "conocimiento", n:  26, ang:  326, r: 0.82 },
+  { tipo: "producto",     n: 156, ang: -102, r: 0.10 },
+  { tipo: "cliente",      n: 114, ang:   20, r: 0.88 },
+  { tipo: "local",        n:  45, ang:   71, r: 0.84 },
+  { tipo: "remito",       n:  93, ang:  122, r: 0.94 },
+  { tipo: "proveedor",    n:  74, ang:  173, r: 0.90 },
+  { tipo: "nota",         n:  58, ang:  224, r: 0.86 },
+  { tipo: "persona",      n:  27, ang:  275, r: 0.72 },
+  { tipo: "conocimiento", n:  35, ang:  326, r: 0.80 },
 ];
 
 // Un rótulo por comunidad. Un grafo sin una sola palabra es abstracto; ocho
@@ -152,9 +157,20 @@ export function construirNube(semilla = 20260912) {
       };
       nodes.push(n);
       links.push({ source: s.id, target: n.id, _puente: false });
-      // un poco de tejido lateral: sin esto se ve un árbol, no una red
-      if (rnd() < 0.16) {
-        const o = nodes[nodes.length - 2 - Math.floor(rnd() * 4)];
+      // TEJIDO LATERAL, y es lo que separa un arbol de una red.
+      //
+      // El negocio real tiene 2062 relaciones sobre 605 entidades: 3,4 por
+      // nodo. Con una sola arista por hoja salia un arbol —radios desde un
+      // centro— que se lee pobre. Con dos o tres vecinas CERCANAS aparece la
+      // textura de comunidad.
+      //
+      // Y no vuelve a ser maraña porque estas aristas son CORTAS: van a
+      // vecinas del mismo sub-racimo. Lo que hacia maraña antes eran las
+      // largas cruzando la pantalla entera, no la cantidad.
+      const cerca = Math.min(9, nodes.length - 1);
+      for (let e = 0; e < 3; e++) {
+        if (rnd() > 0.82) continue;
+        const o = nodes[nodes.length - 2 - Math.floor(rnd() * cerca)];
         if (o && o.tipo === c.tipo && o.id !== n.id) {
           links.push({ source: n.id, target: o.id, _puente: false });
         }
