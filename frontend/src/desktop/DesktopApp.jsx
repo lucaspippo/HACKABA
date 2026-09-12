@@ -524,14 +524,14 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "admin_contexto" && <AdminContexto />}
                 {section === "perfil" && <MiPerfil user={user} />}
                 {section === "ubicaciones" && <Ubicaciones />}
-                {section === "productos" && <Productos data={data} highlight={highlight} />}
+                {section === "productos" && <Productos data={data} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} />}
                 {section === "ventas" && <Ventas />}
                 {section === "recepciones" && <Recepciones />}
                 {section === "movimientos" && <Movimientos onNavegar={navegar} highlight={highlight} />}
                 {section === "conciliacion" && <Conciliacion onPreguntar={preguntar} onNavegar={navegar} puedeMovimientos={user.features.includes("inventario")} />}
                 {section === "imported" && <Imported highlight={highlight} onNavigate={navegar} />}
-                {section === "proveedores" && <Proveedores />}
-                {section === "ordenes_compra" && <OrdenesCompra />}
+                {section === "proveedores" && <Proveedores highlight={highlight} />}
+                {section === "ordenes_compra" && <OrdenesCompra highlight={highlight} />}
                 </ErrorBoundary>
               </motion.div>
             </AnimatePresence>

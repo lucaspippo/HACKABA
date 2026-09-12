@@ -8,13 +8,23 @@ import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useQuerySeed } from "../../lib/usePagedList";
 
-export default function Proveedores() {
+function qDeHighlight(highlight) {
+  if (!highlight) return "";
+  return highlight.startsWith("q:") ? highlight.slice(2) : highlight;
+}
+
+export default function Proveedores({ highlight }) {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null);
   const seed = useQuerySeed();
-  const [q, setQ] = useState(seed);
+  const [q, setQ] = useState(() => qDeHighlight(highlight) || seed);
+
+  useEffect(() => {
+    const n = qDeHighlight(highlight);
+    if (n) setQ(n);
+  }, [highlight]);
 
   const cargar = () => api.proveedores().then((d) => setItems(d.proveedores)).catch(setError);
   useEffect(() => { cargar(); }, []);
@@ -70,7 +80,7 @@ export default function Proveedores() {
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("proveedores.buscar")}
-        vacio={t("proveedores.vacio")}
+        vacio={qn ? t("proveedores.vacio_filtro") : t("proveedores.vacio")}
         onCrear={() => setModal("nuevo")}
         crearLabel={t("proveedores.nuevo")}
         onLimpiar={q ? () => setQ("") : undefined}
