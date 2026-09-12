@@ -58,6 +58,27 @@ def test_integrar_batch_odoo_usa_upsert_con_source():
     assert creado["sku"] == "ODOO-INT-1"
 
 
+def test_crear_batch_odoo_proveedor_nuevo():
+    r = staging.crear_batch_odoo("proveedor", [
+        {"id": 801, "nombre": "Proveedor Staging Nuevo", "cuit": "30-2-2",
+         "localidad": "Rosario", "telefono": "341-000", "email": "p@example.com"},
+    ])
+    assert r["tipo"] == "proveedor"
+    assert r["total_filas"] == 1
+
+
+def test_integrar_batch_odoo_proveedor():
+    from core import proveedores
+    r = staging.crear_batch_odoo("proveedor", [
+        {"id": 802, "nombre": "Proveedor Integrado Odoo", "cuit": "30-3-3",
+         "localidad": "", "telefono": "", "email": ""},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(p for p in proveedores.listar() if p.get("source_id") == "802")
+    assert creado["nombre"] == "Proveedor Integrado Odoo"
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}

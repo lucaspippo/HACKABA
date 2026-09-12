@@ -118,6 +118,36 @@ def coerce_producto_odoo(p: dict) -> dict:
     }
 
 
+def coerce_proveedor_odoo(p: dict) -> dict:
+    return {
+        "nombre": str(p.get("nombre") or "").strip(),
+        "contacto": "",
+        "telefono": p.get("telefono") or "",
+        "email": p.get("email") or "",
+        "notas": "",
+        "cuit": p.get("cuit") or "",
+        "source": "odoo",
+        "source_id": str(p["id"]),
+    }
+
+
+def _analizar_proveedores(filas: list[dict], lang: str | None = None) -> list[dict]:
+    from . import proveedores as proveedores_mod
+    existentes = {_norm(p["nombre"]) for p in proveedores_mod.listar() if not p.get("source")}
+    dups = [i for i, f in enumerate(filas) if _norm(f["nombre"]) in existentes]
+    if not dups:
+        return []
+    return [{
+        "id": "duplicado", "tipo": "duplicado",
+        "titulo": _t("core.staging.obs_duplicado", lang),
+        "descripcion": f"{len(dups)} proveedores parecen ya existir en tu sistema con el mismo nombre.",
+        "items": len(dups), "indices": dups, "impacto_pesos": 0,
+        "opciones": [{"label": "No agregarlos (ya existen)", "accion": "unificar", "params": {}},
+                     {"label": "Agregarlos igual (son distintos)", "accion": "mantener", "params": {}}],
+        "resuelta": False, "resolucion": None,
+    }]
+
+
 # ---------------------------------------------------------------------------
 # P24·G4 — la pantalla de revisión habla el idioma del USUARIO QUE MIRA, no el
 # del que creó el batch: descripciones y opciones se re-localizan AL LEER, por
@@ -509,6 +539,14 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
     tipo = b.get("tipo", "producto")
     a_integrar = [f for f in b["filas"] if not f.get("_descartar")]
 
+    if tipo == "proveedor" and b.get("fuente") == "odoo":
+        from . import proveedores as proveedores_mod
+        res = proveedores_mod.upsert_desde_conector(a_integrar, actor)
+        batches = [x for x in batches if x["id"] != batch_id]
+        _save(batches)
+        return {"ok": True, "nuevos": res["nuevos"], "tipo": tipo,
+                "mensaje": f"{res['nuevos']} proveedores nuevos, {res['actualizados']} actualizados."}
+
     if tipo != "producto":
         # Tipo nuevo (ventas, clientes, …): crea el apartado y arma las relaciones.
         res = esquema.crear_apartado(tipo, a_integrar)
@@ -599,6 +637,7 @@ def descartar(batch_id: str) -> dict:
 
 _COERCERS_ODOO = {
     "producto": coerce_producto_odoo,
+    "proveedor": coerce_proveedor_odoo,
 }
 
 # Qué campo identifica una fila coercionada como "utilizable" por tipo — una
@@ -622,6 +661,8 @@ def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = Non
     filas = [f for f in filas if f.get(_REQUERIDO_ODOO[tipo])]
     if tipo == "producto":
         observaciones = _analizar(filas)
+    elif tipo == "proveedor":
+        observaciones = _analizar_proveedores(filas, lang)
     else:
         raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
     batch = {
