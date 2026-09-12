@@ -525,21 +525,22 @@ def _alerts_deposito(lang) -> list[dict]:
     out = []
     dep = deposito.resumen()
     if dep.get("vencidos"):
-        lotes = sorted(_deposito_lot_value(deposito.vencidos()),
-                       key=lambda x: -x["valor"])[:8]
+        valuados = _deposito_lot_value(deposito.vencidos())
+        total_valor = round(sum(x["valor"] for x in valuados), 2)
+        lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
         out.append(_item(
             id="dep_vencidos", tono="rojo", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_vencidos_t", lang),
             resumen=_t("core.prio.dep_vencidos_r", lang, n=_num(dep["vencidos"], lang)),
             origen=["alerta:dep_vencidos"], modulos=ALERT_MODULOS["dep_vencidos"],
             cifra_texto=_num(dep["vencidos"], lang),
-            monto=round(sum(x["valor"] for x in lotes), 2),
+            monto=total_valor,
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_vencidos_chat", lang),
             drill={
                 "porque": [_t("core.prio.dep_vencidos_p", lang, n=_num(dep["vencidos"], lang),
-                              monto=_pesos(sum(x["valor"] for x in lotes), lang))],
+                              monto=_pesos(total_valor, lang))],
                 "grafico": _grafico(_t("core.prio.dep_vencidos_g", lang),
                                     [{"x": x.get("producto") or "", "y": x["valor"]}
                                      for x in lotes], "$", False),
@@ -552,15 +553,16 @@ def _alerts_deposito(lang) -> list[dict]:
             },
         ))
     if dep.get("por_vencer"):
-        lotes = sorted(_deposito_lot_value(deposito.vencimientos()),
-                       key=lambda x: -x["valor"])[:8]
+        valuados = _deposito_lot_value(deposito.vencimientos())
+        total_valor = round(sum(x["valor"] for x in valuados), 2)
+        lotes = sorted(valuados, key=lambda x: -x["valor"])[:8]
         out.append(_item(
             id="dep_porvencer", tono="oro", chip=_t("core.prio.chip_deposito", lang),
             titulo=_t("core.prio.dep_porvencer_t", lang),
             resumen=_t("core.prio.dep_porvencer_r", lang, n=_num(dep["por_vencer"], lang)),
             origen=["alerta:dep_porvencer"], modulos=ALERT_MODULOS["dep_porvencer"],
             cifra_texto=_num(dep["por_vencer"], lang),
-            monto=round(sum(x["valor"] for x in lotes), 2),
+            monto=total_valor,
             fuentes=[_t("core.prio.f_deposito", lang)],
             navegar="deposito",
             accion_chat=_t("core.prio.dep_porvencer_chat", lang),
