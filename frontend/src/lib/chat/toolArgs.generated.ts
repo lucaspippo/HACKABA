@@ -142,9 +142,11 @@ export interface ToolArgs {
   };
   proponer_conocimiento: {
     ambito?: string;
+    efecto_sugerido?: string;
     entidad?: string;
     nodo: string;
     texto: string;
+    tipo_sugerido?: string;
   };
   proponer_correccion: {
     categoria: string;
