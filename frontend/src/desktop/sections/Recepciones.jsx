@@ -1,7 +1,10 @@
 import { useCallback, useState } from "react";
-import { PackagePlus, Pencil, Trash2, X } from "lucide-react";
+import { PackagePlus, Pencil, Trash2, X, Truck, Warehouse, ShoppingCart } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD, { SourceBadge, SourceChips } from "../../components/TablaCRUD";
+import { FilterChip, FilterDivider, FilterRail, FacetSelect } from "../../components/FilterRail";
+import DateRangePicker from "../../components/DateRangePicker";
+import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { fecha, num } from "../../lib/format";
@@ -50,19 +53,27 @@ export default function Recepciones() {
         titulo={t("recepciones.tabla")}
         conteo={t("crud.conteo", { a: num(page.items.length), b: num(page.total) })}
         columnas={[
-          { key: "fecha", label: t("imported.col_date"), sortable: true, plata: true,
+          { key: "fecha", label: t("imported.col_date"), sortable: true, plata: true, groupable: true,
             render: (r) => (r.fecha ? fecha(r.fecha) : "—") },
-          { key: "producto", label: t("imported.col_product"), sortable: true,
-            render: (r) => <span className="font-medium text-tinta">{r.producto || "—"}</span> },
-          { key: "proveedor", label: t("imported.col_vendor"), sortable: true,
-            render: (r) => r.proveedor || "—" },
+          { key: "producto", label: t("imported.col_product"), sortable: true, groupable: true,
+            render: (r) => (
+              <CellLink to={qLink("productos", r.producto)}>
+                <span className="font-medium">{r.producto || "—"}</span>
+              </CellLink>
+            ) },
+          { key: "proveedor", label: t("imported.col_vendor"), sortable: true, groupable: true,
+            render: (r) => <CellLink to={qLink("proveedores", r.proveedor)}>{r.proveedor || "—"}</CellLink> },
           { key: "cantidad", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
             render: (r) => num(r.cantidad || 0) },
-          { key: "deposito", label: t("imported.col_warehouse"), sortable: true,
-            render: (r) => r.deposito || "—" },
-          { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true,
-            render: (r) => r.po_number || r.origen || "—" },
-          { key: "source", label: t("imported.col_source"), sortable: true,
+          { key: "deposito", label: t("imported.col_warehouse"), sortable: true, groupable: true,
+            render: (r) => <CellLink to={qLink("ubicaciones", r.deposito)}>{r.deposito || "—"}</CellLink> },
+          { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true, groupable: true,
+            render: (r) => {
+              const po = r.po_number || r.origen;
+              return <CellLink to={qLink("ordenes_compra", po)}>{po || "—"}</CellLink>;
+            } },
+          { key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
+            groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
             render: (r) => <SourceBadge source={r.source} t={t} /> },
         ]}
         filas={page.items}
@@ -79,16 +90,24 @@ export default function Recepciones() {
         onLoadMore={page.loadMore}
         hasMore={page.hasMore}
         cargandoMas={page.loadingMore}
+        onLimpiar={page.hasActiveFilters ? page.clearFilters : undefined}
         filtros={(
-          <>
+          <FilterRail onClear={page.hasActiveFilters ? page.clearFilters : undefined} clearLabel={t("crud.limpiar_filtros")}>
             <SourceChips value={page.source} onChange={page.setSource} t={t} />
-            <label className="ml-2 text-[0.78rem] font-semibold text-tinta-suave">{t("crud.desde")}</label>
-            <input type="date" value={page.dateFrom} onChange={(e) => page.setDateFrom(e.target.value)}
-              className="rounded-full border border-linea bg-papel px-3 py-1 text-[0.82rem] outline-none focus:border-tinta/40" />
-            <label className="text-[0.78rem] font-semibold text-tinta-suave">{t("crud.hasta")}</label>
-            <input type="date" value={page.dateTo} onChange={(e) => page.setDateTo(e.target.value)}
-              className="rounded-full border border-linea bg-papel px-3 py-1 text-[0.82rem] outline-none focus:border-tinta/40" />
-          </>
+            <FilterDivider />
+            <DateRangePicker from={page.dateFrom} to={page.dateTo} onChange={page.setDateRange} />
+            <FacetSelect icon={Truck} label={t("recepciones.facet_proveedor")}
+              value={page.filters.proveedor || ""}
+              options={page.facets.proveedor}
+              onChange={(v) => page.setFilter("proveedor", v)} />
+            <FacetSelect icon={Warehouse} label={t("recepciones.facet_deposito")}
+              value={page.filters.deposito || ""}
+              options={page.facets.deposito}
+              onChange={(v) => page.setFilter("deposito", v)} />
+            <FilterChip icon={ShoppingCart} active={!!page.filters.sin_po} onClick={() => page.setFilter("sin_po", page.filters.sin_po ? "" : "1")}>
+              {t("recepciones.filtro_sin_oc")}
+            </FilterChip>
+          </FilterRail>
         )}
         acciones={(r) => (
           <div className="flex items-center justify-end gap-2">
