@@ -59,6 +59,14 @@ def limpiar() -> None:
     datos_cambiaron()
 
 
+def _idiomas() -> tuple[str, ...]:
+    """El idioma del tenant primero; el otro despues."""
+    from . import paths
+    principal = getattr(paths, "DEFAULT_LANG", "es")
+    resto = tuple(l for l in getattr(paths, "IDIOMAS", ("es", "en")) if l != principal)
+    return (principal, *resto)
+
+
 def precalentar() -> None:
     """Precálculo al arrancar (lifespan): ambos análisis, ambos idiomas.
     Un tenant sin ventas validadas devuelve el guard barato al instante,
@@ -66,7 +74,13 @@ def precalentar() -> None:
     from . import evolucion as _evolucion
     from . import analisis as _analisis
     from . import grafo as _grafo
-    for lang in ("es", "en"):
+    # EL IDIOMA DEL DEMO PRIMERO, Y NO ES UN DETALLE. Medido: precalentar los
+    # dos idiomas tarda ~84 s y la MITAD se va en el que nadie va a abrir. Con
+    # el default adelante, la pantalla que se va a mostrar esta caliente a los
+    # ~45 s y el otro idioma sigue llenandose atras sin que a nadie le importe.
+    import time as _t
+    for lang in _idiomas():
+        _ini = _t.monotonic()
         get_o_computar("analisis", lang, lambda l=lang: _analisis.completo(l))
         get_o_computar("evolucion", lang, lambda l=lang: _evolucion.panorama(l))
         # el Cerebro cruza 10 años de canastas para la co-venta: ~5s la primera
@@ -112,11 +126,24 @@ def precalentar() -> None:
                 "core.oportunidades_neg", fromlist=["cards"]).cards(l)),
             ("cuentas_panorama", lambda: _panorama_cuentas()),
             ("deposito_resumen", lambda: _resumen_deposito()),
+            # el proveedor del caso del demo: las cuatro herramientas del
+            # guion tienen que sumar milisegundos (ver core/guion.py)
+            (f"compras_prov:{_PROVEEDOR_DEMO}", lambda: _compras_de(_PROVEEDOR_DEMO)),
         ):
             try:
                 get_o_computar(llave, lang, hacer)
             except Exception:  # noqa: BLE001 — el precalc nunca rompe el arranque
                 pass
+        print(f"[polpilot] precalentado '{lang}' en {_t.monotonic() - _ini:.1f}s",
+              flush=True)
+
+
+_PROVEEDOR_DEMO = "Lácteos Campo Alegre"
+
+
+def _compras_de(proveedor: str) -> dict:
+    from . import comprobantes
+    return comprobantes.resumen_proveedor(proveedor)
 
 
 def _panorama_cuentas() -> dict:

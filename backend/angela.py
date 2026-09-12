@@ -2337,9 +2337,15 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
 
     # Compras y comprobantes cargados por foto (P10).
     if name == "consultar_compras":
-        from core import comprobantes
+        from core import analisis_cache as _ac, comprobantes
         if args.get("proveedor"):
-            return comprobantes.resumen_proveedor(args["proveedor"]), None
+            # Por el cache, con el proveedor en la llave: medido en 480 ms y
+            # está en el camino del demo, donde cuatro herramientas seguidas
+            # tienen que sumar milisegundos y no medio segundo.
+            _prov = args["proveedor"]
+            return _ac.get_o_computar(
+                f"compras_prov:{_prov}", _idioma_actual(),
+                lambda: comprobantes.resumen_proveedor(_prov)), None
         # Los TRES rieles de la carga por foto: facturas (compras), remitos
         # (recepciones al stock) y recibos (cobros) — B1: un remito confirmado
         # no vive en "compras" y aun así es "lo que acabo de cargar".

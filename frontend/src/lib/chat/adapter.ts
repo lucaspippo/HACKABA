@@ -17,6 +17,7 @@ import type {
   ThreadMessage,
 } from "@assistant-ui/react";
 import { api } from "../api";
+import { cerebroBus } from "../cerebroBus";
 import { authStore } from "../auth";
 import { ChatStreamError, type ChatErrorCode } from "./errors";
 import { parseStreamLine, type DoneResult, type Notice } from "./protocol";
@@ -77,6 +78,10 @@ export function createChatModelAdapter(
       const { message, history } = splitMessages(messages);
       if (!message) return;
 
+      // La pantalla del cerebro arranca el viaje de cámara con esto, apenas
+      // se manda la pregunta y antes de que vuelva nada.
+      cerebroBus.empieza(message);
+
       const token = authStore.getSnapshot()?.token;
 
       let res: Response;
@@ -125,6 +130,9 @@ export function createChatModelAdapter(
         } else if (ev.type === "tool_call") {
           textIndex = null; // later text belongs to a new turn
           if (ev.label) toolLabels[ev.id] = ev.label;
+          // La pantalla del cerebro enciende el camino con esto. Fuera de esa
+          // pantalla no hay listeners y no cuesta nada.
+          cerebroBus.herramienta(ev.name, ev.label);
           parts.push({
             type: "tool-call",
             toolCallId: ev.id,
@@ -143,6 +151,7 @@ export function createChatModelAdapter(
           return new ChatStreamError(toClientCode(ev.code));
         } else if (ev.type === "done") {
           done = ev.result ?? {};
+          cerebroBus.termina((done as DoneResult)?.tools_used as string[] | undefined);
         }
         return null;
       };

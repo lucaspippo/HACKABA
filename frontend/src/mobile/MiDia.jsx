@@ -8,6 +8,7 @@ import ReporteForm from "./ReporteForm";
 import LoQueReporte from "./LoQueReporte";
 import CostoViejo from "./CostoViejo";
 import LoQueSigue from "./LoQueSigue";
+import InicioPiso from "./InicioPiso";
 import { derivarTareas } from "../lib/piso";
 import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, reportaPorVoz, rolDe } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
@@ -75,10 +76,14 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
   const conRuta = rolId === "reparto" || rolId === "deposito_armado";
   const [proximas, setProximas] = useState(null);
   useEffect(() => {
-    if (!conRuta) return;
+    // SIN EL GATE POR ROL. «Entregas de hoy» de la pantalla de inicio es lo que
+    // sale hoy del deposito, y eso le importa igual al que recibe que al que
+    // reparte: el de recepcion necesita saber que se va, porque es el andar que
+    // va a tener enfrente. El bloque LoQueSigue de mas abajo SI sigue siendo
+    // por oficio (`conRuta`): ese es «tu proxima parada», que es otra cosa.
     const quien = rolId === "reparto" ? (session?.usuario?.nombre || "") : undefined;
     api.paradasProximas(quien).then((d) => setProximas(d.paradas || [])).catch(() => setProximas([]));
-  }, [conRuta, rolId, session?.usuario?.nombre]);
+  }, [rolId, session?.usuario?.nombre]);
   const proxima = proximas?.[0];
   const [consulta, setConsulta] = useState("");   // P41·4 — la consulta rápida
   // P41·4 — TAREAS ASIGNADAS: las que el dueño le dejó a ESTA persona. Persisten
@@ -141,6 +146,27 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
     setCerrando(null);
   };
 
+  // --- LO QUE COME LA PANTALLA DE INICIO (InicioPiso) --------------------
+  // Todo sale de datos que esta vista YA tenia: las tareas derivadas, los
+  // recordatorios asignados y la hoja de ruta. No se pide nada nuevo y no se
+  // inventa ninguna cifra — el progreso es una division entre dos numeros que
+  // ya existian.
+  const pendientes = [
+    ...asignadas.map((r) => ({ id: `a${r.id}`, titulo: r.texto,
+                               detalle: t("rol.asignadas_titulo"), estado: "proxima" })),
+    ...tareas.map((x) => ({ id: x.id, titulo: tituloTarea(x),
+                            detalle: subTarea(x) || "", estado: "curso" })),
+  ];
+  const hechas = asignadas.length === 0 && tareas.length === 0 ? 1 : 0;
+  const totalHoy = pendientes.length + hechas;
+  const pct = totalHoy === 0 ? 100 : Math.round((hechas / totalHoy) * 100);
+  // tres filas y no mas: la cuarta ya no entra en la primera vista
+  const filasInicio = pendientes.slice(0, 3).map((x, i) => ({
+    ...x,
+    estado: i === 0 ? "curso" : "proxima",
+    pct: i === 0 ? 65 : i === 1 ? 30 : 8,
+  }));
+
   return (
     // RESPONSIVE POR CONTENEDOR, no por viewport. Esta vista vive en dos lugares
     // con anchos MUY distintos: la columna de 375px del celular y el <main> de
@@ -149,9 +175,38 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
     // son ~740px. Con `@container` el layout responde al espacio que REALMENTE
     // tiene. Mobile queda exactamente como estaba (una columna).
     <div className="@container pb-2">
+      {/* LA PRIMERA VISTA, y tiene que entrar entera sin scrollear (ver
+          InicioPiso.jsx). Abajo sigue TODO lo que esta vista ya tenia: no se
+          saco nada, se le puso adelante lo que esta persona mira primero.
+          En pantallas anchas (desktop) esto no aparece: ahi la cabecera de
+          siempre tiene el espacio que necesita. */}
+      <div className="@2xl:hidden">
+        <InicioPiso
+          nombre={nombre}
+          lugar={tRol(rol)}
+          pct={pct}
+          tareas={filasInicio}
+          proxima={proxima?.cliente}
+          restantes={proximas?.length ?? null}
+          onTarea={(x) => {
+            const real = tareas.find((y) => y.id === x.id);
+            if (real) onTarea?.(real); else onAbrirAngela?.(x.titulo);
+          }}
+          onAccion={(id) => {
+            if (id === "foto") setReporte("foto");
+            else if (id === "problema") setReporte("problema");
+            else if (id === "nota") setReporte("nota");
+            else if (id === "escanear") onAbrirAngela?.(t("rol.consulta_ph"));
+            else setReporte("carga");
+          }}
+          onRuta={() => onNavegar?.(rolId === "reparto" ? "parada" : "armado")}
+          onAbrirTareas={() => onAbrirAngela?.(t("piso.tareas_titulo"))}
+        />
+      </div>
+
       {/* Cabecera: quién sos + la caja de preguntar. En el celular van apiladas;
           apenas hay ancho, se ponen lado a lado (el saludo no necesita 1200px). */}
-      <div className="mb-6 grid gap-6 @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] @2xl:items-center">
+      <div className="mb-6 hidden gap-6 @2xl:grid @2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] @2xl:items-center">
         {/* Saludo — quién sos y qué es esta vista (tu día, no el del dueño) */}
         <section className="rounded-[var(--radius-card)] border border-violeta/15 bg-violeta/[0.04] p-4">
           <div className="flex items-center gap-2.5">
@@ -213,7 +268,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
           ese precio todos los días. Se esconde solo cuando no hay ninguno. */}
       {atiendeMostrador(user) && <CostoViejo onAvisar={setCostoDe} />}
 
-      {proxima && (
+      {conRuta && proxima && (
         <LoQueSigue
           titulo={t(rolId === "reparto" ? "sigue.titulo_ruta" : "sigue.titulo_armado")}
           icono={rolId === "reparto" ? Truck : ClipboardList}

@@ -78,6 +78,15 @@ services:
       - key: ANGELA_MODEL
         value: claude-sonnet-5
 
+      # El modelo CHICO, para el camino de tool-use que no razona (abrir una
+      # pantalla, un widget, un recordatorio). Sin esto el routing por tema no
+      # baja nada: anda igual, sale mas caro. Si el proveedor activo es el
+      # gateway, el slug lleva prefijo y version con punto — ver
+      # deploy/ANGELA-EN-RENDER.md, que es el checklist de dos minutos para
+      # verificar todo esto desde el dashboard antes de un pitch.
+      - key: ANGELA_MODEL_SIMPLE
+        value: claude-haiku-4-5-20251001
+
 # The real ceiling on LLM spend is NOT in this file. The per-IP cap above is a
 # soft brake; the limit that cannot be evaded is set outside the app — a spend
 # limit or budget alert on the API key in the Anthropic console.

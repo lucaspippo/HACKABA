@@ -194,22 +194,28 @@ def reclamo(lang: str = "es") -> dict:
         {"de": "nota", "a": "producto", "rel": "menciona",
          "etiqueta": _t("escena.rel_que_llego", lang), "curva": -0.26},
         {"de": "nota", "a": "proveedor", "rel": "menciona",
-         "etiqueta": _t("escena.rel_de_quien", lang), "curva": 0.24},
+         "etiqueta": _t("escena.rel_de_quien", lang), "curva": 0.24,
+         "dx": -34},
         {"de": "proveedor", "a": "producto", "rel": "provee",
          "etiqueta": _t("escena.rel_provee", lang), "curva": 0.3},
         {"de": "proveedor", "a": "orden", "rel": "ordena",
          "etiqueta": _t("escena.rel_ordena", lang), "curva": 0.18},
+        # LOS DESPLAZAMIENTOS DE ETIQUETA (dx/dy) no son decoracion: tres
+        # aristas llegan al proveedor desde abajo y sus puntos medios caen casi
+        # encima. Sin correrlas, «exige» se lee pisada con «se envia por mail»
+        # y con la tarjeta verde. Se corrigen aca, junto a las posiciones, que
+        # es donde vive el resto de lo decidido a mano.
         {"de": "regla", "a": "proveedor", "rel": "exige",
          "etiqueta": _t("escena.rel_exige", lang),
-         "curva": -0.2, "fuerte": True},
+         "curva": -0.2, "fuerte": True, "dy": -30},
         # y el cierre: el reclamo armado sale al proveedor, por donde ese
         # proveedor pide y con lo que ese proveedor pide
         {"de": "regla", "a": "envio", "rel": "arma",
-         "etiqueta": _t("escena.rel_arma", lang), "curva": 0.2},
+         "etiqueta": _t("escena.rel_arma", lang), "curva": 0.2, "dx": 46},
         {"de": "envio", "a": "proveedor", "rel": "envia",
          "etiqueta": _t("escena.rel_envia", lang,
                         canal=_canal_leible(r_caso.get("canal"), lang)),
-         "curva": 0.26, "fuerte": True},
+         "curva": 0.26, "fuerte": True, "dy": 34},
     ]
 
     # qué tiene y qué falta, para el encabezado

@@ -44,7 +44,7 @@ from core import (store, saneamiento, fase, memoria, importer, staging, anomalia
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
                   evolucion, ventas, pagos, paths, conocimiento, piso, onboarding,
-                  whatsapp_channel, patrones, app_events)
+                  whatsapp_channel, patrones, app_events, guion)
 import whatsapp_bot
 
 
@@ -2411,6 +2411,24 @@ def chat_stream(req: ChatRequest, request: Request):
     if _ip_excedido(_client_ip(request), _cap_ip()):
         u = auth.usuario_por_token(req.token) if req.token else None
         return StreamingResponse(iter([cap_events(u)]), media_type="application/x-ndjson")
+
+    # EL GUION DEL DEMO. Coincidencia EXACTA con una sola pregunta; cualquier
+    # otra cosa sigue de largo al modelo. Sale por este mismo endpoint y con
+    # los mismos eventos a propósito: así el chat lo pinta con el mismo
+    # componente y las mismas tarjetas de herramienta que una respuesta real.
+    # Las tools se corren de verdad; lo escrito es cuáles y el texto final.
+    # Ver core/guion.py.
+    if req.token and guion.es_la_del_demo(req.message):
+        u = auth.usuario_por_token(req.token)
+        if not u:
+            raise HTTPException(status_code=401, detail=i18n.t("api.sesion_invalida"))
+        lang = _lang(u)
+
+        def guionado():
+            for ev in guion.eventos(lang):
+                yield line(ev)
+
+        return StreamingResponse(guionado(), media_type="application/x-ndjson")
 
     if req.token:
         u = auth.usuario_por_token(req.token)

@@ -19,7 +19,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 // --- el lenguaje visual, el mismo del cerebro -------------------------------
-const TINTA = "#0f1113";          // el fondo
+// EL FONDO ES PAPEL, NO NEGRO. La escena vive adentro del producto y tiene
+// que hablar su mismo idioma: un lienzo oscuro acá se lee como otra
+// aplicacion. `TINTA` dejo de ser el fondo y volvio a ser lo que es en el
+// resto del sistema — el color del texto.
+const FONDO = "#fbfbfa";          // --color-papel
+const TINTA = "#21201d";          // --color-tinta, el texto
+const LINEA = "#e9e7e2";          // --color-linea, las hairlines
 const AZUL_IA = "#4d7bf0";        // Ángela, y sólo Ángela
 const AMARILLO = "#e8c86a";       // lo que dijo una persona
 const AMARILLO_CLARO = "#f2d98c"; // la persona
@@ -40,16 +46,16 @@ function Persona({ n, encendido }) {
   return (
     <g opacity={encendido ? 1 : 0.22}>
       <circle cx={n.x} cy={n.y} r={r} fill={AMARILLO_CLARO} />
-      <circle cx={n.x} cy={n.y} r={r} fill="none" stroke="rgba(15,17,19,.35)" strokeWidth="1.5" />
+      <circle cx={n.x} cy={n.y} r={r} fill="none" stroke="rgba(33,32,29,.28)" strokeWidth="1.5" />
       {/* cabeza y hombros: la silueta que se lee a cualquier tamaño */}
       <circle cx={n.x} cy={n.y - 8} r={11} fill={TINTA} opacity=".78" />
       <path d={`M ${n.x - 19} ${n.y + 22} Q ${n.x} ${n.y + 1} ${n.x + 19} ${n.y + 22} Z`}
             fill={TINTA} opacity=".78" />
       <text x={n.x} y={n.y + r + 22} textAnchor="middle"
-            fill="#f5f5f4" fontSize="17" fontWeight="600">{n.nombre}</text>
+            fill={TINTA} fontSize="17" fontWeight="600">{n.nombre}</text>
       {n.rol && (
         <text x={n.x} y={n.y + r + 39} textAnchor="middle"
-              fill="rgba(245,245,244,.55)" fontSize="12">{n.rol}</text>
+              fill="rgba(33,32,29,.55)" fontSize="12">{n.rol}</text>
       )}
     </g>
   );
@@ -104,7 +110,7 @@ function Nota({ n, encendido }) {
       <path d={`M ${x} ${y} H ${x + w} V ${y + h - dobl} L ${x + w - dobl} ${y + h} H ${x} Z`}
             fill="none" stroke={TINTA} strokeWidth="2.4" strokeDasharray="7 5" />
       <path d={`M ${x + w} ${y + h - dobl} L ${x + w - dobl} ${y + h - dobl} L ${x + w - dobl} ${y + h}`}
-            fill="none" stroke="rgba(15,17,19,.35)" strokeWidth="1.6" />
+            fill="none" stroke="rgba(33,32,29,.28)" strokeWidth="1.6" />
       {/* el texto ADENTRO: con ocho nodos hay lugar, y leerlo en el nodo es
           mucho mejor que una etiqueta flotando al lado */}
       <foreignObject x={x + 11} y={y + 13} width={w - 36} height={h - 26}>
@@ -116,7 +122,7 @@ function Nota({ n, encendido }) {
       </foreignObject>
       <InsigniaCanal x={x + w - 6} y={y + 6} canal={n.canal} />
       <text x={n.x} y={y + h + 19} textAnchor="middle"
-            fill="rgba(245,245,244,.6)" fontSize="12">
+            fill="rgba(33,32,29,.6)" fontSize="12">
         {n.autor} · {(n.fecha || "").slice(5)}
       </text>
     </g>
@@ -132,7 +138,7 @@ function Producto({ n, encendido }) {
   return (
     <g opacity={encendido ? 1 : 0.22}>
       <circle cx={n.x} cy={n.y} r={r} fill={HIELO} />
-      <circle cx={n.x} cy={n.y} r={r} fill="none" stroke="rgba(15,17,19,.4)" strokeWidth="1.5" />
+      <circle cx={n.x} cy={n.y} r={r} fill="none" stroke="rgba(33,32,29,.32)" strokeWidth="1.5" />
       {lineas.map((l, i) => (
         <text key={i} x={n.x} y={y0 + i * 14} textAnchor="middle" fill="#07242a"
               fontSize="12" fontWeight="700">{l}</text>
@@ -153,17 +159,17 @@ function Envio({ n, encendido }) {
   const x = n.x - w / 2, y = n.y - h / 2;
   return (
     <g opacity={encendido ? 1 : 0.22}>
-      <rect x={x} y={y} width={w} height={h} rx="14" fill="#1f3d2c" />
+      <rect x={x} y={y} width={w} height={h} rx="14" fill="#eaf6ef" />
       <rect x={x} y={y} width={w} height={h} rx="14" fill="none"
-            stroke="#4ea87b" strokeWidth="2" />
+            stroke="#2e9c6a" strokeWidth="2" />
       <InsigniaCanal x={x + 34} y={n.y} canal={n.canal} r={19} />
-      <text x={x + 62} y={n.y - 8} fill="#9fe3bd" fontSize="14" fontWeight="700">
+      <text x={x + 62} y={n.y - 8} fill="#1d6b47" fontSize="14" fontWeight="700">
         Reclamo enviado
       </text>
-      <text x={x + 62} y={n.y + 10} fill="rgba(255,255,255,.72)" fontSize="11.5">
+      <text x={x + 62} y={n.y + 10} fill="rgba(33,32,29,.72)" fontSize="11.5">
         con {n.adjuntos}
       </text>
-      <text x={x + 62} y={n.y + 26} fill="rgba(255,255,255,.5)" fontSize="11">
+      <text x={x + 62} y={n.y + 26} fill="rgba(33,32,29,.5)" fontSize="11">
         a {n.destinatario}
       </text>
     </g>
@@ -178,9 +184,9 @@ function Proveedor({ n, encendido }) {
       <path d={`M ${n.x} ${n.y - r} L ${n.x + r} ${n.y} L ${n.x} ${n.y + r} L ${n.x - r} ${n.y} Z`}
             fill={apag ? "#8a7a63" : OCRE} />
       <path d={`M ${n.x} ${n.y - r} L ${n.x + r} ${n.y} L ${n.x} ${n.y + r} L ${n.x - r} ${n.y} Z`}
-            fill="none" stroke="rgba(15,17,19,.4)" strokeWidth="1.5" />
+            fill="none" stroke="rgba(33,32,29,.32)" strokeWidth="1.5" />
       <text x={n.x} y={n.y + r + 21} textAnchor="middle"
-            fill={apag ? "rgba(245,245,244,.6)" : "#f5f5f4"}
+            fill={apag ? "rgba(33,32,29,.5)" : TINTA}
             fontSize="15" fontWeight="600">{n.nombre}</text>
     </g>
   );
@@ -199,7 +205,7 @@ function Regla({ n, encendido }) {
       <path d={`M ${x + pl} ${y} L ${x} ${y + pl} L ${x + pl} ${y + pl} Z`}
             fill="rgba(15,17,19,.3)" />
       <path d={`M ${x + pl} ${y} H ${x + w} V ${y + h} H ${x} V ${y + pl} Z`}
-            fill="none" stroke="rgba(15,17,19,.4)" strokeWidth="1.6" />
+            fill="none" stroke="rgba(33,32,29,.32)" strokeWidth="1.6" />
       <foreignObject x={x + 11} y={y + 10} width={w - 22} height={h - 30}>
         <div xmlns="http://www.w3.org/1999/xhtml"
              style={{ font: "600 12px/1.24 'Hanken Grotesk',system-ui,sans-serif",
@@ -224,13 +230,13 @@ function Orden({ n, encendido }) {
       <path d={`M ${x} ${y + 8} q 7.5 -8 15 0 t 15 0 t 15 0 t 15 0 V ${y + h} H ${x} Z`}
             fill={PAPEL} />
       <path d={`M ${x} ${y + 8} q 7.5 -8 15 0 t 15 0 t 15 0 t 15 0 V ${y + h} H ${x} Z`}
-            fill="none" stroke="rgba(15,17,19,.4)" strokeWidth="1.5" />
+            fill="none" stroke="rgba(33,32,29,.32)" strokeWidth="1.5" />
       {[0, 1, 2].map((i) => (
         <line key={i} x1={x + 11} y1={y + 34 + i * 11} x2={x + w - 11} y2={y + 34 + i * 11}
               stroke="rgba(15,17,19,.28)" strokeWidth="2" strokeLinecap="round" />
       ))}
       <text x={n.x} y={y + h + 19} textAnchor="middle"
-            fill="#f5f5f4" fontSize="13" fontWeight="600">{n.numero}</text>
+            fill={TINTA} fontSize="13" fontWeight="600">{n.numero}</text>
     </g>
   );
 }
@@ -284,7 +290,7 @@ function Arista({ a, nodos, trazada, activa, idx }) {
   const de = nodos[a.de], hacia = nodos[a.a];
   if (!de || !hacia) return null;
   const { d, cx, cy } = curva(de, hacia, a.curva || 0);
-  const color = a.apagado ? "rgba(245,245,244,.28)" : (activa ? AZUL_IA : "rgba(245,245,244,.45)");
+  const color = a.apagado ? "rgba(33,32,29,.20)" : (activa ? AZUL_IA : "rgba(33,32,29,.38)");
   const ancho = a.fuerte ? 3.4 : 2.6;
   return (
     <g opacity={trazada ? 1 : 0}>
@@ -306,7 +312,11 @@ function Arista({ a, nodos, trazada, activa, idx }) {
         <g opacity={trazada ? 1 : 0} style={{ transition: "opacity 320ms ease-out 260ms" }}>
           {/* la etiqueta en píldora con el fondo del lienzo: así nunca se lee
               encima de una línea ni de un nodo */}
-          <EtiquetaPildora x={cx} y={cy} texto={a.etiqueta} apagada={a.apagado} />
+          {/* dx/dy vienen del backend (core/escena.py): tres aristas llegan
+              al proveedor desde abajo y sus puntos medios caen casi encima.
+              El corrimiento se decide alla, con el resto de las posiciones. */}
+          <EtiquetaPildora x={cx + (a.dx || 0)} y={cy + (a.dy || 0)}
+                           texto={a.etiqueta} apagada={a.apagado} />
         </g>
       )}
     </g>
@@ -318,10 +328,10 @@ function EtiquetaPildora({ x, y, texto, apagada }) {
   return (
     <>
       <rect x={x - ancho / 2} y={y - 11} width={ancho} height="22" rx="11"
-            fill={TINTA} stroke={apagada ? "rgba(245,245,244,.18)" : "rgba(245,245,244,.3)"}
+            fill={FONDO} stroke={apagada ? LINEA : "rgba(33,32,29,.22)"}
             strokeWidth="1" />
       <text x={x} y={y + 4.5} textAnchor="middle"
-            fill={apagada ? "rgba(245,245,244,.55)" : "rgba(245,245,244,.9)"}
+            fill={apagada ? "rgba(33,32,29,.45)" : TINTA}
             fontSize="12">{texto}</text>
     </>
   );
@@ -364,10 +374,10 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
 
   return (
     <svg viewBox={`0 0 ${ancho} ${alto}`} className="h-full w-full"
-         style={{ background: TINTA }}>
+         style={{ background: FONDO }}>
       <defs>
-        {[["normal", "rgba(245,245,244,.45)"], ["viva", AZUL_IA],
-          ["apagada", "rgba(245,245,244,.28)"]].map(([id, c]) => (
+        {[["normal", "rgba(33,32,29,.45)"], ["viva", AZUL_IA],
+          ["apagada", "rgba(33,32,29,.22)"]].map(([id, c]) => (
           <marker key={id} id={`punta-${id}`} viewBox="0 0 10 10" refX="9" refY="5"
                   markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill={c} />

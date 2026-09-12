@@ -4,6 +4,13 @@ Revision ID: 0049
 Revises: 0048
 Create Date: 2026-09-12
 
+OJO CON EL NUMERO: esto nacio como 0045 y choco de frente con
+`0045_angela_conversations.py`, que llego con el trabajo de Agustin y ya tiene
+tres migraciones encadenadas encima (0046, 0047, 0048). Dos archivos con el
+mismo `revision` dejan a Alembic con dos cabezas y `upgrade head` falla: la
+base no migra y el server arranca contra un esquema viejo. Cede esta, que es
+la que no tiene nada colgando, y se encadena al final.
+
 Los cinco efectos que había describen qué le hace una regla a un ANÁLISIS:
 mueve un umbral, silencia una alerta, genera otra, da contexto, pide una
 aprobación. Ninguno describe lo que hace falta para una devolución, que es
