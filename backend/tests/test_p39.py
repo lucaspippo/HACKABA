@@ -288,8 +288,8 @@ def test_un_faltante_se_vuelve_propuesta_de_reclamo_valorizada():
     assert p["tipo"] == "reclamar" and p["origen"] == "piso"
     assert a["proveedor"] in p["titulo"]
     # declara de dónde salió y que no se ejecutó nada
-    assert p["fuentes"] and p["drill"]["supuestos"]
-    assert any("No toqué" in x for x in p["drill"]["porque"])
+    assert p["fuentes"] and p["insight"]["assumptions"]
+    assert "No toqué" in p["insight"]["recommendation"]["detail"]
 
 
 def test_sin_reportes_no_hay_propuesta_inventada():

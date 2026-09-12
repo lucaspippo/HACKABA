@@ -506,6 +506,20 @@ def _resolver(nombre: str, indice: dict, tipos: tuple) -> str | None:
                  if x["tipo"] in tipos and (n in _norm(x["nombre"]) or _norm(x["nombre"]) in n)), None)
 
 
+def _record_names(card: dict) -> list[str]:
+    """Names of the entities a card's evidence points at, seeding this
+    finding's graph nodes.
+
+    `card` may come from `oportunidades_neg.cards()` (carries `insight`) or
+    from `cruces.cards()` (still carries its own local `drill` shape, out of
+    this cutover's scope — see cruces.py's docstring). Handle both."""
+    ins = card.get("insight")
+    if ins:
+        return [r.get("name") for e in (ins.get("evidence") or [])
+                for r in (e.get("records") or [])]
+    return [iv.get("nombre") for iv in (card.get("drill") or {}).get("involucrados", []) or []]
+
+
 def caminos(g: dict, cards: list[dict]) -> list[dict]:
     """Para cada hallazgo real de Oportunidades: los nodos y aristas que lo
     produjeron. Determinista — sale de resolver las entidades que la card ya
@@ -535,8 +549,8 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
                     nid = _resolver(v, indice, ("producto", "cliente", "proveedor"))
                     if nid:
                         semillas.append(nid)
-        for inv in (card.get("drill") or {}).get("involucrados", []) or []:
-            nid = _resolver(inv.get("nombre"), indice, ("producto", "cliente", "proveedor"))
+        for nombre in _record_names(card):
+            nid = _resolver(nombre, indice, ("producto", "cliente", "proveedor"))
             if nid:
                 semillas.append(nid)
         # Las notas del equipo que dispararon el hallazgo son SEMILLA, no vecinas:
@@ -580,6 +594,24 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
             "aristas": ids_aristas,
         })
     return salida
+
+
+def _porque(origen: dict) -> list[str]:
+    """Same projection the old `drill.porque` shim used to compute: the
+    pattern's label, then the hypothesis's if there is one, then the label
+    of each primary-weight evidence item.
+
+    `origen` is a card from `hallazgos` (cruces.cards() + oportunidades_neg
+    cards that cross): cruces.py cards still carry their own local `drill`
+    shape (out of this cutover's scope, see cruces.py's docstring), while
+    oportunidades_neg cards carry `insight`. Handle both."""
+    ins = origen.get("insight")
+    if ins:
+        porque = [p["label"] for p in (ins.get("pattern"), ins.get("hypothesis")) if p]
+        porque += [e["label"] for e in (ins.get("evidence") or [])
+                   if e.get("weight") == "primary"]
+        return porque
+    return (origen.get("drill") or {}).get("porque") or []
 
 
 # =============================================================================
@@ -626,7 +658,7 @@ def completo(lang: str | None = None) -> dict:
         c["cruce"] = bool(origen.get("cruce"))
         c["no_estructurado"] = bool(origen.get("no_estructurado"))
         c["resumen"] = origen.get("resumen")
-        c["porque"] = (origen.get("drill") or {}).get("porque") or []
+        c["porque"] = _porque(origen)
         c["accion_chat"] = origen.get("accion_chat")
         # los TIPOS de entidad que toca el camino: la prueba visual de que el
         # hallazgo salió de cruzar cosas que no se hablan entre sí

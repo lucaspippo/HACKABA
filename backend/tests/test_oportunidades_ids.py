@@ -1,7 +1,11 @@
-"""Every involucrado backed by a real article record must carry a real
+"""Every evidence record backed by a real article record must carry a real
 `id` (product code) and `kind` so the frontend can deep-link to it —
 see design spec 2026-09-01."""
 from core import oportunidades_neg as opn
+
+
+def _records(card: dict) -> list[dict]:
+    return [r for e in card["insight"]["evidence"] for r in e.get("records") or []]
 
 
 def _ctx_with_arts(monkeypatch, arts, clientes=None):
@@ -27,7 +31,7 @@ def test_dormido_involucrados_carry_product_id(monkeypatch):
     ctx = _ctx_with_arts(monkeypatch, [])
     card = opn._card_dormido("es", ctx)
     assert card is not None
-    iv = card["drill"]["involucrados"][0]
+    iv = _records(card)[0]
     assert iv["id"] == "P1" and iv["kind"] == "product"
 
 
@@ -42,7 +46,7 @@ def test_margen_bajo_involucrados_carry_product_id(monkeypatch):
     ctx = _ctx_with_arts(monkeypatch, arts)
     card = opn._card_margen_bajo("es", ctx)
     assert card is not None
-    for iv in card["drill"]["involucrados"]:
+    for iv in _records(card):
         assert iv.get("kind") == "product"
         assert iv.get("id")
 
@@ -59,7 +63,7 @@ def test_cliente_frio_involucrados_carry_client_id(monkeypatch):
     ctx = _ctx_with_arts(monkeypatch, [], clientes)
     card = opn._card_cliente_frio("es", ctx)
     if card:  # the synthetic fixture may or may not clear the drop threshold
-        iv = card["drill"]["involucrados"][0]
+        iv = _records(card)[0]
         assert iv["id"] == 7 and iv["kind"] == "client"
 
 
@@ -79,7 +83,7 @@ def test_concentracion_involucrados_carry_client_id(monkeypatch):
     ctx = _ctx_with_arts(monkeypatch, [], clientes)
     card = opn._card_concentracion("es", ctx)
     assert card is not None
-    for iv in card["drill"]["involucrados"]:
+    for iv in _records(card):
         assert iv["kind"] == "client" and iv["id"] is not None
 
 
@@ -94,6 +98,6 @@ def test_morosos_involucrados_carry_client_id_and_kind(monkeypatch):
     ctx = _ctx_with_arts(monkeypatch, [], clientes)
     card = opn._card_morosos("es", ctx)
     assert card is not None
-    for iv in card["drill"]["involucrados"]:
+    for iv in _records(card):
         assert iv.get("kind") == "client"
         assert iv.get("id") is not None

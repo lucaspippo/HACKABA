@@ -26,6 +26,25 @@ from __future__ import annotations
 
 from core import paths
 
+# TODO(i18n direction) — UI-facing copy should move to the frontend.
+#
+# The mainstream shape for a web app is: the server ships keys + params, the
+# client renders with Intl (plurals, dates, currency are locale rules the
+# browser already implements, and this module hand-rolls them in Python).
+#
+# What blocks a straight migration: Ángela and external MCP clients consume
+# FINISHED sentences and will never run frontend/src/lib/locales/. The
+# narrative templates here are also coupled to the calculations they explain
+# (see core.opn.qi_q1b), so they are authored next to the code that computes
+# their numbers, not as UI chrome.
+#
+# The agreed split (docs/superpowers/specs/2026-09-01-structured-insight-
+# contract-design.md, §"i18n direction"):
+#   - narrative sentences (pattern, hypothesis, method labels) stay here;
+#   - raw numbers ship as typed data and are formatted client-side;
+#   - section headings, badge labels and button copy belong in the frontend
+#     locales — move them as they are touched.
+
 CATALOGO: dict[str, dict[str, str]] = {
     # --- authz / errores transversales -----------------------------------------
     "authz.sin_token": {

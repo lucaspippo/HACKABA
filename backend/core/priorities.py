@@ -120,62 +120,6 @@ def _blank_insight():
     return insight.blank()
 
 
-def _legacy_drill(ins: dict) -> dict:
-    """TEMPORARY one-way projection of an insight back into the old `drill`
-    shape, so the untouched frontend keeps rendering while the builders
-    migrate. Nothing is dual-authored: builders only ever write insights and
-    this derives from them. DELETE once CardNegocio.jsx reads `insight`
-    (see docs/superpowers/plans/2026-09-01-structured-insight-contract.md,
-    Task 13)."""
-    ev = ins.get("evidence") or []
-    porque = [p["label"] for p in (ins.get("pattern"), ins.get("hypothesis")) if p]
-    porque += [e["label"] for e in ev if e["weight"] == "primary"]
-    chart = next((e["chart"] for e in ev if e.get("chart")), None)
-    involucrados = [
-        {"id": r["id"], "kind": r["kind"], "nombre": r["name"],
-         "monto": r["amount"], "detalle": r["detail"]}
-        for e in ev for r in (e.get("records") or [])
-    ]
-    conf = ins.get("confidence") or {}
-    return {
-        "porque": porque,
-        "grafico": chart,
-        "involucrados": involucrados,
-        "supuestos": [a["label"] for a in (ins.get("assumptions") or [])],
-        "confidence": conf.get("data"),
-    }
-
-
-def _insight_from_legacy_drill(drill: dict) -> dict:
-    """TEMPORARY reverse shim: wrap a not-yet-migrated builder's `drill` into a
-    minimal insight, so builders can migrate one task at a time instead of all
-    ~25 in a single commit. The pattern is the drill's first prose line; the
-    rest become supporting metrics with no value, which is honest — legacy
-    prose has no raw number to recover.
-
-    DELETE with `_legacy_drill` and the `drill=` keyword (Task 13)."""
-    from . import insight as ins
-    porque = list(drill.get("porque") or [])
-    evidence = []
-    if drill.get("grafico"):
-        evidence.append(ins.series("legacy_chart", label=porque[0] if porque else "",
-                                   chart=drill["grafico"],
-                                   method={"key": "core.method.legacy", "label": ""}))
-    if drill.get("involucrados"):
-        evidence.append(ins.records(
-            "legacy_records", label="",
-            rows=[ins.record(kind=iv.get("kind"), id=iv.get("id"),
-                             name=iv.get("nombre") or "", amount=iv.get("monto"),
-                             detail=iv.get("detalle"))
-                  for iv in drill["involucrados"]],
-            method={"key": "core.method.legacy", "label": ""}))
-    return ins.build(
-        pattern=ins.pattern(porque[0]) if porque else None,
-        evidence=evidence,
-        assumptions=[ins.assumption(s) for s in (drill.get("supuestos") or [])],
-    )
-
-
 def _grafico(nombre: str, puntos: list[dict], unidad: str, temporal: bool,
              ventana: str = "") -> dict:
     """Contract P21 (consulta-serie) — same shape as oportunidades_neg._grafico,
@@ -203,13 +147,9 @@ def _deposito_lot_value(rows: list[dict]) -> list[dict]:
 def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
           monto=None, monto_label=None, cifra_texto=None, fuentes=None,
           navegar=None, accion_chat=None, propuesta=None, piso=False,
-          macro=None, naturaleza=None, tipo=None, drill=None, insight=None,
+          macro=None, naturaleza=None, tipo=None, insight=None,
           reportes=None):
-    # `insight=` is the real keyword; `drill=` is transitional and still
-    # used by every not-yet-migrated builder (Tasks 5-9). `_legacy_drill`
-    # keeps the untouched frontend fed until Task 13 removes both shims.
-    resolved_insight = insight or (
-        _insight_from_legacy_drill(drill) if drill else _blank_insight())
+    resolved_insight = insight or _blank_insight()
     return {
         "id": id,
         "tono": tono,
@@ -230,7 +170,6 @@ def _item(*, id, tono, chip, titulo, resumen, origen, modulos, lang=None,
         "tipo": ACTION_BY_ID.get(id) or tipo,
         "modulos": tuple(modulos),
         "insight": resolved_insight,
-        "drill": _legacy_drill(resolved_insight),  # TEMPORARY, Task 13
         "reportes": reportes,
         "band": None,
         "action_taken": None,
@@ -276,7 +215,6 @@ def _combine(keep: dict, extra: dict) -> dict:
     out["tono"] = tono
     out["insight"] = _merge_insights(keep.get("insight") or _blank_insight(),
                                      extra.get("insight") or _blank_insight())
-    out["drill"] = _legacy_drill(out["insight"])  # TEMPORARY, Task 13
     return out
 
 
@@ -414,7 +352,6 @@ def _derive(item: dict, lang) -> None:
         ins["risk"]["level"] = _risk_level(item, ins["risk"].get("exposure"))
     if ins.get("deadline"):
         ins["deadline"]["urgency"] = _urgency(ins["deadline"].get("date"))
-    item["drill"] = _legacy_drill(ins)  # TEMPORARY, Task 13
 
 
 def _risk_level(item: dict, exposure) -> str:
