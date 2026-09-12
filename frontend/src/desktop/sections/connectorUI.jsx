@@ -70,6 +70,71 @@ export function LogoGemini({ size = 18 }) {
   );
 }
 
+// Marcas de otros ERPs/sistemas de gestión, mostradas sólo como "próximamente"
+// (ver TarjetaConectorProximo en Conectores.jsx) — todavía no tienen panel ni
+// integración propia, sólo muestran hacia dónde va la lista. Mismo criterio
+// que las marcas de arriba: badge de color + una forma simple, no el isotipo
+// oficial de cada empresa.
+export function LogoSAP({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#0854A0" />
+      <text x="12" y="15.5" textAnchor="middle" fontFamily="Arial, sans-serif"
+        fontSize="8.5" fontWeight="700" fill="#fff">SAP</text>
+    </svg>
+  );
+}
+
+export function LogoQuickBooks({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <circle cx="12" cy="12" r="10" fill="#2CA01C" />
+      <circle cx="12" cy="12" r="5.6" fill="none" stroke="#fff" strokeWidth="2.2" />
+      <rect x="15.4" y="6.6" width="2.2" height="10.8" rx="1.1" fill="#fff" />
+    </svg>
+  );
+}
+
+export function LogoZohoBooks({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#E42527" />
+      <text x="12" y="16" textAnchor="middle" fontFamily="Arial, sans-serif"
+        fontSize="9" fontWeight="700" fill="#fff">Z</text>
+    </svg>
+  );
+}
+
+export function LogoNetSuite({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#0060A9" />
+      <text x="12" y="15.5" textAnchor="middle" fontFamily="Arial, sans-serif"
+        fontSize="7.5" fontWeight="700" fill="#fff">NS</text>
+    </svg>
+  );
+}
+
+export function LogoXubio({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#00AEEF" />
+      <text x="12" y="16" textAnchor="middle" fontFamily="Arial, sans-serif"
+        fontSize="9.5" fontWeight="700" fill="#fff">X</text>
+    </svg>
+  );
+}
+
+export function LogoColppy({ size = 18 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <rect width="24" height="24" rx="6" fill="#00A99D" />
+      <text x="12" y="16" textAnchor="middle" fontFamily="Arial, sans-serif"
+        fontSize="9.5" fontWeight="700" fill="#fff">C</text>
+    </svg>
+  );
+}
+
 // Shared visual language for every connector panel (Odoo, WhatsApp, and
 // whatever comes next): one card shell, one status-pill vocabulary, one
 // field style, one button hierarchy, one sync/ingest action row. Before this,
