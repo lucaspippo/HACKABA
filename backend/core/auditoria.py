@@ -126,6 +126,9 @@ ACCIONES: dict[str, dict] = {
     # juego la acción, no de qué pantalla salió: un costo viejo es un precio, y
     # una pregunta al referente no pone nada en juego.
     "avisar_costo_viejo": {"clase": "plata", "gate": "propia"},
+    # El aviso del oficio. Clase `stock` como el resto de lo que se reporta del
+    # piso: casi todos son hechos sobre mercadería, un lugar o una entrega.
+    "avisar_desde_el_piso": {"clase": "stock", "gate": "propia"},
     # Mismo sello que `consulta_angela`, y por el mismo motivo: queda
     # registrada pero fuera de la vista por defecto. Noventa preguntas del que
     # recién entró taparían las tres decisiones que importan.

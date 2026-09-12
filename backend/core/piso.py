@@ -29,6 +29,11 @@ Seis cosas que el piso reporta, cada una con su acción en la vista del rol:
   · costo       — el precio de venta salió de un costo viejo. Lo levanta quien
                   está en el mostrador, que es quien mira ese precio todos los
                   días; lo arregla quien carga los costos.
+  · aviso       — el hecho del oficio que no cae en ninguno de los anteriores:
+                  «no entra más en la cámara», «el cliente no estaba», «está en
+                  otra ubicación». Es el objeto que reemplaza a la nota de texto
+                  libre sin destinatario (ver `core/avisos_oficio.py`): mismo
+                  riel, pero nace dirigido y con estado.
 
 Un `pedido` acá NO es una orden de venta: la facturación sigue siendo del ERP.
 Es el registro de que alguien (preventista, o el bot de WhatsApp hablando con
@@ -64,6 +69,7 @@ ACCION = {
     "presupuesto": "registrar_presupuesto",
     "pregunta": "preguntar_referente",
     "costo": "avisar_costo_viejo",
+    "aviso": "avisar_desde_el_piso",
 }
 TIPOS = tuple(ACCION)
 
@@ -97,6 +103,10 @@ DESTINO = {
     # el mismo oficio que ya recibe los faltantes, y por el mismo motivo — la
     # relación con el proveedor es suya.
     "costo": r"compras",
+    # `aviso` tampoco: su destinatario viene del propio aviso
+    # (`avisos_por_oficio.json`, campo `destino_probable`), que es más preciso
+    # que el tipo — «no entra en la cámara» va a Ramón y «el cliente no estaba»
+    # no. Cuando la semilla no lo resuelve, cae en el dueño como todo lo demás.
     # `pregunta` NO tiene patrón a propósito: su destinatario es el referente
     # de ESA persona (`puesto.mentor` de su ficha), que la pantalla manda
     # explícito. Sin referente cargado cae en el dueño, como todo lo demás:
@@ -204,6 +214,10 @@ def reportar(tipo: str, actor: str, datos: dict | None = None,
         raise ValueError("Escribí la pregunta.")
     if tipo == "costo" and not (d.get("producto") or d.get("codigo")):
         raise ValueError("Falta el producto.")
+    if tipo == "aviso" and not any(
+            str(d.get(k) or "").strip()
+            for k in ("producto", "cliente", "pedido", "ubicacion", "nota")):
+        raise ValueError("Un aviso necesita decir de qué es.")
 
     # P41·4 — la PRUEBA de la entrega (foto del remito firmado o firma en
     # pantalla) viaja como data-URL en `datos.prueba`, se guarda como archivo y
@@ -230,7 +244,12 @@ def reportar(tipo: str, actor: str, datos: dict | None = None,
     _audit.record(actor, ACCION[tipo], None,
                   {k: v for k, v in d.items() if k in
                    ("producto", "codigo", "cantidad", "contado", "motivo",
-                    "cliente", "local", "nota", "canal", "telefono", "items")})
+                    "cliente", "local", "nota", "canal", "telefono", "items",
+                    # Los del aviso por oficio: dónde estaba, qué lote, qué
+                    # pedido. Sin esto el hecho entra sin lo que lo hace
+                    # cruzable, que es justamente lo que lo separa de un mensaje.
+                    "ubicacion", "lote", "pedido", "proveedor", "monto",
+                    "aviso_id")})
     if destinatario:
         _avisar(destinatario, "piso.recibido", rid,
                 quien=_nombre(actor), tipo=tipo)
