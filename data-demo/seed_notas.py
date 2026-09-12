@@ -1,12 +1,19 @@
 """
 Siembra de las NOTAS DEL EQUIPO — lo que la gente sabe y nunca entra a un ERP.
 
-QUÉ ES ESTO, SIN VUELTAS: son las notas e interacciones que los empleados YA le
-dejan a Ángela dentro de PolPilot — lo que dictan por voz desde el piso
-(`core/voz.py`), lo que cargan en un reporte de faltante o conteo
-(`mobile/ReporteForm.jsx`) y lo que le comentan en el chat. Es data del producto,
-no un canal externo: NO hay ningún WhatsApp conectado, y en pantalla se dice así
-("lo que el equipo le contó a Ángela").
+QUÉ ES ESTO, SIN VUELTAS: son las notas e interacciones del equipo — lo que
+dictan por voz desde el piso (`core/voz.py`), lo que cargan en un reporte de
+faltante o conteo (`mobile/ReporteForm.jsx`), lo que le comentan a Ángela en el
+chat, y —desde el mapa de la operación— lo que entra POR AFUERA: el grupo de
+WhatsApp del depósito, el mail de los proveedores y la foto del remito.
+
+SOBRE LOS TRES CANALES DE AFUERA, PARA QUE NO SE MALINTERPRETEN: son el ORIGEN
+de la información, no una integración viva. NO hay un WhatsApp Business
+conectado ni una casilla siendo leída (ese canal existe aparte y se configura
+por tenant, ver core/whatsapp_channel.py). Estas notas son sintéticas como el
+resto del dataset, y describen lo que en un cliente real alguien reenvía o
+transcribe. Son la mitad de la información de una PyME y el mapa las muestra
+como lo que son: lo que el ERP no captura.
 
 Como el resto del demo, el contenido es SINTÉTICO: personas, clientes y
 situaciones inventadas para "Distribuidora del Litoral", coherentes con el mismo
@@ -18,7 +25,8 @@ sabe que un cliente debe $42M; no sabe que el repartidor pasó dos veces y estab
 cerrado. Cruzar las dos cosas es lo que separa un chatbot sobre un ERP de algo
 que entiende el negocio (ver core/cruces.py, que las usa).
 
-Idempotente y determinista (ids fijos nt01…nt16): si el archivo existe, no se
+Idempotente y determinista (ids fijos nt01…nt17, wa01…wa07, em01…em04,
+ft01…ft03): si el archivo existe, no se
 toca — start_demo compara byte a byte contra el snapshot commiteado.
 """
 import json
@@ -27,11 +35,16 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 DESTINO = os.path.join(HERE, "notas_equipo.json")
 
-# Por dónde entró la nota. Los tres son superficies REALES del producto:
-#   voz     — el botón de hablar de "Mi día" / Depósito (core/voz.py)
-#   reporte — el formulario de faltante / conteo / entrega del piso
-#   chat    — lo que le escribieron a Ángela
-CANALES = ("voz", "reporte", "chat")
+# Por dónde entró la nota. Tres son superficies del producto y tres son de
+# AFUERA — y esa división es justamente lo que el mapa de la operación muestra
+# en su banda "Lo que entra desde afuera" (core/mapa_operacion.DE_AFUERA):
+#   voz      — el botón de hablar de "Mi día" / Depósito (core/voz.py)
+#   reporte  — el formulario de faltante / conteo / entrega del piso
+#   chat     — lo que le escribieron a Ángela
+#   whatsapp — el grupo del depósito: lo que alguien tira mientras trabaja
+#   email    — lo que mandan los proveedores, que vive en una casilla
+#   foto     — el remito sacado con el celular al recibir
+CANALES = ("voz", "reporte", "chat", "whatsapp", "email", "foto")
 
 # id, autor (username del seed), fecha, canal, tipo, texto/texto_en y las
 # entidades que la nota menciona (nombres tal cual el dataset, para que el
@@ -144,6 +157,100 @@ NOTAS = [
               "trajeron al otro día.",
      "texto_en": "Campo Alegre delivered short again: two pallets of yogurt were missing and "
                  "they brought them the next day."},
+
+    # --- WhatsApp · el grupo del depósito ------------------------------------
+    # Lo que alguien tira mientras trabaja, con guantes puestos, sin entrar a
+    # ningún sistema. Es el canal del pitch: no es que al ERP le falte el campo,
+    # es que nadie se lo va a llenar.
+    {"id": "wa01", "autor": "ramon", "fecha": "2026-07-02", "canal": "whatsapp",
+     "tipo": "estado_deposito", "ubicacion": "Cámara de frío 2",
+     "texto": "Muchachos, no entra más nada en la cámara 2. Si llega algo hoy "
+              "lo dejo en el pasillo y después vemos.",
+     "texto_en": "Guys, nothing else fits in cold room 2. If anything arrives "
+                 "today I'll leave it in the aisle and we'll sort it out later."},
+    {"id": "wa02", "autor": "brian", "fecha": "2026-07-03", "canal": "whatsapp",
+     "tipo": "incidencia_entrega", "proveedor": "Lácteos Campo Alegre",
+     "texto": "Llegaron 40 cajas y la orden decía 80. El chofer dice que el "
+              "resto viene la semana que viene.",
+     "texto_en": "40 boxes arrived and the order said 80. The driver says the "
+                 "rest is coming next week."},
+    {"id": "wa03", "autor": "ramon", "fecha": "2026-07-04", "canal": "whatsapp",
+     "tipo": "nota_proveedor", "proveedor": "Frigorífico La Ribera",
+     "texto": "El camión de La Ribera llega mañana temprano. ¿Dónde lo bajamos "
+              "si la cámara 2 está llena?",
+     "texto_en": "The La Ribera truck arrives early tomorrow. Where do we "
+                 "unload it if cold room 2 is full?"},
+    {"id": "wa04", "autor": "osmar", "fecha": "2026-06-30", "canal": "whatsapp",
+     "tipo": "incidencia_entrega", "producto": "MORTADELA SANTA CLARA (PLANCHA)",
+     "texto": "Las 3 cajas de fiambre vinieron falladas, las separé. No las "
+              "cargué al camión.",
+     "texto_en": "The 3 boxes of cold cuts came damaged, I set them aside. I "
+                 "didn't load them onto the truck."},
+    {"id": "wa05", "autor": "nahuel", "fecha": "2026-07-06", "canal": "whatsapp",
+     "tipo": "estado_deposito", "ubicacion": "Pasillo 4 - Rack B",
+     "texto": "Corrí las cajas del pasillo 4 para hacer lugar. Quedó todo del "
+              "lado de la pared, avisen antes de buscar algo ahí.",
+     "texto_en": "I moved the boxes in aisle 4 to make room. Everything's "
+                 "against the wall now — give me a heads-up before looking there."},
+    {"id": "wa06", "autor": "walter", "fecha": "2026-07-05", "canal": "whatsapp",
+     "tipo": "observacion_campo", "cliente": "Despensa Doña Elsa",
+     "texto": "Pasé por lo de Doña Elsa. Está abierta y trabajando bien, me "
+              "dijo que la semana que viene se pone al día.",
+     "texto_en": "I stopped by Doña Elsa's. She's open and doing fine, she told "
+                 "me she'll settle up next week."},
+    {"id": "wa07", "autor": "vanesa", "fecha": "2026-07-01", "canal": "whatsapp",
+     "tipo": "pedido_cliente", "producto": "SALAME MILAN MONTE CHICO (PLANCHA)",
+     "texto": "Me preguntaron dos veces por el salame Monte Chico en el "
+              "mostrador. Si hay que sacarlo pronto, avisen y lo empujo.",
+     "texto_en": "I was asked twice about the Monte Chico salami at the "
+                 "counter. If it needs to move soon, tell me and I'll push it."},
+
+    # --- Mail · lo que mandan los proveedores --------------------------------
+    # Estructurado por fuera, muerto por dentro: vive en una casilla y no toca
+    # el sistema hasta que alguien lo tipea a mano.
+    {"id": "em01", "autor": "celeste", "fecha": "2026-07-02", "canal": "email",
+     "tipo": "nota_proveedor", "proveedor": "Distrib. Mayorista Guaraní",
+     "texto": "Guaraní mandó lista de precios nueva, rige desde el 15. Suben "
+              "gaseosas y galletitas; el resto queda igual.",
+     "texto_en": "Guaraní sent a new price list, effective from the 15th. Soft "
+                 "drinks and biscuits go up; the rest stays the same."},
+    {"id": "em02", "autor": "marta", "fecha": "2026-07-03", "canal": "email",
+     "tipo": "nota_proveedor", "proveedor": "Lácteos Campo Alegre",
+     "texto": "La factura de Campo Alegre vino por el total de la orden, pero "
+              "entregaron la mitad. No la pago hasta que la corrijan.",
+     "texto_en": "The Campo Alegre invoice came for the full order, but they "
+                 "delivered half. I'm not paying it until they fix it."},
+    {"id": "em03", "autor": "celeste", "fecha": "2026-07-04", "canal": "email",
+     "tipo": "nota_proveedor", "proveedor": "Frigorífico La Ribera",
+     "texto": "La Ribera confirmó la orden de fiambres para el 9. Pidieron que "
+              "les avisemos si no hay lugar en cámara.",
+     "texto_en": "La Ribera confirmed the cold-cuts order for the 9th. They "
+                 "asked us to let them know if there's no room in the cold store."},
+    {"id": "em04", "autor": "celeste", "fecha": "2026-06-29", "canal": "email",
+     "tipo": "nota_proveedor", "proveedor": "Golosinas Costa Dulce SRL",
+     "texto": "Costa Dulce avisa que el reparto de la próxima semana se corre "
+              "un día por feriado.",
+     "texto_en": "Costa Dulce says next week's delivery moves one day because "
+                 "of the holiday."},
+
+    # --- Foto · el remito sacado con el celular al recibir -------------------
+    {"id": "ft01", "autor": "nahuel", "fecha": "2026-07-03", "canal": "foto",
+     "tipo": "incidencia_entrega", "proveedor": "Lácteos Campo Alegre",
+     "texto": "Foto del remito de Campo Alegre: dice 40 bultos, no 80. Queda "
+              "la constancia por si después discuten.",
+     "texto_en": "Photo of the Campo Alegre delivery note: it says 40 units, "
+                 "not 80. Keeping the proof in case they argue later."},
+    {"id": "ft02", "autor": "tomas", "fecha": "2026-07-06", "canal": "foto",
+     "tipo": "estado_deposito", "ubicacion": "Cámara de frío 2",
+     "texto": "Foto de cómo quedó la cámara 2 después de acomodar. No entra un "
+              "pallet más.",
+     "texto_en": "Photo of how cold room 2 ended up after reorganising. Not one "
+                 "more pallet fits."},
+    {"id": "ft03", "autor": "brian", "fecha": "2026-07-01", "canal": "foto",
+     "tipo": "incidencia_entrega", "producto": "MORTADELA SANTA CLARA (PLANCHA)",
+     "texto": "Foto de las cajas de mortadela falladas, para el reclamo al "
+              "proveedor.",
+     "texto_en": "Photo of the damaged mortadella boxes, for the supplier claim."},
 ]
 
 
@@ -163,9 +270,11 @@ def sembrar() -> bool:
         })
     with open(DESTINO, "w", encoding="utf-8") as f:
         json.dump({
-            "_nota": "Notas e interacciones del equipo con Ángela (voz, reportes del piso y "
-                     "chat) — la capa NO estructurada del dataset demo. Sintéticas, como todo "
-                     "el resto del demo. NO son un canal externo: no hay WhatsApp conectado.",
+            "_nota": "Notas e interacciones del equipo — la capa NO estructurada del dataset "
+                     "demo. Seis canales: WhatsApp, mail y foto del remito entran DE AFUERA "
+                     "(ahí vive la mitad de la información de una PyME); voz, chat y reporte "
+                     "son superficies del producto. Sintéticas como todo el resto del demo: "
+                     "describen el ORIGEN de la información, no una integración conectada.",
             "canales": list(CANALES),
             "notas": notas,
         }, f, ensure_ascii=False, indent=2)
