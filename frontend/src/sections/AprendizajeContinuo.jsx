@@ -127,7 +127,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
     return {
       id: found.id, tono: found.tono, chip: found.chip, titulo: found.titulo,
       monto: found.monto, montoLabel: found.monto_label, cifraTexto: found.cifra_texto,
-      fuentes: found.fuentes || [], drill: found.drill, isIllustrative: false,
+      fuentes: found.fuentes || [], insight: found.insight, isIllustrative: false,
       summary: found.resumen,
     };
   });
@@ -222,8 +222,7 @@ export default function AprendizajeContinuo({ onPreguntar }) {
           <div onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
             <DrillNegocio variante="panel" tono={selected.tono} titulo={selected.titulo}
               monto={selected.monto} montoLabel={selected.montoLabel} cifraTexto={selected.cifraTexto}
-              porque={selected.drill?.porque || []} grafico={selected.drill?.grafico}
-              involucrados={selected.drill?.involucrados || []} supuestos={selected.drill?.supuestos || []}
+              insight={selected.insight}
               fuentes={selected.fuentes || []}
               onFeedback={selected.isIllustrative ? undefined : (action) => giveFeedback(selected.id, action)}
               feedbackBusy={feedbackBusy} />
