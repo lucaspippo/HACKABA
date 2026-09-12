@@ -92,6 +92,9 @@ export function createChatModelAdapter(
       const parts: ThreadAssistantMessagePart[] = [];
       const notices: Notice[] = [];
       const toolIndexById = new Map<string, number>();
+      // toolCallId -> `status` line. Metadata, not `args`: those must keep
+      // matching toolArgs.generated.ts.
+      const toolLabels: Record<string, string> = {};
       let textIndex: number | null = null;
       let done: DoneResult | null = null;
 
@@ -101,6 +104,7 @@ export function createChatModelAdapter(
           custom: {
             ...(done ?? {}),
             ...(notices.length ? { notices: [...notices] } : {}),
+            ...(Object.keys(toolLabels).length ? { toolLabels: { ...toolLabels } } : {}),
           },
         },
       });
@@ -120,6 +124,7 @@ export function createChatModelAdapter(
           }
         } else if (ev.type === "tool_call") {
           textIndex = null; // later text belongs to a new turn
+          if (ev.label) toolLabels[ev.id] = ev.label;
           parts.push({
             type: "tool-call",
             toolCallId: ev.id,
