@@ -546,15 +546,22 @@ def expansion_proveedor(lang: str = "es") -> dict:
     piezas = piezas[:4]
 
     # --- la grilla, pegada debajo del rombo (404,400) -------------------
-    ANCHO_T, ALTO_T, SEP = 186, 86, 20
-    cols = 2 if len(piezas) > 2 else len(piezas)
+    # Las mismas medidas que dibuja el frontend (T_ANCHO/T_ALTO en
+    # EscenaReclamo.jsx). Estaban en 186x86 mientras alla se dibujaba 190x92:
+    # dos archivos que tienen que decir lo mismo y no lo decian.
+    ANCHO_T, ALTO_T, SEP = 190, 92, 18
+    # UNA SOLA FILA, no una grilla de dos. Lo que decide cuanto se aleja el
+    # lienzo es el ALTO: con dos filas el encuadre da k=0,64 y las tarjetas
+    # quedan ilegibles en un proyector. Con una sola fila sube a 0,74. El ancho
+    # no molesta porque el lienzo ya mide 1000 y las cuatro tarjetas entran.
+    cols = len(piezas)
     filas = (len(piezas) + cols - 1) // cols
     x0 = 404 - (cols * ANCHO_T + (cols - 1) * SEP) / 2
     # y0: donde empieza la primera fila. Hay que dejar lugar para DOS cosas
     # arriba de la tarjeta —la etiqueta del racimo y el cartel «la que usé»,
     # que cuelga por fuera del borde— o se pisan entre ellas: lo encontro
     # scripts/revisar_escena.py, no la pantalla.
-    y0 = 588
+    y0 = 572
     for i, p in enumerate(piezas):
         c, r = i % cols, i // cols
         p["x"] = round(x0 + c * (ANCHO_T + SEP) + ANCHO_T / 2)
