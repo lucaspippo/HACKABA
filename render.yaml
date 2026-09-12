@@ -115,14 +115,23 @@ services:
         value: anthropic/claude-haiku-4.5
 
       # EL TECHO DE LA RESPUESTA. El default del codigo es 1024 y se queda
-      # corto: medido contra este servicio, «dame un resumen completo del
-      # negocio» y «cuanto stock tengo de leche» terminaron con
-      # `stop=max_tokens` y la frase CORTADA a la mitad («...margen que», «| La»).
-      # Un jurado que pregunta algo amplio ve una respuesta truncada, que se
-      # lee como que el producto se rompio. 2048 cubre las respuestas largas
-      # con tabla sin volverlas eternas.
+      # corto de tres maneras distintas, todas medidas contra este servicio:
+      #
+      #   · «dame un resumen completo del negocio» y «cuanto stock tengo de
+      #     leche» terminaron con la frase CORTADA — «...margen que», «| La».
+      #   · «cuanto voy a vender el mes que viene» devolvio VACIO.
+      #   · y lo peor: un mensaje con DOS reglas para anotar gasta los 1024
+      #     armando las llamadas a herramienta y no se guarda ninguna. Con seis
+      #     reglas, tampoco. El usuario cree que enseño cinco cosas y no quedo
+      #     una.
+      #
+      # 4096 y no 2048: con 2048 entran las respuestas largas con tabla, pero
+      # escribir varias reglas de una sigue sin entrar, que es el caso que de
+      # verdad hace daño porque falla en silencio. El costo es que la peor
+      # respuesta posible puede tardar mas; a cambio, deja de perder trabajo.
+      # (Aun asi, angela.py avisa cuando se corta: el techo no es la unica red.)
       - key: POLPILOT_MAX_TOKENS
-        value: "2048"
+        value: "4096"
 
       # RECORTE DE HERRAMIENTAS POR TEMA: queda PRENDIDO (default del codigo).
       #
