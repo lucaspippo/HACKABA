@@ -17,11 +17,18 @@
 - **Use the repo venv's interpreter, never bare `python`.** On this machine bare
   `python` is **3.11.5 without `python-dotenv`**, while the project requires 3.12+ and
   `.venv/Scripts/python.exe` is **3.12.10** with the dependencies installed. With
-  `python-dotenv` absent, `backend/.env` is never loaded — `core/db/engine.py` and
-  `tests/dbsetup.py` both swallow the `ImportError` (`dbsetup.py:139` says so) — which
-  makes `ODOO_ENCRYPTION_KEY`, `WHATSAPP_ENCRYPTION_KEY` and the database URLs look
-  unset and produces dozens of spurious failures. This cost Task 1 a full round of
-  bogus test evidence.
+  `python-dotenv` absent, `backend/.env` is never loaded at all — `core/db/engine.py`
+  and `tests/dbsetup.py` both swallow the `ImportError` (`dbsetup.py:139` says so).
+  Task 1 measured a full round of test evidence on the wrong interpreter this way.
+- **The suite is NOT green on this machine, and that is pre-existing.** On the venv
+  interpreter, expect roughly **52 failed / 1414 passed / 39 skipped / 28 errors**.
+  Every failing name is an Odoo or WhatsApp test. Cause: `backend/.env` ships
+  `ODOO_ENCRYPTION_KEY=` and `WHATSAPP_ENCRYPTION_KEY=` as **present but empty**
+  placeholders, and `core/db/odoo_connections_repo.py:12-18` (plus the WhatsApp
+  equivalent) does `os.environ.get(...)` then `if not key: raise` — an empty string is
+  falsy. It reproduces with `python-dotenv` installed, so it is not an interpreter
+  artifact. Do not try to fix it; treat those as the known baseline and report only
+  failures outside that set.
 - **Backend tests:** run from `backend/` with `../.venv/Scripts/python.exe -m pytest`.
   Single test: `../.venv/Scripts/python.exe -m pytest tests/test_x.py -k pattern`.
   Every `python -m pytest` shown in a task below means that interpreter.
