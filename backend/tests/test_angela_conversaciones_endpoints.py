@@ -67,3 +67,29 @@ def test_conversaciones_requires_auth():
 def test_missing_conversation_is_404(aldo_token):
     r = client.get("/api/angela/conversaciones/no-existe", headers=_h(aldo_token))
     assert r.status_code == 404
+
+
+def test_voice_channel_is_tagged_and_kept_separate(aldo_token, monkeypatch):
+    _no_provider(monkeypatch)
+    r = client.post("/api/angela", json={"message": "faltan ocho cajas",
+                                          "token": aldo_token, "channel": "voz"})
+    assert r.status_code == 200
+
+    solo_voz = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
+                          params={"actor": "aldo", "canal": "voz"}).json()["conversaciones"]
+    assert solo_voz
+    assert all(c["channel"] == "voz" for c in solo_voz)
+
+
+def test_unrecognized_channel_falls_back_to_chat(aldo_token, monkeypatch):
+    _no_provider(monkeypatch)
+    r = client.post("/api/angela", json={"message": "algo raro",
+                                          "token": aldo_token, "channel": "no-es-un-canal"})
+    assert r.status_code == 200
+
+    convs = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
+                       params={"actor": "aldo", "canal": "chat"}).json()["conversaciones"]
+    assert any(m["content"] == "algo raro"
+              for c in convs
+              for m in client.get(f"/api/angela/conversaciones/{c['id']}",
+                                  headers=_h(aldo_token)).json()["mensajes"])

@@ -153,6 +153,18 @@ class ChatRequest(BaseModel):
     # (the role cannot be spoofed from the request). See /api/angela.
     rol: str | None = None
     nombre: str | None = None
+    # Which surface this turn came from — for transcript tagging only (see
+    # core/angela_transcripts.py); never changes how the turn is answered.
+    # Not free-form: an unrecognized value is just treated as "chat", the
+    # same as not sending it at all.
+    channel: str | None = None
+
+
+_CANALES_ANGELA = {"chat", "voz"}
+
+
+def _canal(req: "ChatRequest") -> str:
+    return req.channel if req.channel in _CANALES_ANGELA else "chat"
 
 
 class LoginRequest(BaseModel):
@@ -2331,7 +2343,7 @@ def chat(req: ChatRequest, request: Request):
             from core import angela_transcripts
             angela_transcripts.registrar_turno(
                 u["username"], req.message, r.get("answer") or "",
-                tools_used=r.get("tools_used"))
+                tools_used=r.get("tools_used"), channel=_canal(req))
         except Exception:  # noqa: BLE001
             pass
         return r
@@ -2416,7 +2428,7 @@ def chat_stream(req: ChatRequest, request: Request):
                 from core import angela_transcripts
                 angela_transcripts.registrar_turno(
                     u["username"], req.message, "".join(texto),
-                    tools_used=result.get("tools_used"))
+                    tools_used=result.get("tools_used"), channel=_canal(req))
             except Exception:  # noqa: BLE001
                 pass
 
