@@ -12,7 +12,7 @@ import { pesoCorto } from "../lib/format";
 import { useT, tRol } from "../lib/i18n";
 import { accionDe, estiloAccion } from "../lib/prioridadAccion";
 
-const OVERLAY_BELOW = 1200;
+const OVERLAY_BELOW = 760;
 
 let _cachePrio = { lang: null, data: null };
 
@@ -257,7 +257,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const vacio = data && act.length === 0 && watch.length === 0;
 
   return (
-    <div ref={rootRef} className="-mx-7 -my-6 flex min-h-[calc(100dvh-5.5rem)] flex-col">
+    <div ref={rootRef} className="flex h-full min-h-0 flex-col">
       <header className="shrink-0 border-b border-linea px-7 py-4">
         <div className="flex items-center gap-2">
           <Radar size={22} className="text-hielo" />
