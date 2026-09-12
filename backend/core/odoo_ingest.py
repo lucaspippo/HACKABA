@@ -1,13 +1,13 @@
 """
-core/odoo_ingest.py — orquesta el pull de Odoo hacia los datos reales de
-PolPilot (a diferencia de conectores.ConectorOdoo.pull_*, que sólo trae el
-preview de sólo lectura).
+core/odoo_ingest.py — orchestrates the pull from Odoo into PolPilot's real
+data (unlike conectores.ConectorOdoo.pull_*, which only fetches the
+read-only preview).
 
-Two-tier: por cada fila que llega de Odoo, si ya está vinculada a un
-registro de PolPilot (mismo source_id) se actualiza directo, sin revisión
-— Odoo ya es dueño de ese dato. Si es nueva, entra a un batch de la
-Staging Area (core/staging.py) para que el dueño la revise/apruebe antes
-de crearla — nunca se crea un cliente/proveedor/producto/orden a ciegas.
+Two-tier: for every row coming from Odoo, if it is already linked to a
+PolPilot record (same source_id) it is updated directly, with no review —
+Odoo already owns that data. If it is new, it goes into a Staging Area
+batch (core/staging.py) so the dueño reviews/approves it before it is
+created — a customer/vendor/product/order is never created blindly.
 """
 from __future__ import annotations
 

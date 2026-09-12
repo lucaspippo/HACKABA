@@ -2267,7 +2267,7 @@ export const EN = {
   "odoo.ingestando_contactos": "Ingesting…",
   "odoo.ingesta_contactos_resultado": "{actualizados} updated, {nuevos} new pending review in Staging.",
   "odoo.ingesta_contactos_sin_novedades": "All your Odoo customers are already up to date in PolPilot.",
-  "odoo.nota": "Read-only for now: we pull your Odoo contacts, product catalog, vendors, and purchase orders so you can see them here. Merging them into your real accounts, inventory, and orders is the next step.",
+  "odoo.nota": "\"Pull\" is read-only: it shows your Odoo contacts, product catalog, vendors, and purchase orders here. \"Ingest into PolPilot\" merges them into your real data: anything already linked is updated automatically, and anything new waits in Staging for you to review before it is created.",
   "odoo.tab_contactos": "Contacts",
   "odoo.tab_productos": "Products",
   "odoo.traer_productos": "Pull products",

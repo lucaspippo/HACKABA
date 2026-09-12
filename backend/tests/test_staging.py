@@ -126,6 +126,21 @@ def test_integrar_batch_odoo_orden_compra():
     assert creada["source_status"] == "cerrada"
 
 
+def test_localizar_batch_odoo_cliente_usa_el_sustantivo_correcto():
+    """The duplicate card is re-localized on read by (tipo, obs tipo); without
+    a cliente-specific entry it would fall back to the products wording."""
+    from core import cuentas
+    existente = cuentas.listar()[0]
+    r = staging.crear_batch_odoo("cliente", [
+        {"id": 903, "nombre": existente["nombre"], "cuit": "", "localidad": "",
+         "telefono": "", "email": ""},
+    ])
+    b = next(x for x in staging._load() if x["id"] == r["id"])
+    obs = staging.localizar_batch(b, "en")["observaciones"][0]
+    assert "customers" in obs["descripcion"]
+    assert "products" not in obs["descripcion"]
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}

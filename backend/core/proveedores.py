@@ -61,10 +61,10 @@ def eliminar(id_: str, actor: str) -> None:
 
 
 def upsert_desde_conector(filas: list[dict], actor: str) -> dict:
-    """Alta o actualización masiva de proveedores que llegan de un conector
-    externo (Odoo), matcheados por (source, source_id) — a diferencia de
-    crear()/actualizar() (una ficha a la vez, pensadas para el dueño
-    tipeando), esto resuelve el match automáticamente."""
+    """Bulk create-or-update of vendors coming from an external connector
+    (Odoo), matched by (source, source_id) — unlike crear()/actualizar()
+    (one record at a time, meant for the dueño typing), this resolves the
+    match automatically."""
     actuales = esquema.filas(_TIPO)
     por_source = {(f.get("source"), f.get("source_id")): f
                   for f in actuales if f.get("source")}

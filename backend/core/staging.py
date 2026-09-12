@@ -117,7 +117,7 @@ def coerce_producto_odoo(p: dict) -> dict:
         "costo_iva": None,
         "pvp": p.get("precio"),
         "venta_x_peso": False,
-        "sku": p.get("codigo") or "",
+        "sku": p.get("codigo") or None,
         "source": "odoo",
         "source_id": str(p["id"]),
     }
@@ -204,9 +204,9 @@ def coerce_orden_compra_odoo(o: dict) -> dict:
 
 
 def _analizar_ordenes_compra(filas: list[dict], lang: str | None = None) -> list[dict]:
-    # Sin heurística de duplicado: una orden de compra de Odoo no colisiona
-    # por nombre con nada hand-entered — el número de Odoo (source_id) ya es
-    # la clave, y crear_batch_odoo sólo recibe filas sin ese vínculo todavía.
+    # No duplicate heuristic: an Odoo purchase order never collides by name
+    # with a hand-entered one — Odoo's own id (source_id) is already the key,
+    # and crear_batch_odoo only ever receives rows that are not linked yet.
     return []
 
 
@@ -226,6 +226,11 @@ _DESC_KEY = {
     ("*", "numero_ambiguo"): "core.staging.d_numero_ambiguo",
     ("*", "precio_perdida"): "core.staging.d_precio_perdida",
     ("*", "sin_precio"): "core.staging.d_sin_precio",
+    # Odoo-sourced cliente/proveedor batches reuse the "duplicado" card, so
+    # they need their own noun — otherwise the generic ("*", "duplicado")
+    # entry re-localizes them as "N products …" on read.
+    ("cliente", "duplicado"): "core.staging.d_duplicado_clientes",
+    ("proveedor", "duplicado"): "core.staging.d_duplicado_proveedores",
     ("*", "duplicado"): "core.staging.d_duplicado",
     ("*", "stock_outlier"): "core.staging.d_stock_outlier",
 }
@@ -629,7 +634,9 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
                 "mensaje": f"{len(a_integrar)} órdenes de compra nuevas."}
 
     if tipo != "producto":
-        # Tipo nuevo (ventas, clientes, …): crea el apartado y arma las relaciones.
+        # Generic CSV/apartado path (ventas, depósito, logística, …): creates
+        # the apartado and wires up its relations. Odoo-sourced batches never
+        # reach here — they early-return in the branches above.
         res = esquema.crear_apartado(tipo, a_integrar)
         plan = b.get("plan", {})
         store.audit.record(actor=actor, accion="crear_apartado",
@@ -657,9 +664,9 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
                               nombre=plan.get("nombre", tipo), n=res["nuevas"],
                               rel=rel, activado=activado, extra=extra)}
 
-    # Productos: se suman al inventario oficial. Los que llegan de un
-    # conector (b["fuente"] == "odoo") pasan por upsert_desde_conector para
-    # que queden con sku/source/source_id; el resto (CSV) sigue igual.
+    # Products: they join the official inventory. Connector-sourced rows
+    # (b["fuente"] == "odoo") go through upsert_desde_conector so they keep
+    # sku/source/source_id; CSV-sourced rows follow the original path.
     raw = store.raw_actual()
     backup = store.versiones.save({"articulos": raw}, motivo=f"Backup antes de integrar «{b['nombre']}»", autor=actor)
     if b.get("fuente") == "odoo":
@@ -723,22 +730,23 @@ _COERCERS_ODOO = {
     "orden_compra": coerce_orden_compra_odoo,
 }
 
-# Qué campo identifica una fila coercionada como "utilizable" por tipo — una
-# fila de Odoo sin este campo (p.ej. un contacto sin nombre) se descarta en
-# vez de crear un registro vacío; mismo criterio que el filtrado por CSV en
-# _coerce_y_analizar (líneas "filas = [f for f in filas if f[...]]").
+# Which field makes a coerced row "usable", per tipo — an Odoo row missing it
+# (e.g. a contact with no name) is dropped instead of creating an empty
+# record; same criterion as the CSV filtering in _coerce_y_analizar
+# (the "filas = [f for f in filas if f[...]]" lines).
 _REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
                     "cliente": "nombre", "orden_compra": "numero"}
 
 
 def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
                       lang: str | None = None) -> dict:
-    """Como crear_batch(), pero para filas que YA llegan estructuradas desde
-    un conector (Odoo) en vez de un CSV crudo: sin parseo ni normalización
-    Nivel 1 (eso es para texto ambiguo tipeado a mano; el conector ya
-    entrega tipos correctos). Sólo debe recibir filas SIN vínculo todavía —
-    core/odoo_ingest.py filtra antes las que ya tienen source_id conocido y
-    esas se actualizan directo, sin pasar por acá."""
+    """Like crear_batch(), but for rows that already arrive structured from a
+    connector (Odoo) instead of a raw CSV: no parsing, no Nivel-1
+    normalization (that exists for ambiguous hand-typed text; the connector
+    already delivers correct types). It must only receive rows that are NOT
+    linked yet — core/odoo_ingest.py filters out the ones whose source_id is
+    already known, and those are updated directly without coming through
+    here."""
     coerce = _COERCERS_ODOO[tipo]
     filas = [coerce(f) for f in filas_odoo]
     filas = [f for f in filas if f.get(_REQUERIDO_ODOO[tipo])]

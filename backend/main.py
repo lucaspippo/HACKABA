@@ -1551,8 +1551,8 @@ def odoo_sync_productos(_u: dict = Depends(require_admin)):
 
 @app.post("/api/conectores/odoo/ingest-productos")
 def odoo_ingest_productos(_u: dict = Depends(require_admin)):
-    """Ingesta real: los productos de Odoo ya vinculados se actualizan
-    directo; los nuevos quedan en un batch de Staging para revisión."""
+    """Real ingestion: already-linked Odoo products are updated directly;
+    new ones land in a Staging batch for review."""
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_productos(actor=_u["username"])
@@ -1574,8 +1574,8 @@ def odoo_sync_proveedores(_u: dict = Depends(require_admin)):
 
 @app.post("/api/conectores/odoo/ingest-proveedores")
 def odoo_ingest_proveedores(_u: dict = Depends(require_admin)):
-    """Ingesta real: los proveedores de Odoo ya vinculados se actualizan
-    directo; los nuevos quedan en un batch de Staging para revisión."""
+    """Real ingestion: already-linked Odoo vendors are updated directly;
+    new ones land in a Staging batch for review."""
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_proveedores(actor=_u["username"])
@@ -1585,8 +1585,8 @@ def odoo_ingest_proveedores(_u: dict = Depends(require_admin)):
 
 @app.post("/api/conectores/odoo/ingest-contactos")
 def odoo_ingest_contactos(_u: dict = Depends(require_admin)):
-    """Ingesta real: los clientes de Odoo ya vinculados se actualizan
-    directo; los nuevos quedan en un batch de Staging para revisión."""
+    """Real ingestion: already-linked Odoo customers are updated directly;
+    new ones land in a Staging batch for review."""
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_clientes(actor=_u["username"])
@@ -1608,8 +1608,8 @@ def odoo_sync_ordenes_compra(_u: dict = Depends(require_admin)):
 
 @app.post("/api/conectores/odoo/ingest-ordenes-compra")
 def odoo_ingest_ordenes_compra(_u: dict = Depends(require_admin)):
-    """Ingesta real: las órdenes de compra de Odoo ya vinculadas se
-    actualizan directo; las nuevas quedan en un batch de Staging."""
+    """Real ingestion: already-linked Odoo purchase orders are updated
+    directly; new ones land in a Staging batch for review."""
     from core import odoo_ingest
     try:
         return odoo_ingest.ingest_ordenes_compra(actor=_u["username"])

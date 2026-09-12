@@ -125,12 +125,12 @@ def buscar_por_source(source: str, source_id: str) -> dict | None:
 
 
 def upsert_desde_conector(fila: dict, actor: str) -> dict:
-    """Alta o actualización de un producto que llega de un conector externo
-    (p.ej. Odoo), a diferencia de crear_articulo/actualizar_articulo
-    (ediciones manuales del dueño): resuelve el código automáticamente y
-    acepta los campos de procedencia (source, source_id, sku). Usado tanto
-    para el auto-upsert de productos ya vinculados (core/odoo_ingest.py)
-    como al integrar un batch de Staging con productos nuevos."""
+    """Create-or-update a product coming from an external connector (e.g.
+    Odoo), as opposed to crear_articulo/actualizar_articulo (the dueño's
+    manual edits): it resolves the internal codigo automatically and accepts
+    the provenance fields (source, source_id, sku). Used both for the
+    auto-upsert of already-linked products (core/odoo_ingest.py) and when
+    integrating a Staging batch of new products."""
     raw = raw_actual()
     existente = next((d for d in raw if d.get("source") == fila["source"]
                        and d.get("source_id") == fila["source_id"]), None)
