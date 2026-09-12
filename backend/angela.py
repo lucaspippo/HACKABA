@@ -921,6 +921,22 @@ TOOLS = [
         },
     },
     {
+        "name": "consultar_conocimiento",
+        "description": "List the business rules/exceptions/protocols/context already taught "
+        "to Ángela (read-only) — what this user is allowed to see, same scoping as the "
+        "Knowledge panel. Use this before answering a question about a customer/supplier/"
+        "product exception instead of guessing whether a rule exists.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "nodo": {"type": "string", "enum": ["ventas", "inventario", "deposito",
+                                                    "proveedores", "clientes", "caja",
+                                                    "equipo", "contexto"]},
+                "entidad": {"type": "string", "description": "filter to a specific customer/supplier/product, if given"},
+            },
+        },
+    },
+    {
         "name": "recuperar",
         "description": "Trae lo que recordás del usuario (preferencias, objetivos, datos cargados, "
         "recomendaciones previas) para personalizar tu respuesta.",
@@ -1835,6 +1851,12 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     if name == "leer_preferencias":
         m = memoria.get(_usuario_actual())
         return {"vista": m.get("vista", {}), "notas": m.get("preferencias", {})}, None
+    if name == "consultar_conocimiento":
+        from core import conocimiento
+        piezas = conocimiento.listar(nodo=args.get("nodo"), entidad=args.get("entidad"),
+                                     incluir_pausadas=False)
+        piezas = conocimiento.visibles_para(_usuario_para_manual(), piezas)
+        return {"piezas": [conocimiento.resumen_pieza(p) for p in piezas]}, None
     if name == "proponer_conocimiento":
         from core import conocimiento
         if not memoria.vista(_usuario_actual()).get("knowledge_capture", True):

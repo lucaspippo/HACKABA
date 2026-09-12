@@ -211,3 +211,26 @@ def test_resumen_pieza_carries_who_taught_it():
         origen={"quien": "aldo", "cuando": "2026-09-10"})
     resumen = conocimiento.resumen_pieza(pieza)
     assert resumen["quien"] == "aldo"
+
+
+# --- consultar_conocimiento: read-only tool for chat and MCP ------------------
+
+def test_consultar_conocimiento_returns_active_pieces():
+    conocimiento.crear(texto="Visible", tipo="contexto", ambito="global",
+                       nodo="caja", efecto="contexto_para_angela")
+    angela._set_sesion(usuario="emilio", rol="dueño", features=None, idioma="es")
+    result, action = angela._run_tool("consultar_conocimiento", {})
+    assert action is None
+    assert any(p["texto"] == "Visible" for p in result["piezas"])
+
+
+def test_consultar_conocimiento_respects_role_scope():
+    # ambito="categoria" (not "global"): a global piece is visible to every
+    # employee by design (visibles_para), so it can't exercise node/feature
+    # scoping — this needs a scoped piece, same as test_knowledge_block_respects_node_scope.
+    conocimiento.crear(texto="Solo depósito", tipo="regla", ambito="categoria",
+                       nodo="deposito", efecto="contexto_para_angela", entidad="depósito")
+    angela._set_sesion(usuario="vendedor", rol="mostrador",
+                       features={"cuentas"}, idioma="es")
+    result, _ = angela._run_tool("consultar_conocimiento", {})
+    assert result["piezas"] == []
