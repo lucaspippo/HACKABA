@@ -7,13 +7,21 @@ from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
+from core.db.url import normalize_driver
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+# Alembic builds its own engine straight from this URL (engine_from_config
+# below), independently of backend/core/db/engine.py — the two engine
+# builders there already normalize, but that does not cover this one. Without
+# this, a bare `postgresql://` from a managed provider (e.g. Render) makes
+# `alembic upgrade head` itself die with ModuleNotFoundError: psycopg2, since
+# only psycopg v3 is installed (requirements.txt).
+config.set_main_option("sqlalchemy.url", normalize_driver(os.environ["DATABASE_URL"]))
 
 target_metadata = None
 
