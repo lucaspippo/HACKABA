@@ -12,6 +12,16 @@ export interface Source {
   detail?: string;
 }
 
+// El blanco del toque es más grande que el ícono: 15×13px medidos en
+// producción es un objetivo que se falla con el dedo, y en el
+// escenario se toca con el dedo o con el mouse apurado.
+//
+// Shared with the loading placeholder so the chip keeps this exact geometry
+// when the piece arrives and it turns into a real trigger: the sentence must
+// not reflow under the reader mid-read.
+const CHIP =
+  "mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-2px] items-center justify-center rounded-[5px] px-1 align-middle font-mono text-xs font-medium tabular-nums transition-colors";
+
 /**
  * Una cita al lado de una frase de Ángela: se toca y se ve de dónde salió.
  *
@@ -42,12 +52,39 @@ export function Citation({
   ariaLabel,
   source,
   tone = "neutral",
+  loading = false,
+  onOpen,
+  openLabel,
 }: {
   label: ReactNode;
   ariaLabel?: string;
-  source: Source;
+  source?: Source;
   tone?: "neutral" | "knowledge";
+  loading?: boolean;
+  onOpen?: () => void;
+  openLabel?: string;
 }) {
+  // While the piece is still in flight there is nothing to preview, so the
+  // chip is deliberately NOT a button: a control that opens an empty panel
+  // reads as broken, and a screen reader would announce it as available.
+  if (loading || !source) {
+    return (
+      <span
+        role="status"
+        aria-busy="true"
+        aria-label={ariaLabel}
+        className={cn(
+          CHIP,
+          tone === "knowledge"
+            ? "bg-oro/10 text-oro-tinta/40"
+            : "bg-foreground/[0.04] text-foreground/25",
+        )}
+      >
+        {label}
+      </span>
+    );
+  }
+
   return (
     <Popover.Root>
       <Popover.Trigger
@@ -56,10 +93,8 @@ export function Citation({
         closeDelay={120}
         render={<button type="button" aria-label={ariaLabel} />}
         className={cn(
-          // El blanco del toque es más grande que el ícono: 15×13px medidos en
-          // producción es un objetivo que se falla con el dedo, y en el
-          // escenario se toca con el dedo o con el mouse apurado.
-          "mx-0.5 inline-flex h-[18px] min-w-[18px] translate-y-[-2px] cursor-pointer items-center justify-center rounded-[5px] px-1 align-middle font-mono text-xs font-medium tabular-nums transition-colors",
+          CHIP,
+          "cursor-pointer",
           tone === "knowledge"
             ? "bg-oro/15 text-oro-tinta hover:bg-oro/30 data-[popup-open]:bg-oro-tinta data-[popup-open]:text-crema"
             : "bg-foreground/[0.06] text-foreground/45 hover:text-foreground/90 data-[popup-open]:bg-foreground data-[popup-open]:text-background",
@@ -114,6 +149,24 @@ export function Citation({
               <p className="text-foreground/40 mt-1 text-sm leading-relaxed">
                 {source.detail}
               </p>
+            )}
+            {/* The hand-off to the full memory panel. It is a second, explicit
+                step and NOT the chip's own click: the click already opens this
+                preview, and that is the interaction the touch fix above bought.
+                Closing first matters — otherwise the preview stays floating
+                over the panel it just opened. */}
+            {onOpen && openLabel && (
+              <Popover.Close
+                render={<button type="button" />}
+                onClick={onOpen}
+                className={cn(
+                  "mt-2.5 flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors",
+                  "text-oro-tinta bg-oro/10 hover:bg-oro/20",
+                )}
+              >
+                {openLabel}
+                <span aria-hidden>→</span>
+              </Popover.Close>
             )}
           </Popover.Popup>
         </Popover.Positioner>

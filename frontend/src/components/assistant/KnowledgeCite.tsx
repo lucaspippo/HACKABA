@@ -1,6 +1,7 @@
 import { Brain } from "lucide-react";
 import { Citation } from "./inline-citation";
-import { useKnowledgePiece } from "./knowledgeStore";
+import { useOpenKnowledge } from "./KnowledgeOpen";
+import { useKnowledgeLookup } from "./knowledgeStore";
 import { useT } from "../../lib/i18n";
 
 /** «celeste» → «Celeste». El campo guarda el usuario, no el nombre propio, y
@@ -18,13 +19,31 @@ function comoFecha(cuando: string) {
 
 export default function KnowledgeCite({ id }: { id: string }) {
   const t = useT();
-  const piece = useKnowledgePiece(id);
+  const openKnowledge = useOpenKnowledge();
+  const { piece, ready } = useKnowledgeLookup(id);
+
+  // The store is still loading. Holding the chip's place beats rendering
+  // nothing and then popping a mark into the middle of a sentence the reader
+  // has already started.
+  if (!ready) {
+    return (
+      <Citation
+        loading
+        tone="knowledge"
+        ariaLabel={t("chat.cite.loading")}
+        label={<Brain size={10} aria-hidden />}
+      />
+    );
+  }
+
   if (!piece) return null;
   return (
     <Citation
       tone="knowledge"
       ariaLabel={t("chat.cite.label", { text: piece.texto })}
       label={<Brain size={10} aria-hidden />}
+      onOpen={() => openKnowledge(id, piece.texto)}
+      openLabel={t("chat.cite.open")}
       source={{
         domain: t("chat.cite.source"),
         title: piece.entidad ? `${piece.nodo} · ${piece.entidad}` : piece.nodo,
