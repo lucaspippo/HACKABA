@@ -134,3 +134,11 @@ def test_demo_bilingue():
         if k in ("ventana_compra",):  # el título lleva solo el nombre propio
             continue
         assert es[k] != en[k], k  # traducidas de verdad
+
+
+def test_dormido_cites_the_cleanup_exception_as_evidence_not_assumption():
+    card = next(c for c in _demo_cards("es") if c["id"] == "despertar_dormido")
+    evidence_kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assumption_labels = [a["label"] for a in card["insight"]["assumptions"]]
+    assert "knowledge" in evidence_kinds
+    assert not any("limpieza" in (lbl or "") for lbl in assumption_labels)

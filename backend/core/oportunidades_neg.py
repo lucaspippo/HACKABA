@@ -303,12 +303,13 @@ def _card_dormido(lang, ctx) -> dict | None:
                     _t("core.opn.f_costos", lang)],
     }
     # Piece 14 — el dormido de limpieza fue una compra por precio, no un error:
-    # el hallazgo lo distingue del resto (contexto declarado, no un cálculo).
+    # el hallazgo lo distingue del resto, citado como evidencia (nunca como
+    # assumption: una regla del dueño no es un salto interpretativo que baja
+    # confianza, es una fuente más).
     k_dorm = [p for p in conocimiento.aplicables(nodo="inventario", efecto="contexto_para_angela")
               if "limpieza" in conocimiento._norm(p.get("entidad"))]
     if k_dorm:
-        assunciones.append(ins.assumption(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_dorm[0], lang))))
+        evidencia.append(ins.knowledge(k_dorm[0]))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_dorm]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.dormido_p1", lang, pct=rot["pct_dormido"],
