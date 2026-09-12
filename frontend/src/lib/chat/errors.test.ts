@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { toAssistantError } from "@assistant-ui/core";
 import { ChatStreamError, chatErrorCodeFromStatus } from "./errors";
 
 describe("chatErrorCodeFromStatus", () => {
@@ -36,5 +37,24 @@ describe("ChatStreamError", () => {
 
   it("marks session_expired as not retryable", () => {
     expect(new ChatStreamError("session_expired").retryable).toBe(false);
+  });
+});
+
+// ErrorState reads its code off `message.status.error.code`, which only
+// works because assistant-ui's `toAssistantError` duck-types on `.code` and
+// `.message` being strings and returns the original object unchanged when
+// they are (see @assistant-ui/core's isAssistantError). That is a structural
+// coincidence with an external package, not a stated contract, so it is
+// pinned here directly against the real function rather than reasoned about
+// from source: if a future assistant-ui version stops doing this, this test
+// fails instead of ErrorState silently showing generic copy for everything.
+describe("ChatStreamError through assistant-ui's toAssistantError", () => {
+  it("survives with its code intact", () => {
+    expect(toAssistantError(new ChatStreamError("network")).code).toBe("network");
+    expect(toAssistantError(new ChatStreamError("rate_limit")).code).toBe("rate_limit");
+  });
+
+  it("survives even with no message argument, since message defaults to code", () => {
+    expect(toAssistantError(new ChatStreamError("session_expired")).code).toBe("session_expired");
   });
 });
