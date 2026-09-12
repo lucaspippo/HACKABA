@@ -35,6 +35,7 @@ data-demo/fotos/
 data-demo/documentos/
 data-demo/caja.json
 data-demo/contexto.json
+data-demo/odoo_demo_conectado.json
 
 # Estado vivo de la cobranza y de la autonomía de Ángela (P42/E-F): se genera
 # al aprobar una gestión o al mover la perilla. Nunca se versiona.
