@@ -1,4 +1,4 @@
-import { AlertTriangle, Boxes, MessageSquarePlus, Target, Users, Wallet } from "lucide-react";
+import { AlertTriangle, Boxes, Brain, MessageSquarePlus, Target, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type SlashCommandAction = "new_thread";
@@ -14,6 +14,9 @@ export type SlashCommand = {
   // suggestion chips in ChatPanel.
   prompt?: string;
   action?: SlashCommandAction;
+  // Put in the composer for the user to finish, instead of sent. The fact
+  // itself is theirs to type, so unlike `prompt` this one is translated.
+  templateKey?: string;
 };
 
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
@@ -55,6 +58,13 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     icon: AlertTriangle,
     feature: "saneamiento",
     prompt: "¿Qué datos tengo para corregir?",
+  },
+  {
+    id: "remember",
+    nameKey: "chat.command.remember.name",
+    descriptionKey: "chat.command.remember.description",
+    icon: Brain,
+    templateKey: "chat.command.remember.template",
   },
   {
     id: "new_thread",

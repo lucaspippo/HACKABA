@@ -3052,6 +3052,7 @@ export const EN = {
   "chat.settings.error": "Couldn't save that setting.",
   "chat.command.remember.name": "remember",
   "chat.command.remember.description": "Save something about the business",
+  "chat.command.remember.template": "Remember that ",
   "memoria_chips.error": "Couldn't save that. Try again.",
   "conocimiento_pendiente.titulo": "Knowledge proposals",
   "conocimiento_pendiente.vacio": "No proposals waiting for review.",

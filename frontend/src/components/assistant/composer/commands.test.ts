@@ -69,9 +69,20 @@ describe("the command catalogue", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("gives every command either a prompt or a local action, never both", () => {
+  it("gives every command exactly one of prompt, action or template", () => {
     for (const command of SLASH_COMMANDS) {
-      expect(Boolean(command.prompt) !== Boolean(command.action), command.id).toBe(true);
+      const kinds = [command.prompt, command.action, command.templateKey].filter(Boolean);
+      expect(kinds.length, command.id).toBe(1);
     }
+  });
+
+  it("offers a remember command that the user finishes typing", () => {
+    const remember = SLASH_COMMANDS.find((c) => c.id === "remember");
+    expect(remember?.templateKey).toBeTruthy();
+    expect(remember?.prompt).toBeUndefined();
+  });
+
+  it("matches the remember command by name", () => {
+    expect(matchCommands("/rem", SLASH_COMMANDS, nameOf).map((c) => c.id)).toContain("remember");
   });
 });
