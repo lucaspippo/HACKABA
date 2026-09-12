@@ -17,24 +17,20 @@
 // (una pregunta no escribe nada, nunca necesitó ese freno).
 //
 // THE CONVERSATIONAL PART: a question ("¿cuánto stock de aceite queda?")
-// no longer cuts away to a separate chat — it gets answered RIGHT HERE, with
-// the same streaming /api/angela/stream uses for the text chat (see
-// lib/chat/simpleAsk.ts), and the answer is read aloud. Once it's done
-// speaking, it starts listening again on its own: that's the difference
-// between "record a message" and talking WITH someone. Deliberately does
-// NOT listen while speaking — mixing the same device's speaker and
-// microphone is like a phone call on speaker: Ángela's own audio would
-// become a "user" replying to itself.
+// hands off to VoiceCallScreen — a full voice-call screen built on
+// assistant-ui's own RealtimeVoiceAdapter (useVoiceState/useVoiceControls/
+// useVoiceVolume), backed here by lib/voice/webSpeechVoiceAdapter.ts (Web
+// Speech recognize/ask/speak, chained). Same shared component and adapter
+// shape core/voz_viva.py's GPT-Live-1 flow uses (VozVivaRecepcion.jsx) —
+// one state machine for "a live voice session with Ángela", two different
+// things behind it.
 import { useEffect, useRef, useState } from "react";
-import { Mic, Square, X, Check, AlertTriangle, MessageSquare, Volume2, StopCircle } from "lucide-react";
+import { Mic, Square, X, Check, AlertTriangle } from "lucide-react";
 import AngelaMark from "./AngelaMark";
 import { api } from "../lib/api";
-import { authStore } from "../lib/auth";
-import { askAngela } from "../lib/chat/simpleAsk";
-import { ChatStreamError } from "../lib/chat/errors";
 import { useT } from "../lib/i18n";
-
-const speechSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+import { VoiceCallScreen } from "./voice/VoiceCallScreen";
+import { createWebSpeechVoiceAdapter, isWebSpeechVoiceSupported } from "../lib/voice/webSpeechVoiceAdapter";
 
 const Reconocimiento = typeof window !== "undefined"
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -42,7 +38,7 @@ const Reconocimiento = typeof window !== "undefined"
 
 export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const t = useT();
-  // listo|escuchando|pensando|propuesta|respondiendo|hecho
+  // listo|escuchando|pensando|propuesta|hecho
   const [paso, setPaso] = useState("listo");
   const [texto, setTexto] = useState("");
   const [prop, setProp] = useState(null);
@@ -50,22 +46,14 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
   const [cantidad, setCantidad] = useState("");
   const [error, setError] = useState(null);
   const [muestras, setMuestras] = useState([]);
-  // The free-form conversation (`consulta` branch): the question/answer in
-  // flight, the session history (so Ángela keeps context across follow-up
-  // questions) and whether it's speaking right now.
-  const [answer, setAnswer] = useState("");
-  const [speaking, setSpeaking] = useState(false);
-  const historyRef = useRef([]);
   const rec = useRef(null);
-  const active = useRef(true);   // false once closed: never re-arm the mic
+  // La llamada conversacional (rama `consulta`): mientras esté activa,
+  // VoiceCallScreen se hace cargo por completo — ver render() más abajo.
+  const [call, setCall] = useState(null);   // { adapter, transcript } | null
 
   useEffect(() => {
     api.vozMuestras().then((r) => setMuestras(r.muestras || [])).catch(() => {});
-    return () => {
-      active.current = false;
-      try { rec.current?.stop(); } catch { /* ya estaba parado */ }
-      if (speechSupported) window.speechSynthesis.cancel();
-    };
+    return () => { try { rec.current?.stop(); } catch { /* ya estaba parado */ } };
   }, []);
 
   const interpretar = async (frase) => {
@@ -74,7 +62,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
     try {
       const r = await api.vozEscuchar(frase);
       if (!r.ok) { setError(r.motivo); setPaso("listo"); return; }
-      if (r.intencion === "consulta") { converse(frase); return; }
+      if (r.intencion === "consulta") { startCall(frase); return; }
       setProp(r);
       setElegido(r.elegido ?? null);
       setCantidad(r.datos?.cantidad ?? "");
@@ -85,55 +73,36 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
     }
   };
 
-  // The conversational branch: nothing to note down here, so there's no
-  // block to raise — it just answers. `historyRef` (not state) because the
-  // next call needs THIS turn's value, not a future render that hasn't run
-  // yet.
-  const converse = async (question) => {
-    setPaso("respondiendo");
-    setAnswer("");
-    setError(null);
-    const previousHistory = historyRef.current;
-    historyRef.current = [...previousHistory, { role: "user", content: question }];
-    try {
-      const answerText = await askAngela(question, {
-        token: authStore.getSnapshot()?.token,
-        channel: "voz",
-        history: previousHistory,
-        onDelta: setAnswer,
-      });
-      historyRef.current = [...historyRef.current, { role: "assistant", content: answerText }];
-      setAnswer(answerText);
-      speak(answerText);
-    } catch (e) {
-      setError(e instanceof ChatStreamError ? t("voz.err_respuesta") : t("voz.err_red"));
-      setPaso("listo");
+  const appendToCall = (item) =>
+    setCall((prev) => prev && {
+      ...prev,
+      transcript: [...prev.transcript, { id: `${prev.transcript.length}`, ...item }],
+    });
+
+  const startCall = (initialQuestion) => {
+    if (!isWebSpeechVoiceSupported()) {
+      // sin reconocimiento/síntesis en este navegador: la pregunta se
+      // responde en el chat de texto, como siempre pudo.
+      onPreguntar?.(initialQuestion);
+      onCerrar?.();
+      return;
     }
+    const adapter = createWebSpeechVoiceAdapter({
+      channel: "voz",
+      initialQuestion,
+      onTranscript: appendToCall,
+    });
+    setCall({ adapter, transcript: [{ id: "u0", role: "user", text: initialQuestion }] });
   };
 
-  // Read it aloud and, once it's done, start listening again on its own —
-  // that's where the conversational part lives. No speech synthesis (old
-  // Safari, etc.) is no big deal: the answer is already on screen, and the
-  // person taps "Hablar" whenever they want to continue.
-  const speak = (answerText) => {
-    if (!speechSupported || !answerText.trim()) return;
-    const u = new SpeechSynthesisUtterance(answerText);
-    u.lang = document.documentElement.lang || "es-AR";
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => {
-      setSpeaking(false);
-      if (active.current) escuchar();
-    };
-    u.onerror = () => setSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+  const endCall = () => {
+    setCall(null);
+    setPaso("listo");
   };
 
-  const endConversation = () => {
-    if (speechSupported) window.speechSynthesis.cancel();
-    setSpeaking(false);
-    historyRef.current = [];
-    setAnswer("");
+  const endCallWithError = () => {
+    setCall(null);
+    setError(t("voz.err_respuesta"));
     setPaso("listo");
   };
 
@@ -151,13 +120,6 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
       if (e.results[e.results.length - 1].isFinal) interpretar(frase);
     };
     r.onerror = (e) => {
-      // "no-speech" while auto-relistening (right after an answer) isn't an
-      // error: nobody has said anything yet, that's all. Don't scare people
-      // with a banner — they tap the mic whenever they want to continue.
-      if (e.error === "no-speech" && historyRef.current.length > 0) {
-        setPaso("listo");
-        return;
-      }
       setError(e.error === "not-allowed" ? t("voz.sin_permiso") : t("voz.err_audio"));
       setPaso("listo");
     };
@@ -215,28 +177,15 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {call && (
+            <VoiceCallScreen voice={call.adapter} transcript={call.transcript}
+              onEnd={endCall} onError={endCallWithError} />
+          )}
+
           {/* ---------------------------------------------- hablar */}
-          {(paso === "listo" || paso === "escuchando") && (
+          {!call && (paso === "listo" || paso === "escuchando") && (
             <div className="space-y-4">
-              {historyRef.current.length > 0 && answer && (
-                <div className="space-y-2">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold uppercase
-                                tracking-wide text-tinta-suave">
-                    <AngelaMark size={16} /> {t("voz.ultima_respuesta")}
-                  </p>
-                  <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-sm leading-snug text-tinta">
-                    {answer}
-                  </p>
-                  <button onClick={endConversation}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-tinta-suave
-                               hover:text-tinta">
-                    <StopCircle size={15} /> {t("voz.terminar_conversacion")}
-                  </button>
-                </div>
-              )}
-              <p className="text-sm leading-snug text-tinta-suave">
-                {historyRef.current.length > 0 ? t("voz.seguir_hablando") : t("voz.ayuda")}
-              </p>
+              <p className="text-sm leading-snug text-tinta-suave">{t("voz.ayuda")}</p>
               <button onClick={paso === "escuchando" ? () => rec.current?.stop() : escuchar}
                 className={`flex w-full items-center justify-center gap-2.5 rounded-full px-5 py-4
                             text-base font-semibold text-crema transition-colors ${
@@ -252,7 +201,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
                 </p>
               )}
               {/* el plan B honesto: sin Web Speech o sin red, la misma tubería */}
-              {muestras.length > 0 && paso === "listo" && historyRef.current.length === 0 && (
+              {muestras.length > 0 && paso === "listo" && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-tinta-suave">
                     {t("voz.muestras")}
@@ -282,49 +231,15 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
             </div>
           )}
 
-          {paso === "pensando" && (
+          {!call && paso === "pensando" && (
             <div className="flex items-center justify-center gap-3 py-10">
               <AngelaMark size={30} estado="ejecutando" />
               <p className="text-sm text-tinta-suave">{t("voz.pensando")}</p>
             </div>
           )}
 
-          {/* ------------------------------- the conversation (consulta branch) */}
-          {paso === "respondiendo" && (
-            <div className="space-y-4">
-              <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-sm italic text-tinta-suave">
-                «{texto}»
-              </p>
-              <div className="flex items-start gap-2.5">
-                <AngelaMark size={26} estado={speaking ? "ejecutando" : undefined} />
-                <p className="text-base leading-snug text-tinta">
-                  {answer || t("voz.pensando")}
-                </p>
-              </div>
-              {speaking && (
-                <p className="flex items-center gap-1.5 text-sm text-tinta-suave">
-                  <Volume2 size={15} className="text-violeta" /> {t("voz.hablando")}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button onClick={endConversation}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema
-                             px-4 py-2.5 text-sm font-semibold text-tinta-suave">
-                  <StopCircle size={15} /> {t("voz.terminar_conversacion")}
-                </button>
-                {onPreguntar && (
-                  <button onClick={() => { onPreguntar(texto); onCerrar?.(); }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema
-                               px-4 py-2.5 text-sm font-semibold text-tinta-suave">
-                    <MessageSquare size={15} /> {t("voz.preguntar")}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* ------------------------------------------- la propuesta */}
-          {paso === "propuesta" && prop && (
+          {!call && paso === "propuesta" && prop && (
             <div className="space-y-4">
               <p className="rounded-xl bg-papel-hondo px-3.5 py-2.5 text-sm italic text-tinta-suave">
                 «{prop.transcripcion}»
@@ -392,7 +307,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
             </div>
           )}
 
-          {paso === "hecho" && (
+          {!call && paso === "hecho" && (
             <div className="space-y-4 py-4 text-center">
               <span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-salvia text-crema">
                 <Check size={20} />
