@@ -15,6 +15,7 @@ import {
 } from "@assistant-ui/react";
 import { createChatModelAdapter } from "../../lib/chat/adapter";
 import { VoiceConversation, type VoiceMode, type VoiceTranscriptItem } from "./VoiceConversation";
+import { playCallEndSound, playCallStartSound } from "../../lib/voice/callSounds";
 
 function toMode(
   voice: ReturnType<typeof useVoiceState>,
@@ -33,13 +34,17 @@ type VoiceCallScreenProps = {
   /** The adapter ended the session on its own (network drop, mic denied,
    * askAngela failing) — distinct from the person tapping "end call". */
   onError?: () => void;
+  /** Attaching a document hands off to the app's own upload flow, so the
+   * call ends first — see ChatThread's caller. */
+  onAttach?: () => void;
 };
 
-function VoiceCallInner({ transcript, onEnd, onInterrupt, onError }: Omit<VoiceCallScreenProps, "voice">) {
+function VoiceCallInner({ transcript, onEnd, onInterrupt, onError, onAttach }: Omit<VoiceCallScreenProps, "voice">) {
   const voice = useVoiceState();
   const amplitude = useVoiceVolume();
   const { connect, disconnect, mute, unmute } = useVoiceControls();
   const connected = useRef(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     if (connected.current) return;
@@ -52,7 +57,12 @@ function VoiceCallInner({ transcript, onEnd, onInterrupt, onError }: Omit<VoiceC
   // needs its own path back to the caller's normal UI.
   const status = voice?.status;
   useEffect(() => {
+    if (status?.type === "running" && !startedRef.current) {
+      startedRef.current = true;
+      playCallStartSound();
+    }
     if (status?.type !== "ended") return;
+    playCallEndSound();
     if (status.reason === "error") onError?.();
     else onEnd?.();
   }, [status, onEnd, onError]);
@@ -76,18 +86,25 @@ function VoiceCallInner({ transcript, onEnd, onInterrupt, onError }: Omit<VoiceC
       onToggleMute={() => (voice?.isMuted ? unmute() : mute())}
       onEnd={handleEnd}
       onInterrupt={onInterrupt}
+      onAttach={onAttach}
       transcript={transcript}
     />
   );
 }
 
-export function VoiceCallScreen({ voice, transcript, onEnd, onInterrupt, onError }: VoiceCallScreenProps) {
+export function VoiceCallScreen({ voice, transcript, onEnd, onInterrupt, onError, onAttach }: VoiceCallScreenProps) {
   const [chatModel] = useState(() => createChatModelAdapter());
   const runtime = useLocalRuntime(chatModel, { adapters: { voice } });
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <VoiceCallInner transcript={transcript} onEnd={onEnd} onInterrupt={onInterrupt} onError={onError} />
+      <VoiceCallInner
+        transcript={transcript}
+        onEnd={onEnd}
+        onInterrupt={onInterrupt}
+        onError={onError}
+        onAttach={onAttach}
+      />
     </AssistantRuntimeProvider>
   );
 }
