@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Ghost, Scale, TriangleAlert, PackageCheck, MessageCircle, ArrowRight, CheckCircle2,
          ChevronRight, Check, X, Loader2, FileText, HandCoins, ClipboardList, Tag, Camera,
-         ListChecks, Truck, ShieldCheck, Boxes, Wallet, PackagePlus, Search, Mic } from "lucide-react";
+         ListChecks, Truck, ShieldCheck, Boxes, Wallet, PackagePlus, PackageX, Search, Mic } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import Onboarding from "../components/Onboarding";
 import ReporteForm from "./ReporteForm";
 import { derivarTareas } from "../lib/piso";
-import { accionesDe, chipsDe, rolDe, reportaPorVoz } from "../lib/roles";
+import { accionesDe, chipsDe, muestrasDe, reportaPorVoz } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
 import { useSession } from "../lib/auth";
 import { api } from "../lib/api";
@@ -33,7 +33,8 @@ const DOT = { rojo: "bg-rojo", oro: "bg-oro", salvia: "bg-salvia" };
 // Los iconos de las acciones del catálogo de roles (lib/roles.js guarda el
 // nombre; el bundle importa sólo estos).
 const ICONO = { FileText, HandCoins, ClipboardList, Tag, Camera, TriangleAlert,
-                ListChecks, Truck, PackageCheck, ShieldCheck, Boxes, Wallet, PackagePlus, Scale };
+                ListChecks, Truck, PackageCheck, ShieldCheck, Boxes, Wallet, PackagePlus,
+                PackageX, Scale };
 
 export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNavegar }) {
   const t = useT();
@@ -328,7 +329,7 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
       {/* Los dos modales viven FUERA de las columnas: son overlays a pantalla
           completa (`fixed inset-0`) y no tienen por qué entrar en el reparto. */}
       {vozAbierta && (
-        <VozAngela rol={rolDe(user)?.id} onCerrar={() => setVozAbierta(false)}
+        <VozAngela rol={muestrasDe(user)} onCerrar={() => setVozAbierta(false)}
           onListo={onCerrada}
           onPreguntar={(texto) => { setVozAbierta(false); onAbrirAngela?.(texto); }} />
       )}

@@ -17,7 +17,9 @@
 // El rol se lee del TEXTO del rol (el del seed), no de una lista de usernames:
 // una persona nueva con el mismo rol hereda su vista sin tocar código.
 
-// El orden importa: "Encargado de depósito" es depósito, no sucursal.
+// El orden importa, dos veces: "Encargado de depósito" es depósito y no
+// sucursal, y dentro del depósito las cinco fichas específicas van antes que
+// la genérica, que es la red de la que nadie se cae.
 const CATALOGO = [
   {
     id: "administracion",
@@ -49,10 +51,106 @@ const CATALOGO = [
       { k: "rol.chip_oferta_conviene", need: ["inventario"] },
     ],
   },
+  // EL DEPÓSITO NO ES UN OFICIO, SON CINCO. Una sola ficha con /dep[oó]sito/i
+  // se comía a Ramón, Nahuel, Tomás, Brian y Kevin, y les ofrecía a los cinco
+  // lo mismo: cargar remitos, reportar faltantes y marcar conteos. Brian arma
+  // pedidos ocho horas por día y no tenía UNA acción de su oficio.
+  //
+  // Las cinco fichas van ANTES que la genérica, que queda de red: alguien con
+  // un rol de depósito que no matchee ninguna (un puesto nuevo, otro tenant)
+  // sigue aterrizando en la vista de siempre en vez de quedarse sin nada.
+  //
+  // `muestras` es la familia de notas de voz de ejemplo (data-demo/audios):
+  // los cinco comparten las del depósito, y por eso no sale del `id`.
   {
+    id: "deposito_encargado",
+    match: /encargad[oa].*dep[oó]sito|jefe.*dep[oó]sito/i,
+    voz: true,
+    muestras: "deposito",
+    acciones: [
+      { id: "ver_deposito", icon: "PackageX", need: ["deposito"], kind: "navegar",
+        a: "deposito", destaca: true },
+      { id: "cargar_remito", icon: "Camera", need: ["cargar"], kind: "navegar", a: "cargar" },
+      { id: "marcar_conteo", icon: "ListChecks", need: ["deposito"], kind: "reporte",
+        tipo: "conteo" },
+    ],
+    chips: [
+      { k: "rol.chip_que_vence", need: ["deposito"] },
+      { k: "rol.chip_negativos", need: ["inventario"] },
+      { k: "rol.chip_ultimo_remito", need: ["cargar"] },
+    ],
+  },
+  {
+    id: "deposito_recepcion",
+    match: /dep[oó]sito.*(recepci|recib)/i,
+    voz: true,
+    muestras: "deposito",
+    acciones: [
+      { id: "cargar_remito", icon: "Camera", need: ["cargar"], kind: "navegar", a: "cargar",
+        destaca: true },
+      { id: "reportar_faltante", icon: "TriangleAlert", need: ["deposito"], kind: "reporte",
+        tipo: "faltante" },
+    ],
+    chips: [
+      { k: "rol.chip_ultimo_remito", need: ["cargar"] },
+      { k: "rol.chip_donde_esta", need: ["deposito"] },
+    ],
+  },
+  {
+    id: "deposito_conteos",
+    match: /dep[oó]sito.*conteo/i,
+    voz: true,
+    muestras: "deposito",
+    acciones: [
+      { id: "marcar_conteo", icon: "ListChecks", need: ["deposito"], kind: "reporte",
+        tipo: "conteo", destaca: true },
+      { id: "reportar_faltante", icon: "TriangleAlert", need: ["deposito"], kind: "reporte",
+        tipo: "faltante" },
+    ],
+    chips: [
+      { k: "rol.chip_donde_esta", need: ["deposito"] },
+      { k: "rol.chip_que_vence", need: ["deposito"] },
+      { k: "rol.chip_negativos", need: ["inventario"] },
+    ],
+  },
+  {
+    // Picking. Su trabajo es el PEDIDO, no el remito: por eso su acción
+    // destacada lleva a logística y no a cargar.
+    id: "deposito_armado",
+    match: /dep[oó]sito.*(armado|picking|preparaci)/i,
+    voz: true,
+    muestras: "deposito",
+    acciones: [
+      { id: "mis_pedidos", icon: "ClipboardList", need: ["logistica"], kind: "navegar",
+        a: "logistica", destaca: true },
+      { id: "reportar_faltante", icon: "TriangleAlert", need: ["deposito"], kind: "reporte",
+        tipo: "faltante" },
+    ],
+    chips: [
+      { k: "rol.chip_donde_esta", need: ["deposito"] },
+      { k: "rol.chip_falta_entregar", need: ["logistica"] },
+    ],
+  },
+  {
+    // El que recién entró. Menos es mejor: una acción y una pregunta.
+    id: "deposito_ayudante",
+    match: /dep[oó]sito.*ayudante/i,
+    voz: true,
+    muestras: "deposito",
+    acciones: [
+      { id: "reportar_faltante", icon: "TriangleAlert", need: ["deposito"], kind: "reporte",
+        tipo: "faltante", destaca: true },
+    ],
+    chips: [
+      { k: "rol.chip_donde_esta", need: ["deposito"] },
+    ],
+  },
+  {
+    // La red: cualquier otro rol de depósito conserva la vista de siempre.
     id: "deposito",
     match: /dep[oó]sito/i,
     voz: true,
+    muestras: "deposito",
     acciones: [
       { id: "cargar_remito", icon: "Camera", need: ["cargar"], kind: "navegar", a: "cargar",
         destaca: true },
@@ -71,6 +169,7 @@ const CATALOGO = [
     id: "reparto",
     match: /reparto|chofer|cami[oó]n/i,
     voz: true,
+    muestras: "reparto",
     acciones: [
       { id: "mi_ruta", icon: "Truck", need: ["logistica"], kind: "navegar", a: "logistica",
         destaca: true },
@@ -103,6 +202,7 @@ const CATALOGO = [
     id: "mostrador",
     match: /mostrador/i,
     voz: true,
+    muestras: "mostrador",
     acciones: [
       { id: "precio_pesable", icon: "Scale", need: ["inventario"], kind: "angela",
         pregunta: "rol.chip_pesable_actualizado", destaca: true },
@@ -173,6 +273,17 @@ export function accionesDe(user) {
  *  "depósito, reparto y mostrador"; `entrega` y `reposicion` son sus intenciones). */
 export function reportaPorVoz(user) {
   return !!rolDe(user)?.voz;
+}
+
+/** La familia de notas de voz de ejemplo que le corresponde a este rol.
+ *
+ *  No sale del `id` porque los cinco oficios del depósito comparten las mismas
+ *  muestras (data-demo/audios las etiqueta `rol: "deposito"`): si saliera del
+ *  id, partir el rol en cinco habría dejado a cuatro de ellos sin un solo
+ *  ejemplo — el plan B de quien no tiene Web Speech o no tiene red. */
+export function muestrasDe(user) {
+  const r = rolDe(user);
+  return r ? (r.muestras || r.id) : null;
 }
 
 /** Las preguntas pre-cargadas de su oficio (sólo las que su rol puede responder). */

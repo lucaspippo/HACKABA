@@ -2489,6 +2489,10 @@ export const EN = {
   "rol.acc_reportar_faltante_sub": "What arrived broken, short or expired. It's logged under your name.",
   "rol.acc_marcar_conteo": "Log a stock count",
   "rol.acc_marcar_conteo_sub": "You counted a product and it doesn't match: say it here.",
+  "rol.acc_ver_deposito": "See how the warehouse is doing",
+  "rol.acc_ver_deposito_sub": "What is expiring and the unresolved differences, on one screen.",
+  "rol.acc_mis_pedidos": "See the orders to pick",
+  "rol.acc_mis_pedidos_sub": "What ships today, with each one's customer and truck.",
   // delivery
   "rol.acc_mi_ruta": "See today's route",
   "rol.acc_mi_ruta_sub": "What to drop at each stop, in units — not kilos.",
@@ -2519,6 +2523,7 @@ export const EN = {
   "rol.chip_donde_esta": "Where is the cooked ham stored?",
   "rol.chip_ultimo_remito": "What came in on the last delivery note?",
   "rol.chip_negativos": "Which products are in negative stock?",
+  "rol.chip_que_vence": "What expires in the next 15 days?",
   "rol.chip_unidades_bajo": "How many units do I drop at the next customer?",
   "rol.chip_falta_entregar": "What's left to deliver today?",
   "rol.chip_plazo": "How much credit time can I give Almacén San Martín?",
