@@ -1047,9 +1047,16 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // Pantalla completa y plegar el riel cambian el ancho ÚTIL sin que el
   // contenedor observado cambie de tamaño en el mismo tick: el riel se anima
   // 200 ms, así que el observer ve el paso intermedio o no ve nada.
+  //
+  // DOS VECES, y hace falta. Entrar a pantalla completa mueve el bloque a un
+  // portal en el <body> y el layout se acomoda en varios pasos: midiendo una
+  // sola vez a los 280 ms se lee un lienzo mas chico del que va a quedar y el
+  // mapa entra al 0,45 cuando le corresponde 0,70 —medido—. El segundo pase
+  // corrige. Si el primero ya acerto, el segundo no mueve nada.
   useEffect(() => {
-    const t = setTimeout(() => encuadrar(260), 280);
-    return () => clearTimeout(t);
+    const a = setTimeout(() => encuadrar(260), 280);
+    const b = setTimeout(() => encuadrar(200), 680);
+    return () => { clearTimeout(a); clearTimeout(b); };
   }, [completo, riel, encuadrar]);
 
   // Y el acercamiento propiamente dicho. La PRIMERA vez no: al montar,
