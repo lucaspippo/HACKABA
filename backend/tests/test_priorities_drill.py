@@ -202,3 +202,21 @@ def test_finance_alert_rows_are_plain_text_not_fake_links(cid):
         pytest.skip(f"{cid} not present in the demo dataset")
     rows = [r for e in c["insight"]["evidence"] for r in e["records"]]
     assert all(r["id"] is None and r["kind"] is None for r in rows)
+
+
+def test_dep_discrep_count_does_not_contradict_its_rows():
+    """discrepancy_count and discrepancy_rows must both derive from the same
+    (suppression-filtered) collection — a card that says 'N items differ' and
+    then lists a different number of rows contradicts itself."""
+    c = _card("dep_discrep")
+    if c is None:
+        pytest.skip("dep_discrep not present in the demo dataset")
+    ev = {e["id"]: e for e in c["insight"]["evidence"]}
+    count = ev["discrepancy_count"]["value"]
+    rows = ev["discrepancy_rows"]["records"]
+    if count <= 8:  # the builder's display cap
+        assert len(rows) == count
+    else:
+        # count exceeds the cap: rows must be a prefix of the counted set,
+        # not a mismatched (e.g. unfiltered) collection.
+        assert len(rows) == 8
