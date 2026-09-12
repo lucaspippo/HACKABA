@@ -42,6 +42,112 @@ from . import cuentas, fechas, store
 ESTADOS = ("pendiente", "recordado", "promesa", "pagado", "sin_respuesta")
 
 
+# --- LA DEUDA QUE SALE A LA CALLE HOY -------------------------------------------
+# Hoy y mañana. Una parada se reasigna la tarde anterior; tres días adelante ya
+# es planificación y no operación, y el aviso deja de ser accionable justo en el
+# momento en que se lee.
+VENTANA_RUTA_DIAS = 2
+
+
+def exposicion_en_ruta(dias: int = VENTANA_RUTA_DIAS) -> list[dict]:
+    """Por día de reparto y por camión: cuántas paradas y cuánta deuda llevan.
+
+    El ERP sabe cuánto debe cada cliente y sabe qué pedido sale mañana. Lo que
+    no hace nadie es LA SUMA POR CAMIÓN, y puesta así la decisión de operación
+    se ve sola: o el que va lleva instrucciones, o algunas paradas cambian de
+    camión. Es el mismo criterio del resto del módulo — la mora no se recalcula
+    acá, se ORDENA por algo que el que la mira puede accionar; sólo que el
+    ordenador no es el exceso de días sino dónde va a estar parado alguien.
+
+    ESTO NO RECUPERA PLATA, LA HACE VISIBLE. `expuesto` es deuda que YA existe
+    en la cuenta corriente. Cuánto de eso se cobra es trabajo de cobranza, no
+    del software, y por eso la tarjeta que sale de acá viaja con
+    `naturaleza="riesgo"`: se muestra, no se suma al capital recuperable (ver
+    `oportunidades_neg.recuperable`, que es donde esa distinción ya vive).
+
+    UN CLIENTE, UNA VEZ. El mismo cliente puede tener dos pedidos el mismo día
+    y en el mismo camión — en el dataset del demo pasa: Supermercado El Puente
+    tiene dos paradas el 08/07. Su saldo es UNO: se cuenta una sola vez por
+    camión, y una sola vez en el total del día, donde además puede aparecer en
+    dos camiones distintos. Sumar por parada infla el total sin que se note, y
+    es exactamente el doble conteo que ya nos costó una vez.
+    """
+    from . import logistica
+    if not logistica.hay_datos():
+        return []
+    try:
+        por_nombre = {c["nombre"]: c for c in cuentas.listar()}
+    except Exception:  # noqa: BLE001 — sin cuentas no hay exposición que sumar
+        return []
+
+    import datetime
+    salida = []
+    for i in range(max(1, dias)):
+        dia = fechas.hoy() + datetime.timedelta(days=i)
+        paradas = logistica.salidas(dia.isoformat())
+        if not paradas:
+            continue
+        por_camion: dict[str, dict] = {}
+        del_dia: dict[str, dict] = {}
+        for p in paradas:
+            transporte = p.get("transporte") or "?"
+            cam = por_camion.setdefault(transporte, {
+                "transporte": transporte, "paradas": 0, "clientes": {},
+                "sin_cuenta": 0})
+            cam["paradas"] += 1
+            c = por_nombre.get(p.get("cliente"))
+            if not c:
+                # Un cliente sin cuenta corriente no es un error (contado,
+                # mostrador). Se cuenta aparte para que el total no mienta por
+                # omisión: "no debe nada" y "no sé" no son lo mismo.
+                cam["sin_cuenta"] += 1
+                continue
+            cam["clientes"][c["nombre"]] = c
+            del_dia[c["nombre"]] = c
+
+        camiones = []
+        for cam in por_camion.values():
+            cs = list(cam["clientes"].values())
+            camiones.append({
+                "transporte": cam["transporte"],
+                "paradas": cam["paradas"],
+                "clientes": len(cs),
+                "sin_cuenta": cam["sin_cuenta"],
+                "expuesto": round(sum(c["saldo"] for c in cs), 2),
+                "vencidos": [
+                    {"cliente": c["nombre"], "id": c.get("id"),
+                     "saldo": c["saldo"],
+                     "dias_sin_pagar": c.get("dias_sin_pagar"),
+                     "plazo_dias": c.get("plazo_dias"),
+                     # La regla de la casa ("a X tolerale N días") ya viene
+                     # aplicada por cuentas._enriquecer: acá sólo se pasa.
+                     "exceso_tolerancia": c.get("exceso_tolerancia")}
+                    for c in sorted(cs, key=lambda x: -x["saldo"])
+                    if c.get("en_mora")],
+            })
+        camiones.sort(key=lambda d: -d["expuesto"])
+        salida.append({
+            "dia": dia.isoformat(),
+            "paradas": len(paradas),
+            "clientes": len(del_dia),
+            "expuesto": round(sum(c["saldo"] for c in del_dia.values()), 2),
+            "camiones": camiones,
+        })
+    return salida
+
+
+def peor_camion(dias: int = VENTANA_RUTA_DIAS) -> dict | None:
+    """El par (día, camión) con más plata en la calle. None si no hay nada."""
+    peor = None
+    for d in exposicion_en_ruta(dias):
+        for cam in d["camiones"]:
+            if cam["expuesto"] <= 0:
+                continue
+            if not peor or cam["expuesto"] > peor["expuesto"]:
+                peor = {**cam, "dia": d["dia"]}
+    return peor
+
+
 def _load() -> dict:
     from core.db import blob_repo
     from core.db import tenant as _tenant

@@ -3558,6 +3558,63 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.prio.f_deposito": {"es": "Depósito", "en": "Warehouse"},
     "core.prio.f_costos": {"es": "Costos", "en": "Costs"},
     "core.prio.f_caja": {"es": "Caja del día", "en": "Today's till"},
+    # La deuda que sale a la calle hoy, sumada por camión (logística × cuentas).
+    "core.prio.ruta_hoy": {"es": "hoy", "en": "today"},
+    "core.prio.ruta_manana": {"es": "mañana", "en": "tomorrow"},
+    "core.prio.ruta_dia": {"es": "el {dia}", "en": "on {dia}"},
+    "core.prio.ruta_t": {
+        "es": "{transporte} sale {cuando} con la parte más pesada de la cartera",
+        "en": "{transporte} leaves {cuando} carrying the heaviest part of the book"},
+    "core.prio.ruta_r": {
+        "es": "{paradas} paradas que deben {monto}: el {share}% de todo lo que "
+              "tenés por cobrar, en un solo viaje.",
+        "en": "{paradas} stops owing {monto}: {share}% of everything you are owed, "
+              "in one run."},
+    "core.prio.ruta_monto_lbl": {"es": "deuda que ya existe, no plata a recuperar",
+                                 "en": "debt that already exists, not money to recover"},
+    "core.prio.ruta_p": {
+        "es": "{transporte} hace {cuando} {paradas} paradas en clientes que deben {monto}.",
+        "en": "{transporte} makes {paradas} stops {cuando} at customers owing {monto}."},
+    "core.prio.ruta_hyp": {
+        "es": "El que va a estar parado ahí puede cobrar, o al menos preguntar. "
+              "El sistema de gestión no sabe quién está en la puerta de quién.",
+        "en": "Whoever is standing there can collect, or at least ask. The ERP has "
+              "no idea who is at whose door."},
+    "core.prio.ruta_ev": {
+        "es": "Deuda de las {paradas} paradas de {transporte} "
+              "({clientes} clientes distintos)",
+        "en": "Debt across {transporte}'s {paradas} stops "
+              "({clientes} distinct customers)"},
+    "core.prio.ruta_venc": {"es": "De esas paradas, las pasadas de plazo",
+                            "en": "Of those stops, the ones past terms"},
+    "core.prio.ruta_i": {"es": "{dias} días · plazo {plazo}",
+                         "en": "{dias} days · {plazo}-day term"},
+    "core.prio.ruta_sup": {
+        "es": "Que el que hace la parada puede cobrar o preguntar. Si el reparto es "
+              "de un tercero, hay que darle la instrucción o mover la parada.",
+        "en": "That whoever makes the stop can collect or ask. If the run is "
+              "outsourced, the driver needs the instruction or the stop needs moving."},
+    "core.prio.ruta_sup_if": {
+        "es": "Si nadie de la casa pasa por ahí, esto es un recordatorio de llamar, "
+              "no una cobranza.",
+        "en": "If nobody of ours goes there, this is a reminder to call, not a "
+              "collection."},
+    "core.prio.ruta_sin_cuenta": {
+        "es": "Otras {n} paradas son de clientes sin cuenta corriente: no suman al total.",
+        "en": "Another {n} stops are customers with no account: they add nothing."},
+    "core.prio.ruta_risk": {
+        "es": "Es deuda que YA existe: el aviso la pone a la vista, no la cobra.",
+        "en": "This debt already exists: the alert surfaces it, it does not collect it."},
+    "core.prio.ruta_chat": {
+        "es": "¿Qué hago con las paradas de {transporte} de {cuando}?",
+        "en": "What should I do about {transporte}'s stops {cuando}?"},
+    "core.prio.f_logistica": {"es": "entregas previstas", "en": "scheduled deliveries"},
+    "core.method.deuda_en_ruta": {
+        "es": "saldo de cuenta corriente de cada cliente con parada sin entregar ese "
+              "día, sumado por camión y sin repetir cliente",
+        "en": "each customer's account balance where they have an undelivered stop "
+              "that day, summed per truck, counting a customer once"},
+
     "core.prio.morosos_t": {"es": "Clientes atrasados", "en": "Overdue customers"},
     "core.prio.morosos_r": {
         "es": "{n} clientes, {monto} trabado.",

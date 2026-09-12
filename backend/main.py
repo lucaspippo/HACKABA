@@ -38,7 +38,8 @@ import config
 import data_store as ds
 import i18n
 import mcp_server
-from authz import require_admin, require_any_feature, require_feature, usuario_actual
+from authz import (require_admin, require_all_features, require_any_feature,
+                   require_feature, usuario_actual)
 from core import (store, saneamiento, fase, memoria, importer, staging, anomalias,
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
@@ -1212,6 +1213,23 @@ def logistica_get(_u: dict = Depends(require_feature("logistica"))):
         "hoy": logistica.de_hoy(),
         "atrasados": logistica.atrasados(),
     }
+
+
+@app.get("/api/logistica/exposicion")
+def logistica_exposicion(
+        _u: dict = Depends(require_all_features("logistica", "cuentas"))):
+    """Cuánta plata en la calle lleva cada camión que está por salir.
+
+    DOS MÓDULOS, NO UNO. Ver esto es ver rutas Y ver saldos, y el gate sale de
+    esa frase en vez de inventarse: el encargado de depósito tiene `logistica`
+    pero no `cuentas` (no le corresponde el saldo de un cliente), y el
+    preventista tiene `cuentas` pero no `logistica` (no le corresponde la flota).
+    Quien tenga una sola de las dos mitades no ve el cruce.
+
+    El total es deuda que YA existe; el cruce la hace visible y no la cobra.
+    """
+    from core import cobranza
+    return {"dias": cobranza.exposicion_en_ruta()}
 
 
 # --- P39 · lo que el piso REPORTA (y el cruce que produce) ---------------------
