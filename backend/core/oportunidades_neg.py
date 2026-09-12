@@ -771,14 +771,11 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     if piezas_k:
         # chip "Regla de Aldo: crítico" + la regla PRIMERO en la evidencia (misma
         # jerarquía que el viejo porque.insert(0, ...)) + el nodo de conocimiento
-        # para el camino en el mapa (E3).
+        # para el camino en el mapa (E3). Antes esto era un ins.metric() con
+        # value=None como workaround; ins.knowledge() es el constructor real,
+        # y además carga origen/freshness que el workaround no podía.
         card["chip_conocimiento"] = _t("core.opn.qi_k_chip", lang)
-        evidencia.insert(0, ins.metric(
-            "critical_rule_flag",
-            label=_t("core.opn.qi_k_por", lang, texto=conocimiento.texto_en(piezas_k[0], lang)),
-            value=None, unit=None, weight="primary",
-            method={"key": "core.method.critical_rule",
-                    "label": _t("core.method.critical_rule", lang)}))
+        evidencia.insert(0, ins.knowledge(piezas_k[0], weight="primary"))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in piezas_k]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.qi_q1b", lang, u=_num(u_mes, lang), unidad=unidad,

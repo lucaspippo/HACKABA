@@ -142,3 +142,10 @@ def test_dormido_cites_the_cleanup_exception_as_evidence_not_assumption():
     assumption_labels = [a["label"] for a in card["insight"]["assumptions"]]
     assert "knowledge" in evidence_kinds
     assert not any("limpieza" in (lbl or "") for lbl in assumption_labels)
+
+
+def test_quiebre_inminente_cites_knowledge_not_a_null_metric():
+    card = next(c for c in _demo_cards("es") if c["id"] == "quiebre_inminente")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert kinds[0] == "knowledge"  # still first, same priority as before
+    assert card["chip_conocimiento"]  # unchanged UI behavior
