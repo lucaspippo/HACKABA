@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Check, ArrowRight } from "lucide-react";
 import AngelaMark from "./AngelaMark";
 import { useT } from "../lib/i18n";
+import { fecha } from "../lib/format";
 
 // The propose -> approve -> done pattern, reusable by any surface where
 // Ángela leaves an action assembled and waits for a human yes.
@@ -27,6 +28,11 @@ export default function AngelaProposal({ proposal, onApprove, working,
             · {t("angelaprop.hecho_por", { actor: actionTaken.actor })}
           </span>
         )}
+        {actionTaken.date && (
+          <span className="text-tinta-suave">
+            · {fecha(actionTaken.date)}
+          </span>
+        )}
         {actionTaken.onOpen && (
           <button type="button" onClick={actionTaken.onOpen}
             className="ml-auto inline-flex items-center gap-1 font-semibold text-tinta-suave hover:text-tinta">
@@ -49,11 +55,11 @@ export default function AngelaProposal({ proposal, onApprove, working,
         <p className="mt-1 text-[0.88rem] leading-snug text-tinta">{proposal.detail}</p>
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button onClick={onApprove} disabled={working}
+        <button type="button" onClick={onApprove} disabled={working}
           className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
           <Check size={15} /> {working ? t("angelaprop.trabajando") : t("angelaprop.aprobar")}
         </button>
-        <button onClick={() => { setPostponed(true); onDismiss?.(); }} disabled={working}
+        <button type="button" onClick={() => { setPostponed(true); onDismiss?.(); }} disabled={working}
           className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
           {t("angelaprop.despues")}
         </button>
