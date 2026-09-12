@@ -249,6 +249,13 @@ def evaluate(facts: dict) -> list[dict]:
 
 
 def verify(rule_id: str) -> dict:
+    """Replay a rule's test cases against its current condition and action.
+
+    Returns {ok: bool, results: list}. An empty results list means no test cases
+    were recorded — ok: True in that case means "nothing failed", not "something
+    passed". Always check results length to distinguish a verified rule from an
+    untested one.
+    """
     rule = get(rule_id)
     if not rule:
         raise RulesInvalid(f"no such rule: {rule_id!r}")

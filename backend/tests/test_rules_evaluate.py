@@ -146,3 +146,43 @@ def test_verify_catches_a_mismatch_after_editing_the_action(db_tenant, monkeypat
     assert result["ok"] is False
     assert result["results"][0]["ok"] is False
     assert result["results"][0]["actual"] == [{"type": "apply_discount", "params": {"percent": 10}}]
+
+
+# --- verify() edge cases: zero test_cases and expected_action: None -----------
+
+def test_verify_on_rule_with_no_test_cases(db_tenant, monkeypatch):
+    """A rule without test_cases returns ok=True but results=[] (nothing was checked)."""
+    _use_tenant(db_tenant, monkeypatch)
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [{"id": "c1", "nombre": "Client X"}])
+    rule = rules.create(
+        description="5% off", condition={"op": "all", "clauses": [
+            {"field": "client_id", "operator": "eq", "value": "$entity"},
+            {"field": "quantity", "operator": "gt", "value": 100}]},
+        action=[{"type": "apply_discount", "params": {"percent": 5}}],
+        node="ventas", scope="cliente", entity_name="Client X",
+        entity_type="cliente", origin=ORIGIN)
+    result = rules.verify(rule["id"])
+    assert result["ok"] is True
+    assert result["results"] == []
+
+
+def test_verify_with_expected_action_none_on_non_matching_facts(db_tenant, monkeypatch):
+    """expected_action: None means 'no expectation recorded' — always ok regardless of match."""
+    _use_tenant(db_tenant, monkeypatch)
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [{"id": "c1", "nombre": "Client X"}])
+    rule = rules.create(
+        description="5% off", condition={"op": "all", "clauses": [
+            {"field": "client_id", "operator": "eq", "value": "$entity"},
+            {"field": "quantity", "operator": "gt", "value": 100}]},
+        action=[{"type": "apply_discount", "params": {"percent": 5}}],
+        node="ventas", scope="cliente", entity_name="Client X",
+        entity_type="cliente", origin=ORIGIN,
+        test_cases=[
+            {"facts": {"client_id": "c1", "quantity": 50}, "expected_action": None}
+        ])
+    result = rules.verify(rule["id"])
+    assert result["ok"] is True
+    assert result["results"][0]["ok"] is True
+    assert result["results"][0]["actual"] == []
