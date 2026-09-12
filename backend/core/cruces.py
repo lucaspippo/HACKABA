@@ -637,6 +637,161 @@ def _cruce_oferta_camara(lang, ctx) -> dict | None:
         "inventario", no_estructurado=True)
 
 
+# =============================================================================
+# 8 · EL RECLAMO — NOTAS × PROVEEDOR × MEMORIA DE LA CASA × DOCUMENTOS
+#     Llegaron ocho cajas rotas. Cada proveedor tiene su procedimiento, y no
+#     está escrito en ningún lado.
+# =============================================================================
+#
+# ES EL CASO DEL DEMO, y la cadena que arma es la tesis entera en una línea:
+#
+#     Nahuel → «ocho cajas rotas» (WhatsApp) → el producto y el proveedor →
+#     el procedimiento que Celeste enseñó → el remito y el lote que el sistema
+#     ya tenía → el reclamo armado
+#
+# Lo que lo hace distinto de una alerta: el procedimiento NO es un dato del
+# ERP. Es una pieza de conocimiento con autor y fecha, que además existe
+# porque un reclamo volvió rechazado. Sin esa pieza, el sistema sabría que hay
+# ocho cajas rotas y no sabría qué hacer con ellas — que es exactamente la
+# situación de la empresa antes de nosotros.
+
+REQUISITO_LEIBLE = {
+    "foto_lote": "foto del lote",
+    "foto_producto": "foto del producto",
+    "numero_remito": "número de remito",
+    "numero_lote": "número de lote",
+}
+
+
+def _procedimiento_de(proveedor: str) -> dict | None:
+    """La pieza de conocimiento que dice qué exige ESE proveedor.
+
+    Sale de `conocimiento`, no de una tabla: es lo que alguien enseñó."""
+    from . import conocimiento
+    for p in conocimiento.listar():
+        if p.get("efecto") != "exige_evidencia":
+            continue
+        ent = _norm_txt(p.get("entidad"))
+        if ent and (ent in _norm_txt(proveedor) or _norm_txt(proveedor) in ent):
+            return p
+    return None
+
+
+def _norm_txt(s) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
+    return s.lower().strip()
+
+
+def _cruce_reclamo_devolucion(lang, ctx) -> dict | None:
+    # 1 · alguien reportó mercadería en mal estado, y dijo de qué proveedor
+    incidencias = [n for n in notas.listar(tipo="incidencia_entrega",
+                                           desde=_desde(VENTANA_NOTAS_DIAS),
+                                           excluir=ctx["sin_notas"])
+                   if n.get("proveedor")]
+    if not incidencias:
+        return None
+    nota = incidencias[0]                      # la más nueva: listar() ya ordena
+    proveedor = nota["proveedor"]
+
+    # 2 · qué exige ESE proveedor. Sin procedimiento no hay cruce: el sistema
+    #     no se inventa un trámite que nadie le enseñó.
+    proc = _procedimiento_de(proveedor)
+    if not proc:
+        return None
+    reclamo = (proc.get("params") or {}).get("reclamo") or {}
+    requisitos = reclamo.get("requisitos") or []
+    canal = reclamo.get("canal") or "email"
+    plazo = reclamo.get("plazo_dias")
+
+    # 3 · qué de eso YA LO SABE el sistema: la orden abierta y el lote
+    orden = next((oc for oc in ctx["ordenes"]
+                  if (oc.get("estado") or "") == "abierta"
+                  and _norm_txt(oc.get("proveedor")) == _norm_txt(proveedor)), None)
+    lote = None
+    if nota.get("producto"):
+        for f in deposito._filas():
+            if _norm_txt(f.get("producto")) == _norm_txt(nota["producto"]):
+                lote = f
+                break
+
+    ya_tiene, falta = [], []
+    for r in requisitos:
+        etiqueta = REQUISITO_LEIBLE.get(r, r)
+        if r == "numero_remito" and orden:
+            ya_tiene.append((etiqueta, orden.get("numero")))
+        elif r in ("numero_lote",) and lote:
+            ya_tiene.append((etiqueta, lote.get("lote")))
+        elif r in ("foto_lote", "foto_producto"):
+            falta.append(etiqueta)            # la foto sólo la pone la persona
+        else:
+            falta.append(etiqueta)
+
+    # el contexto de por qué existe la regla (la pieza que la explica)
+    from . import conocimiento as _con
+    porque_regla = next((p for p in _con.listar()
+                         if (p.get("params") or {}).get("origen_regla") == proc.get("id")), None)
+
+    origen = proc.get("origen") or {}
+    return _card(
+        "cruce_reclamo_devolucion", "operar",
+        _t("core.cru.reclamo_t", lang, proveedor=proveedor, n=len(falta)),
+        None,                                   # no hay monto: es un trámite
+        _t("core.cru.reclamo_r", lang, proveedor=proveedor,
+           tiene=len(ya_tiene), falta=_y([f for f in falta], lang)),
+        ["notas", "proveedores", "conocimiento", "documentos"],
+        [_t("core.cru.f_notas", lang), _t("core.cru.f_conocimiento", lang),
+         _t("core.cru.f_ordenes", lang), _t("core.cru.f_wms", lang)],
+        [_t("core.cru.reclamo_p1", lang, autor=nota["autor"],
+            canal=nota.get("canal"), texto=notas.texto_en(nota, lang)),
+         _t("core.cru.reclamo_p2", lang, proveedor=proveedor,
+            requisitos=_y([REQUISITO_LEIBLE.get(r, r) for r in requisitos], lang),
+            canal=canal, plazo=plazo),
+         _t("core.cru.reclamo_p3", lang,
+            tiene=_y([f"{e} ({v})" for e, v in ya_tiene], lang) or "—",
+            falta=_y(falta, lang) or "—"),
+         ] + ([_t("core.cru.reclamo_p4", lang, quien=origen.get("quien"),
+                  cuando=origen.get("cuando"), porque=porque_regla.get("texto"))]
+              if porque_regla else []),
+        {# LOS ESLABONES, DECLARADOS. Sin esto la expansión traía veinte nodos
+         # y cuatro eran yerba, papas y reglas sobre otra cosa. Acá el cruce
+         # dice exactamente qué cuenta su historia, en el orden en que se lee:
+         #
+         #   quién lo dijo → lo que dijo → qué producto → de quién →
+         #   el procedimiento → por qué existe ese procedimiento →
+         #   el papel que el sistema ya tenía → dónde está parado
+         "camino_exacto": [
+             f"persona:{_norm_txt(nota['autor']).replace(' ', '_')}",
+             f"nota:{nota['id']}",
+             ("producto", nota.get("producto")) if nota.get("producto") else None,
+             ("proveedor", proveedor),
+             f"conocimiento:{proc.get('id')}",
+             f"conocimiento:{porque_regla.get('id')}" if porque_regla else None,
+             ("remito", (orden or {}).get("numero")) if orden else None,
+             ("ubicacion", nota.get("ubicacion")) if nota.get("ubicacion") else None,
+         ],
+         "proveedor": proveedor, "producto": nota.get("producto"),
+         "ubicacion": nota.get("ubicacion"),
+         "canal_reclamo": canal, "plazo_dias": plazo,
+         "requisitos": requisitos,
+         "ya_tiene": [{"que": e, "valor": v} for e, v in ya_tiene],
+         "falta": falta,
+         "orden": (orden or {}).get("numero"),
+         "lote": (lote or {}).get("lote"),
+         "conocimiento": proc.get("id"),
+         "aprendido_de": (porque_regla or {}).get("id"),
+         "enseñada_por": origen.get("quien"), "enseñada_el": origen.get("cuando"),
+         "notas": [_nota_dict(nota, lang)]},
+        [{"nombre": nota["autor"], "monto": None,
+          "detalle": _t("core.cru.reclamo_i1", lang, canal=nota.get("canal"))},
+         {"nombre": proveedor, "monto": None,
+          "detalle": _t("core.cru.reclamo_i2", lang, canal=canal, plazo=plazo)}]
+        + ([{"nombre": orden.get("numero"), "monto": None,
+             "detalle": _t("core.cru.reclamo_i3", lang)}] if orden else []),
+        _t("core.cru.reclamo_chat", lang, proveedor=proveedor),
+        "documentos", no_estructurado=True)
+
+
 def _y(nombres: list[str], lang) -> str:
     """«Ramón, Nahuel y Tomás» — la lista como la diría una persona."""
     if not nombres:
@@ -654,7 +809,7 @@ def _y(nombres: list[str], lang) -> str:
 _SET = (_cruce_deuda_vencimiento, _cruce_proveedor_estrella,
         _cruce_credito_creciente, _cruce_queja_cliente_clave,
         _cruce_cliente_en_problemas, _cruce_espacio_camara,
-        _cruce_oferta_camara)
+        _cruce_oferta_camara, _cruce_reclamo_devolucion)
 
 
 def _ctx(lang, sin_notas: frozenset | None = None) -> dict:
