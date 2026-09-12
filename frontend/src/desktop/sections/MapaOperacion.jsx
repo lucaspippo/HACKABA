@@ -988,7 +988,19 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     // se sentía a medias. Con el 45% de aumento mínimo siempre se ve que te
     // acercaste; las vecinas que no entren se siguen por la línea, que para
     // eso está.
-    const z = Math.min(Math.max(conVecinas ? conVecinas.zoom : 0, piso * 1.45), 1.3);
+    // ...pero nunca tanto como para CORTAR la tarjeta. «LO QUE ENTRA DESDE
+    // AFUERA» es la banda de canales: mide casi lo mismo que el mapa entero, y
+    // al aplicarle el 45% se salía de pantalla por los dos costados. Con una
+    // tarjeta así gana verla completa aunque no se agrande: el piso la protege
+    // de achicarse igual.
+    const propio = vistaDe({ x: nodo.position.x, y: nodo.position.y, width: nw, height: nh },
+                           0.06, 1.3);
+    const z = Math.max(
+      piso,
+      Math.min(Math.max(conVecinas ? conVecinas.zoom : 0, piso * 1.45),
+               propio ? propio.zoom : 1.3,
+               1.3),
+    );
     animarA({ x: el.clientWidth / 2 - cx * z, y: el.clientHeight / 2 - cy * z, zoom: z },
             duracion);
   }, [animarA, vistaDe]);
