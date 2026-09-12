@@ -72,3 +72,30 @@ def test_reinforce_has_diminishing_returns_and_never_exceeds_one():
         assert bump >= 0
         last = out["confidence"]
     assert last <= 1.0
+
+
+def test_find_conflict_matches_same_triple_different_text():
+    conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
+                       nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa",
+                       params={"tolerancia_dias": 30})
+    conflict = conocimiento.find_conflict(
+        texto="Tolerale 45 días", nodo="clientes", entidad="Doña Elsa",
+        efecto="ajusta_umbral")
+    assert conflict is not None
+    assert conflict["params"]["tolerancia_dias"] == 30
+
+
+def test_find_conflict_is_none_for_identical_text():
+    conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
+                       nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
+    assert conocimiento.find_conflict(
+        texto="Tolerale 30 días", nodo="clientes", entidad="Doña Elsa",
+        efecto="ajusta_umbral") is None
+
+
+def test_find_conflict_is_none_for_a_different_efecto():
+    conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
+                       nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")
+    assert conocimiento.find_conflict(
+        texto="Otra regla", nodo="clientes", entidad="Doña Elsa",
+        efecto="suprime_alerta") is None

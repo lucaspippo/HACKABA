@@ -342,6 +342,20 @@ def find_duplicate(*, texto: str, nodo: str, entidad: str | None = None) -> dict
     return None
 
 
+def find_conflict(*, texto: str, nodo: str, entidad: str | None,
+                  efecto: str) -> dict | None:
+    """An existing ACTIVE piece with the same (entidad, nodo, efecto) but
+    DIFFERENT texto. Distinct from find_duplicate: a duplicate says the
+    same thing about the same place; a conflict says something different
+    about the same triple."""
+    target = _norm(texto)
+    for p in listar(nodo=nodo, incluir_pausadas=False):
+        if (p.get("efecto") == efecto and _norm(p.get("entidad")) == _norm(entidad)
+                and _norm(p.get("texto")) != target):
+            return p
+    return None
+
+
 def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
           entidad: str | None = None, texto_en: str | None = None,
           efecto_profundo: bool = False, origen: dict | None = None,
