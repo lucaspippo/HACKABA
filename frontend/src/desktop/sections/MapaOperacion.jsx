@@ -981,8 +981,14 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     // Si las vecinas están muy repartidas para entrar a ese zoom, gana ver la
     // tarjeta grande y centrada: las de al lado se leen igual, y las lejanas
     // se siguen por la línea.
-    const z = Math.max(conVecinas ? conVecinas.zoom : 0, vistaTodo.zoom,
-                       refZoomPrevio.current || 0);
+    const piso = Math.max(vistaTodo.zoom, refZoomPrevio.current || 0);
+    // Y SIEMPRE AGRANDA, no sólo centra. Una tarjeta con muchas vecinas
+    // desparramadas —Cámara de frío 2, Casa Central— pedía un zoom más chico
+    // que el piso, así que terminaba centrada pero del mismo tamaño: el clic
+    // se sentía a medias. Con el 45% de aumento mínimo siempre se ve que te
+    // acercaste; las vecinas que no entren se siguen por la línea, que para
+    // eso está.
+    const z = Math.min(Math.max(conVecinas ? conVecinas.zoom : 0, piso * 1.45), 1.3);
     animarA({ x: el.clientWidth / 2 - cx * z, y: el.clientHeight / 2 - cy * z, zoom: z },
             duracion);
   }, [animarA, vistaDe]);
@@ -1187,7 +1193,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
         <Controles completo={completo} onCompleto={setCompleto}
                    onAcercar={() => zoomPor(1.25)}
                    onAlejar={() => zoomPor(1 / 1.25)}
-                   onCentrar={() => { setNodoFoco(null); encuadrarTodo(); }}
+                   onCentrar={() => { setAbierto(null); setNodoFoco(null); encuadrarTodo(); }}
                    t={t} />
         </ReactFlowProvider>
       </div>
