@@ -202,6 +202,17 @@ def test_business_knowledge_pieces_table_has_rls_enabled():
         assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
 
 
+def test_business_rules_table_has_rls_enabled():
+    engine = get_engine()
+    with engine.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT relname, relrowsecurity, relforcerowsecurity "
+            "FROM pg_class WHERE relname = 'business_rules'"
+        )).mappings().all()
+        assert len(rows) == 1
+        assert rows[0]["relrowsecurity"] and rows[0]["relforcerowsecurity"]
+
+
 @pytest.mark.parametrize("table_name", [
     "automation_policies",
     "retail_counter_data",
