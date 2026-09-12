@@ -258,3 +258,17 @@ def test_demo_recuperable_hides_warehouse_exposure():
         "['inventario','deposito'])")
     ids = {c["id"] for c in d["recuperable"]["componentes"]}
     assert "cobrar_morosos" not in ids
+
+
+def test_compose_attaches_confidence_to_every_item(monkeypatch):
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [
+        {"nombre": "Cliente Uno", "en_mora": True, "dias_sin_pagar": 90,
+         "saldo": 50_000, "promedio_pago_dias": 30, "atraso_vs_promedio": 200,
+         "movimientos": []}])
+    composed = priorities._compose("en")
+    assert composed["items"], "expected at least one item to check"
+    for it in composed["items"]:
+        conf = it["drill"].get("confidence")
+        assert conf and conf["level"] in ("high", "medium", "low")
+        assert conf["reason"]
