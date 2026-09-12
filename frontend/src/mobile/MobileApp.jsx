@@ -328,54 +328,52 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
             Search, inbox, profile, language and sign-out live in Más. */}
         <nav className="fixed inset-x-0 bottom-0 z-30" aria-label={t("mnav.barra")}>
           <div className="mx-auto max-w-md border-t border-linea bg-crema/95 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur">
-            <div className="flex items-stretch">
-              <div
-                className="grid min-w-0 flex-1 items-stretch px-1"
-                style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
-              >
-                {destinos.slice(0, 2).map((x) => <TabBtn key={x.id} slot={x} />)}
-                {/* EL CENTRO. Ángela is the sphere — the only blue mark in
-                    the bar. Load stays tinta: it is the person's action, not
-                    the assistant's. The label is the verb of the trade. */}
-                {centro.tipo === "angela" ? (
-                  <Link
-                    to="/angela"
-                    onClick={(e) => {
-                      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                      e.preventDefault();
-                      setView("angela");
-                    }}
-                    className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1"
-                  >
-                    <span className="-translate-y-0.5">
-                      <AngelaMark size={28} estado="idle" />
-                    </span>
-                    <span className={`-mt-0.5 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => (centro.tipo === "hoja" ? setHoja(true) : navegarMobile(centro.a))}
-                    className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1">
-                    <span className="grid h-8 w-8 -translate-y-0.5 place-items-center rounded-full bg-tinta text-crema sombra-papel">
-                      <Plus size={18} />
-                    </span>
-                    <span className="-mt-0.5 text-2xs font-semibold text-tinta">{t(centro.lk)}</span>
-                  </button>
-                )}
-                {destinos.slice(2).map((x) => <TabBtn key={x.id} slot={x} />)}
-              </div>
+            <div
+              className="grid items-stretch px-1"
+              style={{ gridTemplateColumns: `repeat(${nSlots + 1}, minmax(0, 1fr))` }}
+            >
+              {destinos.slice(0, 2).map((x) => <TabBtn key={x.id} slot={x} />)}
+              {/* EL CENTRO. Ángela is the sphere — the only blue mark in
+                  the bar. Load stays tinta: it is the person's action, not
+                  the assistant's. The label is the verb of the trade. */}
+              {centro.tipo === "angela" ? (
+                <Link
+                  to="/angela"
+                  onClick={(e) => {
+                    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
+                    setView("angela");
+                  }}
+                  className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1"
+                >
+                  <span className="-translate-y-0.5">
+                    <AngelaMark size={28} estado="idle" />
+                  </span>
+                  <span className={`-mt-0.5 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => (centro.tipo === "hoja" ? setHoja(true) : navegarMobile(centro.a))}
+                  className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1">
+                  <span className="grid h-8 w-8 -translate-y-0.5 place-items-center rounded-full bg-tinta text-crema sombra-papel">
+                    <Plus size={18} />
+                  </span>
+                  <span className="-mt-0.5 text-2xs font-semibold text-tinta">{t(centro.lk)}</span>
+                </button>
+              )}
+              {destinos.slice(2).map((x) => <TabBtn key={x.id} slot={x} />)}
               <button
                 onClick={() => (masAbierta ? setMasAbierta(false) : abrirMas())}
                 aria-label={t("mnav.mas")}
                 aria-expanded={masAbierta}
                 aria-controls="mas-sheet"
-                className="relative flex w-12 shrink-0 flex-col items-center justify-center"
+                className="relative flex min-h-11 flex-col items-center justify-center"
               >
                 <span className={`rounded-full ${view === "perfil" || masAbierta ? "ring-2 ring-violeta/50" : ""}`}>
                   <Avatar persona={user} size={30} />
                 </span>
                 {noLeidas > 0 && (
-                  <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-[0.6rem] font-bold leading-none text-crema">
+                  <span className="absolute right-2 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-[0.6rem] font-bold leading-none text-crema">
                     {noLeidas > 9 ? "9+" : noLeidas}
                   </span>
                 )}

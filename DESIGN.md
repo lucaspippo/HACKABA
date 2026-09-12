@@ -199,7 +199,7 @@ responsive grid stretched between breakpoints.
 - **Mobile bottom nav:** `position: fixed; bottom: 0`, respects
   `env(safe-area-inset-bottom)`, equal-width work slots
   (`repeat(n, minmax(0,1fr))`) capped at three destinations + centre. Ángela's
-  centre slot is the sphere. Account is a trailing avatar (not a fifth
+  centre slot is the sphere. Account is the last equal-width slot (not a work
   destination); search, inbox, profile, language and sign-out live in the Más
   sheet. `<main>` carries `pb-24` so content never sits under the bar.
 - **Cards over grids of boxes:** the recurring content unit is a single flexible
@@ -289,9 +289,12 @@ elevation. Hierarchy comes from spacing and weight, not from ornament.
 - Ángela's centre slot is the sphere (`AngelaMark`), not a generic icon in a
   blue circle — the one destination that is always present regardless of role.
   A load/centre action that is the person's own work stays `tinta`, never Ángela Blue.
-- Account is a trailing avatar on the same bar (unread badge when the inbox has
-  mail). It opens the Más sheet — profile, search (when the role looks things up),
-  notifications, language, sign-out — and is not a fifth destination.
+- Account is the last equal-width slot on the same bar (unread badge when the
+  inbox has mail). It opens the Más sheet — profile, search (when the role looks
+  things up), notifications, language, sign-out — and is chrome, not a work
+  destination. The grid stays `repeat(n, minmax(0,1fr))` so every item, including
+  the avatar, is centered in its column and the centre action sits on the
+  viewport axis.
 
 ### The Ángela Sphere (signature component)
 The product's one deliberately expressive element against an otherwise restrained
