@@ -85,7 +85,6 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [adoptados, setAdoptados] = useState({});
   const [eligiendo, setEligiendo] = useState(null);
   const [equipo, setEquipo] = useState([]);
-  const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [confirmingFloorReport, setConfirmingFloorReport] = useState(null);
@@ -178,8 +177,8 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
       });
-      setPropResultado((s) => ({ ...s, [c.id]: r.mensaje }));
       toast(r.mensaje);
+      cargar();
     } catch {
       toast(t("oportunidades.prop_error"));
     }
@@ -317,7 +316,10 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
-      propuestaResultado: propResultado[item.id],
+      actionTaken: item.action_taken && {
+        ...item.action_taken,
+        onOpen: () => onNavegar?.(item.action_taken.navigate, item.action_taken.label),
+      },
       onAprobarPropuesta: () => aprobarPropuesta(item),
       chip: item.chip,
       chipIcon: acc.icon,

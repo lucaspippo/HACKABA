@@ -47,6 +47,7 @@ function rowOf(it) {
     chat: it.accion_chat,
     navegar: it.navegar,
     propuesta: it.propuesta,
+    actionTaken: it.action_taken,
     reportes: it.reportes,
   };
 }
@@ -82,7 +83,6 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
   const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
   const [abierta, setAbierta] = useState(null);
   const [filtro, setFiltro] = useState(null);
-  const [proposalResult, setProposalResult] = useState({});
   const [proposalWorking, setProposalWorking] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
 
@@ -138,8 +138,8 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
       });
-      setProposalResult((s) => ({ ...s, [c.id]: r.mensaje }));
       toast(r.mensaje);
+      reload();
     } catch {
       toast(t("oportunidades.prop_error"));
     }
@@ -244,7 +244,10 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
           metrics={abierta.metrics || []}
           propuesta={abierta.propuesta}
           propuestaTrabajando={proposalWorking}
-          propuestaResultado={proposalResult[abierta.id]}
+          actionTaken={abierta.actionTaken && {
+            ...abierta.actionTaken,
+            onOpen: () => onNavegar?.(abierta.actionTaken.navigate, abierta.actionTaken.label),
+          }}
           onAprobarPropuesta={() => approveProposal(abierta)}
           onFeedback={canGiveFeedback(abierta) ? (action) => giveFeedback(abierta, action) : undefined}
           feedbackBusy={feedbackBusy}
