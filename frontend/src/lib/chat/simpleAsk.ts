@@ -21,6 +21,11 @@ export type SimpleAskOptions = {
   history?: ChatTurn[];
   signal?: AbortSignal;
   onDelta?: (soFar: string) => void;
+  /** A tool call started — its `label` is the same status line the visual
+   * ToolCallCard shows while the call runs. Callers that want to stay
+   * responsive during a slow tool (e.g. narrating it out loud) hook this
+   * instead of waiting on the final answer. */
+  onToolCall?: (label: string) => void;
   /** Injectable for tests; defaults to api.chatStream. */
   fetchStream?: FetchStream;
 };
@@ -34,7 +39,7 @@ function toClientCode(code: string): ChatErrorCode {
 }
 
 export async function askAngela(message: string, options: SimpleAskOptions = {}): Promise<string> {
-  const { token, channel, history = [], signal, onDelta, fetchStream } = options;
+  const { token, channel, history = [], signal, onDelta, onToolCall, fetchStream } = options;
   const doFetch = fetchStream ?? ((m, h, extra, init) => api.chatStream(m, h, extra, init));
   const res = await doFetch(message, history, { token, channel }, { signal: signal ?? new AbortController().signal });
 
@@ -49,6 +54,8 @@ export async function askAngela(message: string, options: SimpleAskOptions = {})
     if (ev.type === "text") {
       text += ev.delta;
       onDelta?.(text);
+    } else if (ev.type === "tool_call" && ev.label) {
+      onToolCall?.(ev.label);
     } else if (ev.type === "error") {
       throw new ChatStreamError(toClientCode(ev.code));
     }

@@ -48,10 +48,13 @@ export function VoiceConversation({
 }: VoiceConversationProps) {
   const t = useT();
   // A gentle floor so the ring never fully disappears between words — a
-  // silent orb reads as "frozen", not "listening".
+  // silent orb reads as "frozen", not "listening". Square-rooted so normal
+  // speech (mid-low amplitude) still visibly moves it — raw linear
+  // amplitude reads as flat except right at the loudest peaks.
   const level = Math.min(Math.max(amplitude, 0), 1);
+  const boosted = Math.sqrt(level);
   const live = mode === "listening" || mode === "speaking";
-  const scale = 1 + level * 0.35;
+  const scale = 1 + boosted * 0.45;
   const canInterrupt = mode === "speaking" && Boolean(onInterrupt);
 
   return (
@@ -60,10 +63,10 @@ export function VoiceConversation({
           talking (the person while listening, Ángela while speaking). */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-violeta/[0.18] via-violeta/[0.05] to-transparent transition-[opacity,transform] duration-150 ease-out"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-64 bg-gradient-to-t from-violeta/[0.22] via-violeta/[0.06] to-transparent transition-[opacity,transform] duration-100 ease-out"
         style={{
-          opacity: live ? 0.6 + level * 0.4 : 0.6,
-          transform: `scaleY(${live ? 1 + level * 0.3 : 1})`,
+          opacity: live ? 0.5 + boosted * 0.5 : 0.5,
+          transform: `scaleY(${live ? 1 + boosted * 0.5 : 1})`,
           transformOrigin: "bottom",
         }}
       />
@@ -87,7 +90,7 @@ export function VoiceConversation({
           )}
           <span
             className={cn("transition-[opacity,filter] duration-300", muted && "opacity-50 saturate-50")}
-            style={mode === "speaking" ? { transform: `scale(${1 + level * 0.08})` } : undefined}
+            style={mode === "speaking" ? { transform: `scale(${1 + boosted * 0.1})` } : undefined}
           >
             <AngelaMark size={64} estado={MARK_ESTADO[mode]} />
           </span>
@@ -112,11 +115,13 @@ export function VoiceConversation({
         )}
       </div>
 
-      {/* attach (left) · mute (center, primary) · end call (right) */}
+      {/* attach (left) · mute (center, primary) · end call (right) — glass
+          over the gradient wash, not the flat crema the rest of the app
+          uses: these float on top of a moving background, not a page. */}
       <div className="relative z-10 flex items-center justify-between px-8 pb-6 pt-2">
         {onAttach ? (
           <button onClick={onAttach} aria-label={t("voice.attach")}
-            className="grid h-11 w-11 place-items-center rounded-full border border-linea bg-crema text-tinta-suave transition-colors hover:text-tinta">
+            className="grid h-11 w-11 place-items-center rounded-full border border-linea/40 bg-crema/30 text-tinta-suave shadow-sm backdrop-blur-md transition-colors hover:bg-crema/50 hover:text-tinta">
             <Plus size={18} />
           </button>
         ) : (
@@ -126,8 +131,10 @@ export function VoiceConversation({
         {onToggleMute && (
           <button onClick={onToggleMute} aria-label={t(muted ? "voice.unmute" : "voice.mute")}
             className={cn(
-              "grid h-14 w-14 place-items-center rounded-full border transition-colors",
-              muted ? "border-rojo/40 bg-rojo/10 text-rojo" : "border-linea bg-crema text-tinta-suave",
+              "grid h-14 w-14 place-items-center rounded-full border shadow-sm backdrop-blur-md transition-colors",
+              muted
+                ? "border-rojo/40 bg-rojo/15 text-rojo"
+                : "border-linea/40 bg-crema/30 text-tinta-suave hover:bg-crema/50",
             )}>
             {muted ? <MicOff size={20} /> : <Mic size={20} />}
           </button>
@@ -135,7 +142,7 @@ export function VoiceConversation({
 
         {onEnd ? (
           <button onClick={onEnd} aria-label={t("voice.end")}
-            className="grid h-11 w-11 place-items-center rounded-full bg-rojo text-crema">
+            className="grid h-11 w-11 place-items-center rounded-full border border-rojo/30 bg-rojo/70 text-crema shadow-sm backdrop-blur-md transition-colors hover:bg-rojo/85">
             <PhoneOff size={18} />
           </button>
         ) : (
