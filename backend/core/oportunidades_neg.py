@@ -438,7 +438,8 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
                        _t("core.opn.frio_q2", lang, pos=pos or "—",
                           monto=_pesos(monto, lang))],
             "grafico": grafico,
-            "involucrados": [{"nombre": x["c"]["nombre"], "monto": round(x["actual"], 2),
+            "involucrados": [{"id": x["c"].get("id"), "kind": "client",
+                              "nombre": x["c"]["nombre"], "monto": round(x["actual"], 2),
                               "detalle": _t("core.opn.frio_i", lang,
                                             pct=f"{x['caida']:.0f}")}
                              for x in cands[:4]],
