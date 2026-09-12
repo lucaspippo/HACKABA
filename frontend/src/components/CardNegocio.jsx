@@ -61,9 +61,7 @@ export function CardNegocio({ tono = "salvia", icon: Icon, chip, chipCls, titulo
 // El drill-down, consistente en AMBAS secciones: el porqué narrado + el
 // gráfico histórico (renderer P21) + los ítems involucrados + los supuestos
 // declarados + las acciones que cada sección arma (adoptar / Ángela / ir).
-// P38·B — la PROPUESTA con aprobación dentro del drill: Ángela deja la acción
-// armada (una orden de compra, una promoción) y espera el OK. Aprobar no
-// ejecuta contra nadie: deja el borrador firmado. Human-in-the-loop visible.
+
 // Closing the loop on a finding (core/pattern_feedback.py, shared by
 // core/patrones.py and core/oportunidades_neg.py alike): the owner's
 // reaction to the SPECIFIC instance shown, so it doesn't resurface. Purely
@@ -342,6 +340,8 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </>
         )}
 
+        {/* P38·B — Aprobar no ejecuta contra nadie: deja el borrador firmado.
+            Human-in-the-loop visible. */}
         <AngelaProposal
           proposal={propuesta && { title: propuesta.titulo, detail: propuesta.detalle }}
           onApprove={onAprobarPropuesta}
