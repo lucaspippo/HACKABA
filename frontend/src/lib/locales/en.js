@@ -611,6 +611,7 @@ export const EN = {
   "prioridades.sub": "What to do now, in order",
   "prioridades.sub_count": "{n} things to do today",
   "prioridades.recoverable": "Recoverable now: {amount}",
+  "prioridades.recoverable_sub": "adding only what can already be collected, freed or saved ({k} of {n}); risk and avoided loss are shown, not added",
   "prioridades.filter_more": "+{n} more",
   "prioridades.watch": "Watch",
   "prioridades.vacio": "Nothing to do right now.",
