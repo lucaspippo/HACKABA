@@ -153,6 +153,8 @@ export const api = {
   odooIngestProveedores: () => post("/api/conectores/odoo/ingest-proveedores", {}),
   odooSyncOrdenesCompra: () => post("/api/conectores/odoo/sync-ordenes-compra", {}),
   odooIngestOrdenesCompra: () => post("/api/conectores/odoo/ingest-ordenes-compra", {}),
+  odooSyncVentas: () => post("/api/conectores/odoo/sync-ventas", {}),
+  odooIngestVentas: () => post("/api/conectores/odoo/ingest-ventas", {}),
   cobranza: () => get("/api/cobranza"),
   cobranzaPropuesta: (id) => get(`/api/cobranza/${id}/propuesta`),
   cobranzaRegistrar: (cliente_id, estado, extra = {}) =>

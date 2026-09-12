@@ -63,6 +63,8 @@ CASOS_ADMIN = [
     ("odoo_ingest_contactos", "POST", "/api/conectores/odoo/ingest-contactos"),
     ("odoo_sync_ordenes_compra", "POST", "/api/conectores/odoo/sync-ordenes-compra"),
     ("odoo_ingest_ordenes_compra", "POST", "/api/conectores/odoo/ingest-ordenes-compra"),
+    ("odoo_sync_ventas", "POST", "/api/conectores/odoo/sync-ventas"),
+    ("odoo_ingest_ventas", "POST", "/api/conectores/odoo/ingest-ventas"),
 ]
 
 
