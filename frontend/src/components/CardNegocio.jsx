@@ -146,6 +146,29 @@ function FuentePill({ label, onClick }) {
   );
 }
 
+// A small, neutral pill reading the shared confidence signal every card's
+// drill now carries (backend/core/confidence.py) — not tied to `tono`,
+// since confidence is about the evidence, not the finding's severity.
+const CONFIDENCE_STYLE = {
+  high: "border-salvia/30 text-salvia",
+  medium: "border-oro/30 text-oro-tinta",
+  low: "border-tinta-suave/30 text-tinta-suave",
+};
+
+function ConfidenceBadge({ confidence }) {
+  const t = useT();
+  if (!confidence?.level) return null;
+  const cls = CONFIDENCE_STYLE[confidence.level] || CONFIDENCE_STYLE.low;
+  return (
+    <span
+      title={confidence.reason}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${cls}`}
+    >
+      {t(`cardneg.confidence_${confidence.level}`)}
+    </span>
+  );
+}
+
 function InvolucradoRow({ iv, onClick }) {
   const clickable = !!onClick && iv.id != null;
   const Tag = clickable ? "button" : "div";
@@ -172,7 +195,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
                                chip, chipIcon: ChipIcon, chipCls,
-                               onFeedback, feedbackBusy,
+                               onFeedback, feedbackBusy, confidence,
                                onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
@@ -201,7 +224,10 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
 
         {porque.length > 0 && (
           <>
-            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <h3 className="text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
+              <ConfidenceBadge confidence={confidence} />
+            </div>
             <div className="mt-1.5 space-y-1.5">
               {porque.map((p, i) => (
                 <p key={i} className="text-[0.92rem] leading-snug text-tinta">{p}</p>
