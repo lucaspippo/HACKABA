@@ -101,6 +101,31 @@ def test_integrar_batch_odoo_cliente():
     assert creado["saldo"] == 0
 
 
+def test_crear_batch_odoo_orden_compra_nueva():
+    r = staging.crear_batch_odoo("orden_compra", [
+        {"id": 1001, "numero": "P00201", "proveedor": "Proveedor X", "estado": "confirmada",
+         "fecha": "2026-08-20", "total": 500.0,
+         "items": [{"producto": "Y", "cantidad": 2, "precio_unitario": 250.0}]},
+    ])
+    assert r["tipo"] == "orden_compra"
+    assert r["total_filas"] == 1
+    assert r["observaciones"] == []
+
+
+def test_integrar_batch_odoo_orden_compra():
+    from core.db import purchase_orders_repo, tenant as _tenant
+    r = staging.crear_batch_odoo("orden_compra", [
+        {"id": 1002, "numero": "P00202", "proveedor": "Proveedor Y", "estado": "cerrada",
+         "fecha": "2026-08-15", "total": 300.0,
+         "items": [{"producto": "Z", "cantidad": 1, "precio_unitario": 300.0}]},
+    ])
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creada = purchase_orders_repo.find_by_number(_tenant.current_tenant_id(), "P00202")
+    assert creada["estado"] == "recibida"  # "cerrada" (Odoo) -> "recibida" (PolPilot)
+    assert creada["source_status"] == "cerrada"
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}
