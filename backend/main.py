@@ -3634,6 +3634,69 @@ def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
     return {"ok": True}
 
 
+class RuleProposal(BaseModel):
+    description: str
+    condition: dict
+    action: list
+    node: str
+    scope: str
+    entity_name: str | None = None
+    entity_type: str | None = None
+
+
+def _can_activate_rule(u: dict, node: str, scope: str) -> bool:
+    """Second gate on top of rules.create()'s own entity-resolution check —
+    even a cleanly resolved rule stays pending if this user couldn't have
+    activated it outright. Mirrors _can_activate above for conocimiento."""
+    if u.get("es_admin"):
+        return True
+    if scope == "global":
+        return False
+    from core import perfiles
+    return conocimiento.NODO_FEATURE.get(node) in set(perfiles.features_efectivas(u["username"]))
+
+
+@app.post("/api/rules/confirm")
+def rules_confirm(req: RuleProposal, u: dict = Depends(usuario_actual)):
+    """The user taps 'keep' on a chip Ángela proposed (angela.py's
+    propose_rule writes nothing). Lands active only when rules.create()'s
+    entity resolution succeeded AND this user could have activated it anyway;
+    pending otherwise."""
+    from core import fechas, rules
+    try:
+        # validate_proposal fails fast with 400 on a bad request; it is not
+        # reused for create() below because it already resolves and
+        # substitutes '$entity' into the condition, and passing that
+        # substituted condition back into create() (which validates again
+        # from scratch) would trip its own "condition must reference
+        # '$entity'" check for any rule whose entity resolved cleanly.
+        rules.validate_proposal(
+            description=req.description, condition=req.condition, action=req.action,
+            node=req.node, scope=req.scope, entity_name=req.entity_name,
+            entity_type=req.entity_type)
+    except rules.RulesInvalid as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    rule = rules.create(
+        description=req.description, condition=req.condition, action=req.action,
+        node=req.node, scope=req.scope, entity_name=req.entity_name,
+        entity_type=req.entity_type,
+        origin={"author": u["username"], "created_at": fechas.hoy().isoformat(),
+               "source": "conversation"})
+
+    # rules.create() already resolved active/pending from entity resolution
+    # alone; downgrade further when the confirming user lacks the authority
+    # to activate this rule outright (mirrors conocimiento_confirm's
+    # _can_activate). core/rules.py exposes no "set to pending" verb of its
+    # own (pending only ever happens as a side effect of creation), so this
+    # one case goes straight through the repo.
+    if rule["status"] == "active" and not _can_activate_rule(u, rule["node"], rule["scope"]):
+        from core.db import business_rules_repo
+        from core.db import tenant as _tenant
+        rule = business_rules_repo.set_status(_tenant.current_tenant_id(), rule["id"], "pending")
+    return {"ok": True, "rule": rule, "state": rule["status"]}
+
+
 def _revisor_o_404(pid: str, u: dict) -> dict:
     """Only someone who'd already see this as active knowledge can review
     (approve/reject) a proposal — same node/feature scope as visibles_para,
