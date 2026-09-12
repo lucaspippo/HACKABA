@@ -1,4 +1,4 @@
-"""Structured business rules — the deterministic SI/ENTONCES sibling of
+"""Structured business rules — the deterministic IF/THEN sibling of
 core/conocimiento.py's free-text memory. See
 docs/superpowers/specs/2026-09-11-structured-business-rules-design.md.
 """
