@@ -15,12 +15,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Alembic builds its own engine straight from this URL (engine_from_config
-# below), independently of backend/core/db/engine.py — the two engine
-# builders there already normalize, but that does not cover this one. Without
-# this, a bare `postgresql://` from a managed provider (e.g. Render) makes
-# `alembic upgrade head` itself die with ModuleNotFoundError: psycopg2, since
-# only psycopg v3 is installed (requirements.txt).
+# Alembic builds its own engine from this URL (engine_from_config below), so
+# core/db/engine.py's normalization does not cover it — that oversight is why
+# this line exists. Without it a bare `postgresql://` from a managed provider
+# kills `alembic upgrade head` with ModuleNotFoundError: psycopg2.
 config.set_main_option("sqlalchemy.url", normalize_driver(os.environ["DATABASE_URL"]))
 
 target_metadata = None
