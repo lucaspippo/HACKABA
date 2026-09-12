@@ -42,6 +42,7 @@ CONOCIMIENTO_JSON = os.path.join(DATA_DIR, "conocimiento_negocio.json")
 
 # Las cuatro clases de conocimiento no estructurado (las que pide YC).
 TIPOS = {"regla", "excepcion", "protocolo", "contexto"}
+DEFAULT_HALF_LIFE = {"regla": 180, "excepcion": 120, "protocolo": 365, "contexto": 270}
 # A qué se refiere la pieza.
 AMBITOS = {"cliente", "proveedor", "categoria", "empleado", "global"}
 # Qué hace la pieza en el producto (el efecto verificable).
@@ -225,6 +226,54 @@ def age_days(p: dict, *, today=None) -> int | None:
     return (ref - taught).days
 
 
+def decay_score(p: dict, *, today=None) -> float:
+    """Confidence right now: exponential half-life decay from
+    last_reinforced_at, read-time only — never mutates the stored row.
+        confidence(t) = stored_confidence * 2 ** (-age_days / half_life)
+    """
+    from datetime import date as _date
+    from . import fechas
+    ref = today or fechas.hoy()
+    reinforced = _date.fromisoformat(p["last_reinforced_at"][:10])
+    age = max(0, (ref - reinforced).days)
+    half_life = p.get("half_life_days") or DEFAULT_HALF_LIFE[p["tipo"]]
+    return float(p["confidence"]) * (2 ** (-age / half_life))
+
+
+def freshness(p: dict, *, today=None) -> str:
+    """"fresco" | "atencion" | "revisar" — the traffic-light bucket over
+    decay_score(), same three-tone vocabulary grafo.py/priorities.py
+    already use for riesgo/tono."""
+    score = decay_score(p, today=today)
+    if score >= 0.55:
+        return "fresco"
+    if score >= 0.35:
+        return "atencion"
+    return "revisar"
+
+
+def needs_review(p: dict, *, today=None, threshold: float = 0.35) -> bool:
+    """True once decay_score() crosses the review floor. Does NOT change
+    estado by itself."""
+    return decay_score(p, today=today) < threshold
+
+
+def reinforce(pid: str) -> dict | None:
+    """Bumps evidence_count and resets last_reinforced_at = today, nudging
+    confidence up by a decreasing amount so repeated reinforcement
+    approaches but never exceeds 1.0."""
+    p = detalle(pid)
+    if not p:
+        return None
+    bump = (1.0 - float(p["confidence"])) * 0.2
+    nuevo = min(1.0, float(p["confidence"]) + bump)
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.update_reinforcement(
+        _tenant.current_tenant_id(), pid, confidence=nuevo,
+        evidence_count=p["evidence_count"] + 1)
+
+
 # --- scope por rol ------------------------------------------------------------
 
 def visibles_para(usuario: dict, piezas: list[dict] | None = None) -> list[dict]:
@@ -297,7 +346,7 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
           entidad: str | None = None, texto_en: str | None = None,
           efecto_profundo: bool = False, origen: dict | None = None,
           params: dict | None = None, estado: str = "activo",
-          veces_aplicada: int = 0) -> dict:
+          veces_aplicada: int = 0, half_life_days: int | None = None) -> dict:
     """Creates and persists a validated piece. `origen` = {quien, cuando}
     (who taught it and when — a human, or origen.quien="Ángela" when the
     piece comes from a learned finding, see pattern_feedback.learn()). Raises
@@ -315,7 +364,7 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
         texto=texto.strip(), texto_en=texto_en, tipo=tipo, ambito=ambito,
         entidad=(entidad or "").strip() or None, nodo=nodo, efecto=efecto,
         efecto_profundo=efecto_profundo, params=params or {}, origen=origen or {},
-        estado=estado, veces_aplicada=int(veces_aplicada))
+        estado=estado, veces_aplicada=int(veces_aplicada), half_life_days=half_life_days)
     if estado == "pendiente":
         from .audit import AuditLog
         AuditLog(DATA_DIR).record((origen or {}).get("quien", ""), "proponer_conocimiento",
