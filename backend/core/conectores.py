@@ -7,13 +7,16 @@ la comunicación. Una sola interfaz (IConector), un conector por sistema.
 Hoy:
   - ConectorCSV: export/import manual (Fase 1, funciona).
   - ConectorBCRA: contexto macro (ya construido en core/macro.py).
+  - ConectorOdoo: cuenta Odoo propia del cliente, vía XML-RPC (Fase 3).
   - ConectorMCP: el slot vacío para cuando Faro/Tango expongan MCP (Fase 3).
 """
 from __future__ import annotations
 
+import xmlrpc.client
 from abc import ABC, abstractmethod
 
 from . import macro, sync
+from core.db import odoo_connections_repo
 
 
 class IConector(ABC):
@@ -63,6 +66,113 @@ class ConectorBCRA(IConector):
         return {"indicadores": ["dolar", "inflacion"]}
 
 
+def probar_conexion_odoo(url: str, database: str, username: str, api_key: str) -> None:
+    """Autentica contra Odoo sin guardar nada — usado antes de persistir una
+    conexión nueva, para no guardar credenciales que no sirven."""
+    try:
+        common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common")
+        uid = common.authenticate(database, username, api_key, {})
+    except Exception as e:
+        raise ValueError(f"No se pudo conectar con Odoo: {e}") from e
+    if not uid:
+        raise ValueError("Odoo rechazó esas credenciales.")
+
+
+class ConectorOdoo(IConector):
+    """La cuenta Odoo propia del cliente (admin), vía XML-RPC — mismo protocolo
+    que examples/xmlrpc_example.py en odoo-test-env. Arranca por res.partner
+    (Contactos): es el módulo más simple para conectar — vive en el módulo
+    `base` de Odoo (siempre instalado), sin depender de que la app de
+    Contabilidad esté activa, y sin estados de flujo de negocio que resolver
+    (a diferencia de account.move/facturas).
+
+    pull_data() trae los contactos-cliente (customer_rank > 0) tal cual están
+    en Odoo. A propósito NO los empuja a la Staging Area: ese pipeline (core/
+    staging.py) hoy sólo sabe coercionar "venta", "deposito" y "logistica" —
+    cualquier otro tipo, incluido "cliente", cae al branch default y se
+    interpreta como filas de PRODUCTO (ver _coerce_y_analizar), lo que
+    corrompería los nombres de clientes silenciosamente. Hasta que la Staging
+    Area sepa coercionar "cliente" de verdad, esto es un preview de sólo
+    lectura; mapear el resultado a customer_accounts (core/cuentas.py) queda
+    como trabajo futuro explícito, no una integración a medias."""
+    nombre = "odoo"
+
+    def __init__(self, tenant_id: str | None = None):
+        self.tenant_id = tenant_id
+        self._conexion = odoo_connections_repo.get(tenant_id) if tenant_id else None
+
+    def _execute_kw(self, model: str, method: str, *args, **kwargs):
+        c = self._conexion
+        common = xmlrpc.client.ServerProxy(f"{c['url']}/xmlrpc/2/common")
+        uid = common.authenticate(c["database"], c["username"], c["api_key"], {})
+        if not uid:
+            raise ValueError("Odoo rechazó las credenciales guardadas para este tenant.")
+        models = xmlrpc.client.ServerProxy(f"{c['url']}/xmlrpc/2/object")
+        return models.execute_kw(c["database"], uid, c["api_key"], model, method, list(args), kwargs)
+
+    def pull_data(self, **kwargs) -> dict:
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "res.partner", "search", [["customer_rank", ">", 0]], limit=kwargs.get("limite", 500)
+        )
+        partners = self._execute_kw(
+            "res.partner", "read", ids, fields=["name", "vat", "city", "phone", "email"]
+        )
+        clientes = [
+            {
+                "id": p["id"],
+                "nombre": p.get("name") or "",
+                "cuit": p.get("vat") or "",
+                "localidad": p.get("city") or "",
+                "telefono": p.get("phone") or "",
+                "email": p.get("email") or "",
+            }
+            for p in partners
+        ]
+        return {"origen": "odoo", "modulo": "res.partner", "total": len(clientes), "clientes": clientes}
+
+    def pull_productos(self, **kwargs) -> dict:
+        """Trae el catálogo de productos activos con su stock disponible
+        (product.template.qty_available, que Odoo calcula sumando los
+        movimientos de todos los depósitos internos). Mismo criterio de
+        sólo-lectura que pull_data(): esto es un preview, no toca
+        core/store.py (el catálogo real de PolPilot) — ver la nota en la
+        docstring de la clase."""
+        if not self._conexion:
+            raise ValueError("No hay conexión con Odoo configurada para este tenant.")
+        ids = self._execute_kw(
+            "product.template", "search", [["active", "=", True]], limit=kwargs.get("limite", 500)
+        )
+        productos = self._execute_kw(
+            "product.template", "read", ids,
+            fields=["name", "default_code", "categ_id", "list_price", "qty_available"],
+        )
+        catalogo = [
+            {
+                "id": p["id"],
+                "codigo": p.get("default_code") or "",
+                "nombre": p.get("name") or "",
+                "categoria": (p.get("categ_id") or [None, ""])[1],
+                "precio": p.get("list_price") or 0,
+                "stock": p.get("qty_available") or 0,
+            }
+            for p in productos
+        ]
+        return {"origen": "odoo", "modulo": "product.template", "total": len(catalogo), "productos": catalogo}
+
+    def push_action(self, accion: dict) -> dict:
+        return {"ok": False, "motivo": "Conector Odoo: por ahora solo lectura (Contactos)."}
+
+    def get_schema(self) -> dict:
+        return {
+            "modulo": "res.partner (Contactos) — el módulo más simple de Odoo para arrancar",
+            "campos": ["name", "vat", "city", "phone", "email"],
+            "requiere_conexion": ["url", "database", "username", "api_key"],
+            "conectado": self._conexion is not None,
+        }
+
+
 class ConectorMCP(IConector):
     """Fase 3: slot para Model Context Protocol. Cuando Faro/Tango expongan un MCP
     server, se enchufan acá los métodos reales (1-2 días de trabajo)."""
@@ -82,15 +192,18 @@ class ConectorMCP(IConector):
 
 
 # Registro de conectores disponibles.
-CONECTORES = {"csv": ConectorCSV, "bcra": ConectorBCRA, "mcp": ConectorMCP}
+CONECTORES = {"csv": ConectorCSV, "bcra": ConectorBCRA, "odoo": ConectorOdoo, "mcp": ConectorMCP}
 
 
-def disponibles() -> list[dict]:
+def disponibles(tenant_id: str | None = None) -> list[dict]:
     out = []
     for nombre, cls in CONECTORES.items():
         try:
-            inst = cls()
-            estado = "activo" if nombre in ("csv", "bcra") else "pendiente"
+            inst = cls(tenant_id) if nombre == "odoo" else cls()
+            if nombre == "odoo":
+                estado = "activo" if inst._conexion else "pendiente"
+            else:
+                estado = "activo" if nombre in ("csv", "bcra") else "pendiente"
             out.append({"nombre": nombre, "estado": estado, "schema": inst.get_schema()})
         except Exception:
             out.append({"nombre": nombre, "estado": "pendiente"})
