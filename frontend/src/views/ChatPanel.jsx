@@ -7,6 +7,7 @@ import {
   Paperclip,
   Maximize2,
   Minimize2,
+  Brain,
   X,
 } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
@@ -15,6 +16,7 @@ import ChatThread from "../components/assistant/ChatThread";
 import IconButton from "../components/assistant/IconButton";
 import NewChatButton from "../components/assistant/NewChatButton";
 import HistoryDropdown from "../components/assistant/HistoryDropdown";
+import KnowledgePanel from "../components/assistant/KnowledgePanel";
 import { useActiveThreadTitle } from "../components/assistant/threads";
 import { textoFeed } from "../components/ActividadFeed";
 import { fecha } from "../lib/format";
@@ -53,6 +55,7 @@ export default function ChatPanel({
   const activeThreadTitle = useActiveThreadTitle(undefined);
   const [executing, setExecuting] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const [feed, setFeed] = useState([]);
   const lastInitialQuery = useRef(null);
   const appliedRef = useRef(new Set());
@@ -235,13 +238,20 @@ export default function ChatPanel({
   return (
     // The dock sits flush against the aside's border, so it pads itself;
     // fullscreen is already inset by its own centred column.
-    <div className={`flex h-full flex-col ${variant === "dock" ? "px-3 pb-3" : ""}`}>
+    <div className={`relative flex h-full flex-col ${variant === "dock" ? "px-3 pb-3" : ""}`}>
+      {knowledgeOpen && <KnowledgePanel onClose={() => setKnowledgeOpen(false)} />}
       <header className="flex items-center gap-3 pb-3 pt-1">
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-display text-xl font-bold leading-none">
             {activeThreadTitle}
           </h1>
         </div>
+        <IconButton
+          label={t("chat.knowledge.open")}
+          onClick={() => setKnowledgeOpen(true)}
+        >
+          <Brain size={16} />
+        </IconButton>
         <NewChatButton />
         <HistoryDropdown />
         {variant === "dock" && onExpand && (
