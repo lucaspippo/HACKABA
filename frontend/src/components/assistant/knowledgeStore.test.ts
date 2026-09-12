@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { citedId } from "./knowledgeStore";
+import { citedId, knowledgeNodeLabel } from "./knowledgeStore";
 
 describe("citedId", () => {
   it("reads the piece id out of a memoria link", () => {
@@ -21,5 +21,17 @@ describe("citedId", () => {
 
   it("does not match a url that merely mentions the word", () => {
     expect(citedId("https://x.com/#memoria-k01")).toBeNull();
+  });
+});
+
+describe("knowledgeNodeLabel", () => {
+  it("uses the translated label when the key exists", () => {
+    expect(knowledgeNodeLabel("inventario", (key) => (key === "chat.knowledge.node.inventario" ? "Inventory" : key))).toBe(
+      "Inventory",
+    );
+  });
+
+  it("keeps an unknown node as stored", () => {
+    expect(knowledgeNodeLabel("custom", (key) => key)).toBe("custom");
   });
 });

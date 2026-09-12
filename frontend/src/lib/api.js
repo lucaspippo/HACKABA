@@ -201,6 +201,8 @@ export const api = {
   knowledgeDelete: (pid) => del(`/api/conocimiento/${encodeURIComponent(pid)}`),
   knowledgeSetState: (pid, state) => post(`/api/conocimiento/${encodeURIComponent(pid)}/estado`, { estado: state }),
   knowledgeConfirm: (proposal) => post("/api/conocimiento/confirm", proposal),
+  // propose_rule writes nothing; the chip posts the validated proposal here.
+  rulesConfirm: (proposal) => post("/api/rules/confirm", proposal),
   conocimientoCrear: (pieza) => post("/api/conocimiento", pieza),
   conocimientoEditar: (pid, campos) => post(`/api/conocimiento/${encodeURIComponent(pid)}/editar`, campos),
   conocimientoArchivar: (pid, motivo) => post(`/api/conocimiento/${encodeURIComponent(pid)}/archivar`, { motivo }),

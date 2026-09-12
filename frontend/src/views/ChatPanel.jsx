@@ -15,6 +15,7 @@ import IconButton from "../components/assistant/IconButton";
 import NewChatButton from "../components/assistant/NewChatButton";
 import HistoryDropdown from "../components/assistant/HistoryDropdown";
 import KnowledgePanel from "../components/assistant/KnowledgePanel";
+import { KnowledgeOpenProvider } from "../components/assistant/KnowledgeOpen";
 import { useActiveThreadTitle } from "../components/assistant/threads";
 import { angelaBus } from "../lib/angelaBus";
 import { authStore, useSession } from "../lib/auth";
@@ -57,6 +58,7 @@ export default function ChatPanel({
   const [, setExecuting] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [knowledgeFocus, setKnowledgeFocus] = useState(null);
   const lastInitialQuery = useRef(null);
   const prompts = suggestionPromptsFor((feature) =>
     !!session?.usuario?.features?.includes(feature),
@@ -172,7 +174,23 @@ export default function ChatPanel({
     // The dock sits flush against the aside's border, so it pads itself;
     // fullscreen / home are already inset by their own centred column.
     <div className={`relative flex h-full flex-col ${variant === "dock" ? "px-3 pb-3 pt-4" : "pt-1"}`}>
-      {knowledgeOpen && <KnowledgePanel onClose={() => setKnowledgeOpen(false)} />}
+      {knowledgeOpen && (
+        <KnowledgePanel
+          key={knowledgeFocus?.id ?? "browse"}
+          onClose={() => {
+            setKnowledgeOpen(false);
+            setKnowledgeFocus(null);
+          }}
+          focusId={knowledgeFocus?.id}
+          focusQuery={knowledgeFocus?.query}
+        />
+      )}
+      <KnowledgeOpenProvider
+        onOpen={(id, query) => {
+          setKnowledgeFocus({ id, query });
+          setKnowledgeOpen(true);
+        }}
+      >
       {showHeader && (
       <header className="flex items-center gap-3 pb-4">
         <div className="min-w-0 flex-1">
@@ -184,7 +202,10 @@ export default function ChatPanel({
         </div>
         <IconButton
           label={t("chat.knowledge.open")}
-          onClick={() => setKnowledgeOpen(true)}
+          onClick={() => {
+            setKnowledgeFocus(null);
+            setKnowledgeOpen(true);
+          }}
         >
           <Brain size={16} />
         </IconButton>
@@ -231,6 +252,7 @@ export default function ChatPanel({
           }
         />
       </div>
+      </KnowledgeOpenProvider>
 
       {/* Receipt photo from the chat (the promise: "snap a photo and tell
           her to load it"). Only roles with `cargar`. */}

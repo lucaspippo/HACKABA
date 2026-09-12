@@ -26,3 +26,18 @@ export function toolLabels(name: string): ToolLabels {
     done: done === keys.done ? readable : done,
   };
 }
+
+/**
+ * One line for the tool card. Ángela's `status` (the stream `label`) is the
+ * real wording — i18n is only the fallback when she did not send one. The
+ * label stays after the call finishes: swapping it for "propose rule" the
+ * moment the result arrives is what made the old card look like a dump.
+ */
+export function toolStatusText(
+  name: string,
+  opts: { running: boolean; modelLabel?: string | null },
+): string {
+  if (opts.modelLabel) return opts.modelLabel;
+  const labels = toolLabels(name);
+  return opts.running ? labels.running : labels.done;
+}

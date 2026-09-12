@@ -49,9 +49,9 @@ export default function AssistantMessage({ onExecutingChange }: { onExecutingCha
               />
             )}
             <MessageNotices />
-            <MessageExtras onExecutingChange={onExecutingChange} />
           </div>
         )}
+        <MessageExtras onExecutingChange={onExecutingChange} />
         {!isRunning && spokenText && (
           <ReadAloudControl text={spokenText} />
         )}

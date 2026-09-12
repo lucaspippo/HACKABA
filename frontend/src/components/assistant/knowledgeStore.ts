@@ -12,6 +12,7 @@ export type KnowledgePiece = {
 };
 
 let pieces: Record<string, KnowledgePiece> = {};
+let ready = false;
 let loading: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 
@@ -29,17 +30,27 @@ function load() {
       const next: Record<string, KnowledgePiece> = {};
       for (const p of [...(active.piezas ?? []), ...(pending.piezas ?? [])]) next[p.id] = p;
       pieces = next;
+      ready = true;
       emit();
     })
-    .catch(() => {});
+    .catch(() => {
+      ready = true;
+      emit();
+    });
   return loading;
 }
 
-/** Drops the cache so the next citation re-reads it (a rule was just saved). */
+/** Reloads without blanking chips that are already on screen. */
 export function invalidateKnowledge() {
   loading = null;
-  pieces = {};
-  emit();
+  load();
+}
+
+/** Display name for a knowledge node; unknown ids stay as stored. */
+export function knowledgeNodeLabel(nodo: string, translate: (key: string) => string): string {
+  const key = `chat.knowledge.node.${nodo}`;
+  const label = translate(key);
+  return label === key ? nodo : label;
 }
 
 function subscribe(listener: () => void) {
@@ -51,15 +62,25 @@ function subscribe(listener: () => void) {
 /**
  * The cited piece, or null while it loads and if it does not exist. Ángela
  * cites by id; a rule someone deleted, or one outside this reader's scope,
- * has to render as nothing rather than as a dead marker.
+ * has to render as nothing rather than as a dead marker. `ready` is false
+ * only on the first fetch — a missing id after that is a real absence.
  */
-export function useKnowledgePiece(id: string): KnowledgePiece | null {
+export function useKnowledgeLookup(id: string): { piece: KnowledgePiece | null; ready: boolean } {
   const all = useSyncExternalStore(
     subscribe,
     () => pieces,
     () => pieces,
   );
-  return all[id] ?? null;
+  useSyncExternalStore(
+    subscribe,
+    () => ready,
+    () => ready,
+  );
+  return { piece: all[id] ?? null, ready };
+}
+
+export function useKnowledgePiece(id: string): KnowledgePiece | null {
+  return useKnowledgeLookup(id).piece;
 }
 
 // A hash URL, not a "memoria:" scheme: react-markdown's default

@@ -1,53 +1,27 @@
 import type { ToolCallMessagePartProps } from "@assistant-ui/react";
 import ResultTable from "../ResultTable";
 import MiniChart from "../MiniChart";
-import { peso, num } from "../../../lib/format";
+import { peso } from "../../../lib/format";
 import { toolErrorMessage, ToolErrorText } from "./toolError";
-
-const MONEY_KEY = /monto|inmovilizado|precio|costo|saldo|total|plata|deuda/i;
-
-/** A "small" object (a few scalar keys) as a compact key/value grid. */
-function GenericResult({ result }: { result: Record<string, unknown> }) {
-  const err = toolErrorMessage(result);
-  if (err) return <ToolErrorText message={err} />;
-  const entries = Object.entries(result).filter(
-    ([, v]) =>
-      v == null || typeof v === "string" || typeof v === "number" || typeof v === "boolean",
-  );
-  if (entries.length === 0) return null;
-  return (
-    <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-      {entries.slice(0, 8).map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="capitalize text-tinta-suave">{k.replaceAll("_", " ")}</dt>
-          <dd className="tabular-nums text-tinta">
-            {typeof v === "number"
-              ? MONEY_KEY.test(k)
-                ? peso(v)
-                : num(v)
-              : String(v ?? "—")}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
 
 /**
  * The DEFAULT tool renderer: dispatches on the SHAPE of the result, not on the
- * tool name, so any of angela.py's 50 tools gets a reasonable UI without a
- * presenter. A presenter in the registry is an override of this, never a
- * prerequisite for a tool to render (design doc D1) — do not "simplify" this
- * away by requiring one per tool.
+ * tool name, so a new Python tool still gets a table or a chart with zero
+ * frontend work (design doc D1). Scalar dumps (`ok: true` plus a sentence)
+ * do NOT get a key/value widget — those belong on the status line, which is
+ * the wording the model already sent.
  */
 export default function ToolFallback({ toolName, result }: ToolCallMessagePartProps) {
   if (result == null) return null;
+
+  const err = toolErrorMessage(result);
+  if (err) return <ToolErrorText message={err} />;
 
   if (typeof result !== "object" || Array.isArray(result)) {
     if (Array.isArray(result) && result.length && typeof result[0] === "object") {
       return <ResultTable rows={result} />;
     }
-    return <p className="mt-1 text-sm text-tinta">{String(result)}</p>;
+    return null;
   }
 
   const r = result as Record<string, unknown>;
@@ -85,5 +59,5 @@ export default function ToolFallback({ toolName, result }: ToolCallMessagePartPr
     if (withTop) return <MiniChart points={withTop.top} />;
   }
 
-  return <GenericResult result={r} />;
+  return null;
 }

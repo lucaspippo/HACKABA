@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
+import { knowledgeNodeLabel } from "./knowledgeStore";
 
 // Mirrors core/conocimiento.py's TIPOS/AMBITOS/NODOS/EFECTOS catalogs.
 const TIPOS = ["regla", "excepcion", "protocolo", "contexto"] as const;
@@ -64,10 +65,18 @@ const STATE_TONE: Record<string, string> = {
   archivada: "bg-tinta/[0.06] text-tinta-suave",
 };
 
-export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
+export default function KnowledgePanel({
+  onClose,
+  focusId,
+  focusQuery,
+}: {
+  onClose: () => void;
+  focusId?: string;
+  focusQuery?: string;
+}) {
   const t = useT();
   const [pieces, setPieces] = useState<Piece[]>([]);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(focusQuery ?? "");
   const [node, setNode] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -98,8 +107,9 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   useEffect(() => {
+    if (focusQuery) return;
     searchRef.current?.focus();
-  }, []);
+  }, [focusQuery]);
 
   const nodes = useMemo(
     () => [...new Set(pieces.map((p) => p.nodo))].sort(),
@@ -114,6 +124,23 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const shown = pieces
     .filter(byTab[tab])
     .filter((p) => matches(p, query) && (!node || p.nodo === node));
+
+  useEffect(() => {
+    if (!focusId || loading) return;
+    const piece = pieces.find((p) => p.id === focusId);
+    if (!piece) return;
+    if (ARCHIVED_ESTADOS.has(piece.estado)) setTab("archived");
+    else if (piece.estado === "revisar" || piece.needs_review) setTab("review");
+    else setTab("active");
+  }, [focusId, loading, pieces]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document
+      .querySelector(`[data-knowledge-id="${CSS.escape(focusId)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [focusId, shown, tab]);
+
   const pending = pieces.filter((p) => p.estado === "pendiente").length;
   const counts: Record<Tab, number> = {
     active: pieces.filter(byTab.active).length,
@@ -276,7 +303,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
             >
               <option value="">{t("chat.knowledge.all_nodes")}</option>
               {nodes.map((n) => (
-                <option key={n} value={n}>{n}</option>
+                <option key={n} value={n}>{knowledgeNodeLabel(n, t)}</option>
               ))}
             </select>
           )}
@@ -311,7 +338,12 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
           {shown.map((piece) => (
             <li
               key={piece.id}
-              className="rounded-xl border border-linea bg-crema px-2.5 py-2"
+              data-knowledge-id={piece.id}
+              className={`rounded-xl border px-2.5 py-2 ${
+                piece.id === focusId
+                  ? "border-oro/50 bg-oro/[0.07]"
+                  : "border-linea bg-crema"
+              }`}
             >
               <p className="text-sm leading-snug text-tinta">{piece.texto}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -322,7 +354,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                 >
                   {t(`chat.knowledge.state.${piece.estado}`)}
                 </span>
-                <span className="text-2xs text-tinta-suave">{piece.nodo}</span>
+                <span className="text-2xs text-tinta-suave">{knowledgeNodeLabel(piece.nodo, t)}</span>
                 {piece.entidad && (
                   <span className="min-w-0 truncate text-2xs text-tinta-suave">
                     · {piece.entidad}
