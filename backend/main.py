@@ -586,7 +586,7 @@ def health():
     return {
         "ok": True,
         "servicio": "polpilot-demo",
-        "angela_online": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "angela_online": config.model_disponible(),
         "modo_angela": config.modo(),          # "simulado" o "claude", evaluado en runtime
         "modelo_angela": config.modelo_para(),  # el modelo que usaría ahora mismo
         "routing_modelos": config.ROUTING_ACTIVO,  # apagado durante validación
