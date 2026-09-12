@@ -396,11 +396,12 @@ export const ES = {
   "nav.deposito": "Depósito",
   "nav.admin_contexto": "Contexto externo",
   "nav.perfil": "Mi perfil",
-  "nav.grupo_senales": "Detectado por Ángela",
-  "nav.grupo_plata": "La plata",
-  "nav.grupo_operacion": "La operación",
-  "nav.grupo_operacion_equipo": "Equipo y oficina",
-  "nav.grupo_sistema": "Sistema",
+  "nav.grupo_senales": "Alertas y oportunidades",
+  "nav.grupo_tesoreria": "Tesorería",
+  "nav.grupo_cobrar": "Cuentas por cobrar",
+  "nav.grupo_inventario": "Inventario y depósito",
+  "nav.grupo_equipo": "Equipo",
+  "nav.grupo_sistema": "Configuración",
   "nav.pendientes": "Datos pendientes",
   "nav.angela_activa": "Activa",
   "angela.ultimo": "Lo último que hice",
@@ -571,6 +572,8 @@ export const ES = {
 
   // --- evolución ---
   "evolucion.titulo": "Evolución",
+  "evolucion.tab_resumen": "Resumen",
+  "evolucion.tab_estacionalidad": "Estacionalidad y composición",
   "evolucion.subtitulo": "Tu negocio en el tiempo, ajustado por inflación.",
   "evolucion.dormida_1": "Cuando cargues tus",
   "evolucion.dormida_ventas": "ventas históricas",
@@ -1014,6 +1017,8 @@ export const ES = {
 
   // --- depósito ---
   "deposito.titulo": "Depósito",
+  "deposito.tab_vencimientos": "Vencimientos y stock",
+  "deposito.tab_corregir": "Datos a corregir",
   "deposito.subtitulo": "Lo que hay que resolver en el galpón.",
   "deposito.cargar_remito": "Cargar remito por foto",
 
@@ -1245,6 +1250,7 @@ export const ES = {
   "equipo.sub_admin": "Quién es quién, qué ve cada uno y qué está pasando.",
   "equipo.sub_empleado": "Quién hace qué y qué está pasando — sin llamar a nadie.",
   "equipo.tab_equipo": "El equipo",
+  "equipo.tab_objetivos": "Objetivos",
   "equipo.tab_solicitudes": "Solicitudes",
   "equipo.toast_tarea_asignada": "Listo: {quien} ya la ve en sus tareas de hoy.",
   "equipo.toast_tarea_error": "Quedó en el tablero, pero no pude mandársela a {quien}.",
@@ -2055,6 +2061,7 @@ export const ES = {
   "cobranzas.angela_intro_dueno": "Ordené a todos los que te deben por la plata que te están financiando de más — saldo por los días que se corrieron de SU propia costumbre, no del plazo del papel. Arriba está lo que entra si cobrás todo esto. Vos decidís la estrategia; el recordatorio te lo dejo escrito y sale cuando vos digas.",
   "cobranzas.orden_titulo_dueno": "Por dónde apretar",
   "cobranzas.la_trabaja": "la trabaja {quien}",
+  "cobranzas.ver_cuenta": "Ver cuenta →",
   "cobranzas.pan_concentracion": "Concentración",
   "cobranzas.pan_concentracion_det": "{n} clientes explican esa parte de tu exposición: {monto} entre {nombres}. Si arreglás con ellos, arreglaste la cobranza.",
   "cobranzas.pan_sin_tocar": "Sin tocar todavía",

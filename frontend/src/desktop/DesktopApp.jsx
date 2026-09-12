@@ -80,19 +80,21 @@ const CATALOGO = {
   perfil: { lk: "nav.perfil", icon: UserCircle },
 };
 
-// P43 — el sidebar dejó de ser bloques de color siempre abiertos: es una
-// lista plana donde "panel"/"mapa" son hojas (navegan directo) y el resto
-// vive detrás de 4 padres tipo acordeón (uno abierto a la vez). Mismos
-// permisos, mismo CATALOGO — sólo cambia cómo se presenta y cuánto ocupa en
-// pantalla en un momento dado. "Perfil" sigue sin vivir acá: se llega desde
-// el menú de cuenta en el header (evita el mismo destino con dos entradas).
+// P44 — los 4 grupos originales sonaban a narrativa de Ángela, no a áreas del
+// negocio: "La plata" mezclaba tesorería con cobranzas, "La operación" mezclaba
+// stock con equipo/oficina. Ahora son 7 grupos angostos, cada uno UNA sola
+// área reconocible (tesorería, cobranzas, inventario, equipo, sistema) —
+// "Alertas y oportunidades" queda aparte porque es genuinamente de Ángela
+// (una señal cruzada, no un módulo de ERP) y forzarla a una de las otras
+// áreas la volvería más confusa, no menos. "panel"/"mapa" siguen como hojas.
 const GRUPOS_NAV = [
   { id: "panel", leaf: true },
   { id: "mapa", leaf: true },
-  // P17·E2a — jerarquía AI-first: lo que Ángela detectó y necesita una decisión.
   { id: "senales", lk: "nav.grupo_senales", icon: Radar, ids: ["alertas", "oportunidades", "evolucion"] },
-  { id: "plata", lk: "nav.grupo_plata", icon: Wallet, ids: ["finanzas", "caja", "cuentas", "cobranzas"] },
-  { id: "operacion", lk: "nav.grupo_operacion", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito", "administracion", "equipo"] },
+  { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
+  { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
+  { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "saneamiento", "deposito"] },
+  { id: "equipo", lk: "nav.grupo_equipo", icon: Users, ids: ["equipo", "administracion"] },
   { id: "sistema", lk: "nav.grupo_sistema", icon: Settings, ids: ["cargar", "documentos", "auditoria", "admin_contexto"] },
 ];
 
@@ -465,9 +467,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "equipo" && <GestionEquipo data={data} user={user} highlight={highlight} />}
                 {section === "cargar" && <CargarDatos user={user} onArchivoCargado={irAPendientes} onPreguntar={preguntar} onAbrirAngela={abrirAngela} />}
                 {section === "documentos" && <Documentos onPreguntar={preguntar} />}
-                {section === "cuentas" && <CuentasCorrientes onPreguntar={preguntar} />}
+                {section === "cuentas" && <CuentasCorrientes onPreguntar={preguntar} highlight={highlight} />}
                 {section === "caja" && <Caja />}
-                {section === "cobranzas" && <Cobranzas onPreguntar={preguntar} datos={fase?.datos} user={user} />}
+                {section === "cobranzas" && <Cobranzas onPreguntar={preguntar} datos={fase?.datos} user={user} onNavegar={navegar} />}
                 {section === "administracion" && <Administracion data={data} onPreguntar={preguntar} />}
                 {section === "deposito" && <Deposito data={data} onPreguntar={preguntar} />}
                 {section === "evolucion" && <Evolucion data={data} onNavegar={navegar} onPreguntar={preguntar} />}
