@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
-import { MessageCircle, ChevronDown, Copy, Check } from "lucide-react";
+import { MessageCircle, Copy, Check, ChevronDown, MessagesSquare } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
 import { api } from "../../lib/api";
 import { useT } from "../../lib/i18n";
+import { ConnectorCard, ConnectorStatusPill, ConnectorField, ConnectorButton, ConnectorEmptyState } from "./connectorUI";
 
 // El canal de WhatsApp de VENTAS: el tenant conecta su propio número de
 // WhatsApp Business (Meta Cloud API) para que sus clientes pidan catálogo,
 // armen un pedido o pidan un presupuesto por chat, con Ángela atendiendo del
 // otro lado. Ver core/whatsapp_channel.py y backend/whatsapp_bot.py. Distinto
 // del WhatsApp interno de empleados (ese no tiene configuración: ya anda con
-// el teléfono cargado en el perfil de cada uno).
+// el teléfono cargado en el perfil de cada uno). Mismo lenguaje visual que
+// el panel de Odoo en Conectores.jsx (ver connectorUI.jsx) — son la misma
+// familia de pantalla, aunque este canal ES Ángela y no un caño de datos.
 export default function WhatsAppBot() {
   const t = useT();
   const [cfg, setCfg] = useState(null); // null=cargando, false=error
@@ -84,127 +87,131 @@ export default function WhatsAppBot() {
       <AngelaSays>{t("whatsapp_bot.angela")}</AngelaSays>
 
       {cfg === null && <Cargando />}
-      {cfg === false && <p className="text-[0.9rem] text-rojo">{t("whatsapp_bot.error_generico")}</p>}
+      {cfg === false && <p className="text-[0.9rem] text-rojo-hondo">{t("whatsapp_bot.error_generico")}</p>}
 
       {cfg && (
-        <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-          <div className="flex items-center gap-3">
-            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${
-              cfg.conectado ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"}`}>
-              <MessageCircle size={17} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-[1.02rem] font-bold leading-tight">{t("whatsapp_bot.canal_nombre")}</p>
-              <p className="text-[0.82rem] text-tinta-suave">
-                {cfg.conectado
-                  ? t(cfg.business_name ? "whatsapp_bot.conectado_como_empresa" : "whatsapp_bot.conectado_como", {
-                      numero: cfg.display_phone_number || cfg.phone_number_id,
-                      empresa: cfg.business_name,
-                    })
-                  : t("whatsapp_bot.no_conectado")}
-              </p>
-            </div>
-            {cfg.conectado && (
-              <span className={`shrink-0 rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
-                cfg.enabled ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"}`}>
-                {t(cfg.enabled ? "whatsapp_bot.estado_activo" : "whatsapp_bot.estado_pausado")}
-              </span>
-            )}
-          </div>
-
-          <div className="mt-3.5 space-y-3 border-t border-linea pt-3.5">
-            {cfg.conectado ? (
-              <>
-                <p className="text-[0.85rem] text-tinta-suave">{t("whatsapp_bot.saludo_actual")}</p>
-                <p className="rounded-lg bg-papel-hondo/40 p-2.5 text-[0.85rem] text-tinta">
+        <ConnectorCard
+          icon={MessageCircle}
+          tone={cfg.conectado && cfg.enabled ? "active" : "agent"}
+          title={t("whatsapp_bot.canal_nombre")}
+          subtitle={cfg.conectado
+            ? t(cfg.business_name ? "whatsapp_bot.conectado_como_empresa" : "whatsapp_bot.conectado_como", {
+                numero: cfg.display_phone_number || cfg.phone_number_id, empresa: cfg.business_name,
+              })
+            : t("whatsapp_bot.no_conectado")}
+          status={cfg.conectado && (
+            <ConnectorStatusPill variant={cfg.enabled ? "activo" : "pausado"}>
+              {t(cfg.enabled ? "whatsapp_bot.estado_activo" : "whatsapp_bot.estado_pausado")}
+            </ConnectorStatusPill>
+          )}
+        >
+          {cfg.conectado ? (
+            <>
+              <div>
+                <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-tinta-suave">
+                  {t("whatsapp_bot.saludo_actual")}
+                </p>
+                <p className="mt-1.5 rounded-xl bg-papel-hondo/40 p-3 text-[0.85rem] leading-snug text-tinta">
                   {cfg.greeting_message || t("whatsapp_bot.sin_saludo")}
                 </p>
-                <button onClick={desconectar}
-                  className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
-                             text-tinta-suave hover:text-tinta">
-                  {t("whatsapp_bot.desconectar")}
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="rounded-lg bg-papel-hondo/40 p-3 text-[0.82rem] leading-snug text-tinta-suave">
-                  <p className="mb-1.5 font-semibold text-tinta">{t("whatsapp_bot.paso_webhook_titulo")}</p>
-                  <p>{t("whatsapp_bot.paso_webhook_desc")}</p>
+              </div>
+              <div className="border-t border-linea pt-3.5">
+                <ConnectorButton variant="danger" onClick={desconectar}>{t("whatsapp_bot.desconectar")}</ConnectorButton>
+              </div>
+            </>
+          ) : (
+            <>
+              <ol className="space-y-3">
+                <li className="rounded-xl bg-papel-hondo/40 p-3">
+                  <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_webhook_titulo")}</p>
+                  <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_webhook_desc")}</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded bg-papel px-2 py-1 text-[0.78rem]">
+                    <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
                       {webhookUrl}
                     </code>
-                    <button type="button" onClick={copiarWebhook}
-                      className="shrink-0 rounded-full border border-linea p-1.5 text-tinta-suave hover:text-tinta">
-                      {copiado ? <Check size={14} /> : <Copy size={14} />}
+                    <button type="button" onClick={copiarWebhook} aria-label={t("whatsapp_bot.copiar_webhook")}
+                      className="shrink-0 rounded-lg border border-linea p-1.5 text-tinta-suave transition-colors hover:border-tinta/40 hover:text-tinta">
+                      {copiado ? <Check size={14} className="text-salvia" /> : <Copy size={14} />}
                     </button>
                   </div>
-                </div>
-                <form onSubmit={conectar} className="space-y-2.5">
-                  <p className="text-[0.85rem] text-tinta-suave">{t("whatsapp_bot.paso_credenciales_desc")}</p>
-                  <Campo label={t("whatsapp_bot.campo_phone_number_id")} value={form.phone_number_id}
-                    onChange={(v) => setForm((f) => ({ ...f, phone_number_id: v }))} />
-                  <Campo label={t("whatsapp_bot.campo_access_token")} type="password" value={form.access_token}
-                    onChange={(v) => setForm((f) => ({ ...f, access_token: v }))} />
-                  <Campo label={t("whatsapp_bot.campo_app_secret")} type="password" value={form.app_secret}
-                    onChange={(v) => setForm((f) => ({ ...f, app_secret: v }))} />
-                  <label className="block text-[0.8rem]">
-                    <span className="mb-1 block font-semibold text-tinta-suave">{t("whatsapp_bot.campo_saludo")}</span>
-                    <textarea value={form.greeting_message} rows={2}
-                      placeholder={t("whatsapp_bot.campo_saludo_placeholder")}
-                      onChange={(e) => setForm((f) => ({ ...f, greeting_message: e.target.value }))}
-                      className="w-full rounded-lg border border-linea bg-papel px-3 py-1.5 text-[0.85rem]
-                                 text-tinta outline-none focus:border-violeta" />
-                  </label>
-                  {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
-                  <button type="submit" disabled={guardando}
-                    className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
-                               font-semibold text-crema disabled:opacity-50">
-                    {guardando ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
-                  </button>
-                </form>
-              </>
-            )}
-            <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>
-          </div>
-        </div>
+                </li>
+                <li className="rounded-xl bg-papel-hondo/40 p-3">
+                  <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_credenciales_titulo")}</p>
+                  <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_credenciales_desc")}</p>
+                  <form onSubmit={conectar} className="mt-3 space-y-3">
+                    <ConnectorField label={t("whatsapp_bot.campo_phone_number_id")} value={form.phone_number_id}
+                      hint={t("whatsapp_bot.campo_phone_number_id_hint")}
+                      onChange={(v) => setForm((f) => ({ ...f, phone_number_id: v }))} />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <ConnectorField label={t("whatsapp_bot.campo_access_token")} type="password" value={form.access_token}
+                        onChange={(v) => setForm((f) => ({ ...f, access_token: v }))} />
+                      <ConnectorField label={t("whatsapp_bot.campo_app_secret")} type="password" value={form.app_secret}
+                        onChange={(v) => setForm((f) => ({ ...f, app_secret: v }))} />
+                    </div>
+                    <label className="block text-[0.8rem]">
+                      <span className="mb-1 block font-semibold text-tinta">{t("whatsapp_bot.campo_saludo")}</span>
+                      <textarea value={form.greeting_message} rows={2}
+                        placeholder={t("whatsapp_bot.campo_saludo_placeholder")}
+                        onChange={(e) => setForm((f) => ({ ...f, greeting_message: e.target.value }))}
+                        className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-[0.85rem]
+                                   text-tinta outline-none transition-colors focus:border-tinta/40" />
+                    </label>
+                    {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+                    <ConnectorButton type="submit" loading={guardando}>
+                      {guardando ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
+                    </ConnectorButton>
+                  </form>
+                </li>
+              </ol>
+            </>
+          )}
+          <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>
+        </ConnectorCard>
       )}
 
       {cfg?.conectado && (
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-          <h2 className="font-display text-[1.02rem] font-bold">{t("whatsapp_bot.conversaciones_titulo")}</h2>
+          <h2 className="font-display text-[1.02rem] font-bold text-tinta">{t("whatsapp_bot.conversaciones_titulo")}</h2>
           <p className="mt-0.5 text-[0.82rem] text-tinta-suave">{t("whatsapp_bot.conversaciones_desc")}</p>
-          {conversaciones === null && <Cargando />}
+
+          {conversaciones === null && <div className="mt-3"><Cargando /></div>}
+
           {conversaciones?.length === 0 && (
-            <p className="mt-3 text-[0.85rem] text-tinta-suave">{t("whatsapp_bot.conversaciones_vacio")}</p>
+            <div className="mt-3">
+              <ConnectorEmptyState icon={MessagesSquare}>{t("whatsapp_bot.conversaciones_vacio")}</ConnectorEmptyState>
+            </div>
           )}
+
           {conversaciones?.length > 0 && (
             <ul className="mt-3 space-y-1.5">
               {conversaciones.map((c) => (
-                <li key={c.id} className="rounded-xl border border-linea/60 bg-papel-hondo/30">
-                  <button onClick={() => verConversacion(c.id)}
-                    className="flex w-full items-center gap-2 p-2.5 text-left">
+                <li key={c.id} className="overflow-hidden rounded-xl border border-linea/60 bg-papel-hondo/30">
+                  <button onClick={() => verConversacion(c.id)} aria-expanded={abierta === c.id}
+                    className="flex w-full items-center gap-2.5 p-2.5 text-left transition-colors hover:bg-papel-hondo/60">
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crema text-[0.78rem] font-bold text-tinta-suave">
+                      {(c.customer_name || c.customer_phone || "?").slice(0, 1).toUpperCase()}
+                    </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[0.85rem] font-semibold text-tinta">
+                      <span className="block truncate text-[0.85rem] font-semibold text-tinta">
                         {c.customer_name || c.customer_phone}
                       </span>
-                      <span className="block text-[0.76rem] text-tinta-suave">{c.customer_phone}</span>
+                      <span className="block truncate text-[0.76rem] text-tinta-suave">{c.customer_phone}</span>
                     </span>
                     {c.status === "necesita_atencion" && (
-                      <span className="shrink-0 rounded-full bg-rojo/10 px-2 py-0.5 text-[0.72rem] font-semibold text-rojo">
+                      <span className="shrink-0 rounded-full bg-oro/10 px-2 py-0.5 text-[0.72rem] font-semibold text-oro-tinta">
                         {t("whatsapp_bot.necesita_atencion")}
                       </span>
                     )}
-                    <ChevronDown size={15} className={`shrink-0 text-tinta-suave transition-transform ${abierta === c.id ? "rotate-180" : ""}`} />
+                    <ChevronDown size={15} className={`shrink-0 text-tinta-suave transition-transform duration-200 ${abierta === c.id ? "rotate-180" : ""}`} />
                   </button>
                   {abierta === c.id && (
-                    <div className="space-y-1.5 border-t border-linea/60 p-2.5">
+                    <div className="space-y-1.5 border-t border-linea/60 bg-papel/60 p-2.5">
                       {mensajes === null && <Cargando />}
                       {mensajes?.map((m) => (
-                        <p key={m.id} className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-[0.82rem] ${
+                        <p key={m.id} className={`max-w-[85%] rounded-xl px-3 py-1.5 text-[0.82rem] leading-snug ${
                           m.direction === "in"
-                            ? "bg-papel text-tinta"
-                            : "ml-auto bg-violeta/12 text-tinta"}`}>
+                            ? "bg-crema text-tinta"
+                            : "ml-auto bg-violeta/10 text-tinta"}`}>
                           {m.body}
                         </p>
                       ))}
@@ -217,17 +224,5 @@ export default function WhatsAppBot() {
         </div>
       )}
     </div>
-  );
-}
-
-function Campo({ label, value, onChange, type = "text", placeholder }) {
-  return (
-    <label className="block text-[0.8rem]">
-      <span className="mb-1 block font-semibold text-tinta-suave">{label}</span>
-      <input required type={type} value={value} placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-linea bg-papel px-3 py-1.5 text-[0.85rem]
-                   text-tinta outline-none focus:border-violeta" />
-    </label>
   );
 }
