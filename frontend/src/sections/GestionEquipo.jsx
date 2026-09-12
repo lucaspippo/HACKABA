@@ -7,6 +7,7 @@ import Avatar from "../components/Avatar";
 import BadgeNuevo, { antiguedadTexto } from "../components/BadgeNuevo";
 import { VerComoSelector, cambiarA } from "../components/VerComo";
 import { api } from "../lib/api";
+import { apiUrl } from "../lib/apiUrl";
 import { toast } from "../lib/toastStore";
 import { useSession } from "../lib/auth";
 import { equipoStore, useEquipo, ESTADO_LABEL } from "../lib/equipoStore";
@@ -880,7 +881,7 @@ export default function GestionEquipo({ data, user, highlight }) {
 
   const cargarPerfiles = () => {
     if (!session?.token || !esAdmin) return;
-    fetch(`/api/perfiles?token=${encodeURIComponent(session.token)}`)
+    fetch(apiUrl(`/api/perfiles?token=${encodeURIComponent(session.token)}`))
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((d) => setPerfiles(d.perfiles))
       .catch(() => setError(t("equipo.error_perfiles")));

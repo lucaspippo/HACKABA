@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { apiUrl } from "./apiUrl";
 
 // Sesión del usuario logueado. Persiste en localStorage. Reactiva.
 const KEY = "polpilot.session.v1";
@@ -25,7 +26,7 @@ export const authStore = {
     return session;
   },
   async login(username, password) {
-    const res = await fetch("/api/login", {
+    const res = await fetch(apiUrl("/api/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -60,7 +61,7 @@ export const authStore = {
   // Refresca el usuario desde el backend (features nuevas tras una aprobación).
   async refresh() {
     if (!session?.token) return;
-    const res = await fetch(`/api/me?token=${encodeURIComponent(session.token)}`);
+    const res = await fetch(apiUrl(`/api/me?token=${encodeURIComponent(session.token)}`));
     if (!res.ok) return; // sesión caída: se resuelve en el próximo login
     session = { ...session, usuario: await res.json() };
     localStorage.setItem(KEY, JSON.stringify(session));

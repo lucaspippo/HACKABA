@@ -7,6 +7,7 @@ import DesktopApp from "./desktop/DesktopApp";
 import { useIsDesktop } from "./lib/useViewport";
 import { authStore, useSession } from "./lib/auth";
 import { api } from "./lib/api";
+import { apiUrl } from "./lib/apiUrl";
 import { langStore, useT } from "./lib/i18n";
 import { equipoStore } from "./lib/equipoStore";
 import { vistaStore } from "./lib/vistaStore";
@@ -50,9 +51,9 @@ export default function App() {
     let vivo = true;
     (async () => {
       try {
-        const h = await fetch("/api/health").then((r) => r.json());
+        const h = await fetch(apiUrl("/api/health")).then((r) => r.json());
         if (vivo && h.autologin) {
-          const res = await fetch("/api/demo/autologin", { method: "POST" });
+          const res = await fetch(apiUrl("/api/demo/autologin"), { method: "POST" });
           if (res.ok) authStore.adoptar(await res.json());
         }
       } catch { /* backend caído: el login normal lo explica */ }
