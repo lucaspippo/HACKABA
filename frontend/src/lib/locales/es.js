@@ -647,6 +647,7 @@ export const ES = {
   "mnav.alertas": "Alertas",
   "mnav.equipo": "Equipo",
   "mnav.cobranzas": "Cobranzas",
+  "mnav.parada": "Mi ruta",
   "mnav.deposito": "Depósito",
   "mnav.oportunidades": "Oportun.",
   "mnav.oficina": "Oficina",
@@ -2539,6 +2540,20 @@ export const ES = {
   "rol.motivo_no_pedido": "No lo pedimos",
   // P·círculo — qué pasó con lo que dije. La mitad que le devuelve algo a la
   // persona por haber cargado.
+  // C2 · la parada enriquecida
+  "parada.contador": "Parada {n} de {total}",
+  "parada.sin_paradas": "No te quedan paradas por hacer.",
+  "parada.debe": "Debe",
+  "parada.dias": "{dias} días sin pagar, con {plazo} de plazo",
+  "parada.promedio": "paga en promedio a {n}",
+  "parada.regla_casa": "Le tolerás hasta {tolerancia} días y ya se pasó por {exceso}.",
+  "parada.deuda_oculta": "El saldo del cliente no se muestra en tu vista.",
+  "parada.dijeron": "Lo que se dijo de este cliente",
+  "parada.vence_y_compra": "Se vence, y este cliente lo compra",
+  "parada.vence_en": "vence en {dias} días",
+  "parada.le_compro": "se llevó {cantidad}",
+  "parada.ofrecelo": "El viaje ya está hecho: si se lo ofrecés, no se tira.",
+  "parada.siguiente": "Siguiente parada",
   "circulo.me_mandaron": "Te lo mandaron a vos",
   "circulo.de_quien": "Lo mandó {quien}",
   "circulo.cerrar": "Lo resolví",
