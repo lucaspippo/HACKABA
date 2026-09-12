@@ -282,9 +282,9 @@ def _read_env_var(path: str, key: str) -> str | None:
 
 def _db_target() -> tuple[str, int]:
     url = _read_env_var(BACKEND_ENV_FILE, "DATABASE_URL") or \
-        "postgresql+psycopg://polpilot:polpilot@localhost:5432/polpilot"
+        "postgresql+psycopg://polpilot:polpilot@localhost:5434/polpilot"
     parsed = urllib.parse.urlparse(url)
-    return parsed.hostname or "localhost", parsed.port or 5432
+    return parsed.hostname or "localhost", parsed.port or 5434
 
 
 def _tcp_open(host: str, port: int, timeout: float = 1.5) -> bool:
