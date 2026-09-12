@@ -1125,6 +1125,37 @@ def generar_orden_compra_demo():
     }]
 
 
+def generar_recepcion_del_caso():
+    """LA ENTREGA DEL RECLAMO, con fecha FIJA. No la puede decidir el azar.
+
+    `generar_recepciones` reparte las entregas entre 7 y 28 dias atras al azar,
+    y la escena del reclamo (core/escena.py) calcula el plazo restando esa
+    fecha contra el plazo del proveedor. O sea que la linea que se dice en voz
+    alta —«La entrega fue el 05/07. Quedan 3 dias para reclamar.»— salia
+    distinta en cada siembra. En el primer deploy a Render salio:
+
+        «La entrega fue el 28/06. El plazo vencio hace 4 dias.»
+
+    Que no es un detalle cosmetico: da vuelta la historia. En vez de «hay que
+    actuar ahora» dice «se te paso», y el caso entero deja de tener sentido.
+
+    Dos dias atras, contra el plazo de 5 dias de Lacteos Campo Alegre (k23),
+    da exactamente tres dias restantes. Y sale de una resta real entre dos
+    fechas reales: lo unico que se fija es la fecha de la entrega.
+
+    Mismo criterio que generar_orden_compra_demo: datos a mano, SIN consumir el
+    Random compartido, para que el resto del dataset quede byte-igual.
+    """
+    return [{
+        "fecha": (HOY - datetime.timedelta(days=2)).isoformat(),
+        "codigo": 1215,
+        "producto": "LECHE ENTERA CAMPO ALEGRE 1L (X12U)",
+        "proveedor": "Lácteos Campo Alegre",
+        "cantidad": 60,
+        "deposito": "Depósito Central",
+    }]
+
+
 def main():
     # Los seeds que pasan por el core (staging, solicitud → notificación al
     # dueño) hablan el idioma DEFAULT del tenant demo: inglés (reviewers YC).
@@ -1134,6 +1165,9 @@ def main():
     asignar_rotacion_y_stock(arts)
     ventas = generar_ventas(arts)
     recepciones = generar_recepciones(arts)
+    # La del caso del reclamo va al final y con fecha fija: es la que
+    # `escena._ultima_entrega` toma como ultima (es la mas reciente).
+    recepciones += generar_recepcion_del_caso()
     dep = generar_deposito(arts)
     log = generar_logistica()
 
