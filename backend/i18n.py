@@ -1108,6 +1108,14 @@ CATALOGO: dict[str, dict[str, str]] = {
         "en": "Done, I removed it. Ask me if you ever want it back.",
     },
     # P21 — consultas genéricas (el contrato habla claro cuando rechaza)
+    "core.forecast.sin_ventas": {
+        "es": "No hay ventas cargadas todavía — el pronóstico se desbloquea con ese historial.",
+        "en": "No sales data loaded yet — the forecast unlocks once that history is in.",
+    },
+    "core.forecast.sin_demanda_reciente": {
+        "es": "Sin ventas en los últimos 12 meses: no hay demanda reciente para proyectar.",
+        "en": "No sales in the last 12 months: there is no recent demand to project.",
+    },
     "core.consulta.sin_ventas": {
         "es": "No hay ventas cargadas todavía — esta consulta se desbloquea con ese CSV.",
         "en": "No sales data loaded yet — this query unlocks with that CSV.",

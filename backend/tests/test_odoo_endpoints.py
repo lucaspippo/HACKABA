@@ -36,6 +36,26 @@ class _FakeModels:
                 return [{"id": 1, "order_id": [1, "S00001"], "product_id": [1, "Producto Odoo"],
                           "product_template_id": [1, "Producto Odoo"], "name": "Producto Odoo",
                           "product_uom_qty": 1.0, "price_unit": 100.0}]
+            if model == "stock.quant":
+                return [{"id": 1, "product_id": [1, "Producto Odoo"], "location_id": [8, "WH/Stock"],
+                          "quantity": 7.0, "lot_id": False, "in_date": "2026-01-15 10:00:00",
+                          "inventory_quantity": 0, "inventory_quantity_set": False}]
+            if model == "stock.location":
+                return [{"id": 8, "complete_name": "WH/Stock", "usage": "internal"}]
+            if model == "stock.lot":
+                return []
+            if model == "product.product":
+                return [{"id": 1, "product_tmpl_id": [1, "Producto Odoo"], "free_qty": 7.0,
+                          "qty_available": 7.0, "incoming_qty": 0.0, "outgoing_qty": 0.0}]
+            if model == "stock.picking":
+                return [{"id": 1, "name": "WH/IN/00001", "partner_id": [1, "Proveedor Odoo"],
+                          "date_done": "2026-08-01 12:00:00", "origin": "P00001",
+                          "location_dest_id": [8, "WH/Stock"], "state": "done",
+                          "picking_type_code": "incoming"}]
+            if model == "stock.move":
+                return [{"id": 1, "picking_id": [1, "WH/IN/00001"], "product_id": [1, "Producto Odoo"],
+                          "quantity": 5.0, "location_dest_id": [8, "WH/Stock"],
+                          "purchase_line_id": [1, "P00001"], "state": "done"}]
             return [{"id": 1, "name": "Cliente Odoo", "vat": "20-1-9", "city": "CABA",
                       "phone": "11-0000", "email": "c@example.com"}]
         raise NotImplementedError(method)
@@ -269,3 +289,31 @@ def test_ingest_ventas_primera_vez_crea_batch(admin_token, monkeypatch):
 def test_ingest_ventas_sin_conexion_da_400(admin_token):
     r = client.post("/api/conectores/odoo/ingest-ventas", headers=_h(admin_token))
     assert r.status_code == 400
+
+
+def test_sync_deposito_trae_quants(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/sync-deposito", headers=_h(admin_token))
+    assert r.status_code == 200
+    assert r.json()["total"] == 1
+    assert r.json()["quants"][0]["ubicacion"] == "WH/Stock"
+
+
+def test_sync_recepciones_trae_movimientos(admin_token, monkeypatch):
+    monkeypatch.setattr(xmlrpc.client, "ServerProxy", _fake_server_proxy)
+    client.put("/api/conectores/odoo", headers=_h(admin_token),
+               json={"url": "https://x.odoo.com", "database": "x",
+                     "username": "admin", "api_key": "good-key"})
+    r = client.post("/api/conectores/odoo/sync-recepciones", headers=_h(admin_token))
+    assert r.status_code == 200
+    assert r.json()["total"] == 1
+    assert r.json()["recepciones"][0]["origen"] == "WH/IN/00001"
+
+
+def test_forecast_vacio_200(admin_token):
+    r = client.get("/api/forecast", headers=_h(admin_token))
+    assert r.status_code == 200
+    assert r.json()["available"] is False

@@ -124,7 +124,7 @@ function PanelOdoo({ estado, onNavigate }) {
               <p className="text-[0.85rem] text-tinta">
                 {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
               </p>
-              <div className="flex items-center gap-1 border-b border-linea">
+              <div className="flex flex-wrap items-center gap-1 border-b border-linea">
                 <button onClick={() => setTab("contactos")}
                   className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
                     tab === "contactos" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
@@ -150,12 +150,24 @@ function PanelOdoo({ estado, onNavigate }) {
                     tab === "ventas" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
                   {t("odoo.tab_ventas")}
                 </button>
+                <button onClick={() => setTab("deposito")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "deposito" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_deposito")}
+                </button>
+                <button onClick={() => setTab("recepciones")}
+                  className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+                    tab === "recepciones" ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
+                  {t("odoo.tab_recepciones")}
+                </button>
               </div>
               {tab === "contactos" && <OdooTabContactos t={t} onNavigate={onNavigate} />}
               {tab === "productos" && <OdooTabProductos t={t} onNavigate={onNavigate} />}
               {tab === "proveedores" && <OdooTabProveedores t={t} onNavigate={onNavigate} />}
               {tab === "compras" && <OdooTabCompras t={t} onNavigate={onNavigate} />}
               {tab === "ventas" && <OdooTabVentas t={t} onNavigate={onNavigate} />}
+              {tab === "deposito" && <OdooTabDeposito t={t} onNavigate={onNavigate} />}
+              {tab === "recepciones" && <OdooTabRecepciones t={t} onNavigate={onNavigate} />}
               <button onClick={desconectar}
                 className="rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold
                            text-tinta-suave hover:text-tinta">
@@ -611,6 +623,166 @@ function OdooTabVentas({ t, onNavigate }) {
                   <li key={it.id || i}>{it.producto} · {it.cantidad}</li>
                 ))}
               </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OdooTabDeposito({ t, onNavigate }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncDeposito());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestDeposito());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_deposito") : t("odoo.traer_deposito")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_deposito") : t("odoo.ingestar_deposito")}
+        </button>
+      </div>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_deposito_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_deposito_sin_novedades")}
+          {ingesta.batch_id && (
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
+          )}
+        </p>
+      )}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_deposito_resultado", { n: sync.total }) : t("odoo.sync_deposito_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.quants.map((q) => (
+            <li key={q.id} className="text-tinta">
+              {q.producto}
+              {q.ubicacion && <span className="text-tinta-suave"> · {q.ubicacion}</span>}
+              <span className="text-tinta-suave"> · {q.cantidad}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function OdooTabRecepciones({ t, onNavigate }) {
+  const [sync, setSync] = useState(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [ingestando, setIngestando] = useState(false);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setSincronizando(true);
+    setError(null);
+    try {
+      setSync(await api.odooSyncRecepciones());
+    } catch {
+      setError(t("odoo.error_generico"));
+    } finally {
+      setSincronizando(false);
+    }
+  };
+
+  const ingestar = async () => {
+    setIngestando(true);
+    setErrorIngesta(null);
+    try {
+      setIngesta(await api.odooIngestRecepciones());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    } finally {
+      setIngestando(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 pt-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={sincronizar} disabled={sincronizando}
+          className="rounded-full border border-violeta bg-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-crema disabled:opacity-50">
+          {sincronizando ? t("odoo.sincronizando_recepciones") : t("odoo.traer_recepciones")}
+        </button>
+        <button onClick={ingestar} disabled={ingestando}
+          className="rounded-full border border-violeta px-3.5 py-1.5 text-[0.8rem]
+                     font-semibold text-violeta disabled:opacity-50">
+          {ingestando ? t("odoo.ingestando_recepciones") : t("odoo.ingestar_recepciones")}
+        </button>
+      </div>
+      {error && <p className="text-[0.8rem] text-rojo">{error}</p>}
+      {errorIngesta && <p className="text-[0.8rem] text-rojo">{errorIngesta}</p>}
+      {ingesta && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
+            ? t("odoo.ingesta_recepciones_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
+            : t("odoo.ingesta_recepciones_sin_novedades")}
+          {ingesta.batch_id && (
+            <> · <button type="button" onClick={() => onNavigate?.("saneamiento", "revision")}
+              className="font-semibold text-violeta underline">{t("odoo.ver_en_staging")}</button></>
+          )}
+        </p>
+      )}
+      {sync && (
+        <p className="text-[0.82rem] text-tinta-suave">
+          {sync.total > 0 ? t("odoo.sync_recepciones_resultado", { n: sync.total }) : t("odoo.sync_recepciones_vacio")}
+        </p>
+      )}
+      {sync?.total > 0 && (
+        <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
+                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+          {sync.recepciones.map((r) => (
+            <li key={r.id} className="text-tinta">
+              {r.origen} · {r.producto}
+              <span className="text-tinta-suave"> · {r.cantidad}</span>
+              {r.po_number && <span className="text-tinta-suave"> · {r.po_number}</span>}
             </li>
           ))}
         </ul>

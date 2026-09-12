@@ -43,6 +43,7 @@ CASOS = [
     ("deposito", "GET", "/api/deposito", "deposito", "vendedor"),
     ("logistica", "GET", "/api/logistica", "deposito", "vendedor"),
     ("evolucion", "GET", "/api/evolucion", "emilio", "vendedor"),
+    ("forecast", "GET", "/api/forecast", "emilio", "vendedor"),
     ("staging_listar", "GET", "/api/staging", "emilio", "vendedor"),
     ("contexto", "GET", "/api/contexto", None, "vendedor"),   # sólo polpilot (admin_contexto)
     ("versiones", "GET", "/api/versiones", "paula", "deposito"),
@@ -65,6 +66,10 @@ CASOS_ADMIN = [
     ("odoo_ingest_ordenes_compra", "POST", "/api/conectores/odoo/ingest-ordenes-compra"),
     ("odoo_sync_ventas", "POST", "/api/conectores/odoo/sync-ventas"),
     ("odoo_ingest_ventas", "POST", "/api/conectores/odoo/ingest-ventas"),
+    ("odoo_sync_deposito", "POST", "/api/conectores/odoo/sync-deposito"),
+    ("odoo_ingest_deposito", "POST", "/api/conectores/odoo/ingest-deposito"),
+    ("odoo_sync_recepciones", "POST", "/api/conectores/odoo/sync-recepciones"),
+    ("odoo_ingest_recepciones", "POST", "/api/conectores/odoo/ingest-recepciones"),
 ]
 
 

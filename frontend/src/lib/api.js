@@ -155,6 +155,10 @@ export const api = {
   odooIngestOrdenesCompra: () => post("/api/conectores/odoo/ingest-ordenes-compra", {}),
   odooSyncVentas: () => post("/api/conectores/odoo/sync-ventas", {}),
   odooIngestVentas: () => post("/api/conectores/odoo/ingest-ventas", {}),
+  odooSyncDeposito: () => post("/api/conectores/odoo/sync-deposito", {}),
+  odooIngestDeposito: () => post("/api/conectores/odoo/ingest-deposito", {}),
+  odooSyncRecepciones: () => post("/api/conectores/odoo/sync-recepciones", {}),
+  odooIngestRecepciones: () => post("/api/conectores/odoo/ingest-recepciones", {}),
   cobranza: () => get("/api/cobranza"),
   cobranzaPropuesta: (id) => get(`/api/cobranza/${id}/propuesta`),
   cobranzaRegistrar: (cliente_id, estado, extra = {}) =>
@@ -201,6 +205,7 @@ export const api = {
   equipoActividad: () => get("/api/equipo/actividad"),
   recordatorioCompletar: (rid) => post(`/api/recordatorios/${rid}/completar`, {}),
   evolucion: () => get("/api/evolucion"),
+  forecast: () => get("/api/forecast"),
   pagos: () => get("/api/pagos"),
   macro: () => get("/api/macro"),
   deposito: (dias = 15) => get(`/api/deposito?dias=${dias}`),

@@ -221,3 +221,37 @@ def test_descartar():
     r = staging.crear_batch("x.csv", CSV)
     staging.descartar(r["id"])
     assert staging.listar() == []
+
+
+def test_map_purchase_status():
+    assert staging.map_purchase_status("draft", False) == "borrador"
+    assert staging.map_purchase_status("confirmada", False) == "aprobada"
+    assert staging.map_purchase_status("purchase", True) == "recibida"
+    assert staging.map_purchase_status("done", False) == "recibida"
+    assert staging.map_purchase_status("cancel", False) == "cancelada"
+
+
+def test_coerce_deposito_odoo_omite_counted_si_no_hay_conteo():
+    fila = staging.coerce_deposito_odoo({
+        "id": 30, "nombre": "X", "codigo": 1, "ubicacion": "WH/Stock",
+        "lote": "L", "vencimiento": "2026-12-01", "cantidad": 5, "in_date": "2026-01-15",
+    })
+    assert "counted_qty" not in fila
+    assert fila["source_id"] == "30"
+    counted = staging.coerce_deposito_odoo({
+        "id": 31, "nombre": "X", "codigo": 1, "ubicacion": "WH2",
+        "lote": "", "vencimiento": "", "cantidad": 2, "in_date": "2025-01-01",
+        "counted_qty": 1,
+    })
+    assert counted["counted_qty"] == 1
+
+
+def test_coerce_recepcion_odoo():
+    fila = staging.coerce_recepcion_odoo({
+        "id": 500, "fecha": "2026-08-06 12:00:00", "nombre": "X", "codigo": 1,
+        "proveedor": "Sur", "cantidad": 15, "deposito": "WH/Stock",
+        "origen": "WH/IN/00012", "po_number": "P00010", "estado": "done",
+    })
+    assert fila["fecha"] == "2026-08-06"
+    assert fila["po_number"] == "P00010"
+    assert fila["source_id"] == "500"
