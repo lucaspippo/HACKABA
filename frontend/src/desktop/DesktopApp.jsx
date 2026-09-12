@@ -530,8 +530,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "movimientos" && <Movimientos onNavegar={navegar} highlight={highlight} />}
                 {section === "conciliacion" && <Conciliacion onPreguntar={preguntar} onNavegar={navegar} puedeMovimientos={user.features.includes("inventario")} />}
                 {section === "imported" && <Imported highlight={highlight} onNavigate={navegar} />}
-                {section === "proveedores" && <Proveedores />}
-                {section === "ordenes_compra" && <OrdenesCompra />}
+                {section === "proveedores" && <Proveedores highlight={highlight} />}
+                {section === "ordenes_compra" && <OrdenesCompra highlight={highlight} />}
                 </ErrorBoundary>
               </motion.div>
             </AnimatePresence>
