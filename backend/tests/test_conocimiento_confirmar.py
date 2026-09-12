@@ -234,3 +234,34 @@ def test_consultar_conocimiento_respects_role_scope():
                        features={"cuentas"}, idioma="es")
     result, _ = angela._run_tool("consultar_conocimiento", {})
     assert result["piezas"] == []
+
+
+def test_admin_edit_keeps_the_piece_active():
+    pieza = conocimiento.crear(texto="Original", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela",
+                               origen={"quien": "aldo", "cuando": "2026-09-10"})
+    out = conocimiento.edit_piece(pieza["id"], actor="aldo", is_admin=True,
+                                  texto="Editado por el admin")
+    assert out["texto"] == "Editado por el admin"
+    assert out["estado"] == "activo"
+
+
+def test_author_non_admin_edit_re_enters_staging():
+    pieza = conocimiento.crear(texto="Original", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela",
+                               origen={"quien": "vendedor", "cuando": "2026-09-10"})
+    out = conocimiento.edit_piece(pieza["id"], actor="vendedor", is_admin=False,
+                                  texto="Editado por el autor")
+    assert out["texto"] == "Editado por el autor"
+    assert out["estado"] == "pendiente"
+
+
+def test_edit_validates_like_crear():
+    pieza = conocimiento.crear(texto="Original", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela")
+    with pytest.raises(conocimiento.ConocimientoInvalido):
+        conocimiento.edit_piece(pieza["id"], actor="aldo", is_admin=True, tipo="no-existe")
+
+
+def test_edit_returns_none_for_a_missing_piece():
+    assert conocimiento.edit_piece("no-existe", actor="aldo", is_admin=True, texto="x") is None

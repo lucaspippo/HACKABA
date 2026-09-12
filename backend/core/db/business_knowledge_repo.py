@@ -77,6 +77,24 @@ def create(tenant_id: str, *, id: str, texto: str, tipo: str, ambito: str,
     return _to_piece(row)
 
 
+def update_content(tenant_id: str, piece_id: str, *, texto: str, texto_en: str | None,
+                   tipo: str, ambito: str, efecto: str, entidad: str | None,
+                   params: dict, estado: str) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_knowledge_pieces SET "
+                "texto = :texto, texto_en = :texto_en, tipo = :tipo, ambito = :ambito, "
+                "efecto = :efecto, entidad = :entidad, params = :params, estado = :estado "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"texto": texto, "texto_en": texto_en, "tipo": tipo, "ambito": ambito,
+             "efecto": efecto, "entidad": entidad, "params": json.dumps(params or {}),
+             "estado": estado, "id": piece_id},
+        ).mappings().one_or_none()
+    return _to_piece(row) if row else None
+
+
 def set_status(tenant_id: str, piece_id: str, estado: str) -> dict | None:
     with tenant_connection(tenant_id) as conn:
         row = conn.execute(

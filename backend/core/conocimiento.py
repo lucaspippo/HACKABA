@@ -307,6 +307,44 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
     return pieza
 
 
+def edit_piece(pid: str, *, actor: str, is_admin: bool, texto: str | None = None,
+               texto_en: str | None = None, tipo: str | None = None,
+               ambito: str | None = None, efecto: str | None = None,
+               entidad: str | None = None, params: dict | None = None) -> dict | None:
+    """Merges the given fields onto the existing piece, validates the result
+    against the same catalog crear() enforces, persists, and audits before/
+    after. An admin's edit keeps the piece's current estado; anyone else's
+    (only the piece's own author reaches here — main.py enforces that) sends
+    it back to "pendiente" for re-review, same trust model as a fresh
+    proposal. Returns None if pid doesn't exist."""
+    actual = detalle(pid)
+    if not actual:
+        return None
+    nuevo_texto = texto if texto is not None else actual["texto"]
+    if not (nuevo_texto or "").strip():
+        raise ConocimientoInvalido("el texto no puede estar vacío")
+    nuevo_ambito = ambito or actual["ambito"]
+    nueva_entidad = entidad if entidad is not None else actual.get("entidad")
+    nuevo_tipo = tipo or actual["tipo"]
+    nuevo_efecto = efecto or actual["efecto"]
+    _validar(nuevo_tipo, nuevo_ambito, actual["nodo"], nuevo_efecto, actual["estado"])
+    if nuevo_ambito != "global" and not (nueva_entidad or "").strip():
+        raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
+    nuevo_estado = actual["estado"] if is_admin else "pendiente"
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    pieza = business_knowledge_repo.update_content(
+        _tenant.current_tenant_id(), pid, texto=nuevo_texto.strip(),
+        texto_en=(texto_en if texto_en is not None else actual.get("texto_en")),
+        tipo=nuevo_tipo, ambito=nuevo_ambito, efecto=nuevo_efecto,
+        entidad=(nueva_entidad or "").strip() or None,
+        params=(params if params is not None else actual.get("params") or {}),
+        estado=nuevo_estado)
+    from .audit import AuditLog
+    AuditLog(DATA_DIR).record(actor, "editar_conocimiento", actual, pieza)
+    return pieza
+
+
 def set_estado(pid: str, estado: str) -> dict | None:
     if estado not in ESTADOS:
         raise ConocimientoInvalido(f"estado desconocido: {estado!r}")
