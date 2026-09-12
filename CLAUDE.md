@@ -83,6 +83,57 @@ deploy/     production boot (single service: API + compiled frontend)
   `angela._run_tool` — no calculation of its own — and is gated by the same
   per-user `features` Ángela's chat tools already respect. See `backend/MCP.md`.
 
+## The Ángela chat surface
+
+Built on `@assistant-ui/react` 0.15 (`frontend/src/components/assistant/`,
+`frontend/src/lib/chat*`, `frontend/src/views/Chat*`) over the NDJSON stream at
+`/api/angela/stream`. **Read
+`docs/superpowers/specs/2026-09-02-chat-experience-design.md` before changing
+this layer** — it records the decisions below and why, including the ones a
+well-meaning change would otherwise undo.
+
+**Status (2026-09-02):** the design is approved; implementation runs in phases
+and has **not started**. So the rules below are the agreed target — where the
+current code contradicts one (the per-tool `if` chain in `ChatThread.jsx`, the
+still-present `_fallback` in `angela.py`, JSX rather than TypeScript), the rule
+wins and the code is what changes. Update this status line as phases land.
+
+Hard rules:
+
+- **Tool UI is a registry, not a branch.** Add a module under
+  `components/assistant/tools/` and register it. `ChatThread` must never grow a
+  per-tool `if`. A presenter is always an *override*: the shape-based
+  `Fallback` must keep giving new Python tools a usable UI with zero frontend
+  work.
+- **Presenters are pure** functions of `(args, result)`. Side effects
+  (navigate, create widget, apply preference) belong in the action applier, not
+  in a renderer.
+- **Do not adopt `defineToolkit`.** assistant-ui toolkits assume the tool loop
+  runs in JS; here it runs in Python (`angela.py`), so there is no client-side
+  `execute` to co-locate. The inline `MessagePrimitive.Parts` tool override in
+  use is the *non-deprecated* path for rendering — `makeAssistantToolUI` and
+  friends are the deprecated ones. See D2 in the design doc, which also lists
+  what keeps a future migration mechanical.
+- **No deterministic LLM fallback.** A missing/bad API key is a config error
+  and the chat feature is flagged off; a failed model call surfaces a real
+  error with retry. Dev/test/demo use an explicitly labeled `LLM_MODE=fake`,
+  never reachable in prod. Do not reintroduce a keyword router that answers as
+  if it were Ángela — it duplicates UI that already exists, hides outages, and
+  in an inventory/money product a plausible-but-wrong answer is the expensive
+  failure. See D9.
+- **App context is data, never instructions, and never the answer.** Sections
+  feed Ángela what is on screen via `useAssistantContext`; she still calls
+  `core/` tools for every number. Context says *what to ask about*.
+- **Charts read `meta`, not guesses.** `consultar_serie` already returns
+  `meta.temporal` / `unidad` / `composicion` / `deflactado` — that is the
+  discriminator for line vs. bars vs. stacked-share vs. %-line. Never leave
+  real-vs-nominal ambiguous.
+- **`violeta` is Ángela, never data.** Every color means exactly one thing
+  (see `DESIGN.md` and `lib/paleta.js`); data series come from `paleta.SERIES`.
+- **Tool labels and all user-facing copy are i18n keys**, never inline strings.
+- The chat layer is **TypeScript** (`allowJs` elsewhere). Vite/esbuild does not
+  typecheck — run `npm run typecheck` before merging or the types rot.
+
 ## Tests
 
 ```bash
