@@ -3329,6 +3329,7 @@ export const ES = {
   "chat.control.expand": "Pantalla completa",
   "chat.control.close": "Cerrar",
   "chat.control.collapse": "Volver al panel",
+  "chat.control.resize": "Cambiar el tamaño del panel de Ángela",
   "chat.control.photo": "Adjuntar una foto",
   "chat.control.voice": "Dictar por voz",
   "chat.history.search": "Buscar consultas…",

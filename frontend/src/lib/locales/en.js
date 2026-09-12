@@ -3355,6 +3355,7 @@ export const EN = {
   "chat.control.expand": "Full screen",
   "chat.control.close": "Close",
   "chat.control.collapse": "Back to the panel",
+  "chat.control.resize": "Resize Ángela's panel",
   "chat.control.photo": "Attach a photo",
   "chat.control.voice": "Dictate by voice",
   "chat.history.search": "Search conversations…",
