@@ -45,17 +45,30 @@ PREGUNTAS = (
 )
 
 PROVEEDOR = "Lácteos Campo Alegre"
+PRODUCTO = "LECHE ENTERA CAMPO ALEGRE 1L (X12U)"
 
 # El plan: que herramientas se llaman, en que orden, y con que argumentos.
 # `status` es la linea que se muestra mientras corre, en la voz de Ángela —
 # el mismo campo que manda el modelo cuando contesta de verdad.
+# CADA HERRAMIENTA, ACOTADA A ESTE CASO.
+#
+# Antes pedian resumenes GLOBALES y las tarjetas mostraban ruido: «Hay Datos:
+# true», «Lotes 380», «Ubicaciones 21», «Discrepancias 7» — nada de eso tiene
+# que ver con ocho cajas rotas, y para alguien que ve el producto por primera
+# vez «Hay Datos: true» no significa absolutamente nada. La tarjeta de
+# herramienta es la PRUEBA de donde salio la respuesta: si muestra cosas que no
+# se usaron, deja de probar y pasa a estorbar.
+#
+# Tambien se fueron dos llamadas que no aportaban:
+#   consultar_compras(proveedor)  devolvia saldo 0 y movimientos vacios
+#   recuperar()                   devolvia {} — no es el lector de la memoria
+# La regla aprendida se cita en el texto ([·](memoria:...)), que es donde de
+# verdad se ve, y el numero de remito ya viene adentro del cruce.
 PLAN = (
-    ("consultar_cruces", {"status": "Buscando qué pasó con esa entrega"}),
-    ("consultar_compras", {"proveedor": PROVEEDOR,
-                           "status": "Viendo de qué orden venía"}),
-    ("consultar_deposito", {"modo": "resumen",
-                            "status": "Chequeando el lote en depósito"}),
-    ("recuperar", {"status": "Acordándome de lo que me enseñaron"}),
+    ("consultar_cruces", {"id": "cruce_reclamo_devolucion",
+                          "status": "Buscando qué pasó con esa entrega"}),
+    ("consultar_deposito", {"modo": "ubicacion", "producto": PRODUCTO,
+                            "status": "Ubicando el lote en el depósito"}),
 )
 
 
@@ -83,10 +96,17 @@ def _texto(esc: dict, lang: str) -> list[str]:
     tiene = " y ".join(f"{x['que']} ({x['valor']})" for x in (esc.get("tiene") or []))
     falta = " y ".join(esc.get("falta") or [])
     plazo = (esc.get("plazo") or {}).get("texto") or ""
+    # LA CITA DE LA MEMORIA. `[·](memoria:<id>)` es el marcador que el chat del
+    # producto convierte en el cerebrito (MarkdownText -> KnowledgeCite): al
+    # tocarlo se ve la regla, quien la enseño y cuando. Va pegado a la frase que
+    # SALE de esa regla, porque es ahi donde prueba algo — que el procedimiento
+    # no lo invento, se lo enseñaron. Sin esto la respuesta del demo era la
+    # unica del producto que citaba una regla sin mostrarlo.
+    cita = f" [·](memoria:{esc['regla_id']})" if esc.get("regla_id") else ""
     if lang == "en":
         partes = [
             f"The supplier is {PROVEEDOR}. Their claims go by email, with a photo "
-            f"of the lot and the delivery-note number.",
+            f"of the lot and the delivery-note number.{cita}",
             (f"I already have {tiene}." if tiene else "")
             + (f" What is missing is {falta}." if falta else ""),
             plazo,
@@ -95,7 +115,7 @@ def _texto(esc: dict, lang: str) -> list[str]:
     else:
         partes = [
             f"El proveedor es {PROVEEDOR}. Para ellos el reclamo va por mail, "
-            f"con foto del lote y el número de remito.",
+            f"con foto del lote y el número de remito.{cita}",
             (f"Ya tengo {tiene}." if tiene else "")
             + (f" Falta {falta}." if falta else ""),
             plazo,
@@ -131,8 +151,8 @@ def eventos(lang: str = "es"):
     # lienzo ya llegó. Es puesta en escena, y va acá y no en la pantalla
     # porque acá es donde está el orden de los eventos.
     import time as _time
-    PAUSA_TOOL = 0.34      # entre tarjeta y tarjeta
-    PAUSA_ANTES_DEL_TEXTO = 0.34
+    PAUSA_TOOL = 0.60      # entre tarjeta y tarjeta (son dos: hay que poder leerlas)
+    PAUSA_ANTES_DEL_TEXTO = 0.55
 
     usadas: list[str] = []
     for i, (nombre, args) in enumerate(PLAN):

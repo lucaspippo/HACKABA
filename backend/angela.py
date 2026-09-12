@@ -2194,15 +2194,32 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
         from core import analisis_cache as _ac, cruces as _cruces
         _lang = _idioma_actual()
         todos = _ac.get_o_computar("cruces", _lang, lambda: _cruces.cards(_lang))
+        # UNA SOLA FORMA, se pida uno o se pidan todos.
+        # Pedir un cruce por id devolvia la card ENTERA, con la plomeria de la
+        # interfaz adentro: `navegar`, `accion_chat`, `tipo`, `cruce: true`.
+        # Eso no le sirve al modelo —no navega— y en la tarjeta de herramienta
+        # del chat se ve como un volcado de campos internos donde deberia estar
+        # la prueba de donde salio la respuesta. Se proyecta igual que la lista.
+        def _visible(c: dict) -> dict:
+            return {"id": c["id"], "titulo": c["titulo"], "resumen": c["resumen"],
+                    "dominios": c["dominios"], "monto": c["monto"],
+                    "porque": c["drill"]["porque"],
+                    "usa_notas_del_equipo": c["no_estructurado"]}
+
         pedido = (args.get("id") or "").strip()
         if pedido:
             uno = next((c for c in todos if c["id"] == pedido), None)
-            return (uno or {"sin_datos": True, "ids": [c["id"] for c in todos]}), None
-        return {"cruces": [{"id": c["id"], "titulo": c["titulo"], "resumen": c["resumen"],
-                            "dominios": c["dominios"], "monto": c["monto"],
-                            "porque": c["drill"]["porque"],
-                            "usa_notas_del_equipo": c["no_estructurado"]}
-                           for c in todos]}, None
+            # UN cruce puntual: el titulo y el resumen, nada mas. La tarjeta de
+            # herramienta del chat solo sabe pintar escalares (ver
+            # tools/Fallback.tsx: GenericResult filtra a string/number/boolean),
+            # asi que `dominios` y `porque` se caen igual — y lo que SI quedaba
+            # visible era `id`, `monto: null` y `usa_notas_del_equipo: true`,
+            # o sea plomeria. Mejor dos campos que se leen que cinco de los
+            # cuales tres no dicen nada. El detalle del porque ya se esta
+            # viendo al lado, en la escena del grafo.
+            return ({"titulo": uno["titulo"], "resumen": uno["resumen"]} if uno
+                    else {"sin_datos": True, "ids": [c["id"] for c in todos]}), None
+        return {"cruces": [_visible(c) for c in todos]}, None
 
     # P·onboarding — EL MANUAL. Junta lo que ya existe (ubicaciones del WMS, días
     # de reposición de cada proveedor, ritmo real de venta, reglas del dueño,

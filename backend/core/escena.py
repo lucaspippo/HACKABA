@@ -190,7 +190,7 @@ def reclamo(lang: str = "es") -> dict:
     aristas = [
         {"de": "persona", "a": "nota", "rel": "dijo",
          "etiqueta": _t("escena.rel_dijo", lang, canal=_canal_leible(nota.get("canal"), lang)),
-         "curva": -0.16},
+         "curva": -0.16, "dx": -16},
         {"de": "nota", "a": "producto", "rel": "menciona",
          "etiqueta": _t("escena.rel_que_llego", lang), "curva": -0.26},
         {"de": "nota", "a": "proveedor", "rel": "menciona",
@@ -215,7 +215,10 @@ def reclamo(lang: str = "es") -> dict:
         {"de": "envio", "a": "proveedor", "rel": "envia",
          "etiqueta": _t("escena.rel_envia", lang,
                         canal=_canal_leible(r_caso.get("canal"), lang)),
-         "curva": 0.26, "fuerte": True, "dy": 34},
+         # La caja del envio tiene ancho AUTO (crece con el texto de la regla),
+         # asi que esta etiqueta se corre bien a la izquierda para no quedar
+         # debajo de ella. Lo verifica scripts/revisar_escena.py.
+         "curva": 0.26, "fuerte": True, "dx": -54, "dy": 30},
     ]
 
     # qué tiene y qué falta, para el encabezado
@@ -240,6 +243,11 @@ def reclamo(lang: str = "es") -> dict:
         "tiene": tiene,
         "falta": falta,
         # La procedencia, para mostrarla dentro de la respuesta de Ángela.
+        # El id de la pieza de conocimiento, para que el guion pueda CITARLA
+        # en el texto ([·](memoria:k23)) y el chat pinte el cerebrito.
+        "regla_id": regla_caso.get("id"),
+        "producto": producto_nombre,
+        "cruce_id": "cruce_reclamo_devolucion",
         "procedencia": {
             "consulto": [_t("escena.fuente_notas", lang),
                          _t("escena.fuente_ordenes", lang),
