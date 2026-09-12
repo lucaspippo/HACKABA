@@ -1533,6 +1533,93 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.opn.f_movs": {"es": "movimientos históricos por cliente", "en": "per-customer history"},
     "core.opn.f_ventas12": {"es": "ventas de 12 meses", "en": "12-month sales"},
     "core.opn.f_ventas24": {"es": "ventas por producto (24 meses)", "en": "per-product sales (24 months)"},
+    # --- Task 8: structured insight — deadlines and one relabeled baseline -----
+    "core.opn.ventana_deadline_basis": {
+        "es": "Vence cuando llegue la próxima lista de {proveedor}.",
+        "en": "Due when {proveedor}'s next price list lands."},
+    "core.opn.qi_deadline_basis": {
+        "es": "El proveedor tarda {lead} días en reponer: pedilo para esta fecha o menos.",
+        "en": "The supplier takes {lead} days to restock: order by this date or sooner."},
+    "core.opn.pico_deadline_basis": {
+        "es": "Arranca el pico estacional de {mes}.",
+        "en": "The {mes} seasonal peak begins."},
+    "core.opn.margen_prom_label": {"es": "promedio de su categoría", "en": "category average"},
+    # --- Task 8: structured insight — new method explanations ------------------
+    "core.method.debtor_payment_curve": {
+        "es": "Pagos registrados del cliente, mes a mes, con los meses sin pago en cero.",
+        "en": "The client's recorded payments, month by month, with no-payment months at zero."},
+    "core.method.dormant_value": {
+        "es": "Valor inmovilizado (cantidad × costo) de los productos sin rotación real en el período analizado.",
+        "en": "Immobilized value (quantity × cost) of products with no real turnover in the analyzed period."},
+    "core.method.dormant_products": {
+        "es": "Productos sin rotación real, ordenados por valor inmovilizado.",
+        "en": "Products with no real turnover, sorted by immobilized value."},
+    "core.method.dormant_top5_value": {
+        "es": "Suma del valor inmovilizado de los 5 productos con mayor plata parada.",
+        "en": "Sum of the immobilized value of the 5 products with the most money sitting idle."},
+    "core.method.window_purchase": {
+        "es": "Faltante proyectado hasta la lista siguiente (ritmo de venta × frecuencia de lista, menos el stock que va a quedar), valuado al costo actual.",
+        "en": "Projected shortfall through the following price list (sales pace × list frequency, minus the stock left over), valued at current cost."},
+    "core.method.window_savings": {
+        "es": "Monto de la compra segura multiplicado por la suba promedio de la última lista del proveedor.",
+        "en": "The safe-purchase amount multiplied by the supplier's average recent price-list increase."},
+    "core.method.price_rise_history": {
+        "es": "Suba promedio de cada lista de precios del proveedor, en orden cronológico.",
+        "en": "The average increase of each of the supplier's price lists, in chronological order."},
+    "core.method.client_cooling": {
+        "es": "Compras del cliente en los últimos {dias} días contra su propio promedio histórico proyectado a la misma ventana.",
+        "en": "The client's purchases in the last {dias} days against their own historical average projected to the same window."},
+    "core.method.client_cooling_gap": {
+        "es": "Diferencia entre lo que el cliente compraría a su ritmo histórico y lo que compró en la ventana.",
+        "en": "The gap between what the client would buy at their historical pace and what they actually bought in the window."},
+    "core.method.streak_decline": {
+        "es": "Meses consecutivos de facturación en baja para ese producto, sobre la serie mensual completa.",
+        "en": "Consecutive months of declining revenue for that product, over the full monthly series."},
+    "core.method.streak_loss": {
+        "es": "Facturación del último mes contra el mismo mes del año anterior (o, si no cayó interanual, contra el arranque de la racha).",
+        "en": "Last month's revenue against the same month last year (or, if it didn't drop year over year, against the start of the streak)."},
+    "core.method.qi_stockout": {
+        "es": "Productos del ranking de facturación cuya cobertura proyectada cae dentro de la ventana de quiebre inminente.",
+        "en": "Top-revenue products whose projected coverage falls within the imminent-stockout window."},
+    "core.method.qi_weekly_revenue": {
+        "es": "Facturación de los últimos 12 meses del producto dividida en 52 semanas.",
+        "en": "The product's trailing-12-month revenue divided across 52 weeks."},
+    "core.method.days_of_coverage": {
+        "es": "Stock proyectado dividido por el ritmo de venta diario del producto.",
+        "en": "Projected stock divided by the product's daily sales pace."},
+    "core.method.supplier_lead_time": {
+        "es": "Días que ese proveedor tarda en reponer, según su historial de entregas.",
+        "en": "Days that supplier takes to restock, based on their delivery history."},
+    "core.method.negotiating_window": {
+        "es": "Días de cobertura menos el tiempo de reposición del proveedor.",
+        "en": "Days of coverage minus the supplier's lead time."},
+    "core.method.critical_rule": {
+        "es": "Regla declarada por el dueño marcando este producto como crítico.",
+        "en": "An owner-declared rule flagging this product as critical."},
+    "core.method.peak_purchase": {
+        "es": "Faltante proyectado para cubrir el mes de pico al ritmo esperado, menos el stock actual, valuado al costo.",
+        "en": "Projected shortfall to cover the peak month at expected pace, minus current stock, valued at cost."},
+    "core.method.peak_coverage": {
+        "es": "Stock actual de la categoría dividido por el ritmo de venta proyectado en el pico.",
+        "en": "The category's current stock divided by the projected sales pace at the peak."},
+    "core.method.client_concentration": {
+        "es": "Facturación en cuenta corriente de los últimos 12 meses de los 3 clientes más grandes, sobre el total.",
+        "en": "Last-12-month account-sales revenue of the 3 biggest customers, over the total."},
+    "core.method.margin_gap": {
+        "es": "Margen del producto (PVP menos costo con IVA, sobre PVP) contra el promedio de su categoría.",
+        "en": "The product's margin (PVP minus cost with VAT, over PVP) against its category average."},
+    "core.method.margin_extra_profit": {
+        "es": "Unidades vendidas por mes multiplicadas por la diferencia entre el precio que igualaría el promedio de categoría y el precio actual.",
+        "en": "Units sold per month multiplied by the gap between the price that would match the category average and the current price."},
+    "core.method.margin_extra_total": {
+        "es": "Suma de la ganancia extra mensual de todos los productos con margen por debajo del promedio de su categoría.",
+        "en": "Sum of the extra monthly profit across every product priced below its category's average margin."},
+    "core.method.overbuy_waste": {
+        "es": "Cantidad de la oferta que no se vende antes de que venza el lote, valuada al costo con el descuento de la oferta.",
+        "en": "The portion of the deal that won't sell before the lot expires, valued at cost net of the deal's discount."},
+    "core.method.overbuy_savings": {
+        "es": "Cantidad absorbible antes del vencimiento, multiplicada por el descuento de la oferta.",
+        "en": "The quantity absorbable before expiration, multiplied by the deal's discount."},
     # --- core/cruces.py · los hallazgos que cruzan 3+ dominios -----------------
     # Fuentes (las etiquetas de "Crucé: …")
     "core.cru.f_ventas_cliente": {"es": "qué compra cada cliente",

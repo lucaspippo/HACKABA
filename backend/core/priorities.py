@@ -501,7 +501,7 @@ def _opportunity_items(lang) -> list[dict]:
             macro=c.get("macro"),
             naturaleza=c.get("naturaleza"),
             tipo=c.get("tipo"),
-            drill=c.get("drill") or _blank_drill(),
+            insight=c.get("insight") or _blank_insight(),
         ))
     return out
 
