@@ -10,6 +10,7 @@ export interface Source {
   domain: string;
   title: string;
   snippet: string;
+  detail?: string;
 }
 
 export function Citation({
@@ -63,6 +64,11 @@ export function Citation({
             <p className="text-foreground/50 mt-1 text-lg leading-relaxed">
               {source.snippet}
             </p>
+            {source.detail && (
+              <p className="text-foreground/40 mt-1 text-sm leading-relaxed">
+                {source.detail}
+              </p>
+            )}
           </PreviewCard.Popup>
         </PreviewCard.Positioner>
       </PreviewCard.Portal>

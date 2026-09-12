@@ -16,6 +16,9 @@ export default function KnowledgeCite({ id }: { id: string }) {
         domain: t("chat.cite.source"),
         title: piece.entidad ? `${piece.nodo} · ${piece.entidad}` : piece.nodo,
         snippet: piece.texto,
+        detail: piece.quien
+          ? t("chat.knowledge.taught_by", { who: piece.quien, when: piece.cuando ?? "" })
+          : undefined,
       }}
     />
   );

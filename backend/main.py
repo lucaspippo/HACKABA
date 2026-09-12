@@ -3481,13 +3481,25 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
 # /rechazar — same scope as visibles_para, not admin-only).
 # Persists per-tenant in business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
+def _con_procedencia(piezas: list[dict]) -> list[dict]:
+    """Flattens origen.{quien,cuando} onto each piece, on top of every other
+    field — the panel and the chat citation card (KnowledgePanel.tsx,
+    KnowledgeCite.tsx) read piece.quien/piece.cuando directly, but the raw
+    piece dict only carries them nested under `origen`."""
+    out = []
+    for p in piezas:
+        origen = p.get("origen") or {}
+        out.append({**p, "quien": origen.get("quien"), "cuando": origen.get("cuando")})
+    return out
+
+
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         entidad: str | None = None, ambito: str | None = None,
                         u: dict = Depends(usuario_actual)):
     piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
     piezas = conocimiento.visibles_para(u, piezas)
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/pendientes")
@@ -3498,7 +3510,7 @@ def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_a
     user sees (`visibles_para`), not a separate permission. Declared BEFORE
     /{pid} — otherwise "pendientes" would match there as if it were an id."""
     piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/{pid}")

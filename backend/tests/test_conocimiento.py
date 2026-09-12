@@ -251,6 +251,21 @@ def test_rest_listar_scopeado(tokens):
     assert dep["total"] == 1 and dep["piezas"][0]["nodo"] == "deposito"
 
 
+def test_rest_listar_flattens_quien_cuando_from_origen(tokens):
+    """The panel/citation UI (knowledgeStore.ts, KnowledgePanel.tsx) reads
+    piece.quien/piece.cuando directly — the raw piece dict only carries them
+    nested in `origen`, so the listing endpoints flatten them on the way out."""
+    r = client.post("/api/conocimiento/confirm", headers=_h(tokens["emilio"]), json=dict(
+        texto="Regla con procedencia.", tipo="contexto", ambito="global",
+        nodo="caja", efecto="contexto_para_angela"))
+    assert r.json()["piece"]["origen"]["quien"] == "emilio"
+
+    listado = client.get("/api/conocimiento", headers=_h(tokens["emilio"])).json()["piezas"]
+    pieza = next(p for p in listado if p["texto"] == "Regla con procedencia.")
+    assert pieza["quien"] == "emilio"
+    assert pieza["cuando"] == pieza["origen"]["cuando"]
+
+
 def test_rest_detalle_404_fuera_de_ambito(tokens):
     pid = client.post("/api/conocimiento", headers=_h(tokens["emilio"]), json=dict(
         texto="A Doña Elsa 45 días.", tipo="regla", ambito="cliente",

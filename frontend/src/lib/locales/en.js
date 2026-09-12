@@ -3231,6 +3231,7 @@ export const EN = {
   "chat.knowledge.resume": "Reactivate",
   "chat.knowledge.delete": "Delete",
   "chat.knowledge.error": "Couldn't do that. Try again.",
+  "chat.knowledge.taught_by": "taught by {who}, {when}",
   "chat.knowledge.settings": "Memory settings",
   "chat.settings.capture": "Save new memories",
   "chat.settings.capture_detail": "Ángela offers to keep what she learns in the chat.",

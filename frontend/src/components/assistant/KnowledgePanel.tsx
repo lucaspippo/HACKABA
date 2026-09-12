@@ -14,6 +14,8 @@ type Piece = {
   entidad?: string | null;
   estado: string;
   tipo: string;
+  quien?: string | null;
+  cuando?: string | null;
 };
 
 const SETTING_KEYS = ["knowledge_capture", "knowledge_in_context"] as const;
@@ -200,6 +202,11 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                 {piece.entidad && (
                   <span className="min-w-0 truncate text-2xs text-tinta-suave">
                     · {piece.entidad}
+                  </span>
+                )}
+                {piece.quien && (
+                  <span className="text-2xs text-tinta-suave">
+                    · {t("chat.knowledge.taught_by", { who: piece.quien, when: piece.cuando ?? "" })}
                   </span>
                 )}
                 <span className="flex-1" />
