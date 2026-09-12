@@ -183,6 +183,13 @@ export const api = {
   auditoriaHilo: (sujeto) => get(`/api/auditoria/hilo?sujeto=${encodeURIComponent(sujeto)}`),
   autonomia: () => get("/api/autonomia"),
   autonomiaSet: (clase, nivel) => post("/api/autonomia", { clase, nivel }),
+  // Bot de WhatsApp de cara al cliente (canal de ventas, no el interno de empleados).
+  whatsappBotConfig: () => get("/api/whatsapp-bot/config"),
+  whatsappBotConfigGuardar: (config) => put("/api/whatsapp-bot/config", config),
+  whatsappBotConfigBorrar: () => del("/api/whatsapp-bot/config"),
+  whatsappBotConversaciones: () => get("/api/whatsapp-bot/conversaciones"),
+  whatsappBotMensajes: (conversationId) =>
+    get(`/api/whatsapp-bot/conversaciones/${encodeURIComponent(conversationId)}/mensajes`),
   // Plan 11 · Conectores con sistemas externos.
   conectores: () => get("/api/conectores"),
   odooConfig: () => get("/api/conectores/odoo"),

@@ -38,6 +38,9 @@ jobs:
       # live in this run's own throwaway CI Postgres — not a real secret,
       # so it's fine committed here rather than in repo/org secrets.
       ODOO_ENCRYPTION_KEY: 8NJQd4Oy4DagREKj05rrJfulkdg1K7ZvH5arTOlGr3M=
+      # Same reasoning as ODOO_ENCRYPTION_KEY above, for the WhatsApp Business
+      # Cloud API tokens stored per-tenant (core/db/whatsapp_repo.py).
+      WHATSAPP_ENCRYPTION_KEY: L-0vY8uVJDUWHBlTiFNlG91xZOQw67XXExqgwodiCHw=
     steps:
       - uses: actions/checkout@v4
 
