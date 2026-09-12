@@ -50,6 +50,32 @@ const COLOR_TIPO = {
 };
 const GRIS = "#8b8fa8";
 
+const MS_ZOOM = 1500;
+
+// LA PREGUNTA DEL DEMO — SÓLO PARA LA CÁMARA.
+// La respuesta la decide el backend (core/guion.py, con la misma comparación).
+// Acá se usa únicamente para saber si hay que viajar a la zona del caso y
+// mostrar la escena: es una decisión de puesta en escena, no de contenido.
+const normalizar = (t) => (t || "")
+  .toLowerCase().normalize("NFD").replace(/\p{M}/gu, "")
+  .replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+
+const PREGUNTA_DEMO = [
+  "Llegaron ocho cajas rotas de Campo Alegre, ¿qué hago?",
+  "Eight broken boxes arrived from Campo Alegre, what do I do?",
+].map(normalizar);
+
+const esLaDelDemo = (t) => PREGUNTA_DEMO.includes(normalizar(t));
+
+// Los tipos de nodo que tocaron estas herramientas, según el mapa que sirve el
+// backend. Una herramienta que no está en el mapa no enciende nada.
+const tiposDe = (tools, mapa) => {
+  if (!mapa) return null;
+  const vistos = new Set();
+  for (const n of tools || []) for (const tipo of mapa[n] || []) vistos.add(tipo);
+  return vistos.size ? vistos : null;
+};
+
 // EL GRAFO EN REPOSO.
 //
 // Dibuja la nube compuesta de cerebroNube.js — ver ahí el porqué de que sea
