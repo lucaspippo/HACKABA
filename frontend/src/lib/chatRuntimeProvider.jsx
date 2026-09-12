@@ -6,8 +6,6 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import {
   AssistantRuntimeProvider,
-  CompositeAttachmentAdapter,
-  SimpleTextAttachmentAdapter,
   WebSpeechDictationAdapter,
   WebSpeechSynthesisAdapter,
   useLocalRuntime,
@@ -51,14 +49,12 @@ export function ChatRuntimeProvider({ children, storagePrefix = "polpilot.angela
   );
   const modelAdapter = useMemo(() => createChatModelAdapter(), []);
 
-  // Text only, deliberately. SimpleTextAttachmentAdapter inlines the file as a
-  // text part, which the NDJSON adapter already forwards; an image would
-  // become an image part and be dropped on the way to a text-only backend.
   // Photos keep their own path: the camera button opens FacturaFlow, which
-  // reads the document and stages it for the user's OK.
+  // reads the document and stages it for the user's OK. File attachments
+  // are not offered — a text-only backend cannot take an image part, and
+  // the empty-state attach cards were noise next to the prompts.
   const adapters = useMemo(
     () => ({
-      attachments: new CompositeAttachmentAdapter([new SimpleTextAttachmentAdapter()]),
       dictation: WebSpeechDictationAdapter.isSupported()
         ? new WebSpeechDictationAdapter({ interimResults: true })
         : undefined,

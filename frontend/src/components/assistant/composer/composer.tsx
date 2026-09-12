@@ -4,9 +4,6 @@ import { ComposerPrimitive, useAui, useAuiState } from "@assistant-ui/react";
 import { cn } from "@/lib/utils";
 import {
   ComposerActions,
-  ComposerAttachButton,
-  ComposerAttachmentChip,
-  ComposerAttachments,
   ComposerBar,
   ComposerCallButton,
   ComposerCommandItem,
@@ -19,7 +16,6 @@ import {
   ComposerVoiceButton,
 } from "../composer";
 import { isWebSpeechVoiceSupported } from "../../../lib/voice/webSpeechVoiceAdapter";
-import type { ComposerAttachment } from "../composer";
 import { useT } from "../../../lib/i18n";
 import { authStore } from "../../../lib/auth";
 import { equipoReal } from "../../../lib/equipoReal";
@@ -55,20 +51,6 @@ function useTeam(): Mentionable[] {
   return team;
 }
 
-function attachmentView(attachment: {
-  name: string;
-  status?: { type?: string };
-  contentType?: string;
-}): ComposerAttachment {
-  const status = attachment.status?.type;
-  return {
-    name: attachment.name,
-    meta: attachment.contentType ?? "",
-    state: status === "complete" ? "done" : status === "incomplete" ? "error" : "uploading",
-    kind: "text",
-  };
-}
-
 export default function Composer({
   leading,
   onStartCall,
@@ -83,8 +65,6 @@ export default function Composer({
   const canSend = useAuiState((s) => s.composer.canSend);
   const dictation = useAuiState((s) => s.composer.dictation);
   const canDictate = useAuiState((s) => s.thread.capabilities.dictation);
-  const canAttach = useAuiState((s) => s.thread.capabilities.attachments);
-  const attachments = useAuiState((s) => s.composer.attachments);
   const messages = useAuiState((s) => s.thread.messages);
   const threadId = useAuiState((s) => s.threadListItem.id) ?? "new";
 
@@ -158,7 +138,6 @@ export default function Composer({
     !isRunning &&
     !isDictating &&
     !canSend &&
-    attachments.length === 0 &&
     isWebSpeechVoiceSupported();
 
   return (
@@ -207,19 +186,6 @@ export default function Composer({
 
       <ComposerPrimitive.Root className="w-full">
         <ComposerBar className="has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-violeta/40">
-          {attachments.length > 0 && (
-            <ComposerAttachments>
-              {attachments.map((attachment) => (
-                <ComposerAttachmentChip
-                  key={attachment.id}
-                  attachment={attachmentView(attachment as never)}
-                  removeLabel={(name) => t("chat.composer.remove", { name })}
-                  onRemove={() => aui.composer.attachment({ id: attachment.id }).remove()}
-                />
-              ))}
-            </ComposerAttachments>
-          )}
-
           {isDictating ? (
             <ComposerVoice
               recording={dictation.status.type === "running"}
@@ -238,14 +204,7 @@ export default function Composer({
           )}
 
           <ComposerToolbar>
-            <ComposerActions>
-              {leading}
-              {canAttach && (
-                <ComposerPrimitive.AddAttachment asChild>
-                  <ComposerAttachButton label={t("chat.composer.attach")} />
-                </ComposerPrimitive.AddAttachment>
-              )}
-            </ComposerActions>
+            <ComposerActions>{leading}</ComposerActions>
             <ComposerActions>
               {usage && (
                 <ComposerContext

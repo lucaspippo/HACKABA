@@ -122,11 +122,11 @@ export default function ChatThread({
         <>
           <ThreadPrimitive.Viewport className="flex flex-1 flex-col overflow-y-auto pb-2">
             {isEmpty && emptyState ? (
-              <div className="flex flex-1 flex-col items-center justify-center px-4 py-6 text-center">
+              <div className="flex flex-1 flex-col justify-end px-0.5 pb-5 pt-8">
                 {emptyState}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-1">
                 <ThreadPrimitive.Messages>
                   {({ message }) =>
                     message.role === "user" ? (

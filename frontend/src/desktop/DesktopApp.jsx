@@ -700,7 +700,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   onNavigate={navegar}
                   user={user}
                   onDatosCambiaron={onRecargar}
-                  placeholderChips={chipsPorRol(user)}
                   onCollapse={() => setFullscreen(false)}
                 />
 </Suspense>
@@ -981,7 +980,6 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     inputInicial={consultaAngela}
                     user={user}
                     onDatosCambiaron={onRecargar}
-                    placeholderChips={chipsPorRol(user)}
                     onCollapse={() => setAngelaOpen(false)}
                   />
 </Suspense>
@@ -1088,40 +1086,3 @@ function ItemNav({
   );
 }
 
-// Los chips muestran el label traducido (lk) y mandan el payload en ES
-// (el motor de Ángela entiende castellano) — mismo patrón que CHIPS default.
-function chipsPorRol(user) {
-  if (user.features.includes("inventario"))
-    return [
-      {
-        lk: "angela.chip_llevame_fantasma",
-        enviar: "Llevame a los productos fantasma",
-      },
-      { lk: "angela.chip_manteca", enviar: "¿Cuánta plata tengo en manteca?" },
-      { lk: "angela.chip_balanzas", enviar: "Mostrame las balanzas" },
-      {
-        lk: "angela.chip_riesgo",
-        enviar: "¿Dónde está el mayor riesgo de mi inventario?",
-      },
-    ];
-  if (user.features.includes("deposito"))
-    return [
-      { lk: "angela.chip_negativo", enviar: "Mostrame el stock negativo" },
-      {
-        lk: "angela.chip_fantasma",
-        enviar: "¿Cuáles son mis productos fantasma?",
-      },
-    ];
-  if (user.features.includes("cobranzas"))
-    return [
-      { lk: "angela.chip_cobrar", enviar: "¿A quién tengo que cobrar?" },
-      {
-        lk: "angela.chip_financiar",
-        enviar: "¿Cuánto puedo financiarle a un cliente?",
-      },
-    ];
-  return [
-    { lk: "angela.chip_hoy", enviar: "¿Qué tengo que hacer hoy?" },
-    { lk: "angela.chip_recordatorio", enviar: "Anotá un recordatorio" },
-  ];
-}
