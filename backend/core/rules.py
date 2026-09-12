@@ -28,20 +28,73 @@ _OPERATORS = {
 }
 
 
+# A condition tree is authored by an LLM, so its depth is untrusted input:
+# without a cap a deeply nested tree would escape this module as a
+# RecursionError instead of a RulesInvalid.
+_MAX_CONDITION_DEPTH = 12
+
+
 class RulesInvalid(ValueError):
     pass
 
 
+def _is_branch(condition: dict) -> bool:
+    return "clauses" in condition or "op" in condition
+
+
 def _matches(condition: dict, facts: dict) -> bool:
-    if "clauses" in condition:
-        results = (_matches(c, facts) for c in condition["clauses"])
+    if not isinstance(condition, dict):
+        raise RulesInvalid(f"condition node must be an object: {condition!r}")
+    if _is_branch(condition):
+        clauses = condition.get("clauses")
+        if not isinstance(clauses, list):
+            raise RulesInvalid(f"'clauses' must be a list: {clauses!r}")
+        results = (_matches(c, facts) for c in clauses)
         return any(results) if condition.get("op") == "any" else all(results)
+    if "field" not in condition or "operator" not in condition:
+        raise RulesInvalid(f"condition clause needs 'field' and 'operator': {condition!r}")
     field, operator = condition["field"], condition["operator"]
     if operator not in _OPERATORS:
         raise RulesInvalid(f"unknown operator: {operator!r}")
     if field not in facts:
         return False
-    return _OPERATORS[operator](facts[field], condition.get("value"))
+    value = condition.get("value")
+    try:
+        return _OPERATORS[operator](facts[field], value)
+    except TypeError as e:
+        # Validation cannot prevent this: the stored value is well-formed and
+        # the incoming fact simply carries an incompatible type. Surfacing it
+        # beats a silent False, which would make the rule never fire.
+        raise RulesInvalid(
+            f"cannot compare field {field!r} ({facts[field]!r}) with {value!r} "
+            f"using operator {operator!r}") from e
+
+
+def _validate_condition(condition, *, _path: str = "condition", _depth: int = 0) -> None:
+    if _depth > _MAX_CONDITION_DEPTH:
+        raise RulesInvalid(f"condition nests deeper than {_MAX_CONDITION_DEPTH} levels")
+    if not isinstance(condition, dict):
+        raise RulesInvalid(f"{_path} must be an object, got {type(condition).__name__}")
+    if _is_branch(condition):
+        op = condition.get("op")
+        if op not in ("all", "any"):
+            raise RulesInvalid(f"{_path}: 'op' must be 'all' or 'any', got {op!r}")
+        clauses = condition.get("clauses")
+        if not isinstance(clauses, list) or not clauses:
+            raise RulesInvalid(f"{_path}: 'clauses' must be a non-empty list")
+        for i, clause in enumerate(clauses):
+            _validate_condition(clause, _path=f"{_path}.clauses[{i}]", _depth=_depth + 1)
+        return
+    field = condition.get("field")
+    if not isinstance(field, str) or not field.strip():
+        raise RulesInvalid(f"{_path}: 'field' must be a non-empty string, got {field!r}")
+    operator = condition.get("operator")
+    if operator not in _OPERATORS:
+        raise RulesInvalid(
+            f"{_path}: unknown operator {operator!r} "
+            f"(supported: {', '.join(sorted(_OPERATORS))})")
+    if "value" not in condition:
+        raise RulesInvalid(f"{_path}: 'value' is required")
 
 
 def _validate_action(action) -> None:
@@ -55,13 +108,20 @@ def _validate_action(action) -> None:
 
 
 def _condition_has_entity_placeholder(condition: dict) -> bool:
-    if "clauses" in condition:
+    """True only when a '$entity' clause is guaranteed to be evaluated.
+
+    A placeholder under an 'any' branch is bypassed whenever a sibling arm
+    matches, so the rule would fire for entities it was never bound to.
+    """
+    if _is_branch(condition):
+        if condition.get("op") == "any":
+            return False
         return any(_condition_has_entity_placeholder(c) for c in condition["clauses"])
     return condition.get("value") == _ENTITY_PLACEHOLDER
 
 
-def _substitute_entity(condition: dict, entity_id: str) -> dict:
-    if "clauses" in condition:
+def _substitute_entity(condition: dict, entity_id) -> dict:
+    if _is_branch(condition):
         return {**condition, "clauses": [_substitute_entity(c, entity_id)
                                          for c in condition["clauses"]]}
     if condition.get("value") == _ENTITY_PLACEHOLDER:
@@ -69,7 +129,9 @@ def _substitute_entity(condition: dict, entity_id: str) -> dict:
     return dict(condition)
 
 
-def _resolve_entity(entity_type: str, entity_name: str) -> str | None:
+def _resolve_entity(entity_type: str, entity_name: str):
+    """The resolved id in the type the facts will carry — a product code stays
+    an int, so an 'eq' clause against a real fact can actually match."""
     from . import cuentas, proveedores, ventas_cliente
 
     def _norm(s):
@@ -77,8 +139,10 @@ def _resolve_entity(entity_type: str, entity_name: str) -> str | None:
 
     def _fuzzy_match_one(name, candidates, name_key="nombre", id_key="id"):
         n = _norm(name)
+        if not n:
+            return None
         matches = [c for c in candidates
-                  if n in _norm(c[name_key]) or _norm(c[name_key]) in n]
+                  if _norm(c[name_key]) and (n in _norm(c[name_key]) or _norm(c[name_key]) in n)]
         return matches[0][id_key] if len(matches) == 1 else None
 
     if entity_type == "cliente":
@@ -87,7 +151,7 @@ def _resolve_entity(entity_type: str, entity_name: str) -> str | None:
         return _fuzzy_match_one(entity_name, proveedores.listar())
     if entity_type == "producto":
         codes = ventas_cliente.buscar_producto(entity_name)
-        return str(codes[0]) if len(codes) == 1 else None
+        return codes[0] if len(codes) == 1 else None
     raise RulesInvalid(f"unknown entity_type: {entity_type!r}")
 
 
@@ -100,6 +164,7 @@ def _prepare(*, description: str, condition: dict, action, node: str, scope: str
         raise RulesInvalid(f"unknown node: {node!r}")
     if scope not in conocimiento.AMBITOS:
         raise RulesInvalid(f"unknown scope: {scope!r}")
+    _validate_condition(condition)
     _validate_action(action)
 
     entity_name = (entity_name or "").strip() or None
@@ -116,7 +181,7 @@ def _prepare(*, description: str, condition: dict, action, node: str, scope: str
         if not _condition_has_entity_placeholder(condition):
             raise RulesInvalid("condition must reference '$entity' for a non-global rule")
         entity_id = _resolve_entity(entity_type, entity_name)
-        if entity_id:
+        if entity_id is not None:
             condition = _substitute_entity(condition, entity_id)
     else:
         entity_type = None
@@ -141,6 +206,9 @@ def create(*, description: str, condition: dict, action, node: str, scope: str,
           test_cases: list | None = None) -> dict:
     import secrets
 
+    author = ((origin or {}).get("author") or "").strip()
+    if not author:
+        raise RulesInvalid("origin.author is required")
     prepared = _prepare(description=description, condition=condition, action=action,
                         node=node, scope=scope, entity_name=entity_name,
                         entity_type=entity_type)
@@ -151,11 +219,12 @@ def create(*, description: str, condition: dict, action, node: str, scope: str,
         description=prepared["description"], condition=prepared["condition"],
         action=prepared["action"], node=prepared["node"], scope=prepared["scope"],
         entity_name=prepared["entity_name"], entity_type=prepared["entity_type"],
-        entity_id=prepared["entity_id"], origin=origin,
+        entity_id=None if prepared["entity_id"] is None else str(prepared["entity_id"]),
+        origin=origin,
         knowledge_piece_id=knowledge_piece_id, status=prepared["status"],
         test_cases=test_cases or [])
     from core.audit import AuditLog
-    AuditLog().record(origin.get("author", ""), "create_rule", None,
+    AuditLog().record(author, "create_rule", None,
                       {"id": rule["id"], "node": rule["node"]})
     return rule
 
@@ -172,6 +241,25 @@ def list_rules(node: str | None = None, scope: str | None = None,
     if status:
         out = [r for r in out if r["status"] == status]
     return out
+
+
+def find_duplicate(*, condition: dict, action, node: str, scope: str,
+                   entity_name: str | None = None) -> dict | None:
+    """An existing live rule with the same condition/action about the same
+    target, or None. Confirming is idempotent through this: the tool-call part
+    stays in the thread after a reload, so the same chip can be tapped twice,
+    and two identical active rules would double every action evaluate() hands
+    back. Compare against a prepared condition — a stored one has already had
+    '$entity' substituted."""
+    target = (entity_name or "").strip().lower()
+    for r in list_rules():
+        if r["status"] in ("archived", "superseded"):
+            continue
+        if (r["node"] == node and r["scope"] == scope
+                and (r["entity_name"] or "").strip().lower() == target
+                and r["condition"] == condition and r["action"] == action):
+            return r
+    return None
 
 
 def get(rule_id: str) -> dict | None:
@@ -210,10 +298,23 @@ def archive(rule_id: str, *, actor: str) -> dict | None:
 
 
 def supersede(rule_id: str, *, replacement_id: str, actor: str) -> dict | None:
+    """Link both directions of the version chain: the old rule points forward
+    through superseded_by, the replacement points back through supersedes and
+    carries the next version number."""
     from core.db import business_rules_repo
     from core.db import tenant as _tenant
+    tenant_id = _tenant.current_tenant_id()
+    old = business_rules_repo.get(tenant_id, rule_id)
+    if old is None:
+        return None
+    replacement = business_rules_repo.get(tenant_id, replacement_id)
+    if replacement is None:
+        raise RulesInvalid(f"no such replacement rule: {replacement_id!r}")
+    business_rules_repo.set_supersedes(
+        tenant_id, replacement_id, supersedes=rule_id,
+        version=(old.get("version") or 1) + 1)
     rule = business_rules_repo.set_superseded_by(
-        _tenant.current_tenant_id(), rule_id, superseded_by=replacement_id)
+        tenant_id, rule_id, superseded_by=replacement_id)
     if rule:
         from core.audit import AuditLog
         AuditLog().record(actor, "supersede_rule", None,
@@ -242,7 +343,11 @@ def visible_to(user: dict, rules_list: list[dict] | None = None) -> list[dict]:
 def evaluate(facts: dict) -> list[dict]:
     matches = []
     for rule in list_rules(status="active"):
-        if _matches(rule["condition"], facts):
+        try:
+            hit = _matches(rule["condition"], facts)
+        except RulesInvalid as e:
+            raise RulesInvalid(f"rule {rule['id']!r}: {e}") from e
+        if hit:
             matches.append({"rule_id": rule["id"], "description": rule["description"],
                             "actions": rule["action"]})
     return matches
@@ -251,10 +356,9 @@ def evaluate(facts: dict) -> list[dict]:
 def verify(rule_id: str) -> dict:
     """Replay a rule's test cases against its current condition and action.
 
-    Returns {ok: bool, results: list}. An empty results list means no test cases
-    were recorded — ok: True in that case means "nothing failed", not "something
-    passed". Always check results length to distinguish a verified rule from an
-    untested one.
+    Returns {ok: bool, cases: int, results: list}. cases == 0 means no test
+    cases were recorded — ok: True in that case means "nothing failed", not
+    "something passed".
     """
     rule = get(rule_id)
     if not rule:
@@ -265,4 +369,4 @@ def verify(rule_id: str) -> dict:
         expected = case.get("expected_action")
         ok = True if expected is None else actual == expected
         results.append({"case": case, "expected": expected, "actual": actual, "ok": ok})
-    return {"ok": all(r["ok"] for r in results), "results": results}
+    return {"ok": all(r["ok"] for r in results), "cases": len(results), "results": results}

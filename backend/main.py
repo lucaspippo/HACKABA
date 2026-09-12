@@ -3664,18 +3664,29 @@ def rules_confirm(req: RuleProposal, u: dict = Depends(usuario_actual)):
     pending otherwise."""
     from core import fechas, rules
     try:
-        # validate_proposal fails fast with 400 on a bad request; it is not
-        # reused for create() below because it already resolves and
+        # validate_proposal fails fast with 400 on a bad request, and its
+        # prepared condition is what the duplicate check compares against. It
+        # is not reused for create() below because it already resolves and
         # substitutes '$entity' into the condition, and passing that
         # substituted condition back into create() (which validates again
         # from scratch) would trip its own "condition must reference
         # '$entity'" check for any rule whose entity resolved cleanly.
-        rules.validate_proposal(
+        proposal = rules.validate_proposal(
             description=req.description, condition=req.condition, action=req.action,
             node=req.node, scope=req.scope, entity_name=req.entity_name,
             entity_type=req.entity_type)
     except rules.RulesInvalid as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # The chip survives a page reload and can be tapped twice; a second
+    # identical active rule would double every action evaluate() returns.
+    existing = rules.find_duplicate(
+        condition=proposal["condition"], action=proposal["action"],
+        node=proposal["node"], scope=proposal["scope"],
+        entity_name=proposal["entity_name"])
+    if existing:
+        return {"ok": True, "rule": existing, "state": existing["status"],
+                "already_existed": True}
 
     rule = rules.create(
         description=req.description, condition=req.condition, action=req.action,
@@ -3694,7 +3705,7 @@ def rules_confirm(req: RuleProposal, u: dict = Depends(usuario_actual)):
         from core.db import business_rules_repo
         from core.db import tenant as _tenant
         rule = business_rules_repo.set_status(_tenant.current_tenant_id(), rule["id"], "pending")
-    return {"ok": True, "rule": rule, "state": rule["status"]}
+    return {"ok": True, "rule": rule, "state": rule["status"], "already_existed": False}
 
 
 def _revisor_o_404(pid: str, u: dict) -> dict:

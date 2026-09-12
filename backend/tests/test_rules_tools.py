@@ -58,6 +58,36 @@ def test_evaluate_rule_for_relays_matches(db_tenant, monkeypatch):
     assert result["matches"][0]["actions"] == [{"type": "require_human_confirmation"}]
 
 
+def test_evaluate_rule_for_withholds_text_of_rules_the_user_cannot_list(db_tenant, monkeypatch):
+    """A rule a vendedor cannot list still fires for them — the product needs
+    that — but its description must not leak through the match."""
+    _use_tenant(db_tenant, monkeypatch)
+    from core import cuentas
+    monkeypatch.setattr(cuentas, "listar", lambda: [{"id": "c1", "nombre": "Client X"}])
+    rules.create(description="secret 5% deal with Client X",
+                condition={"op": "all", "clauses": [
+                    {"field": "client_id", "operator": "eq", "value": "$entity"},
+                    {"field": "quantity", "operator": "gt", "value": 100}]},
+                action=[{"type": "apply_discount", "params": {"percent": 5}}],
+                node="caja", scope="cliente", entity_name="Client X",
+                entity_type="cliente", origin={"author": "aldo",
+                                               "created_at": "2026-09-11",
+                                               "source": "conversation"})
+    angela._set_sesion(usuario="vendedor", rol="mostrador", features={"cuentas"})
+    result, _ = angela._run_tool("evaluate_rule_for",
+                                 {"facts": {"client_id": "c1", "quantity": 150}})
+    assert len(result["matches"]) == 1
+    match = result["matches"][0]
+    assert match["actions"] == [{"type": "apply_discount", "params": {"percent": 5}}]
+    assert "rule_id" in match
+    assert "description" not in match
+
+    angela._set_sesion(usuario="emilio", rol="dueño")
+    owner_result, _ = angela._run_tool("evaluate_rule_for",
+                                       {"facts": {"client_id": "c1", "quantity": 150}})
+    assert owner_result["matches"][0]["description"] == "secret 5% deal with Client X"
+
+
 def test_list_rules_tool_respects_role_scope(db_tenant, monkeypatch):
     _use_tenant(db_tenant, monkeypatch)
     rules.create(description="global rule",

@@ -97,6 +97,44 @@ def test_case3_escalation_on_new_product_or_high_amount(db_tenant, monkeypatch):
                            "amount": 100}) == []
 
 
+# --- product entity resolution: the stored id must match a real fact ----------
+
+def test_product_rule_resolves_and_matches_an_integer_code(db_tenant, monkeypatch):
+    """buscar_producto returns list[int]; a stringified code would never equal
+    the int a real fact carries, and the rule would silently never fire."""
+    _use_tenant(db_tenant, monkeypatch)
+    from core import ventas_cliente
+    monkeypatch.setattr(ventas_cliente, "buscar_producto", lambda texto: [123])
+    rule = rules.create(
+        description="confirm any large order of Widget",
+        condition={"op": "all", "clauses": [
+            {"field": "product_code", "operator": "eq", "value": "$entity"},
+            {"field": "quantity", "operator": "gt", "value": 10}]},
+        action=[{"type": "require_human_confirmation", "params": {}}],
+        node="ventas", scope="categoria", entity_name="Widget",
+        entity_type="producto", origin=ORIGIN)
+    assert rule["status"] == "active"
+    assert rule["condition"]["clauses"][0]["value"] == 123
+
+    matching = rules.evaluate({"product_code": 123, "quantity": 50})
+    assert len(matching) == 1
+    assert matching[0]["actions"] == [{"type": "require_human_confirmation", "params": {}}]
+    assert rules.evaluate({"product_code": 456, "quantity": 50}) == []
+
+
+# --- evaluation-time type mismatch is attributed, never swallowed -------------
+
+def test_evaluate_names_the_rule_whose_comparison_could_not_run(db_tenant, monkeypatch):
+    _use_tenant(db_tenant, monkeypatch)
+    rule = rules.create(
+        description="confirm over 5000",
+        condition={"field": "amount", "operator": "gt", "value": 5000},
+        action=[{"type": "require_human_confirmation"}], node="ventas",
+        scope="global", origin=ORIGIN)
+    with pytest.raises(rules.RulesInvalid, match=rule["id"]):
+        rules.evaluate({"amount": "9000"})
+
+
 # --- verify(): replay a rule's own test cases ---------------------------------
 
 def test_verify_matches_expected_action(db_tenant, monkeypatch):
@@ -165,6 +203,7 @@ def test_verify_on_rule_with_no_test_cases(db_tenant, monkeypatch):
     result = rules.verify(rule["id"])
     assert result["ok"] is True
     assert result["results"] == []
+    assert result["cases"] == 0
 
 
 def test_verify_with_expected_action_none_on_non_matching_facts(db_tenant, monkeypatch):

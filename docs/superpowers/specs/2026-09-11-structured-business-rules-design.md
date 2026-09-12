@@ -56,6 +56,12 @@ order/receiving flow, which doesn't exist yet in this codebase.
 - Any change to `core/memoria.py` (the separate per-user preferences system).
 - A general-purpose expression language, rule-authoring UI, or a frontend
   panel. This spec covers the engine and the Ángela chat surface only.
+- **Promoting a rule out of `pending` from inside the app.** There is no HTTP
+  route and no Ángela tool for `pause` / `activate` / `archive` / `supersede`;
+  the engine exposes them, nothing calls them. A rule whose entity resolution
+  was ambiguous therefore lands `pending` and stays there until a follow-up
+  spec adds a review surface. Recorded here (2026-09-12) as a deliberate
+  deferral, not an oversight.
 - Decay/staleness scoring for rules (unlike `conocimiento` pieces). A rule is
   either in force or it's been paused/superseded by a human decision — there
   is no "this hasn't been reinforced lately" signal for a SI/ENTONCES rule.
@@ -167,7 +173,12 @@ Resolved once, at rule-creation time, never re-resolved at evaluation time.
 `core/rules.py` looks the given `entity_name` up against the domain's own
 existing lookups depending on `entity_type`:
 
-- `cliente` → `core/cuentas.py`'s `buscar(nombre)`
+- `cliente` → normalized substring match over `core/cuentas.py`'s `listar()`.
+  (Correction, 2026-09-12: this spec originally said `cuentas.buscar(nombre)`.
+  That is wrong and the implementation is right — `buscar()` returns the first
+  substring hit and structurally cannot report that a second candidate also
+  matched, which would make the "ambiguous → pending" rule below
+  unimplementable.)
 - `producto` → `core/ventas_cliente.py`'s `buscar_producto(texto)`
 - `proveedor` → normalized substring match over `core/proveedores.py`'s
   `listar()` (no name-search helper exists there yet; this spec adds one

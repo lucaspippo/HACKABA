@@ -1977,6 +1977,15 @@ def _run_tool(name: str, args: dict) -> tuple[dict | list, dict | None]:
     if name == "evaluate_rule_for":
         from core import rules
         matches = rules.evaluate(args.get("facts", {}))
+        # Which rules fire is deliberately NOT scoped by viewer: a salesperson
+        # entering an order must still trigger the owner's discount rule. Only
+        # the human-readable description is withheld, so a rule a user cannot
+        # list never leaks its text through here.
+        visible = {r["id"] for r in rules.visible_to(
+            _usuario_para_manual(), rules.list_rules(status="active"))}
+        matches = [m if m["rule_id"] in visible
+                   else {k: v for k, v in m.items() if k != "description"}
+                   for m in matches]
         return {"matches": matches}, None
     if name == "list_rules":
         from core import rules

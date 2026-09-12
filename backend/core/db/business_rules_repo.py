@@ -94,6 +94,19 @@ def set_status(tenant_id: str, rule_id: str, status: str) -> dict | None:
     return _to_rule(row) if row else None
 
 
+def set_supersedes(tenant_id: str, rule_id: str, *, supersedes: str,
+                   version: int) -> dict | None:
+    with tenant_connection(tenant_id) as conn:
+        row = conn.execute(
+            text(
+                "UPDATE business_rules SET supersedes = :supersedes, version = :version "
+                f"WHERE id = :id RETURNING {', '.join(_COLS)}"
+            ),
+            {"supersedes": supersedes, "version": version, "id": rule_id},
+        ).mappings().one_or_none()
+    return _to_rule(row) if row else None
+
+
 def set_superseded_by(tenant_id: str, rule_id: str, *, superseded_by: str) -> dict | None:
     with tenant_connection(tenant_id) as conn:
         row = conn.execute(

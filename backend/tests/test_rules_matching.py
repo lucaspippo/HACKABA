@@ -87,6 +87,89 @@ def test_condition_has_entity_placeholder():
     assert rules._condition_has_entity_placeholder(no) is False
 
 
+def test_placeholder_under_an_any_branch_does_not_count():
+    """An '$entity' clause an 'any' sibling can bypass would let the rule fire
+    for every entity — necessary-but-not-sufficient is not enough here."""
+    condition = {"op": "any", "clauses": [
+        {"field": "client_id", "operator": "eq", "value": "$entity"},
+        {"field": "amount", "operator": "gt", "value": 5000}]}
+    assert rules._condition_has_entity_placeholder(condition) is False
+
+
+def test_placeholder_in_an_all_branch_wrapping_an_any_counts():
+    """Reference case 3's shape: a gating '$entity' clause plus a nested 'any'."""
+    condition = {"op": "all", "clauses": [
+        {"field": "client_id", "operator": "eq", "value": "$entity"},
+        {"op": "any", "clauses": [
+            {"field": "product_seen_before", "operator": "eq", "value": False},
+            {"field": "amount", "operator": "gt", "value": 5000}]}]}
+    assert rules._condition_has_entity_placeholder(condition) is True
+
+
+def test_placeholder_only_inside_a_nested_any_does_not_count():
+    condition = {"op": "all", "clauses": [
+        {"field": "amount", "operator": "gt", "value": 100},
+        {"op": "any", "clauses": [
+            {"field": "client_id", "operator": "eq", "value": "$entity"},
+            {"field": "urgent", "operator": "eq", "value": True}]}]}
+    assert rules._condition_has_entity_placeholder(condition) is False
+
+
+# --- _validate_condition ------------------------------------------------------
+
+@pytest.mark.parametrize("condition", [
+    {},
+    {"field": "q", "value": 1},
+    {"field": "q", "operator": "gt"},
+    {"field": "", "operator": "gt", "value": 1},
+    {"field": 7, "operator": "gt", "value": 1},
+    {"field": "q", "operator": "wat", "value": 1},
+    {"op": "all", "clauses": {"field": "q", "operator": "gt", "value": 1}},
+    {"op": "all", "clauses": []},
+    {"op": "xor", "clauses": [{"field": "q", "operator": "gt", "value": 1}]},
+    {"clauses": [{"field": "q", "operator": "gt", "value": 1}]},
+    {"op": "all", "clauses": [{"field": "q", "operator": "gt"}]},
+    {"op": "all", "clauses": ["nope"]},
+    "not a dict",
+    None,
+    [],
+])
+def test_validate_condition_rejects_malformed_trees(condition):
+    with pytest.raises(rules.RulesInvalid):
+        rules._validate_condition(condition)
+
+
+def test_validate_condition_accepts_the_reference_shapes():
+    rules._validate_condition({"field": "amount", "operator": "gt", "value": 5000})
+    rules._validate_condition({"op": "all", "clauses": [
+        {"field": "client_id", "operator": "eq", "value": "$entity"},
+        {"op": "any", "clauses": [
+            {"field": "product_seen_before", "operator": "eq", "value": False},
+            {"field": "amount", "operator": "gt", "value": 5000}]}]})
+
+
+def test_validate_condition_rejects_an_unbounded_nesting():
+    condition = {"field": "q", "operator": "gt", "value": 1}
+    for _ in range(rules._MAX_CONDITION_DEPTH + 2):
+        condition = {"op": "all", "clauses": [condition]}
+    with pytest.raises(rules.RulesInvalid):
+        rules._validate_condition(condition)
+
+
+# --- _matches on hostile input -------------------------------------------------
+
+@pytest.mark.parametrize("condition,facts", [
+    ({}, {}),
+    ({"field": "q", "value": 1}, {"q": 1}),
+    ({"op": "all", "clauses": {"field": "q", "operator": "gt", "value": 1}}, {"q": 1}),
+    ({"field": "q", "operator": "gt", "value": 100}, {"q": "150"}),
+    ({"field": "q", "operator": "in", "value": 5}, {"q": 5}),
+])
+def test_matches_raises_rules_invalid_never_a_bare_error(condition, facts):
+    with pytest.raises(rules.RulesInvalid):
+        rules._matches(condition, facts)
+
+
 def test_substitute_entity_replaces_placeholder_only():
     condition = {"op": "all", "clauses": [
         {"field": "client_id", "operator": "eq", "value": "$entity"},

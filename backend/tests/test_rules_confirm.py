@@ -62,6 +62,23 @@ def test_employee_confirming_a_global_rule_lands_pending(tokens):
     assert rules.list_rules(status="active") == []
 
 
+def test_confirming_the_same_chip_twice_yields_one_rule(tokens):
+    """The chip survives a page reload and can be tapped twice; two identical
+    active rules would double every action evaluate() returns."""
+    first = _confirm(tokens["emilio"])
+    assert first.json()["already_existed"] is False
+    second = _confirm(tokens["emilio"])
+    assert second.status_code == 200
+    assert second.json()["already_existed"] is True
+    assert second.json()["rule"]["id"] == first.json()["rule"]["id"]
+    assert len(rules.list_rules()) == 1
+
+
+def test_confirm_rejects_a_malformed_condition(tokens):
+    assert _confirm(tokens["emilio"], condition={}).status_code == 400
+    assert rules.list_rules() == []
+
+
 def test_confirm_rejects_a_bad_node(tokens):
     assert _confirm(tokens["emilio"], node="marketing").status_code == 400
 
