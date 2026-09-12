@@ -222,7 +222,7 @@ function ModalOrden({ onClose, onGuardado }) {
       <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <h2 className="font-display text-xl font-bold">{t("ordenes.nueva")}</h2>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
 
         <label className="mt-4 block text-[0.82rem] font-semibold text-tinta-suave">{t("ordenes.proveedor")}</label>
@@ -259,7 +259,7 @@ function ModalOrden({ onClose, onGuardado }) {
                 placeholder={t("ordenes.item_cantidad_ph")}
                 className="w-24 rounded-xl border border-linea bg-papel px-3 py-2 text-[0.86rem] outline-none focus:border-tinta/40" />
               {items.length > 1 && (
-                <button onClick={() => quitarItem(i)} className="text-tinta-suave hover:text-rojo"><Trash2 size={15} /></button>
+                <button onClick={() => quitarItem(i)} aria-label={t("common.eliminar")} className="text-tinta-suave hover:text-rojo"><Trash2 size={15} /></button>
               )}
             </div>
           ))}

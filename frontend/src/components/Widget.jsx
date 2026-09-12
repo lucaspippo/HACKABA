@@ -207,7 +207,7 @@ export default function Widget({ widget, data, onQuitar }) {
           )}
         </div>
         {onQuitar && (
-          <button onClick={() => onQuitar(widget.id)} title="Quitar" className="text-tinta-suave hover:text-tinta">
+          <button onClick={() => onQuitar(widget.id)} title="Quitar" aria-label="Quitar" className="text-tinta-suave hover:text-tinta">
             <X size={15} />
           </button>
         )}

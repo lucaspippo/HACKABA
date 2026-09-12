@@ -9,7 +9,7 @@ const K_COLOR = "#a86b1e";
 
 // One pill per fact Ángela proposed to remember this turn — the chat-native
 // front end for core/conocimiento.py's "pendiente" staging state (see
-// ChatThread.jsx's MessageExtras, which reads these off the
+// ChatThread.tsx's MessageExtras, which reads these off the
 // proponer_conocimiento tool-call parts). Anatomy and behavior follow
 // assistant-ui's memory-chips element: a header that reads "memoria" until
 // something new shows up, then "recordado N"; each pill mounts with a brief

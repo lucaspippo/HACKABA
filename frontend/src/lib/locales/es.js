@@ -1,6 +1,14 @@
 // Diccionario ES — el criollo de la casa. Fuente de verdad del tono.
 // Convención (Prompt 8): todo string nuevo de la UI entra ACÁ y en en.js el mismo día.
 export const ES = {
+  // --- común / accesibilidad (nombres accesibles para botones solo-ícono) ---
+  "common.cerrar": "Cerrar",
+  "common.editar": "Editar",
+  "common.eliminar": "Eliminar",
+  "common.enviar": "Enviar",
+  "common.expandir": "Expandir",
+  "common.contraer": "Contraer",
+
   // --- selector de idioma ---
   "lang.cambiar": "Cambiar idioma",
 
