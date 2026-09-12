@@ -732,7 +732,11 @@ def documento_get(tipo: str, proveedor: str | None = None, dias: int | None = No
 
 @app.get("/api/cuentas")
 def cuentas_listar(_u: dict = Depends(require_feature("cuentas"))):
-    return {"clientes": cuentas.listar(), "alertas": cuentas.alertas()}
+    # `totales` no es nuevo: existe desde P11·B12 y su docstring dice por qué
+    # ("los agregados monetarios los calcula EL CORE, una sola vez"). Faltaba
+    # mandarlo, y la pantalla se sumaba los saldos sola.
+    return {"clientes": cuentas.listar(), "alertas": cuentas.alertas(),
+            "totales": cuentas.totales()}
 
 
 @app.get("/api/cuentas/{cliente_id}")
@@ -2283,6 +2287,14 @@ def oportunidades(u: dict = Depends(usuario_actual)):
     # exposición de clientes: no es su trabajo ni su información.
     r["cards"] = oportunidades_neg.visibles_para(
         todas, perfiles.features_efectivas(u["username"]))
+    # P·counting — LOS MONTOS SALEN DE ACÁ, no de un `reduce` en la pantalla.
+    # El mapa sumaba las tarjetas `recuperable` en el cliente, que es
+    # exactamente de donde salió el «$900M»: la suma canónica ya vivía en
+    # `opn.recuperable()` y una de las dos pantallas seguía haciéndose la suya.
+    # Se calculan DESPUÉS del recorte por rol, igual que en `priorities.inbox`,
+    # para que cada uno vea el total de lo que le corresponde ver.
+    r["recuperable"] = oportunidades_neg.recuperable(cards_=r["cards"], lang=lang)
+    r["exposicion"] = oportunidades_neg.exposicion(cards_=r["cards"], lang=lang)
     return r
 
 

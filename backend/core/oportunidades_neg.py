@@ -1326,6 +1326,33 @@ def recuperable(cards_: list[dict] | None = None, lang: str | None = None) -> di
     }
 
 
+def exposicion(cards_: list[dict] | None = None, lang: str | None = None) -> dict:
+    """Las tarjetas de RIESGO, listadas y deliberadamente SIN total.
+
+    Contracara de `recuperable`: eso se suma porque es homogéneo, esto no se
+    suma porque no lo es — y encima puede solaparse consigo mismo. La
+    concentración de clientes y la deuda que sale en un camión son la misma
+    plata mirada desde dos lados: los mismos clientes están en las dos, así que
+    un total sería el mismo peso contado dos veces (PRODUCT.md, The Counting
+    Rule).
+
+    Devuelve los componentes para que la pantalla los muestre uno al lado del
+    otro. Que no haya un campo `total` es la parte importante de esta función:
+    mientras no exista, nadie lo suma sin darse cuenta.
+    """
+    import i18n
+    cards_ = cards(lang) if cards_ is None else cards_
+    partes = sorted((c for c in cards_ if c.get("naturaleza") == "riesgo"),
+                    key=lambda c: -(c.get("monto") or 0))
+    return {
+        "disponible": bool(partes),
+        "componentes": [{"id": c["id"], "titulo": c.get("titulo"),
+                         "monto": c.get("monto"),
+                         "monto_fmt": i18n.pesos(c.get("monto") or 0, lang)}
+                        for c in partes],
+    }
+
+
 def visibles_para(cards_: list[dict], features) -> list[dict]:
     """Las tarjetas que le corresponden a un rol, por sus módulos.
 
