@@ -203,6 +203,9 @@ export const api = {
   knowledgeConfirm: (proposal) => post("/api/conocimiento/confirm", proposal),
   conocimientoCrear: (pieza) => post("/api/conocimiento", pieza),
   conocimientoEditar: (pid, campos) => post(`/api/conocimiento/${encodeURIComponent(pid)}/editar`, campos),
+  conocimientoArchivar: (pid, motivo) => post(`/api/conocimiento/${encodeURIComponent(pid)}/archivar`, { motivo }),
+  conocimientoReemplazar: (pid, replacementId) => post(`/api/conocimiento/${encodeURIComponent(pid)}/reemplazar`, { replacement_id: replacementId }),
+  conocimientoReconfirmar: (pid) => post(`/api/conocimiento/${encodeURIComponent(pid)}/reconfirmar`, {}),
   analisis: () => get("/api/analisis"),
   // Bloque D — qué reponer primero, ordenado por la plata que cuesta no hacerlo
   reponer: () => get("/api/reponer"),

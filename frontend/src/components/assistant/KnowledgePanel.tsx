@@ -30,7 +30,11 @@ type Piece = {
   efecto?: string;
   quien?: string | null;
   cuando?: string | null;
+  superseded_by_texto?: string | null;
 };
+
+type Tab = "active" | "review" | "archived";
+const ARCHIVED_ESTADOS = new Set(["archivada", "superada"]);
 
 const SETTING_KEYS = ["knowledge_capture", "knowledge_in_context"] as const;
 type SettingKey = (typeof SETTING_KEYS)[number];
@@ -47,6 +51,9 @@ const STATE_TONE: Record<string, string> = {
   activo: "bg-salvia/10 text-salvia",
   pausado: "bg-tinta/[0.06] text-tinta-suave",
   pendiente: "bg-oro/12 text-oro-tinta",
+  revisar: "bg-oro/12 text-oro-tinta",
+  superada: "bg-tinta/[0.06] text-tinta-suave",
+  archivada: "bg-tinta/[0.06] text-tinta-suave",
 };
 
 const AGING_THRESHOLD_DAYS = 60;
@@ -68,6 +75,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
   const [formOpen, setFormOpen] = useState(false);
   const [onlyAging, setOnlyAging] = useState(false);
+  const [tab, setTab] = useState<Tab>("active");
   const searchRef = useRef<HTMLInputElement>(null);
   const session = useSession();
   const isAdmin = Boolean(session?.usuario?.es_admin);
@@ -76,7 +84,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     let live = true;
     Promise.all([
-      api.conocimiento().catch(() => ({ piezas: [] })),
+      api.conocimiento({ incluir_archivadas: true }).catch(() => ({ piezas: [] })),
       api.conocimientoPendientes().catch(() => ({ piezas: [] })),
       api.preferencias().catch(() => ({ vista: {} })),
     ]).then(([activas, pendientes, prefs]) => {
@@ -98,10 +106,17 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     () => [...new Set(pieces.map((p) => p.nodo))].sort(),
     [pieces],
   );
+  const byTab = (p: Piece) => {
+    if (tab === "archived") return ARCHIVED_ESTADOS.has(p.estado);
+    if (tab === "review") return p.estado === "revisar";
+    return !ARCHIVED_ESTADOS.has(p.estado) && p.estado !== "revisar";
+  };
   const shown = pieces
+    .filter(byTab)
     .filter((p) => matches(p, query) && (!node || p.nodo === node))
     .filter((p) => !onlyAging || (ageDays(p.cuando) ?? 0) > AGING_THRESHOLD_DAYS);
   const pending = pieces.filter((p) => p.estado === "pendiente").length;
+  const reviewCount = pieces.filter((p) => p.estado === "revisar").length;
 
   const replace = (id: string, next: Piece | null) =>
     setPieces((prev) =>
@@ -179,6 +194,23 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3">
+        <div className="mb-2.5 flex gap-1 rounded-full bg-papel-hondo p-0.5 text-xs">
+          {(["active", "review", "archived"] as const).map((tabKey) => (
+            <button
+              key={tabKey}
+              type="button"
+              aria-pressed={tab === tabKey}
+              onClick={() => setTab(tabKey)}
+              className={`flex-1 rounded-full py-1 transition-colors ${
+                tab === tabKey ? "bg-tinta text-crema" : "text-tinta-suave hover:text-tinta"
+              }`}
+            >
+              {t(`chat.knowledge.tab_${tabKey}`)}
+              {tabKey === "review" && reviewCount > 0 && ` (${reviewCount})`}
+            </button>
+          ))}
+        </div>
+
         <div className="relative mb-2.5">
           <Search
             size={13}
@@ -281,6 +313,11 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     · {t("chat.knowledge.taught_by", { who: piece.quien, when: piece.cuando ?? "" })}
                   </span>
                 )}
+                {piece.superseded_by_texto && (
+                  <span className="min-w-0 truncate text-2xs text-tinta-suave">
+                    · {t("chat.knowledge.superseded_by", { text: piece.superseded_by_texto })}
+                  </span>
+                )}
                 {(() => {
                   const days = ageDays(piece.cuando);
                   return days !== null && days > AGING_THRESHOLD_DAYS ? (
@@ -313,10 +350,37 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     </PieceAction>
                   </>
                 )}
-                {(isAdmin || piece.quien === username) && piece.estado !== "pendiente" && (
+                {(isAdmin || piece.quien === username) &&
+                  piece.estado !== "pendiente" && !ARCHIVED_ESTADOS.has(piece.estado) && (
                   <PieceAction label={t("chat.knowledge.edit")} onClick={() => openEdit(piece)}>
                     <Pencil size={12} />
                   </PieceAction>
+                )}
+                {(isAdmin || piece.quien === username) && piece.estado === "revisar" && (
+                  <>
+                    <PieceAction
+                      label={t("chat.knowledge.reconfirm")}
+                      onClick={() =>
+                        act(piece.id, () => api.conocimientoReconfirmar(piece.id), {
+                          ...piece,
+                          estado: "activo",
+                        })
+                      }
+                    >
+                      <Check size={12} />
+                    </PieceAction>
+                    <PieceAction
+                      label={t("chat.knowledge.archive")}
+                      onClick={() =>
+                        act(piece.id, () => api.conocimientoArchivar(piece.id), {
+                          ...piece,
+                          estado: "archivada",
+                        })
+                      }
+                    >
+                      <Trash2 size={12} />
+                    </PieceAction>
+                  </>
                 )}
                 {isAdmin && piece.estado === "activo" && (
                   <PieceAction
@@ -344,7 +408,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     <Play size={12} />
                   </PieceAction>
                 )}
-                {isAdmin && piece.estado !== "pendiente" && (
+                {isAdmin && piece.estado !== "pendiente" && !ARCHIVED_ESTADOS.has(piece.estado) && (
                   <PieceAction
                     label={t("chat.knowledge.delete")}
                     onClick={() => act(piece.id, () => api.knowledgeDelete(piece.id), null)}

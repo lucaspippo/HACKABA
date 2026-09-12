@@ -3496,8 +3496,10 @@ def _con_procedencia(piezas: list[dict]) -> list[dict]:
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         entidad: str | None = None, ambito: str | None = None,
+                        incluir_archivadas: bool = False,
                         u: dict = Depends(usuario_actual)):
-    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
+    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito,
+                                 incluir_archivadas=incluir_archivadas)
     piezas = conocimiento.visibles_para(u, piezas)
     return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 

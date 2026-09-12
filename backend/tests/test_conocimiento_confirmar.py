@@ -315,6 +315,16 @@ def test_reconfirmar_endpoint(tokens):
     assert r.json()["pieza"]["estado"] == "activo"
 
 
+def test_resumen_pieza_includes_the_replacement_text():
+    old = conocimiento.crear(texto="Vieja", tipo="regla", ambito="global",
+                             nodo="caja", efecto="contexto_para_angela")
+    new = conocimiento.crear(texto="Nueva", tipo="regla", ambito="global",
+                             nodo="caja", efecto="contexto_para_angela")
+    conocimiento.supersede(old["id"], replacement_id=new["id"], actor="aldo")
+    resumen = conocimiento.resumen_pieza(conocimiento.detalle(old["id"]))
+    assert resumen["superseded_by_texto"] == "Nueva"
+
+
 def test_create_endpoint_blocks_a_conflicting_rule(tokens):
     conocimiento.crear(texto="Tolerale 30 días", tipo="regla", ambito="cliente",
                        nodo="clientes", efecto="ajusta_umbral", entidad="Doña Elsa")

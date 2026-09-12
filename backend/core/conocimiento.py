@@ -206,11 +206,16 @@ def resumen_pieza(p: dict) -> dict:
     el mapa necesita para el chip, el panel 'Lo que Aldo me enseñó' y el nodo del
     camino de conocimiento. Lleva ambos idiomas — el frontend elige por idioma."""
     origen = p.get("origen") or {}
+    sup_texto = None
+    if p.get("superseded_by"):
+        sup = detalle(p["superseded_by"])
+        sup_texto = sup["texto"] if sup else None
     return {"id": p["id"], "tipo": p["tipo"], "texto": p["texto"],
             "texto_en": p.get("texto_en"), "nodo": p["nodo"], "efecto": p["efecto"],
             "efecto_profundo": p.get("efecto_profundo", False),
             "veces_aplicada": p.get("veces_aplicada", 0),
-            "cuando": origen.get("cuando"), "quien": origen.get("quien")}
+            "cuando": origen.get("cuando"), "quien": origen.get("quien"),
+            "superseded_by_texto": sup_texto}
 
 
 def age_days(p: dict, *, today=None) -> int | None:
