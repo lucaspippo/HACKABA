@@ -47,13 +47,18 @@ def list_page(
     date_from: str | None = None,
     date_to: str | None = None,
     equals: dict | None = None,
+    empty: tuple[str, ...] | list[str] | None = None,
+    facet_fields: tuple[str, ...] | list[str] = (),
 ) -> dict:
     rows = match_source(ensure_ids(tipo), source)
-    return paging.page_rows(
+    result = paging.page_rows(
         rows, q=q, search_in=search_in, sort=sort, direction=direction,
-        offset=offset, limit=limit, equals=equals,
+        offset=offset, limit=limit, equals=equals, empty=empty,
         date_field=date_field, date_from=date_from, date_to=date_to,
     )
+    if facet_fields:
+        result["facets"] = paging.collect_facets(rows, facet_fields)
+    return result
 
 
 def matching_rows(
@@ -68,11 +73,13 @@ def matching_rows(
     date_from: str | None = None,
     date_to: str | None = None,
     equals: dict | None = None,
+    empty: tuple[str, ...] | list[str] | None = None,
 ) -> list[dict]:
     rows = match_source(ensure_ids(tipo), source)
     return paging.filter_sort(
         rows, q=q, search_in=search_in, sort=sort, direction=direction,
-        equals=equals, date_field=date_field, date_from=date_from, date_to=date_to,
+        equals=equals, empty=empty, date_field=date_field,
+        date_from=date_from, date_to=date_to,
     )
 
 

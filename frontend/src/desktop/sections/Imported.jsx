@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Layers } from "lucide-react";
+import { Layers, Truck, Warehouse } from "lucide-react";
 import Cargando from "../../components/Cargando";
-import TablaCRUD from "../../components/TablaCRUD";
+import TablaCRUD, { SourceBadge } from "../../components/TablaCRUD";
+import { FacetSelect, FilterDivider, FilterRail, SourceChips, uniqueValues } from "../../components/FilterRail";
+import DateRangePicker from "../../components/DateRangePicker";
+import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { fecha, num, peso } from "../../lib/format";
 import { useT } from "../../lib/i18n";
@@ -17,18 +20,16 @@ const TABS = [
 ];
 const ROW_CAP = 1000;
 
-function SourceBadge({ source, t }) {
-  const odoo = source === "odoo";
-  return (
-    <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${
-      odoo ? "bg-violeta/12 text-violeta" : "bg-papel-hondo text-tinta-suave"}`}>
-      {t(odoo ? "imported.source_odoo_badge" : "imported.source_csv_badge")}
-    </span>
-  );
-}
-
 function searchHaystack(row) {
   return Object.values(row).filter((v) => v != null && v !== "").join(" ").toLowerCase();
+}
+
+function inDateRange(iso, from, to) {
+  if (!iso) return !(from || to);
+  const d = String(iso).slice(0, 10);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
 }
 
 export default function Imported({ highlight, onNavigate }) {
@@ -38,6 +39,10 @@ export default function Imported({ highlight, onNavigate }) {
   const [tab, setTab] = useState("products");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [warehouse, setWarehouse] = useState("");
 
   useEffect(() => {
     api.imported().then(setData).catch(setError);
@@ -47,11 +52,12 @@ export default function Imported({ highlight, onNavigate }) {
     if (TABS.some((item) => item.id === highlight)) setTab(highlight);
   }, [highlight]);
 
-  useEffect(() => { setQuery(""); }, [tab]);
+  useEffect(() => { setQuery(""); setDateFrom(""); setDateTo(""); setVendor(""); setWarehouse(""); }, [tab]);
 
   const columns = useMemo(() => {
     const sourceCol = {
-      key: "source", label: t("imported.col_source"), sortable: true,
+      key: "source", label: t("imported.col_source"), sortable: true, groupable: true,
+      groupLabel: (k) => t(k === "odoo" ? "crud.source_odoo" : k === "manual" ? "crud.source_manual" : "crud.source_csv"),
       render: (row) => <SourceBadge source={row.source} t={t} />,
     };
     const pricingLabel = (status) => {
@@ -65,8 +71,12 @@ export default function Imported({ highlight, onNavigate }) {
       return [
         { key: "sku", label: t("imported.col_sku"), sortable: true, plata: true,
           render: (p) => p.sku || p.code || "—" },
-        { key: "description", label: t("imported.col_product"), sortable: true,
-          render: (p) => <span className="font-medium text-tinta">{p.description || "—"}</span> },
+        { key: "description", label: t("imported.col_product"), sortable: true, groupable: true,
+          render: (p) => (
+            <CellLink to={qLink("productos", p.description || p.sku)}>
+              <span className="font-medium">{p.description || "—"}</span>
+            </CellLink>
+          ) },
         { key: "stock", label: t("imported.col_stock"), sortable: true, align: "right", plata: true,
           render: (p) => num(p.stock || 0) },
         { key: "free_qty", label: t("imported.col_free"), sortable: true, align: "right", plata: true,
@@ -87,8 +97,12 @@ export default function Imported({ highlight, onNavigate }) {
       return [
         { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
           render: (row) => (row.date ? fecha(row.date) : "—") },
-        { key: "product", label: t("imported.col_product"), sortable: true,
-          render: (row) => <span className="font-medium text-tinta">{row.product || "—"}</span> },
+        { key: "product", label: t("imported.col_product"), sortable: true, groupable: true,
+          render: (row) => (
+            <CellLink to={qLink("productos", row.product)}>
+              <span className="font-medium">{row.product || "—"}</span>
+            </CellLink>
+          ) },
         { key: "code", label: t("imported.col_sku"), sortable: true, plata: true,
           render: (row) => row.code || "—" },
         { key: "quantity", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
@@ -104,19 +118,28 @@ export default function Imported({ highlight, onNavigate }) {
       return [
         { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
           render: (row) => (row.date ? fecha(row.date) : "—") },
-        { key: "product", label: t("imported.col_product"), sortable: true,
-          render: (row) => <span className="font-medium text-tinta">{row.product || "—"}</span> },
-        { key: "vendor", label: t("imported.col_vendor"), sortable: true,
-          render: (row) => row.vendor || "—" },
+        { key: "product", label: t("imported.col_product"), sortable: true, groupable: true,
+          render: (row) => (
+            <CellLink to={qLink("productos", row.product)}>
+              <span className="font-medium">{row.product || "—"}</span>
+            </CellLink>
+          ) },
+        { key: "vendor", label: t("imported.col_vendor"), sortable: true, groupable: true,
+          render: (row) => <CellLink to={qLink("proveedores", row.vendor)}>{row.vendor || "—"}</CellLink> },
         { key: "quantity", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
           render: (row) => num(row.quantity || 0) },
-        { key: "warehouse", label: t("imported.col_warehouse"), sortable: true, plata: true,
-          render: (row) => row.warehouse || "—" },
-        { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true,
-          render: (row) => row.po_number || row.origin || "—" },
-        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true,
+        { key: "warehouse", label: t("imported.col_warehouse"), sortable: true, groupable: true,
+          render: (row) => <CellLink to={qLink("ubicaciones", row.warehouse)}>{row.warehouse || "—"}</CellLink> },
+        { key: "po_number", label: t("imported.col_po"), sortable: true, plata: true, groupable: true,
+          render: (row) => {
+            const po = row.po_number || row.origin;
+            return <CellLink to={qLink("ordenes_compra", po)}>{po || "—"}</CellLink>;
+          } },
+        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true, groupable: true,
+          groupLabel: (k) => yn(k === "true"),
           render: (row) => yn(row.pending) },
-        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true,
+        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true, groupable: true,
+          groupLabel: (k) => yn(k === "true"),
           render: (row) => yn(row.is_backorder) },
         sourceCol,
       ];
@@ -125,17 +148,23 @@ export default function Imported({ highlight, onNavigate }) {
       return [
         { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
           render: (row) => (row.date ? fecha(row.date) : "—") },
-        { key: "product", label: t("imported.col_product"), sortable: true,
-          render: (row) => <span className="font-medium text-tinta">{row.product || "—"}</span> },
-        { key: "customer", label: t("imported.col_customer"), sortable: true,
+        { key: "product", label: t("imported.col_product"), sortable: true, groupable: true,
+          render: (row) => (
+            <CellLink to={qLink("productos", row.product)}>
+              <span className="font-medium">{row.product || "—"}</span>
+            </CellLink>
+          ) },
+        { key: "customer", label: t("imported.col_customer"), sortable: true, groupable: true,
           render: (row) => row.customer || "—" },
         { key: "quantity", label: t("imported.col_qty"), sortable: true, align: "right", plata: true,
           render: (row) => num(row.quantity || 0) },
-        { key: "so_number", label: t("imported.col_origin"), sortable: true, plata: true,
+        { key: "so_number", label: t("imported.col_origin"), sortable: true, plata: true, groupable: true,
           render: (row) => row.so_number || row.origin || "—" },
-        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true,
+        { key: "pending", label: t("imported.col_pending"), sortable: true, plata: true, groupable: true,
+          groupLabel: (k) => yn(k === "true"),
           render: (row) => yn(row.pending) },
-        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true,
+        { key: "is_backorder", label: t("imported.col_backorder"), sortable: true, plata: true, groupable: true,
+          groupLabel: (k) => yn(k === "true"),
           render: (row) => yn(row.is_backorder) },
         sourceCol,
       ];
@@ -144,19 +173,19 @@ export default function Imported({ highlight, onNavigate }) {
       return [
         { key: "date", label: t("imported.col_date"), sortable: true, plata: true,
           render: (row) => (row.date ? fecha(row.date) : "—") },
-        { key: "number", label: t("imported.col_po"), sortable: true, plata: true,
+        { key: "number", label: t("imported.col_po"), sortable: true, plata: true, groupable: true,
           render: (row) => row.number || "—" },
-        { key: "partner", label: t("imported.col_partner"), sortable: true,
+        { key: "partner", label: t("imported.col_partner"), sortable: true, groupable: true,
           render: (row) => row.partner || "—" },
-        { key: "kind", label: t("imported.col_origin"), sortable: true, plata: true,
+        { key: "kind", label: t("imported.col_origin"), sortable: true, plata: true, groupable: true,
           render: (row) => row.kind || "—" },
         { key: "total", label: t("imported.col_total"), sortable: true, align: "right", plata: true,
           render: (row) => (row.total == null ? "—" : peso(row.total)) },
         { key: "residual", label: t("imported.col_residual"), sortable: true, align: "right", plata: true,
           render: (row) => (row.residual == null ? "—" : peso(row.residual)) },
-        { key: "currency", label: t("imported.col_currency"), sortable: true, plata: true,
+        { key: "currency", label: t("imported.col_currency"), sortable: true, plata: true, groupable: true,
           render: (row) => row.currency || "—" },
-        { key: "aging", label: t("imported.col_aging"), sortable: true, plata: true,
+        { key: "aging", label: t("imported.col_aging"), sortable: true, plata: true, groupable: true,
           render: (row) => row.aging || row.payment_state || "—" },
         { key: "due", label: t("imported.col_due"), sortable: true, plata: true,
           render: (row) => (row.due ? fecha(row.due) : "—") },
@@ -164,10 +193,14 @@ export default function Imported({ highlight, onNavigate }) {
       ];
     }
     return [
-      { key: "product", label: t("imported.col_product"), sortable: true,
-        render: (row) => <span className="font-medium text-tinta">{row.product || "—"}</span> },
-      { key: "location", label: t("imported.col_location"), sortable: true,
-        render: (row) => row.location || "—" },
+      { key: "product", label: t("imported.col_product"), sortable: true, groupable: true,
+        render: (row) => (
+          <CellLink to={qLink("productos", row.product)}>
+            <span className="font-medium">{row.product || "—"}</span>
+          </CellLink>
+        ) },
+      { key: "location", label: t("imported.col_location"), sortable: true, groupable: true,
+        render: (row) => <CellLink to={qLink("ubicaciones", row.location)}>{row.location || "—"}</CellLink> },
       { key: "lot", label: t("imported.col_lot"), plata: true, render: (row) => row.lot || "—" },
       { key: "expiry", label: t("imported.col_expiry"), sortable: true, plata: true,
         render: (row) => (row.expiry ? fecha(row.expiry) : "—") },
@@ -184,11 +217,26 @@ export default function Imported({ highlight, onNavigate }) {
   if (!data) return <div className="pt-2"><Cargando error={error} /></div>;
 
   const tabRows = data[tab] || [];
-  const bySource = sourceFilter === "odoo"
-    ? tabRows.filter((row) => row.source === "odoo")
-    : tabRows;
+  const bySource = sourceFilter === "all"
+    ? tabRows
+    : tabRows.filter((row) => (row.source || "csv") === sourceFilter);
+  const dateField = tab === "movements" ? "in_date" : "date";
+  const dated = (tab === "sales" || tab === "receipts" || tab === "deliveries" || tab === "invoices" || tab === "movements")
+    ? bySource.filter((row) => inDateRange(row[dateField], dateFrom, dateTo))
+    : bySource;
+  const faceted = dated.filter((row) => {
+    if (vendor && row.vendor !== vendor) return false;
+    if (warehouse && row.warehouse !== warehouse) return false;
+    return true;
+  });
   const needle = query.trim().toLowerCase();
-  const filtered = needle ? bySource.filter((row) => searchHaystack(row).includes(needle)) : bySource;
+  const filtered = needle ? faceted.filter((row) => searchHaystack(row).includes(needle)) : faceted;
+  const vendors = tab === "receipts" ? uniqueValues(bySource, "vendor") : [];
+  const warehouses = tab === "receipts" ? uniqueValues(bySource, "warehouse") : [];
+  const hasFilters = !!(query || dateFrom || dateTo || vendor || warehouse || sourceFilter !== "all");
+  const clearFilters = () => {
+    setQuery(""); setDateFrom(""); setDateTo(""); setVendor(""); setWarehouse(""); setSourceFilter("all");
+  };
   const visible = filtered.slice(0, ROW_CAP);
   const emptyKey = {
     products: "imported.empty_products",
@@ -201,7 +249,8 @@ export default function Imported({ highlight, onNavigate }) {
 
   const countFor = (id) => {
     const rows = data[id] || [];
-    return sourceFilter === "odoo" ? rows.filter((row) => row.source === "odoo").length : rows.length;
+    return sourceFilter === "all" ? rows.length
+      : rows.filter((row) => (row.source || "csv") === sourceFilter).length;
   };
 
   return (
@@ -231,16 +280,7 @@ export default function Imported({ highlight, onNavigate }) {
           ))}
         </div>
         <div className="flex items-center gap-1">
-          {[
-            { id: "all", lk: "imported.source_all" },
-            { id: "odoo", lk: "imported.source_odoo" },
-          ].map((item) => (
-            <button key={item.id} type="button" onClick={() => setSourceFilter(item.id)}
-              className={`rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
-                sourceFilter === item.id ? "bg-violeta text-crema" : "bg-papel-hondo text-tinta-suave hover:text-tinta"}`}>
-              {t(item.lk)}
-            </button>
-          ))}
+          <SourceChips value={sourceFilter} onChange={setSourceFilter} t={t} />
         </div>
       </div>
 
@@ -259,6 +299,21 @@ export default function Imported({ highlight, onNavigate }) {
         onQ={setQuery}
         buscarPlaceholder={t("imported.search")}
         vacio={t(emptyKey)}
+        onLimpiar={hasFilters ? clearFilters : undefined}
+        filtros={(tab === "sales" || tab === "receipts" || tab === "deliveries" || tab === "invoices" || tab === "movements") ? (
+          <FilterRail onClear={hasFilters ? clearFilters : undefined} clearLabel={t("crud.limpiar_filtros")}>
+            <DateRangePicker from={dateFrom} to={dateTo} onChange={(a, b) => { setDateFrom(a); setDateTo(b); }} />
+            {tab === "receipts" && (
+              <>
+                <FilterDivider />
+                <FacetSelect icon={Truck} label={t("recepciones.facet_proveedor")}
+                  value={vendor} options={vendors} onChange={setVendor} />
+                <FacetSelect icon={Warehouse} label={t("recepciones.facet_deposito")}
+                  value={warehouse} options={warehouses} onChange={setWarehouse} />
+              </>
+            )}
+          </FilterRail>
+        ) : undefined}
       />
     </div>
   );

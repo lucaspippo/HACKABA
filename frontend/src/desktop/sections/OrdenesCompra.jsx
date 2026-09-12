@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, Plus, X, Trash2 } from "lucide-react";
+import { ClipboardList, X, Trash2, FileText, CircleDot, PackageCheck, Ban } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
+import { FilterChip, FilterDivider, FilterRail } from "../../components/FilterRail";
+import DateRangePicker from "../../components/DateRangePicker";
+import CellLink, { paramLink, qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useQuerySeed } from "../../lib/usePagedList";
 
 const ESTADO_CLS = {
   borrador: "bg-oro/15 text-oro-tinta",
@@ -14,15 +18,27 @@ const ESTADO_CLS = {
   cancelada: "bg-papel-hondo text-tinta-suave",
 };
 
+const ESTADO_ICON = {
+  borrador: FileText,
+  aprobada: CircleDot,
+  recibida: PackageCheck,
+  cancelada: Ban,
+};
+
 export default function OrdenesCompra() {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(false);
-  const [q, setQ] = useState("");
+  const seed = useQuerySeed();
+  const [q, setQ] = useState(seed);
+  const [estado, setEstado] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const cargar = () => api.ordenesPreparadas().then((d) => setItems(d.ordenes)).catch(setError);
   useEffect(() => { cargar(); }, []);
+  useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const cambiarEstado = async (numero, estado) => {
     try {
@@ -36,9 +52,22 @@ export default function OrdenesCompra() {
   if (!items) return <div className="pt-2"><Cargando error={error} /></div>;
 
   const qn = q.trim().toLowerCase();
-  const filtradas = qn
+  const filtradas = (qn
     ? items.filter((o) => `${o.numero} ${o.proveedor || ""}`.toLowerCase().includes(qn))
-    : items;
+    : items
+  ).filter((o) => {
+    if (estado && o.estado !== estado) return false;
+    if (dateFrom && (o.fecha || "") < dateFrom) return false;
+    if (dateTo && (o.fecha || "") > dateTo) return false;
+    return true;
+  });
+
+  const estadoCounts = {};
+  for (const o of items) estadoCounts[o.estado] = (estadoCounts[o.estado] || 0) + 1;
+  const estadosPresentes = ["borrador", "aprobada", "recibida", "cancelada"].filter((k) => estadoCounts[k]);
+
+  const hasFilters = !!(q || estado || dateFrom || dateTo);
+  const clearFilters = () => { setQ(""); setEstado(""); setDateFrom(""); setDateTo(""); };
 
   const resumenItems = (o) => {
     const its = o.items || [];
@@ -49,37 +78,37 @@ export default function OrdenesCompra() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <ClipboardList size={24} className="text-tinta-suave" />
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-none">{t("ordenes.titulo")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("ordenes.subtitulo")}</p>
-          </div>
+      <header className="flex items-center gap-2">
+        <ClipboardList size={24} className="text-tinta-suave" />
+        <div>
+          <h1 className="font-display text-2xl font-bold leading-none">{t("ordenes.titulo")}</h1>
+          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("ordenes.subtitulo")}</p>
         </div>
-        <button onClick={() => setModal(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
-          <Plus size={15} /> {t("ordenes.nueva")}
-        </button>
       </header>
 
       <TablaCRUD
         idDe={(o) => o.numero}
+        titulo={t("ordenes.titulo")}
         columnas={[
           { key: "numero", label: t("ordenes.col_numero"), sortable: true,
-            render: (o) => <span className="plata font-semibold text-tinta">{o.numero}</span> },
-          { key: "estado", label: t("ordenes.col_estado"), sortable: true,
+            render: (o) => (
+              <CellLink to={paramLink("recepciones", "po_number", o.numero)}>
+                <span className="plata font-semibold">{o.numero}</span>
+              </CellLink>
+            ) },
+          { key: "estado", label: t("ordenes.col_estado"), sortable: true, groupable: true,
+            groupLabel: (k) => t(`ordenes.estado_${k}`),
             render: (o) => (
               <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${ESTADO_CLS[o.estado] || ESTADO_CLS.borrador}`}>
                 {t(`ordenes.estado_${o.estado}`)}
               </span>
             ) },
-          { key: "proveedor", label: t("ordenes.proveedor"), sortable: true,
-            render: (o) => o.proveedor || "—" },
+          { key: "proveedor", label: t("ordenes.proveedor"), sortable: true, groupable: true,
+            render: (o) => <CellLink to={qLink("proveedores", o.proveedor)}>{o.proveedor || "—"}</CellLink> },
           { key: "fecha", label: t("ordenes.fecha"), sortable: true, plata: true,
             render: (o) => fecha(o.fecha) },
-          { key: "ubicacion_entrega", label: t("ordenes.ubicacion_entrega"),
-            render: (o) => o.ubicacion_entrega || "—" },
+          { key: "ubicacion_entrega", label: t("ordenes.ubicacion_entrega"), groupable: true,
+            render: (o) => <CellLink to={qLink("ubicaciones", o.ubicacion_entrega)}>{o.ubicacion_entrega || "—"}</CellLink> },
           { key: "items", label: t("ordenes.items"), render: resumenItems },
         ]}
         filas={filtradas}
@@ -87,6 +116,25 @@ export default function OrdenesCompra() {
         onQ={setQ}
         buscarPlaceholder={t("ordenes.buscar")}
         vacio={t("ordenes.vacio")}
+        onCrear={() => setModal(true)}
+        crearLabel={t("ordenes.nueva")}
+        onLimpiar={hasFilters ? clearFilters : undefined}
+        filtros={(
+          <FilterRail onClear={hasFilters ? clearFilters : undefined} clearLabel={t("crud.limpiar_filtros")}>
+            {estadosPresentes.map((k) => {
+              const Icon = ESTADO_ICON[k];
+              return (
+                <FilterChip key={k} icon={Icon} active={estado === k}
+                  tone={k === "cancelada" ? "ink" : k === "borrador" ? "attention" : "ink"}
+                  onClick={() => setEstado(estado === k ? "" : k)}>
+                  {t(`ordenes.estado_${k}`)}
+                </FilterChip>
+              );
+            })}
+            <FilterDivider />
+            <DateRangePicker from={dateFrom} to={dateTo} onChange={(a, b) => { setDateFrom(a); setDateTo(b); }} />
+          </FilterRail>
+        )}
         acciones={(o) => (
           <div className="flex justify-end gap-1.5">
             {o.estado === "borrador" && (

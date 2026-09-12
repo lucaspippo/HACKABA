@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
-import { MapPin, Plus, X, Pencil, Trash2 } from "lucide-react";
+import { MapPin, X, Pencil, Trash2 } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
+import CellLink, { paramLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
+import { useQuerySeed } from "../../lib/usePagedList";
 
 export default function Ubicaciones() {
   const t = useT();
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null); // null | "nueva" | {id,...}
-  const [q, setQ] = useState("");
+  const seed = useQuerySeed();
+  const [q, setQ] = useState(seed);
 
   const cargar = () => api.ubicaciones().then((d) => setItems(d.ubicaciones)).catch(setError);
   useEffect(() => { cargar(); }, []);
+  useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const eliminar = async (id) => {
     try {
@@ -35,7 +39,8 @@ export default function Ubicaciones() {
     { key: "nombre", label: t("ubicaciones.nombre"), sortable: true,
       render: (u) => (
         <span className="flex items-center gap-2 font-medium text-tinta">
-          <MapPin size={14} className="shrink-0 text-tinta-suave" /> {u.nombre}
+          <MapPin size={14} className="shrink-0 text-tinta-suave" />
+          <CellLink to={paramLink("movimientos", "ubicacion", u.nombre)}>{u.nombre}</CellLink>
         </span>
       ) },
     { key: "nota", label: t("ubicaciones.nota"), render: (u) => u.nota || "—" },
@@ -43,31 +48,29 @@ export default function Ubicaciones() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <MapPin size={24} className="text-tinta-suave" />
-          <div>
-            <h1 className="font-display text-2xl font-bold leading-none">{t("ubicaciones.titulo")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("ubicaciones.subtitulo")}</p>
-          </div>
+      <header className="flex items-center gap-2">
+        <MapPin size={24} className="text-tinta-suave" />
+        <div>
+          <h1 className="font-display text-2xl font-bold leading-none">{t("ubicaciones.titulo")}</h1>
+          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("ubicaciones.subtitulo")}</p>
         </div>
-        <button onClick={() => setModal("nueva")}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
-          <Plus size={15} /> {t("ubicaciones.nueva")}
-        </button>
       </header>
 
       <TablaCRUD
+        titulo={t("ubicaciones.titulo")}
         columnas={columnas}
         filas={filtradas}
         q={q}
         onQ={setQ}
         buscarPlaceholder={t("ubicaciones.buscar")}
         vacio={t("ubicaciones.vacio")}
+        onCrear={() => setModal("nueva")}
+        crearLabel={t("ubicaciones.nueva")}
+        onLimpiar={q ? () => setQ("") : undefined}
         acciones={(u) => (
           <div className="flex items-center justify-end gap-2">
-            <button onClick={() => setModal(u)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
-            <button onClick={() => eliminar(u.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
+            <button type="button" onClick={() => setModal(u)} className="text-tinta-suave hover:text-tinta"><Pencil size={14} /></button>
+            <button type="button" onClick={() => eliminar(u.id)} className="text-tinta-suave hover:text-rojo"><Trash2 size={14} /></button>
           </div>
         )}
       />
