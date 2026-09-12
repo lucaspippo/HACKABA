@@ -872,6 +872,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   const refAristas = useRef(edges);
   refAristas.current = edges;
   const refAnim = useRef(0);
+  const refZoomPrevio = useRef(0);
   const refRed = useRef(0);
   const pane = useRef(null);
 
@@ -967,8 +968,21 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
       vecinas.size > 1 ? 0.1 : 0.42,
       1.3,   // el techo evita que una tarjeta chica se agrande hasta pixelarse
     );
-    // el piso: si las vecinas están desparramadas, gana ver la tarjeta grande
-    const z = Math.max(conVecinas ? conVecinas.zoom : 0, vistaTodo.zoom);
+    // EL PISO ES EL ZOOM QUE HABÍA AL TOCAR, y eso es lo que hace que tocar
+    // una tarjeta SIEMPRE acerque.
+    //
+    // Con el piso puesto en «el mapa entero» no alcanzaba: al tocar se abre el
+    // panel, el panel le come 420 px al lienzo, y el encuadre completo de ese
+    // lienzo más angosto es 0,305 contra los 0,585 que se estaban viendo. O
+    // sea que las tarjetas con muchas vecinas desparramadas —Cámara de frío 2,
+    // Reglas de tu casa, Casa Central— terminaban MÁS CHICAS que antes del
+    // clic. Medido en once tarjetas: ocho de once achicaban.
+    //
+    // Si las vecinas están muy repartidas para entrar a ese zoom, gana ver la
+    // tarjeta grande y centrada: las de al lado se leen igual, y las lejanas
+    // se siguen por la línea.
+    const z = Math.max(conVecinas ? conVecinas.zoom : 0, vistaTodo.zoom,
+                       refZoomPrevio.current || 0);
     animarA({ x: el.clientWidth / 2 - cx * z, y: el.clientHeight / 2 - cy * z, zoom: z },
             duracion);
   }, [animarA, vistaDe]);
@@ -978,6 +992,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // rueda— el estado no cambia, el efecto no se dispara y no pasaría nada.
   const encuadrarTodo = useCallback(() => {
     refFoco.current = null;
+    refZoomPrevio.current = 0;
     encuadrar(520);
   }, [encuadrar]);
 
@@ -1158,11 +1173,13 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
             // acercamiento dice DONDE, que es la mitad de la respuesta en un
             // mapa. Se enfoca la tarjeta, no el chip: el chip es un detalle
             // adentro de la misma tarjeta.
+            // el zoom de ANTES del clic, que es el piso del acercamiento
+            refZoomPrevio.current = rfRef.current?.getViewport?.().zoom || 0;
             setNodoFoco(n.id);
           }}
           // TOCAR EL FONDO ES VOLVER. Cierra el panel y suelta la tarjeta, y
           // al soltarla la Camara encuadra el mapa entero.
-          onPaneClick={() => { setAbierto(null); setNodoFoco(null); }}
+          onPaneClick={() => { setAbierto(null); setNodoFoco(null); refZoomPrevio.current = 0; }}
         >
           <Background gap={24} size={1} color="#eceae5" />
           <MedidorDeNodos onCambio={recibirRects} />
