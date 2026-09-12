@@ -59,3 +59,11 @@ desktop.ini
 
 # Visual companion / brainstorm session files (local only)
 .superpowers/
+
+# La corrida de evals del tenant piloto/real NO va al repo: es una medición
+# de los datos de un cliente. La del demo SÍ va versionada (data-demo/
+# evals_run.json), y es a propósito: los evals están apagados por defecto
+# (core/evals.py, FLAG_EVALS), así que el panel sólo puede mostrar algo si la
+# última corrida viaja con el repo. Un clon nuevo enseña el número sin
+# calcular nada.
+data/evals_run.json

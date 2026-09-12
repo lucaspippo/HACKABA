@@ -3254,17 +3254,58 @@ def reponer_get(u: dict = Depends(require_feature("inventario"))):
 
 
 @app.get("/api/grafo")
-def grafo_get(u: dict = Depends(require_feature("mapa"))):
+def grafo_get(sin_notas: str = "", u: dict = Depends(require_feature("mapa"))):
     """EL CEREBRO — las ENTIDADES del negocio (productos, clientes, proveedores,
     remitos, cuentas, locales, rubros) y las relaciones reales que las cruzan.
 
     Aditivo: el mapa de árbol (P28–P41) no consume este endpoint y no cambia.
     Acá no nace ningún número canónico — core/grafo.py cruza lo que cuentas,
     depósito, finanzas y oportunidades ya decidieron. Cacheado como el resto
-    del análisis: el cruce completo se paga una vez por idioma."""
+    del análisis: el cruce completo se paga una vez por idioma.
+
+    `sin_notas` (ids separados por coma) es EL CONTRAFÁCTICO: devuelve el grafo
+    como si esas notas no existieran. No muta nada — es un parámetro de
+    lectura, y por eso se puede hacer delante de alguien.
+
+    SE CACHEA APARTE, con la exclusión dentro de la llave. Dos razones, y las
+    dos importan:
+
+      · Una lectura contrafáctica NO puede compartir llave con el negocio
+        real, o después se le sirve a cualquiera como si fuera la verdad. Por
+        eso la llave lleva los ids excluidos, no sólo el idioma.
+      · Sin cache, cada clic recomputaba el grafo entero: **medido, 6,4 s la
+        primera vez y 5,2 s las siguientes**. El contrafáctico existe para que
+        alguien lo toque en vivo; seis segundos de pantalla quieta es
+        exactamente el momento donde una demo se cae. Con la llave propia, el
+        segundo clic sobre la misma evidencia es instantáneo, y volver atrás
+        (soltar la exclusión) pega en el cache del grafo real.
+
+    Sigue invalidándose con todo lo demás: `datos_cambiaron()` bumpea la
+    generación y estas entradas mueren con el resto."""
     from core import analisis_cache, grafo
     lang = _lang(u)
+    excluir = frozenset(x.strip() for x in (sin_notas or "").split(",") if x.strip())
+    if excluir:
+        llave = "grafo_sin:" + ",".join(sorted(excluir))
+        return analisis_cache.get_o_computar(
+            llave, lang, lambda: grafo.completo(lang, excluir))
     return analisis_cache.get_o_computar("grafo", lang, lambda: grafo.completo(lang))
+
+
+@app.get("/api/evals")
+def evals_get(_u: dict = Depends(require_feature("mapa"))):
+    """THE LAST RECORDED EVAL RUN — how often the engine is right, measured.
+
+    Reads a file. It does NOT run the suites: a panel that recomputed on open
+    would be performing a measurement and presenting it as history (see
+    core/evals.py, rule 1). `backend/scripts/run_evals.py` is what produces it.
+
+    Gated on `mapa` on purpose, and it is the same gate as /api/grafo: this is
+    evidence ABOUT the crossing engine, shown where the engine is shown, and
+    PRODUCT.md's Report Rule says a screen with reads and no persisted action
+    is evidence — not a top-level destination with a module of its own."""
+    from core import evals
+    return evals.ultimo()
 
 
 @app.get("/api/mapa-operacion")

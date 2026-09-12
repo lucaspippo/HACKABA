@@ -156,7 +156,8 @@ def _cruce_proveedor_estrella(lang, ctx) -> dict | None:
         return None
     # proveedores sobre los que el equipo dejó una nota (la señal blanda)
     con_nota: dict[str, list] = {}
-    for n in notas.listar(tipo="nota_proveedor", desde=_desde(60)):
+    for n in notas.listar(tipo="nota_proveedor", desde=_desde(60),
+                          excluir=ctx["sin_notas"]):
         if n.get("proveedor"):
             con_nota.setdefault(n["proveedor"], []).append(n)
     if not con_nota:
@@ -330,7 +331,8 @@ def _cruce_credito_creciente(lang, ctx) -> dict | None:
 def _cruce_queja_cliente_clave(lang, ctx) -> dict | None:
     if not ventas_cliente.hay_datos():
         return None
-    candidatas = [n for n in notas.listar(desde=_desde(VENTANA_NOTAS_DIAS))
+    candidatas = [n for n in notas.listar(desde=_desde(VENTANA_NOTAS_DIAS),
+                                          excluir=ctx["sin_notas"])
                   if n.get("tipo") in ("queja_cliente", "incidencia_entrega")
                   and n.get("cliente")]
     if not candidatas:
@@ -393,7 +395,8 @@ def _cruce_queja_cliente_clave(lang, ctx) -> dict | None:
 
 def _cruce_cliente_en_problemas(lang, ctx) -> dict | None:
     campo: dict[str, list] = {}
-    for n in notas.listar(tipo="observacion_campo", desde=_desde(VENTANA_NOTAS_DIAS)):
+    for n in notas.listar(tipo="observacion_campo", desde=_desde(VENTANA_NOTAS_DIAS),
+                          excluir=ctx["sin_notas"]):
         if n.get("cliente"):
             campo.setdefault(n["cliente"], []).append(n)
     reincidentes = {k: v for k, v in campo.items() if len(v) >= REINCIDENCIA_MIN}
@@ -444,7 +447,8 @@ def _cruce_cliente_en_problemas(lang, ctx) -> dict | None:
 # =============================================================================
 
 def _cruce_espacio_camara(lang, ctx) -> dict | None:
-    espacio = [n for n in notas.listar(tipo="estado_deposito", desde=_desde(VENTANA_NOTAS_DIAS))
+    espacio = [n for n in notas.listar(tipo="estado_deposito", desde=_desde(VENTANA_NOTAS_DIAS),
+                                       excluir=ctx["sin_notas"])
                if n.get("ubicacion")]
     por_ubi: dict[str, list] = {}
     for n in espacio:
@@ -510,20 +514,160 @@ def _cruce_espacio_camara(lang, ctx) -> dict | None:
 
 
 # =============================================================================
+# 7 · OFERTA × ROTACIÓN × VIDA DEL LOTE × NOTAS DEL DEPÓSITO
+#     El 18% de descuento que hay que rechazar, y las tres personas que ya
+#     dijeron dónde no entra.
+# =============================================================================
+#
+# POR QUÉ ESTE CRUCE EXISTE APARTE DE `sobrecompra`.
+#
+# `oportunidades_neg._card_sobrecompra` ya hace la cuenta dura y la hace bien:
+# oferta × rotación real × vida del lote. Es una card de Oportunidades y su
+# camino en el cerebro sale de dos semillas —el producto y el proveedor—, o
+# sea que enciende COSAS.
+#
+# Este cruce agrega la capa que ninguna tabla tiene: las personas que dijeron
+# que la cámara está llena, por tres canales distintos, y el mail del propio
+# proveedor pidiendo que le avisemos si no hay lugar. Con eso las notas entran
+# como SEMILLA (ver grafo.caminos) y el camino enciende GENTE — que es la
+# única parte de esto que nadie más puede mostrar.
+#
+# LA CUENTA NO SE REHACE ACÁ. Los pesos salen citados de la card canónica vía
+# `oportunidades_neg.card_por_id` (PRODUCT.md, The Counting Rule): dos sumas
+# del mismo número terminan divergiendo, y ésta es plata que se dice en voz
+# alta delante de alguien.
+#
+# HONESTIDAD SOBRE EL ALCANCE, y está acá para que no se diga de más: NO
+# afirmamos que el pallet ofertado iría a esa cámara. El export del depósito no
+# trae ubicación para todos los códigos del catálogo. Lo que sí está en el
+# dato, y es lo que el texto dice, es que el MISMO proveedor tiene mercadería
+# entrando a una ubicación que el equipo reporta sin lugar.
+
+CAMARA_PISTAS = ("camara", "cámara")
+
+
+def _es_camara(ubicacion: str | None) -> bool:
+    u = (ubicacion or "").lower()
+    return any(p in u for p in CAMARA_PISTAS)
+
+
+def _cruce_oferta_camara(lang, ctx) -> dict | None:
+    from . import oportunidades_neg
+    try:
+        sobre = oportunidades_neg.card_por_id("sobrecompra", lang)
+    except Exception:  # noqa: BLE001 — sin la card canónica no hay cruce
+        sobre = None
+    if not sobre:
+        return None
+    d = sobre.get("datos") or {}
+    proveedor, producto = d.get("proveedor"), d.get("producto")
+    if not proveedor or not producto:
+        return None
+
+    # 1 · la capa NO estructurada del espacio: quién dijo que no entra más
+    desde = _desde(VENTANA_NOTAS_DIAS)
+    llenas: dict[str, list] = {}
+    for n in notas.listar(tipo="estado_deposito", desde=desde,
+                          excluir=ctx["sin_notas"]):
+        if _es_camara(n.get("ubicacion")):
+            llenas.setdefault(n["ubicacion"], []).append(n)
+    # una sola persona diciéndolo una vez es una anécdota; dos es un hecho
+    ubicacion, ns_espacio = None, []
+    for u, ns in sorted(llenas.items(), key=lambda kv: -len(kv[1])):
+        if len({x["autor"] for x in ns}) >= REINCIDENCIA_MIN:
+            ubicacion, ns_espacio = u, ns
+            break
+    if not ubicacion:
+        return None
+
+    # 2 · lo que ese proveedor avisó por su cuenta (mail, voz, chat)
+    ns_prov = notas.listar(proveedor=proveedor, desde=desde, excluir=ctx["sin_notas"])
+    if not ns_prov:
+        return None
+
+    lotes = len([f for f in deposito._filas()
+                 if (f.get("ubicacion") or "") == ubicacion])
+    canales = sorted({n.get("canal") for n in ns_espacio if n.get("canal")})
+    quienes = sorted({n["autor"] for n in ns_espacio})
+    notas_todas = ns_espacio + [n for n in ns_prov
+                                if n["id"] not in {x["id"] for x in ns_espacio}]
+
+    return _card(
+        "cruce_oferta_camara", "comprar",
+        _t("core.cru.oferta_t", lang, proveedor=proveedor,
+           desc=f"{d.get('descuento_pct'):g}" if d.get("descuento_pct") else "?"),
+        # CITADO de la card canónica: lo que esa compra te haría tirar.
+        sobre.get("monto"),
+        _t("core.cru.oferta_r", lang, producto=producto,
+           sug=d.get("cantidad_sugerida"), oferta=d.get("oferta"),
+           n=len(quienes), ubicacion=ubicacion),
+        ["proveedores", "inventario", "deposito", "notas"],
+        [_t("core.cru.f_oferta", lang), _t("core.cru.f_ventas12", lang),
+         _t("core.cru.f_wms", lang), _t("core.cru.f_notas", lang)],
+        [_t("core.cru.oferta_p1", lang, proveedor=proveedor,
+            oferta=d.get("oferta"), desc=f"{d.get('descuento_pct'):g}"
+            if d.get("descuento_pct") else "?"),
+         _t("core.cru.oferta_p2", lang, producto=producto,
+            sug=d.get("cantidad_sugerida"), dias=d.get("dias_vida_lote"),
+            meses=d.get("meses_para_venderlo")),
+         _t("core.cru.oferta_p3", lang, n=len(quienes), quienes=_y(quienes, lang),
+            canales=len(canales), ubicacion=ubicacion, lotes=lotes),
+         _t("core.cru.oferta_p4", lang, proveedor=proveedor,
+            autor=ns_prov[0]["autor"], canal=ns_prov[0].get("canal"))],
+        {"producto": producto, "proveedor": proveedor,
+         "oferta": d.get("oferta"), "descuento_pct": d.get("descuento_pct"),
+         "cantidad_sugerida": d.get("cantidad_sugerida"),
+         "dias_vida_lote": d.get("dias_vida_lote"),
+         "ubicacion": ubicacion, "lotes_en_ubicacion": lotes,
+         "canales": canales,
+         # Las notas viajan acá porque `grafo.caminos` las toma como SEMILLA:
+         # sin esto el camino enciende un producto y un proveedor, y la mitad
+         # que prueba que el cruce tocó gente se pierde.
+         "notas": [_nota_dict(x, lang) for x in notas_todas]},
+        [{"nombre": proveedor, "monto": None,
+          "detalle": _t("core.cru.oferta_i", lang, desc=f"{d.get('descuento_pct'):g}"
+                        if d.get("descuento_pct") else "?")},
+         {"nombre": producto, "monto": sobre.get("monto"),
+          "detalle": _t("core.cru.oferta_i2", lang, sug=d.get("cantidad_sugerida"))}]
+        + [{"nombre": x["autor"], "monto": None,
+            "detalle": _t("core.cru.oferta_i3", lang, canal=x.get("canal"),
+                          fecha=x.get("fecha"))}
+           for x in ns_espacio[:3]],
+        _t("core.cru.oferta_chat", lang, producto=producto),
+        "inventario", no_estructurado=True)
+
+
+def _y(nombres: list[str], lang) -> str:
+    """«Ramón, Nahuel y Tomás» — la lista como la diría una persona."""
+    if not nombres:
+        return ""
+    if len(nombres) == 1:
+        return nombres[0]
+    sep = " and " if lang == "en" else " y "
+    return ", ".join(nombres[:-1]) + sep + nombres[-1]
+
+
+# =============================================================================
 # el set
 # =============================================================================
 
 _SET = (_cruce_deuda_vencimiento, _cruce_proveedor_estrella,
         _cruce_credito_creciente, _cruce_queja_cliente_clave,
-        _cruce_cliente_en_problemas, _cruce_espacio_camara)
+        _cruce_cliente_en_problemas, _cruce_espacio_camara,
+        _cruce_oferta_camara)
 
 
-def _ctx(lang) -> dict:
-    """UNA pasada por los datos para todos los cruces."""
+def _ctx(lang, sin_notas: frozenset | None = None) -> dict:
+    """UNA pasada por los datos para todos los cruces.
+
+    `sin_notas` viaja en el contexto y no en un global: es el contrafáctico
+    («¿y si este dato no estuviera?») y quién lo pidió tiene que verse en la
+    llamada. Vacío por default, que es el comportamiento de siempre."""
     from . import esquema
     ctx: dict = {"lang": lang, "clientes": [], "arts": [], "vencen": [],
                  "rank": [], "rank_pos": {}, "fact_12m": {}, "logistica": [],
-                 "ordenes": [], "por_codigo": {}}
+                 "ordenes": [], "por_codigo": {},
+                 "sin_notas": frozenset(sin_notas or ())}
     try:
         ctx["clientes"] = cuentas.listar()
     except Exception:  # noqa: BLE001
@@ -566,10 +710,15 @@ def _ctx(lang) -> dict:
     return ctx
 
 
-def cards(lang: str | None = None) -> list[dict]:
+def cards(lang: str | None = None,
+          sin_notas: frozenset | set | None = None) -> list[dict]:
     """Los cruces que HOY tienen datos para existir. Un cruce sin dato no se
-    inventa: simplemente no aparece."""
-    ctx = _ctx(lang)
+    inventa: simplemente no aparece.
+
+    `sin_notas` son ids de nota a leer como si no existieran. Es lo que hace
+    demostrable la causalidad: sacás la nota de Kevin y el hallazgo se apaga,
+    la devolvés y vuelve. Nada se borra — ver `notas.listar`."""
+    ctx = _ctx(lang, sin_notas)
     out = []
     for fn in _SET:
         try:

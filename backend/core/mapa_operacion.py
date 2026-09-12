@@ -552,6 +552,18 @@ def vuelve_al_sistema(lang: str, dias: int = 30) -> dict:
     If this is empty the loop does NOT close, and the map has to say so. A
     fixed green check would be decoration — and the first «did this really
     update?» question would have no answer.
+
+    WHAT THIS ARC IS, SAID OUT LOUD. The AI-native systems of record being
+    built right now close the same loop — ingest the unstructured, reason over
+    it, and *write back* to the record — with the agent doing the writing. This
+    product closes it too, and the difference is the whole argument: **a person
+    signs**, and the signature is in the audit log with a name and an hour.
+    That is not a limitation to apologise for in a business where the owner
+    answers for it with their own assets; it is the requirement.
+
+    So the band reports WHO, not just how many. `firmantes` was the missing
+    half: the count already proved the loop closes, and nothing said that every
+    one of those writes has a human behind it.
     """
     try:
         registros = store.audit.list()
@@ -560,18 +572,30 @@ def vuelve_al_sistema(lang: str, dias: int = 30) -> dict:
     recientes = [r for r in registros
                  if _reciente((r.get("cuando") or "")[:10], dias)]
     por_accion = defaultdict(int)
+    firmantes: dict[str, int] = {}
     for r in recientes:
         a = r.get("accion") or ""
         if a in ESCRIBEN_EN_EL_SISTEMA:
             por_accion[a] += 1
+            quien = (r.get("actor") or "").strip()
+            if quien:
+                firmantes[quien] = firmantes.get(quien, 0) + 1
     chips = [{"id": a, "texto": T(ACCION_LEIBLE[a], lang), "n": n}
              for a, n in sorted(por_accion.items(), key=lambda kv: -kv[1])[:4]]
+    quienes = [k for k, _ in sorted(firmantes.items(), key=lambda kv: -kv[1])]
     return {
         "total": len(registros),
         "recientes": len(recientes),
         "dias": dias,
         "chips": chips,
         "vacio": not chips,
+        # Quiénes firmaron esas escrituras. Vacío es vacío: si nadie firmó
+        # nada, la frase no se muestra en vez de decir «0 personas».
+        "firmantes": [{"quien": _nombre_de(k, lang), "n": firmantes[k]}
+                      for k in quienes],
+        "firma": (T("devuelve_firma", lang,
+                    quienes=_y([_nombre_de(k, lang) for k in quienes[:3]], lang))
+                  if quienes else None),
         "fuente": _fuente("auditoria", len(registros), "auditoria", lang),
     }
 
@@ -1156,6 +1180,9 @@ def _nodos_de_contexto(ctx: dict, lang: str) -> tuple[list[dict], list[dict]]:
                      d=dv["dias"])
                    if not dv["vacio"] else T("devuelve_vacio", lang)),
         peso=3, banda="abajo", chips=dv["chips"], vacio=dv["vacio"],
+        # Quién firmó. Va en el nodo y no sólo en el detalle porque es la
+        # línea que distingue este círculo del de un agente que escribe solo.
+        firma=dv.get("firma"), firmantes=dv.get("firmantes") or [],
         metricas=[_metrica(T("m_devoluciones", lang),
                            _num(dv["recientes"], lang))],
         fuente=dv["fuente"]))
