@@ -3345,6 +3345,7 @@ export const EN = {
   "chat.composer.transcribing": "Transcribing",
   "chat.composer.voice_start": "Dictate",
   "chat.composer.voice_stop": "Stop dictating",
+  "chat.composer.call_start": "Start a voice conversation",
   "chat.composer.send": "Send",
   "chat.composer.stop": "Stop",
 
