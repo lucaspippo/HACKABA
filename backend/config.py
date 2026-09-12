@@ -238,9 +238,46 @@ TOOLS_SIMPLES = {
 }
 
 
-def modelo_para(tools_pedidas: set[str] | None = None) -> str:
-    """Elige el modelo según el tipo de pedido. Con routing apagado, siempre el
-    modelo de validación (runtime, provider-aware — ver modelo_validacion())."""
+# --- ROUTING POR TEMA --------------------------------------------------------
+# `ROUTING_ACTIVO` arriba rutea por TOOLS, y tiene un problema práctico: las
+# tools se saben DESPUÉS de llamar al modelo, así que el único call site
+# (angela._prepare_turn) lo llamaba sin argumentos y el routing no podía
+# hacer nada. El tema, en cambio, se sabe ANTES de llamar — sale del texto del
+# pedido (core/temas.py) — así que es la llave que sí sirve para elegir modelo.
+#
+# Qué se rutea: los temas de MOVERSE por la app (abrir una pantalla, un widget,
+# un recordatorio) no razonan sobre nada, buscan y hacen. Esos van al modelo
+# chico. Cualquier tema de análisis, y cualquier pedido cuyo tema NO
+# reconocimos, van al grande: cuando hay duda gana la calidad de la respuesta.
+TEMAS_SIMPLES = frozenset({"pantalla", "equipo"})
+
+# Se apaga con POLPILOT_ROUTING_TEMA=0.
+ROUTING_TEMA = os.environ.get("POLPILOT_ROUTING_TEMA", "1") not in ("0", "false", "no")
+
+
+def modelo_simple() -> str:
+    """El modelo chico, overrideable sin tocar código (misma regla que
+    modelo_validacion: un slug explícito del usuario se respeta VERBATIM, y el
+    default se elige según el proveedor porque el gateway pide otra forma)."""
+    explicit = os.environ.get("ANGELA_MODEL_SIMPLE")
+    if explicit:
+        return explicit
+    if _resolve_provider() == PROVIDER_GATEWAY:
+        return "anthropic/" + MODELOS["simple"]
+    return MODELOS["simple"]
+
+
+def modelo_para(tools_pedidas: set[str] | None = None,
+                temas_pedidos: set[str] | None = None) -> str:
+    """Elige el modelo según el tipo de pedido.
+
+    Orden: primero el tema (se sabe antes de llamar), después las tools (se
+    saben después, y sirve para las llamadas internas que ya las conocen).
+    Sin ninguna de las dos, el modelo de validación de siempre."""
+    if ROUTING_TEMA and temas_pedidos:
+        if temas_pedidos.issubset(TEMAS_SIMPLES):
+            return modelo_simple()
+        return modelo_validacion()
     if not ROUTING_ACTIVO:
         return modelo_validacion()
     tools_pedidas = tools_pedidas or set()
@@ -249,6 +286,14 @@ def modelo_para(tools_pedidas: set[str] | None = None) -> str:
         return MODELOS["simple"]
     return MODELOS["analisis"]
 
+
+# --- HERRAMIENTAS SEGÚN EL TEMA ----------------------------------------------
+# Segunda llave del mismo gate que ya recorta por rol: de las 50 definiciones
+# viajan las del tema del pedido (core/temas.py). Ante la duda van todas — el
+# recorte nunca puede dejar sin herramienta a una pregunta legítima.
+# Se apaga con POLPILOT_TOOLS_POR_TEMA=0. Ver angela._prepare_turn para por qué
+# esto pelea con el cache del bloque de tools y por qué igual conviene.
+TOOLS_POR_TEMA = os.environ.get("POLPILOT_TOOLS_POR_TEMA", "1") not in ("0", "false", "no")
 
 # --- PROMPT CACHING ----------------------------------------------------------
 # El system prompt + el contexto estable del negocio (esquema, reglas) se repiten

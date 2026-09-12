@@ -79,10 +79,10 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight,
         {pantalla && (
           <ErrorBoundary key="vista:pantalla" seccion="mapa"
                          onInicio={() => setPantalla(false)}>
-            <CerebroPantalla
-              onCerrar={() => setPantalla(false)}
-              onVerTodo={() => { setPantalla(false); ir("cerebro"); }}
-              onMas={() => { setPantalla(false); ir("cerebro"); }} />
+            {/* cerrar vuelve acá, al mapa de la operación: es de donde se
+                vino al apretar el botón. La vista «cerebro» de antes ya no se
+                usa — el grafo completo es ahora el reposo de esta pantalla. */}
+            <CerebroPantalla onCerrar={() => setPantalla(false)} />
           </ErrorBoundary>
         )}
       </div>

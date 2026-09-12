@@ -337,6 +337,7 @@ export const ES = {
   "cerebro.resp_2": "Ya tengo {tiene}. Falta {falta}.",
   "cerebro.resp_3": "Lo armé. ¿Te lo mando?",
   "cerebro.resp_otra": "De eso todavía no tengo un camino armado. Probá con la devolución de Campo Alegre.",
+  "cerebro.resp_error": "No pude contestarte eso ahora. Probá de nuevo en un momento.",
   "cerebro.tab_mapa": "Mapa",
   "cerebro.tab_cerebro": "Cerebro",
   "cerebro.tab_mapa_ay": "Las ocho fuentes y sus cortes",

@@ -58,28 +58,36 @@ function Persona({ n, encendido }) {
 // La insignia del canal: el ÚNICO lugar del lienzo con color de marca ajeno.
 // Confinada a un disco de 26 px pegado al post-it — nunca el cuerpo del nodo,
 // nunca una arista, para que el azul se siga leyendo como Ángela (DESIGN.md).
-function InsigniaCanal({ x, y, canal }) {
-  const fondo = canal === "whatsapp" ? VERDE_WA : "#f4f1ea";
+// LOS LOGOS, DE VERDAD. Antes había un trazo dibujado a mano "parecido" al de
+// WhatsApp, y eso no sirve: la gracia de una marca es que se reconoce sin
+// mirarla. Van como imagen desde /canales/, recortadas a un disco.
+//
+// Es el ÚNICO lugar del lienzo con color de marca ajeno, y queda confinado al
+// disco de la insignia — nunca el cuerpo del nodo, nunca una arista, para que
+// el azul se siga leyendo como Ángela (DESIGN.md).
+const LOGO_CANAL = {
+  whatsapp: "/canales/whatsapp.png",
+  email: "/canales/mail.jpg",
+};
+
+function InsigniaCanal({ x, y, canal, r = 17 }) {
+  const src = LOGO_CANAL[canal];
+  const cid = `recorte-${canal}-${Math.round(x)}-${Math.round(y)}`;
   return (
     <g>
-      <circle cx={x} cy={y} r={15} fill={fondo} stroke={TINTA} strokeWidth="2" />
-      <g stroke={canal === "whatsapp" ? "#fff" : TINTA} strokeWidth="1.7"
-         fill="none" strokeLinecap="round" strokeLinejoin="round">
-        {canal === "whatsapp" ? (
-          <>
-            {/* la burbuja con su cola, y el tubo adentro */}
-            <path d={`M ${x + 7} ${y - 1} a 7.5 7.5 0 1 0 -3.2 5.9 L ${x - 8} ${y + 7.5} l 1.6 -4.6`}
-                  fill="none" />
-            <path d={`M ${x - 2.6} ${y - 2.8} q 1.8 1.8 2.6 2.7 q 1 1 2.8 2.5`} />
-          </>
-        ) : (
-          <>
-            {/* el sobre, con la solapa en V */}
-            <rect x={x - 8} y={y - 5.5} width="16" height="11" rx="1.4" />
-            <path d={`M ${x - 8} ${y - 5.5} L ${x} ${y + 1.4} L ${x + 8} ${y - 5.5}`} />
-          </>
-        )}
-      </g>
+      <circle cx={x} cy={y} r={r + 2.5} fill="#fff" />
+      {src ? (
+        <>
+          <clipPath id={cid}>
+            <circle cx={x} cy={y} r={r} />
+          </clipPath>
+          <image href={src} x={x - r} y={y - r} width={r * 2} height={r * 2}
+                 clipPath={`url(#${cid})`} preserveAspectRatio="xMidYMid slice" />
+        </>
+      ) : (
+        <circle cx={x} cy={y} r={r} fill="#e8e4dc" />
+      )}
+      <circle cx={x} cy={y} r={r + 2.5} fill="none" stroke={TINTA} strokeWidth="2" />
     </g>
   );
 }
@@ -116,21 +124,48 @@ function Nota({ n, encendido }) {
 }
 
 function Producto({ n, encendido }) {
-  const r = 32;   // ⌀64
+  const r = 58;   // el texto va adentro: el círculo tiene que darle lugar
+  // tres renglones cortos entran en un disco; dos largos se desbordan por los
+  // costados, que es lo que pasaba con «LECHE ENTERA CAMPO ALEGRE 1L (X12U)»
+  const lineas = partirEnTres(n.nombre);
+  const y0 = n.y - (lineas.length - 1) * 7 - (n.lote ? 6 : 0);
   return (
     <g opacity={encendido ? 1 : 0.22}>
       <circle cx={n.x} cy={n.y} r={r} fill={HIELO} />
       <circle cx={n.x} cy={n.y} r={r} fill="none" stroke="rgba(15,17,19,.4)" strokeWidth="1.5" />
-      {/* dos renglones: el nombre completo de un producto no entra en uno, y
-          cortarlo a tres palabras dejaba «LECHE ENTERA CAMPO» */}
-      {partirEnDos(n.nombre).map((linea, i) => (
-        <text key={i} x={n.x} y={n.y + r + 20 + i * 17} textAnchor="middle"
-              fill="#f5f5f4" fontSize="14" fontWeight="600">{linea}</text>
+      {lineas.map((l, i) => (
+        <text key={i} x={n.x} y={y0 + i * 14} textAnchor="middle" fill="#07242a"
+              fontSize="12" fontWeight="700">{l}</text>
       ))}
       {n.lote && (
-        <text x={n.x} y={n.y + r + 56} textAnchor="middle"
-              fill="rgba(245,245,244,.5)" fontSize="11.5">lote {n.lote}</text>
+        <text x={n.x} y={y0 + lineas.length * 14 + 6} textAnchor="middle"
+              fill="rgba(7,36,42,.7)" fontSize="10.5">lote {n.lote}</text>
       )}
+    </g>
+  );
+}
+
+// EL CIERRE DEL CIRCUITO. Sin este nodo la cadena terminaba en la regla y
+// parecía que el sistema entrega un informe — que es justo lo que PolPilot
+// dice que no hace (PRODUCT.md, The Action Principle).
+function Envio({ n, encendido }) {
+  const w = 196, h = 84;
+  const x = n.x - w / 2, y = n.y - h / 2;
+  return (
+    <g opacity={encendido ? 1 : 0.22}>
+      <rect x={x} y={y} width={w} height={h} rx="14" fill="#1f3d2c" />
+      <rect x={x} y={y} width={w} height={h} rx="14" fill="none"
+            stroke="#4ea87b" strokeWidth="2" />
+      <InsigniaCanal x={x + 34} y={n.y} canal={n.canal} r={19} />
+      <text x={x + 62} y={n.y - 8} fill="#9fe3bd" fontSize="14" fontWeight="700">
+        Reclamo enviado
+      </text>
+      <text x={x + 62} y={n.y + 10} fill="rgba(255,255,255,.72)" fontSize="11.5">
+        con {n.adjuntos}
+      </text>
+      <text x={x + 62} y={n.y + 26} fill="rgba(255,255,255,.5)" fontSize="11">
+        a {n.destinatario}
+      </text>
     </g>
   );
 }
@@ -213,8 +248,23 @@ function partirEnDos(txt) {
   return corte < 0 ? [t] : [t.slice(0, corte), t.slice(corte + 1)];
 }
 
+// Tres renglones cortos: un nombre de producto no entra en uno, y en dos se
+// desborda por los costados del disco.
+function partirEnTres(txt) {
+  const palabras = (txt || "").trim().split(/\s+/);
+  const lineas = [];
+  let actual = "";
+  for (const p of palabras) {
+    if ((actual + " " + p).trim().length > 13 && actual) { lineas.push(actual); actual = p; }
+    else actual = (actual + " " + p).trim();
+    if (lineas.length === 3) break;
+  }
+  if (lineas.length < 3 && actual) lineas.push(actual);
+  return lineas.slice(0, 3);
+}
+
 const FORMAS = { persona: Persona, nota: Nota, producto: Producto,
-                 proveedor: Proveedor, regla: Regla, orden: Orden };
+                 proveedor: Proveedor, regla: Regla, orden: Orden, envio: Envio };
 
 // =============================================================================
 // Las líneas
@@ -303,7 +353,7 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
   }, [escena, trazar]);
 
   if (!escena?.disponible) return null;
-  const { ancho, alto, separador } = escena.lienzo;
+  const { ancho, alto } = escena.lienzo;
 
   // Un nodo se enciende cuando ya lo tocó alguna arista trazada (o si no hay
   // animación). La persona arranca encendida: es donde empieza la historia.
@@ -325,13 +375,6 @@ export default function EscenaReclamo({ escena, trazar = true, onNodo }) {
         ))}
       </defs>
 
-      {/* la línea que separa el caso del contraste */}
-      <line x1="60" y1={separador} x2={ancho - 60} y2={separador}
-            stroke="rgba(245,245,244,.16)" strokeWidth="1" strokeDasharray="3 6" />
-      <text x={ancho - 60} y={separador - 10} textAnchor="end"
-            fill="rgba(245,245,244,.42)" fontSize="12.5" fontStyle="italic">
-        {escena.separador_texto}
-      </text>
 
       {(escena.aristas || []).map((a, i) => (
         <Arista key={i} a={a} nodos={nodos} idx={i}
