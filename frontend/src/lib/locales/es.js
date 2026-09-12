@@ -3529,6 +3529,12 @@ export const ES = {
   // Solo el chrome de la pantalla: los textos de los nodos, badges y
   // hallazgos vienen ya escritos del backend, por idioma (mapaop.* en
   // backend/i18n.py — el contrato del nodo).
+  "mapaop.riel_titulo": "Lo que veo ahora",
+  "mapaop.riel_plegar": "Plegar los hallazgos",
+  "mapaop.riel_abrir": "Ver los hallazgos",
+  "mapaop.riel_vacio": "Hoy no hay nada frenado acá.",
+  "mapaop.ver_completo": "Ver completo",
+  "mapaop.salir_completo": "Salir",
   "mapaop.titulo": "El mapa de la operación",
   "mapaop.sub": "De dónde viene la mercadería, dónde está y adónde va. Cada número se abre.",
   "mapaop.marca_pie": "partidas en depósito",

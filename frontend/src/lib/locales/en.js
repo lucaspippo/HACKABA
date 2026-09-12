@@ -3555,6 +3555,12 @@ export const EN = {
   // Screen chrome only: node texts, badges and findings arrive pre-written
   // from the backend, per language (mapaop.* in backend/i18n.py — the node
   // contract).
+  "mapaop.riel_titulo": "What I see right now",
+  "mapaop.riel_plegar": "Collapse the findings",
+  "mapaop.riel_abrir": "Show the findings",
+  "mapaop.riel_vacio": "Nothing is stuck here today.",
+  "mapaop.ver_completo": "View full",
+  "mapaop.salir_completo": "Exit",
   "mapaop.titulo": "The operation map",
   "mapaop.sub": "Where goods come from, where they are and where they go. Every number opens.",
   "mapaop.marca_pie": "lots in the warehouse",

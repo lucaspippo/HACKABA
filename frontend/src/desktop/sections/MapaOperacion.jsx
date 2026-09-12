@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ReactFlow, ReactFlowProvider, Background, Handle, Position, MarkerType,
   useNodesState, useEdgesState, useReactFlow, useNodesInitialized,
@@ -11,6 +12,7 @@ import {
   ChevronDown, ChevronRight, X, Package, ArrowRight,
   Mic, MessageSquare, ClipboardList, Camera, Database, BookOpen, Eye, Check,
   Mail, Sparkles,
+  Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
 import { api } from "../../lib/api";
 import AngelaMark from "../../components/AngelaMark";
@@ -601,7 +603,7 @@ function MedidorDeNodos({ onCambio }) {
   return null;
 }
 
-function Reencuadre({ contenedor }) {
+function Reencuadre({ contenedor, completo, riel }) {
   const rf = useReactFlow();
   useEffect(() => {
     const el = contenedor.current;
@@ -614,6 +616,15 @@ function Reencuadre({ contenedor }) {
     ro.observe(el);
     return () => { ro.disconnect(); clearTimeout(t); };
   }, [contenedor, rf]);
+
+  // Entrar o salir de pantalla completa, y plegar el riel, cambian el ancho
+  // UTIL sin que el contenedor observado cambie de tamanio en el mismo tick:
+  // el riel se anima 200ms, asi que el observer ve el paso intermedio o no ve
+  // nada. Se reencuadra explicito cuando termina.
+  useEffect(() => {
+    const t = setTimeout(() => rf.fitView({ padding: 0.06, duration: 220 }), 260);
+    return () => clearTimeout(t);
+  }, [completo, riel, rf]);
   return null;
 }
 
@@ -626,6 +637,13 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [rects, setRects] = useState([]);
+  // PANTALLA COMPLETA. El mapa vivia en 700px con el titulo, cuatro numeros y
+  // seis chips encima: la mitad de la pantalla gastada antes de ver nada. Acá
+  // el lienzo se come la ventana entera.
+  const [completo, setCompleto] = useState(false);
+  // El riel de hallazgos se puede plegar: con el mapa lleno, a veces lo que se
+  // quiere es el mapa y nada mas.
+  const [riel, setRiel] = useState(true);
   const lienzo = useRef(null);
   // Sólo re-dibuja las aristas si las MEDIDAS cambiaron de verdad: el medidor
   // corre en cada render del lienzo y un array nuevo cada vez sería un bucle.
@@ -642,6 +660,21 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     api.mapaOperacion().then((r) => vivo && setD(r)).catch(() => vivo && setD(false));
     return () => { vivo = false; };
   }, []);
+
+  // Escape sale de pantalla completa. Una vista que ocupa todo y no se cierra
+  // con Escape es una trampa: es el primer reflejo de cualquiera.
+  useEffect(() => {
+    if (!completo) return;
+    const salir = (e) => { if (e.key === "Escape") setCompleto(false); };
+    window.addEventListener("keydown", salir);
+    // el fondo no scrollea detras de la vista llena
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", salir);
+      document.body.style.overflow = antes;
+    };
+  }, [completo]);
 
   const camino = useMemo(() => {
     const h = (d?.hallazgos || []).find((x) => x.id === foco);
@@ -770,75 +803,92 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   if (d === false) return <Aviso>{t("mapaop.error_carga")}</Aviso>;
   if (!d.hay_datos) return <Aviso>{t("mapaop.sin_datos")}</Aviso>;
 
-  return (
-    <div className="space-y-4">
-      {/* Title and numbers on the SAME line: four cards under the title made
-          you scroll before reaching the map. */}
-      <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        <div>
-          <h1 className="font-display text-[1.7rem] font-bold leading-tight">
-            {t("mapaop.titulo")}
-          </h1>
-          <p className="mt-1 text-[0.86rem] text-tinta-suave">
-            {t("mapaop.sub")}
-          </p>
+  // EL RIEL DE HALLAZGOS. Antes eran chips en una franja arriba del lienzo, y
+  // decian LO MISMO que los cuatro numeros del encabezado: «290 bultos · nadie
+  // confirmo» estaba en los dos lados, «20 pedidos sin salir» tambien, «Doña
+  // Elsa 66 dias» tambien. O sea: media pantalla gastada en repetirse antes de
+  // que se viera el mapa. Ahora van al costado, en columna, y funcionan como lo
+  // que siempre fueron: filtros que encienden un camino del mapa.
+  const hallazgos = d?.hallazgos || [];
+  const rielJsx = (
+    <div className={`relative z-10 flex shrink-0 flex-col border-r border-linea
+                     bg-crema/70 backdrop-blur-[2px] transition-[width] duration-200
+                     ${riel ? "w-[236px]" : "w-[42px]"}`}>
+      <button onClick={() => setRiel((v) => !v)}
+              aria-label={riel ? t("mapaop.riel_plegar") : t("mapaop.riel_abrir")}
+              className="flex min-h-[40px] items-center gap-2 border-b border-linea
+                         px-3 text-left text-[0.66rem] font-semibold uppercase
+                         tracking-[0.12em] text-tinta-suave hover:text-tinta">
+        {riel ? <PanelLeftClose className="size-3.5 shrink-0" />
+              : <PanelLeftOpen className="size-3.5 shrink-0" />}
+        {riel && <span className="truncate">{t("mapaop.riel_titulo")}</span>}
+      </button>
+      {riel && (
+        <div className="flex-1 space-y-1.5 overflow-y-auto p-2.5">
+          {hallazgos.map((h) => {
+            const on = foco === h.id;
+            const rojo = h.gravedad === "alta";
+            return (
+              <button
+                key={h.id}
+                onClick={() => { setFoco(on ? null : h.id); setAbierto(on ? null : { hallazgo: h }); }}
+                className={`flex w-full items-start gap-2 rounded-xl border px-2.5 py-2
+                            text-left text-[0.76rem] leading-snug transition ${on
+                    ? "border-violeta bg-violeta-suave font-semibold text-violeta"
+                    : rojo ? "border-rojo/30 bg-rojo/[0.04] text-tinta hover:border-rojo/60"
+                           : "border-linea bg-papel text-tinta-suave hover:border-oro/50"}`}
+              >
+                <span className={`mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full ${
+                  on ? "bg-violeta" : rojo ? "bg-rojo" : "bg-oro"}`} />
+                <span className="min-w-0">{h.chip || h.titulo}</span>
+              </button>
+            );
+          })}
+          {!hallazgos.length && (
+            <p className="px-1 py-2 text-[0.74rem] leading-snug text-tinta-suave">
+              {t("mapaop.riel_vacio")}
+            </p>
+          )}
         </div>
-        {/* THE FOUR NUMBERS IMPLY AN ACTION. «380 lots in the warehouse» is
-            inventory: it lives on the brand at the center, where it belongs. */}
-        <div className="flex flex-wrap items-start gap-x-9 gap-y-3">
-          {(d.resumen?.titulares || []).map((x) => (
-            <div key={x.label} className="min-w-[104px]">
-              <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em]
-                            text-tinta-suave">{x.label}</p>
-              <p className={`font-display text-[1.6rem] font-bold leading-none tabular-nums ${
-                x.estado === "error" ? "text-rojo"
-                : x.estado === "dudoso" ? "text-oro-tinta" : "text-tinta"}`}>
-                {x.valor}
-              </p>
-              {x.pie && (
-                <p className="mt-0.5 text-[0.62rem] leading-tight text-tinta-suave/80">
-                  {x.pie}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </header>
+      )}
+      {riel && <div className="border-t border-linea p-2.5"><Leyenda /></div>}
+    </div>
+  );
 
-      {/* Findings as chips: six fit in two lines and each one is a door. */}
-      <div className="flex flex-wrap gap-2">
-        {(d.hallazgos || []).map((h) => {
-          const on = foco === h.id;
-          const rojo = h.gravedad === "alta";
-          return (
-            <button
-              key={h.id}
-              onClick={() => { setFoco(on ? null : h.id); setAbierto(on ? null : { hallazgo: h }); }}
-              className={`flex min-h-[34px] items-center gap-1.5 rounded-full border
-                          px-3 text-[0.78rem] transition ${on
-                  ? "border-violeta bg-violeta-suave font-semibold text-violeta"
-                  : rojo ? "border-rojo/30 bg-rojo/[0.04] text-tinta hover:border-rojo/60"
-                         : "border-linea bg-crema text-tinta-suave hover:border-oro/50"}`}
-            >
-              <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                on ? "bg-violeta" : rojo ? "bg-rojo" : "bg-oro"}`} />
-              {h.chip || h.titulo}
-            </button>
-          );
-        })}
+  const encabezado = (
+    <header className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+      <div>
+        <h1 className="font-display text-[1.7rem] font-bold leading-tight">
+          {t("mapaop.titulo")}
+        </h1>
+        <p className="mt-1 text-[0.86rem] text-tinta-suave">{t("mapaop.sub")}</p>
       </div>
+      {/* LOS NUMEROS, SIN EL PIE. El pie («4 pedidos salieron y nadie avisó»)
+          era palabra por palabra el chip del riel. Un numero y que dice: el
+          detalle esta a un clic, al costado. */}
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+        {(d.resumen?.titulares || []).map((x) => (
+          <div key={x.label} className="min-w-[96px]">
+            <p className="text-[0.58rem] font-semibold uppercase tracking-[0.14em]
+                          text-tinta-suave">{x.label}</p>
+            <p className={`font-display text-[1.5rem] font-bold leading-none tabular-nums ${
+              x.estado === "error" ? "text-rojo"
+              : x.estado === "dudoso" ? "text-oro-tinta" : "text-tinta"}`}>
+              {x.valor}
+            </p>
+          </div>
+        ))}
+      </div>
+    </header>
+  );
 
-      <Leyenda />
-
-      {/* With the panel open the canvas CEDES the 420 px instead of getting
-          covered: the padding shrinks the content-box, Reencuadre's observer
-          sees it and re-frames. The padding snaps with NO transition: with
-          one, the observer fired mid-way and fitView framed an intermediate
-          width. What animates is the re-frame (220 ms). */}
-      <div ref={lienzo}
-           style={{ paddingRight: abierto ? ANCHO_PANEL : 0, transition: "none" }}
-           className="relative h-[700px] overflow-hidden rounded-2xl border border-linea
-                      bg-papel">
+  const lienzoBloque = (
+    <div ref={lienzo}
+         style={{ paddingRight: abierto ? ANCHO_PANEL : 0, transition: "none" }}
+         className={`relative flex overflow-hidden border border-linea bg-papel
+                     ${completo ? "min-h-0 flex-1 rounded-xl" : "h-[700px] rounded-2xl"}`}>
+      {rielJsx}
+      <div className="relative min-w-0 flex-1">
         <RotulosDeCapa capas={d.capas} />
         <ReactFlowProvider>
         <ReactFlow
@@ -856,16 +906,47 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
           }}
         >
           <Background gap={24} size={1} color="#eceae5" />
-          <Reencuadre contenedor={lienzo} />
+          <Reencuadre contenedor={lienzo} completo={completo} riel={riel} />
           <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
         </ReactFlowProvider>
-
-        {abierto && (
-          <Panel p={abierto} onCerrar={() => setAbierto(null)}
-                 onPreguntar={onPreguntar} onNavegar={onNavegar} />
-        )}
+        {/* el boton vive SOBRE el lienzo, ABAJO a la derecha: arriba corre la
+            barra de rotulos de capa (RotulosDeCapa) y se pisarian. En pantalla
+            completa no hay encabezado donde ponerlo, asi que tiene que estar
+            sobre el lienzo en los dos modos. */}
+        <button onClick={() => setCompleto((v) => !v)}
+                aria-label={completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
+                className="absolute bottom-3 right-3 z-10 flex min-h-[36px] items-center gap-1.5
+                           rounded-full border border-linea bg-crema/95 px-3 text-[0.76rem]
+                           font-semibold text-tinta-suave shadow-sm backdrop-blur
+                           transition-colors hover:text-tinta">
+          {completo ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          {completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
+        </button>
       </div>
+
+      {abierto && (
+        <Panel p={abierto} onCerrar={() => setAbierto(null)}
+               onPreguntar={onPreguntar} onNavegar={onNavegar} />
+      )}
+    </div>
+  );
+
+  if (completo) {
+    // en un portal al body: cualquier `overflow` o `transform` de un ancestro
+    // recorta un `fixed`, y esta pantalla se abre desde adentro de la seccion.
+    return createPortal(
+      <div className="fixed inset-0 z-[60] flex flex-col gap-2 bg-crema p-3">
+        {lienzoBloque}
+      </div>,
+      document.body,
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {encabezado}
+      {lienzoBloque}
     </div>
   );
 }

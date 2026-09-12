@@ -68,11 +68,25 @@ export function Citation({
         {label}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner side="top" sideOffset={8} collisionPadding={12}>
+        {/* EL z-index VA ACA, EN EL POSITIONER, Y NO EN EL POPUP.
+            El Popup es `position: static`, asi que su `z-50` no hacia
+            absolutamente nada: z-index solo tiene efecto sobre un elemento
+            posicionado. El que se posiciona es el Positioner, y venia con
+            `z-index: auto`.
+            Como el popup se portalea al <body>, queda de HERMANO de la
+            pantalla del grafo, que es `fixed inset-0 z-[140]`. Con z auto
+            pierde: el panel se abria, existia, estaba «visible» con opacidad
+            1 y en la posicion correcta, y se dibujaba DEBAJO de toda la
+            pantalla. Medido con elementFromPoint en el centro del panel: el
+            elemento de arriba era un <dt> de la tarjeta de herramienta, no el
+            panel. Por eso no se veia ni con clic ni con hover.
+            200 > 140, y por encima tambien del panel de la seccion. */}
+        <Popover.Positioner side="top" sideOffset={8} collisionPadding={12}
+                            className="z-[200]">
           <Popover.Popup
             className={cn(
               floating,
-              "z-50 w-64 max-w-[min(16rem,calc(100vw-24px))] origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
+              "w-64 max-w-[min(16rem,calc(100vw-24px))] origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
               "transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
               "data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0",
               "data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0",
