@@ -115,6 +115,10 @@ def _ctx(lang) -> dict:
         ctx["clientes"] = cuentas.listar()
     except Exception:  # noqa: BLE001
         ctx["clientes"] = []
+    ctx["product_id_by_name"] = {a.get("descripcion"): a.get("codigo")
+                                 for a in ctx["arts"] if a.get("descripcion")}
+    ctx["client_id_by_name"] = {c.get("nombre"): c.get("id")
+                                for c in ctx["clientes"] if c.get("nombre")}
     try:
         if not ventas.hay_datos() or not ventas.montos_confirmados():
             return ctx
@@ -187,6 +191,9 @@ def _card_morosos(lang, ctx) -> dict | None:
                            "$", True, f"{meses[0]} → {meses[-1]}")
     return {
         "id": "cobrar_morosos", "tipo": "cobrar",
+        # The worst debtor names the finding: if a DIFFERENT customer
+        # becomes the worst later, that's a fresh finding, not a repeat.
+        "fingerprint": f"cliente:{peor['nombre']}",
         "titulo": _t("core.opn.morosos_t", lang, n=len(morosos)),
         "monto": total,
         "resumen": _t("core.opn.morosos_r", lang, peor=peor["nombre"],
@@ -201,7 +208,10 @@ def _card_morosos(lang, ctx) -> dict | None:
                           dias=peor["dias_sin_pagar"],
                           prom=peor.get("promedio_pago_dias") or "—")],
             "grafico": grafico,
-            "involucrados": [{"nombre": c["nombre"], "monto": c["saldo"],
+            # "id" lets the frontend deep-link each debtor to their exact row
+            # in Cuentas por cobrar (CuentasCorrientes.jsx's `cliente-${id}`
+            # anchor) instead of leaving the name as inert text.
+            "involucrados": [{"id": c["id"], "kind": "client", "nombre": c["nombre"], "monto": c["saldo"],
                               "detalle": _t("core.opn.morosos_i", lang,
                                             dias=c["dias_sin_pagar"])}
                              for c in sorted(morosos, key=lambda x: -x["saldo"])],
@@ -224,6 +234,9 @@ def _card_dormido(lang, ctx) -> dict | None:
                        "$", False) if top else None
     card = {
         "id": "despertar_dormido", "tipo": "liquidar",
+        # The single most-dormant product names the finding; if a different
+        # product becomes the worst later, that's worth surfacing again.
+        "fingerprint": f"producto:{top[0]['producto']}" if top else "agregado",
         "titulo": _t("core.opn.dormido_t", lang),
         "monto": rot["por_estado"]["dormido"],
         "resumen": _t("core.opn.dormido_r", lang, pct=rot["pct_dormido"],
@@ -237,7 +250,8 @@ def _card_dormido(lang, ctx) -> dict | None:
                           monto=_pesos(rot["por_estado"]["dormido"], lang)),
                        _t("core.opn.dormido_p2", lang, top5=_pesos(top5, lang))],
             "grafico": grafico,
-            "involucrados": [{"nombre": x["producto"], "monto": x["inmovilizado"],
+            "involucrados": [{"id": x.get("codigo"), "kind": "product",
+                              "nombre": x["producto"], "monto": x["inmovilizado"],
                               "detalle": (_t("core.opn.dormido_dias", lang,
                                              dias=int(x["dias_rotacion"]))
                                           if x.get("dias_rotacion")
@@ -292,7 +306,8 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
             continue  # su reposición NO cae antes de la lista siguiente
         monto_item = faltante_u * a["costo_iva"]
         compra += monto_item
-        items.append({"nombre": a["descripcion"], "monto": round(monto_item, 2),
+        items.append({"id": a.get("codigo"), "kind": "product",
+                      "nombre": a["descripcion"], "monto": round(monto_item, 2),
                       "detalle": _t("core.opn.ventana_cob", lang, dias=int(cob))})
     if compra <= 0:
         return None
@@ -341,6 +356,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
 
     card = {
         "id": "ventana_compra", "tipo": "comprar",
+        "fingerprint": f"proveedor:{prov}",
         "titulo": _t("core.opn.ventana_t", lang, proveedor=prov),
         "monto": ahorro,
         "datos": {"compra": round(compra, 2), "ahorro": ahorro,
@@ -408,6 +424,7 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
                        "$", True, f"{meses[0]} → {meses[-1]}")
     return {
         "id": "cliente_frio", "tipo": "vender",
+        "fingerprint": f"cliente:{peor['c']['nombre']}",
         "titulo": _t("core.opn.frio_t", lang, nombre=peor["c"]["nombre"]),
         "monto": monto,
         "datos": {"cliente": peor["c"]["nombre"], "caida_pct": round(peor["caida"]),
@@ -425,7 +442,8 @@ def _card_cliente_frio(lang, ctx) -> dict | None:
                        _t("core.opn.frio_q2", lang, pos=pos or "—",
                           monto=_pesos(monto, lang))],
             "grafico": grafico,
-            "involucrados": [{"nombre": x["c"]["nombre"], "monto": round(x["actual"], 2),
+            "involucrados": [{"id": x["c"].get("id"), "kind": "client",
+                              "nombre": x["c"]["nombre"], "monto": round(x["actual"], 2),
                               "detalle": _t("core.opn.frio_i", lang,
                                             pct=f"{x['caida']:.0f}")}
                              for x in cands[:4]],
@@ -477,12 +495,14 @@ def _card_estrella_caida(lang, ctx) -> dict | None:
         for a, b in zip(s2[:-1], s2[1:]):
             r2 = r2 + 1 if b < a else 0
         if r2 >= RACHA_MIN_MESES:
-            otros.append({"nombre": p2, "monto": None,
+            otros.append({"id": ctx["product_id_by_name"].get(p2), "kind": "product",
+                          "nombre": p2, "monto": None,
                           "detalle": _t("core.opn.estrella_i", lang, n=r2)})
     grafico = _grafico(prod, [{"x": m, "y": v} for m, v in zip(meses, serie)],
                        "$", True, f"{meses[0]} → {meses[-1]}")
     return {
         "id": "estrella_caida", "tipo": "vender",
+        "fingerprint": f"producto:{prod}",
         "titulo": _t("core.opn.estrella_t", lang),
         "monto": perdida,
         "datos": {"producto": prod, "racha_meses": racha, "rank_facturacion": pos},
@@ -575,6 +595,7 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     ]
     card = {
         "id": "quiebre_inminente", "tipo": "comprar",
+        "fingerprint": f"producto:{prod}",
         "titulo": _t("core.opn.qi_t2", lang, producto=prod, dias=int(cob)),
         "monto": semanal,
         # Las tres claves históricas NO cambian: la notificación sembrada y el
@@ -602,7 +623,8 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
         "drill": {
             "porque": porque,
             "grafico": grafico,
-            "involucrados": [{"nombre": p, "monto": None,
+            "involucrados": [{"id": _a.get("codigo"), "kind": "product",
+                              "nombre": p, "monto": None,
                               "detalle": _t("core.opn.qi_i", lang, dias=int(c),
                                             pos=ps)}
                              for c, ps, p, _a, _r in cands[1:6]],
@@ -662,6 +684,7 @@ def _card_pre_pico(lang, ctx) -> dict | None:
     nombre_plan = _mes(mes_plan, lang)
     return {
         "id": "pre_pico", "tipo": "planificar",
+        "fingerprint": f"categoria:{cat}",
         "titulo": _t("core.opn.pico_t", lang, cat=cat_disp),
         "monto": round(compra, 2),
         "datos": {"categoria": cat, "indice": idx, "mes_pico": mes_pico,
@@ -713,6 +736,9 @@ def _card_concentracion(lang, ctx) -> dict | None:
                        "%", False, _t("core.opn.conc_g_v", lang))
     card = {
         "id": "concentracion", "tipo": "diversificar",
+        # The top-3 SET names the finding: swap even one of the three out
+        # and it's a different exposure worth re-flagging.
+        "fingerprint": "clientes:" + ",".join(sorted(n for n, _ in top3)),
         "titulo": _t("core.opn.conc_t", lang),
         "monto": monto,
         # P30·A2 — el $ es FACTURACIÓN de 12 meses, NO deuda: la etiqueta lo dice
@@ -730,7 +756,8 @@ def _card_concentracion(lang, ctx) -> dict | None:
                           monto=_pesos(monto, lang)),
                        _t("core.opn.conc_q2", lang)],
             "grafico": grafico,
-            "involucrados": [{"nombre": n, "monto": round(v, 2),
+            "involucrados": [{"id": ctx["client_id_by_name"].get(n), "kind": "client",
+                              "nombre": n, "monto": round(v, 2),
                               "detalle": _t("core.opn.conc_i", lang,
                                             pct=f"{v / total * 100:.0f}")}
                              for n, v in top3],
@@ -785,7 +812,8 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
             if extra_mes <= 0:
                 continue
             ganancia_total += extra_mes
-            bajos.append({"nombre": a["descripcion"], "monto": round(extra_mes, 2),
+            bajos.append({"id": a.get("codigo"), "kind": "product",
+                          "nombre": a["descripcion"], "monto": round(extra_mes, 2),
                           "detalle": _t("core.opn.margen_i", lang, m=f"{m:.1f}",
                                         prom=f"{prom:.1f}",
                                         cat=i18n.categoria(cat, lang))})
@@ -806,6 +834,7 @@ def _card_margen_bajo(lang, ctx) -> dict | None:
     otros = len(bajos) - 1
     return {
         "id": "margen_bajo", "tipo": "ajustar_precio",
+        "fingerprint": f"producto:{peor['producto']}",
         "titulo": _t("core.opn.margen_t2", lang, producto=peor["producto"],
                      m=f"{peor['margen']:.1f}"),
         "monto": round(ganancia_total, 2),
@@ -908,6 +937,7 @@ def _card_sobrecompra(lang, ctx) -> dict | None:
 
     return {
         "id": "sobrecompra", "tipo": "comprar",
+        "fingerprint": f"producto:{prod}:proveedor:{prov}",
         "titulo": _t("core.opn.sobre_t", lang, proveedor=prov, producto=prod,
                      desc=f"{mejor['desc']:g}"),
         "monto": mejor["tirar"],
@@ -1076,6 +1106,7 @@ _SET = (_card_morosos, _card_dormido, _card_ventana_compra, _card_cliente_frio,
 
 
 def cards(lang: str | None = None) -> list[dict]:
+    from . import pattern_feedback
     ctx = _ctx(lang)
     out = []
     for fn in _SET:
@@ -1086,5 +1117,17 @@ def cards(lang: str | None = None) -> list[dict]:
         if c:
             c["naturaleza"] = NATURALEZA.get(c["id"], "accionable")
             out.append(c)
+    out = pattern_feedback.drop_handled(out)
     out.sort(key=lambda c: -(c.get("monto") or 0))
     return out
+
+
+def record_feedback(card_id: str, action: str, *, actor: str,
+                    note: str | None = None, lang: str | None = None) -> dict:
+    """The owner's reaction (accepted/dismissed/already knew) to one of the
+    cards above, via the SAME mechanism core/patrones.py uses
+    (core/pattern_feedback.py) — the closed set stays closed and hand-coded;
+    only the "don't show me this exact instance again" memory is shared."""
+    from . import pattern_feedback
+    return pattern_feedback.record(lambda: cards(lang), card_id, action,
+                                   actor=actor, note=note)

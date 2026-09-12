@@ -7,7 +7,7 @@ import {
   Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
   ShoppingCart, Plug, Layers, Inbox, PackageCheck, Package, PackagePlus, ShoppingBag,
-  Scale,
+  Scale, Lightbulb,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { contarACorregir } from "../lib/alertas";
@@ -51,6 +51,7 @@ import Recepciones from "./sections/Recepciones";
 import Proveedores from "./sections/Proveedores";
 import OrdenesCompra from "./sections/OrdenesCompra";
 import Imported from "./sections/Imported";
+import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import MiDia from "../mobile/MiDia";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { tieneVistaHerramienta } from "../lib/roles";
@@ -69,6 +70,7 @@ import Toasts from "../components/Toasts";
 const CATALOGO = {
   panel: { lk: "nav.panel", icon: LayoutDashboard },
   mapa: { lk: "nav.mapa", icon: Waypoints },
+  aprendizaje: { lk: "nav.aprendizaje", icon: Lightbulb },
   inventario: { lk: "nav.inventario", icon: Boxes },
   productos: { lk: "nav.productos", icon: Package },
   ventas: { lk: "nav.ventas", icon: ShoppingBag },
@@ -109,6 +111,7 @@ const CATALOGO = {
 const GRUPOS_NAV = [
   { id: "panel", leaf: true },
   { id: "mapa", leaf: true },
+  { id: "aprendizaje", leaf: true },
   { id: "evolucion", leaf: true },
   { id: "prioridades", leaf: true },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
@@ -147,7 +150,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // gate of saneamiento. Imported data is the browse step of the ingest
   // pipeline (cargar / conectores / saneamiento), not a warehouse screen.
   // Prioridades is the ranked inbox for anyone with alertas or oportunidades.
-  const extraNav = [];
+  // Continuous learning is education, not a data view gated by a feature
+  // flag: every session sees it, regardless of role.
+  const extraNav = ["aprendizaje"];
   if (user.features.includes("inventario")) {
     extraNav.push("productos", "ventas", "recepciones", "movimientos", "ubicaciones", "proveedores", "ordenes_compra");
   }
@@ -458,7 +463,9 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               />
             </div>
           ) : (
-          <main className="min-w-0 flex-1 overflow-y-auto px-7 py-6">
+          <main className={`min-w-0 flex-1 ${
+            section === "prioridades" ? "flex flex-col overflow-hidden" : "overflow-y-auto px-7 py-6"
+          }`}>
             {/* Banner de fase: SOLO en el Inicio — en el resto de las secciones es
                 ruido que come pantalla y su CTA no aplica (auditoría UX P5).
                 P13: y solo si la fase PIDE algo (foco ≠ panel) — con todo al
@@ -486,7 +493,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
               </div>
             )}
             <AnimatePresence mode="wait">
-              <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+              <motion.div key={section} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+                className={section === "prioridades" ? "flex min-h-0 flex-1 flex-col" : undefined}>
                 {/* P29·A2 — nunca una pantalla muda: si una sección revienta,
                     estado de error honesto y navegable. key=section resetea. */}
                 <ErrorBoundary key={section} seccion={section} onInicio={() => navegar("panel", null)}>
@@ -505,6 +513,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   : <Inicio data={data} oportunidades={oportunidades} onNavegar={navegar} onPreguntar={preguntar} />)}
                 {section === "mapa" && <MapaSeccion onNavegar={navegar} onPreguntar={preguntar}
                   onInsight={(i) => { setMapaInsight(i); if (i) setAngelaOpen(true); }} />}
+                {section === "aprendizaje" && <AprendizajeContinuo onPreguntar={preguntar} />}
                 {section === "inventario" && <Inventario data={data} highlight={highlight} onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "saneamiento" && <Saneamiento user={user} highlight={highlight} onNavegar={navegar} onPreguntar={preguntar} onRecargar={onRecargar} />}
                 {section === "staging" && <StagingArea onCambio={setStagingCount} onRecargar={onRecargar} onNavigate={navegar} />}

@@ -1,4 +1,4 @@
-import { ArrowRight, X, Check, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronRight, X, Check, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { CuerpoConsulta } from "./Widget";
 import { pesoCorto, peso } from "../lib/format";
@@ -97,16 +97,113 @@ function Propuesta({ propuesta, onAprobar, resultado, trabajando }) {
   );
 }
 
+// Closing the loop on a finding (core/pattern_feedback.py, shared by
+// core/patrones.py and core/oportunidades_neg.py alike): the owner's
+// reaction to the SPECIFIC instance shown, so it doesn't resurface. Purely
+// presentational like the rest of this file — the caller owns the actual
+// API call and decides whether this card's id can take feedback at all.
+const FEEDBACK_ACTIONS = [
+  { action: "accepted", lk: "aprendizaje.feedback_aceptado" },
+  { action: "already_knew", lk: "aprendizaje.feedback_ya_sabia" },
+  { action: "dismissed", lk: "aprendizaje.feedback_descartado" },
+];
+
+export function FindingFeedback({ onFeedback, busy }) {
+  const t = useT();
+  return (
+    <div className="mt-4 rounded-xl border border-linea bg-papel-hondo/40 p-4">
+      <p className="text-[0.82rem] font-semibold text-tinta">{t("aprendizaje.feedback_pregunta")}</p>
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        {FEEDBACK_ACTIONS.map((f) => (
+          <button key={f.action} disabled={busy} onClick={() => onFeedback(f.action)}
+            className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-[0.82rem] font-semibold text-tinta hover:border-violeta/40 hover:text-violeta disabled:opacity-50">
+            {t(f.lk)}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Evidence pills: the same clickable treatment for both "Fuentes" (which
+// section the numbers came from) and "Involucrados" (which specific record).
+// Fuentes all point at the card's single `navegar` target (there's no
+// per-source routing yet) — still a real jump, not a fabricated one.
+function FuentePill({ label, onClick }) {
+  const clickable = !!onClick;
+  const Tag = clickable ? "button" : "span";
+  return (
+    <Tag
+      type={clickable ? "button" : undefined}
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border border-linea bg-crema px-2.5 py-1 text-[0.74rem] font-medium text-tinta-suave ${
+        clickable ? "transition-colors hover:border-hielo/40 hover:text-hielo" : ""
+      }`}
+    >
+      {label}
+      {clickable && <ArrowRight size={11} />}
+    </Tag>
+  );
+}
+
+// A small, neutral pill reading the shared confidence signal every card's
+// drill now carries (backend/core/confidence.py) — not tied to `tono`,
+// since confidence is about the evidence, not the finding's severity.
+const CONFIDENCE_STYLE = {
+  high: "border-salvia/30 text-salvia",
+  medium: "border-oro/30 text-oro-tinta",
+  low: "border-tinta-suave/30 text-tinta-suave",
+};
+
+function ConfidenceBadge({ confidence }) {
+  const t = useT();
+  if (!confidence?.level) return null;
+  const cls = CONFIDENCE_STYLE[confidence.level] || CONFIDENCE_STYLE.low;
+  return (
+    <span
+      title={confidence.reason}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${cls}`}
+    >
+      {t(`cardneg.confidence_${confidence.level}`)}
+    </span>
+  );
+}
+
+function InvolucradoRow({ iv, onClick }) {
+  // kind is required, not just id: an id without a recognized kind has
+  // nowhere to navigate, and a clickable-looking row that silently no-ops
+  // on click is worse than a plain text row.
+  const clickable = !!onClick && iv.id != null && !!iv.kind;
+  const Tag = clickable ? "button" : "div";
+  return (
+    <Tag
+      type={clickable ? "button" : undefined}
+      onClick={clickable ? () => onClick(iv) : undefined}
+      className={`flex w-full items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-left text-[0.86rem] last:border-0 ${
+        clickable ? "transition-colors hover:bg-papel-hondo/50" : ""
+      }`}
+    >
+      <span className="min-w-0 flex-1">{iv.nombre}{iv.detalle && <span className="text-tinta-suave"> — {iv.detalle}</span>}</span>
+      <span className="flex shrink-0 items-center gap-1">
+        {iv.monto != null && <span className="plata font-medium text-hielo">{pesoCorto(iv.monto)}</span>}
+        {clickable && <ChevronRight size={14} className="text-tinta-suave" />}
+      </span>
+    </Tag>
+  );
+}
+
 export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifraTexto,
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
                                propuesta, onAprobarPropuesta, propuestaResultado,
                                propuestaTrabajando, variante = "overlay",
-                               chip, chipIcon: ChipIcon, chipCls }) {
+                               chip, chipIcon: ChipIcon, chipCls,
+                               onFeedback, feedbackBusy, confidence,
+                               onVerFuentes, onVerInvolucrado }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
   const panel = variante === "panel";
-  const body = (
+  const contenido = (
     <>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -130,7 +227,10 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
 
         {porque.length > 0 && (
           <>
-            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <h3 className="text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_porque")}</h3>
+              <ConfidenceBadge confidence={confidence} />
+            </div>
             <div className="mt-1.5 space-y-1.5">
               {porque.map((p, i) => (
                 <p key={i} className="text-[0.92rem] leading-snug text-tinta">{p}</p>
@@ -140,6 +240,17 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                   {t("cardneg.drill_macro", { ipc: macro.inflacion, fuente: macro.fuente || "", fecha: macro.fecha || "" })}
                 </p>
               )}
+            </div>
+          </>
+        )}
+
+        {fuentes.length > 0 && (
+          <>
+            <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_fuentes")}</h3>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {fuentes.map((f, i) => (
+                <FuentePill key={i} label={f} onClick={onVerFuentes} />
+              ))}
             </div>
           </>
         )}
@@ -158,10 +269,7 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             <h3 className="mt-4 text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cardneg.drill_involucrados")}</h3>
             <div className="mt-1.5 overflow-hidden rounded-xl border border-linea">
               {involucrados.map((iv, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-3 border-b border-linea/60 px-3 py-2 text-[0.86rem] last:border-0">
-                  <span className="min-w-0 flex-1">{iv.nombre}{iv.detalle && <span className="text-tinta-suave"> — {iv.detalle}</span>}</span>
-                  {iv.monto != null && <span className="plata shrink-0 font-medium text-hielo">{pesoCorto(iv.monto)}</span>}
-                </div>
+                <InvolucradoRow key={i} iv={iv} onClick={onVerInvolucrado} />
               ))}
             </div>
           </>
@@ -176,25 +284,28 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
           </p>
         )}
 
-        {fuentes.length > 0 && (
-          <p className="mt-3 text-[0.72rem] text-tinta-suave/80">{t("cardneg.cruce")} {fuentes.join(" · ")}</p>
-        )}
-
-        {acciones && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-linea pt-4">
-            {acciones}
-          </div>
-        )}
+        {onFeedback && <FindingFeedback onFeedback={onFeedback} busy={feedbackBusy} />}
     </>
   );
+  const pie = acciones && (
+    <div className="shrink-0 border-t border-linea bg-crema px-6 py-4">
+      <div className="flex flex-wrap items-center gap-2">{acciones}</div>
+    </div>
+  );
   if (panel) {
-    return <div className="h-full overflow-y-auto p-6">{body}</div>;
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        {pie}
+      </div>
+    );
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
       <div onClick={(e) => e.stopPropagation()}
-        className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
-        {body}
+        className="flex max-h-[88vh] w-full max-w-xl flex-col overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema sombra-alta">
+        <div className="flex-1 overflow-y-auto p-6">{contenido}</div>
+        {pie}
       </div>
     </div>
   );

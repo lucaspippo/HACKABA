@@ -229,7 +229,7 @@ function FocoView({ foco, onSelect, onPreguntar, onSalir }) {
           </thead>
           <tbody>
             {filt.map((p) => (
-              <tr key={p.codigo} onClick={() => onSelect(p)} className="cursor-pointer border-b border-linea/60 bg-rojo/[0.025] last:border-0 hover:bg-rojo/[0.05]">
+              <tr key={p.codigo} data-nav-id={`producto-${p.codigo}`} onClick={() => onSelect(p)} className="cursor-pointer border-b border-linea/60 bg-rojo/[0.025] last:border-0 hover:bg-rojo/[0.05]">
                 <td className="px-4 py-2 text-tinta">{p.descripcion}</td>
                 <td className="plata px-4 py-2 text-right">{num(Math.round(p.stock || 0))}</td>
                 <td className="plata px-4 py-2 text-right text-tinta-suave">{p.costo_iva ? peso(p.costo_iva) : "—"}</td>
@@ -268,7 +268,7 @@ function PestanaCustom({ pestana, onSelect }) {
           </thead>
           <tbody>
             {filt.slice(0, 100).map((p) => (
-              <tr key={p.codigo} onClick={() => onSelect(p)} className="cursor-pointer border-b border-linea/60 last:border-0 hover:bg-papel-hondo/40">
+              <tr key={p.codigo} data-nav-id={`producto-${p.codigo}`} onClick={() => onSelect(p)} className="cursor-pointer border-b border-linea/60 last:border-0 hover:bg-papel-hondo/40">
                 <td className="px-4 py-2 text-tinta">{p.descripcion}</td>
                 <td className="plata px-4 py-2 text-right">{num(Math.round(p.stock || 0))}</td>
                 <td className="plata px-4 py-2 text-right font-medium text-hielo">{p.inmovilizado ? peso(p.inmovilizado) : "—"}</td>
