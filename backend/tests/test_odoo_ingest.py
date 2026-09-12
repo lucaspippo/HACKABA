@@ -16,9 +16,17 @@ class _FakeModels:
     def __init__(self):
         self.productos = [
             {"id": 1, "name": "Producto Ya Vinculado", "default_code": "SKU-1",
-             "categ_id": [1, "General"], "list_price": 100.0, "qty_available": 50.0},
+             "categ_id": [1, "General"], "list_price": 100.0, "qty_available": 50.0,
+             "standard_price": 80.0, "free_qty": 45.0, "incoming_qty": 5.0,
+             "outgoing_qty": 0.0, "active": True},
             {"id": 2, "name": "Producto Nuevo De Odoo", "default_code": "SKU-2",
-             "categ_id": [1, "General"], "list_price": 200.0, "qty_available": 20.0},
+             "categ_id": [1, "General"], "list_price": 200.0, "qty_available": 20.0,
+             "standard_price": 150.0, "free_qty": 20.0, "incoming_qty": 0.0,
+             "outgoing_qty": 0.0, "active": True},
+            {"id": 99, "name": "Fantasma Archivado", "default_code": "SKU-GHOST",
+             "categ_id": [1, "General"], "list_price": 10.0, "qty_available": 3.0,
+             "standard_price": 5.0, "free_qty": 3.0, "incoming_qty": 0.0,
+             "outgoing_qty": 0.0, "active": False},
         ]
         self.proveedores = [
             {"id": 3, "name": "Distribuidora del Sur", "vat": "30-11111111-1", "city": "Córdoba",
@@ -112,7 +120,7 @@ def _setup(tenant_id, monkeypatch):
 def test_ingest_productos_primera_vez_todo_va_a_revision():
     r = odoo_ingest.ingest_productos(actor="test")
     assert r["actualizados"] == 0
-    assert r["nuevos_para_revisar"] == 2
+    assert r["nuevos_para_revisar"] == 3
     assert r["batch_id"] is not None
 
 
@@ -122,7 +130,7 @@ def test_ingest_productos_segunda_vez_actualiza_sin_batch():
     staging.integrar(r1["batch_id"], actor="test")
 
     r2 = odoo_ingest.ingest_productos(actor="test")
-    assert r2["actualizados"] == 2
+    assert r2["actualizados"] == 3
     assert r2["nuevos_para_revisar"] == 0
     assert r2["batch_id"] is None
 
@@ -137,7 +145,7 @@ def test_ingest_productos_mixto_actualiza_vinculado_y_stagea_nuevo():
 
     r = odoo_ingest.ingest_productos(actor="test")
     assert r["actualizados"] == 1
-    assert r["nuevos_para_revisar"] == 1
+    assert r["nuevos_para_revisar"] == 2
     assert r["batch_id"] is not None
     vinculado = next(d for d in store.raw_actual() if d.get("source_id") == "1")
     assert vinculado["pvp"] == 100.0
@@ -201,9 +209,9 @@ def test_ingest_ordenes_compra_segunda_vez_actualiza_sin_batch():
 # --- C1: auto-upsert on re-sync must NOT overwrite dueño-edited,
 # non-Odoo-owned fields (final whole-branch review, round 1) -----------------
 
-def test_reingest_productos_no_pisa_costo_editado_por_el_dueño():
-    """Repro: ingest -> integrate (link) -> dueño edits costo_iva -> re-sync
-    the same linked product -> the dueño's cost must survive."""
+def test_reingest_productos_odoo_pisa_costo_iva():
+    """Odoo owns cost on linked products: a dueño edit of costo_iva is
+    overwritten on the next sync with standard_price."""
     r1 = odoo_ingest.ingest_productos(actor="test")
     from core import staging
     staging.integrar(r1["batch_id"], actor="test")
@@ -214,9 +222,18 @@ def test_reingest_productos_no_pisa_costo_editado_por_el_dueño():
     odoo_ingest.ingest_productos(actor="test")
 
     articulo = next(d for d in store.raw_actual() if d.get("source_id") == "1")
-    assert articulo["costo_iva"] == 77.0
-    # Odoo-owned fields still refresh normally.
+    assert articulo["costo_iva"] == 80.0
     assert articulo["pvp"] == 100.0
+    assert articulo["free_qty"] == 45.0
+
+
+def test_ingest_productos_archivado_con_stock_queda_anulado():
+    r1 = odoo_ingest.ingest_productos(actor="test")
+    from core import staging
+    staging.integrar(r1["batch_id"], actor="test")
+    ghost = next(d for d in store.raw_actual() if d.get("source_id") == "99")
+    assert ghost["estado"] == "anulado"
+    assert ghost["stock"] == 3.0
 
 
 def test_reingest_proveedores_no_pisa_contacto_y_notas_editados_por_el_dueño():
@@ -306,9 +323,8 @@ def test_ingest_productos_omite_vinculado_sin_descripcion(monkeypatch):
 
     r2 = odoo_ingest.ingest_productos(actor="test")
     assert r2["omitidos_malformados"] == 1
-    # id 2 is also linked (from the first sync's staged batch) and unaffected
-    # by the malformed row, so it still updates normally.
-    assert r2["actualizados"] == 1
+    # ids 2 and 99 are also linked (from the first sync's staged batch)
+    assert r2["actualizados"] == 2
     articulo = next(d for d in store.raw_actual() if d.get("source_id") == "1")
     assert articulo["descripcion"] == "Producto Ya Vinculado"
 

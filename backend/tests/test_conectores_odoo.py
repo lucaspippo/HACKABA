@@ -40,9 +40,13 @@ class _FakeModels:
             if method == "read":
                 return [
                     {"id": 1, "name": "Laptop Pro 15\"", "default_code": "ELEC-001",
-                     "categ_id": [4, "Electronics"], "list_price": 1200.0, "qty_available": 45.0},
+                     "categ_id": [4, "Electronics"], "list_price": 1200.0, "qty_available": 45.0,
+                     "standard_price": 800.0, "free_qty": 40.0, "incoming_qty": 10.0,
+                     "outgoing_qty": 5.0, "active": True},
                     {"id": 2, "name": "Standing Desk", "default_code": "FURN-002",
-                     "categ_id": [5, "Furniture"], "list_price": 350.0, "qty_available": 0.0},
+                     "categ_id": [5, "Furniture"], "list_price": 350.0, "qty_available": 0.0,
+                     "standard_price": 200.0, "free_qty": 0.0, "incoming_qty": 0.0,
+                     "outgoing_qty": 0.0, "active": True},
                 ]
             raise NotImplementedError(method)
         if model == "purchase.order":
@@ -155,6 +159,11 @@ def test_pull_productos_trae_catalogo(tenant_id, monkeypatch):
     assert r["productos"][0]["codigo"] == "ELEC-001"
     assert r["productos"][0]["categoria"] == "Electronics"
     assert r["productos"][0]["stock"] == 45.0
+    assert r["productos"][0]["costo"] == 800.0
+    assert r["productos"][0]["free_qty"] == 40.0
+    assert r["productos"][0]["incoming_qty"] == 10.0
+    assert r["productos"][0]["outgoing_qty"] == 5.0
+    assert r["productos"][0]["activo"] is True
     # sin stock (0) sigue siendo un número, no se pierde en el mapeo
     assert r["productos"][1]["stock"] == 0.0
 

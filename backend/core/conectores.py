@@ -142,11 +142,15 @@ class ConectorOdoo(IConector):
         if not self._conexion:
             raise ValueError("No hay conexión con Odoo configurada para este tenant.")
         ids = self._execute_kw(
-            "product.template", "search", [["active", "=", True]], limit=kwargs.get("limite", 500)
+            "product.template", "search",
+            ["|", ["active", "=", True], ["qty_available", "!=", 0]],
+            limit=kwargs.get("limite", 500),
+            context={"active_test": False},
         )
         productos = self._execute_kw(
             "product.template", "read", ids,
-            fields=["name", "default_code", "categ_id", "list_price", "qty_available"],
+            fields=["name", "default_code", "categ_id", "list_price", "qty_available",
+                    "standard_price", "free_qty", "incoming_qty", "outgoing_qty", "active"],
         )
         catalogo = [
             {
@@ -156,6 +160,11 @@ class ConectorOdoo(IConector):
                 "categoria": (p.get("categ_id") or [None, ""])[1],
                 "precio": p.get("list_price") or 0,
                 "stock": p.get("qty_available") or 0,
+                "costo": p.get("standard_price") or 0,
+                "free_qty": p.get("free_qty") or 0,
+                "incoming_qty": p.get("incoming_qty") or 0,
+                "outgoing_qty": p.get("outgoing_qty") or 0,
+                "activo": bool(p.get("active", True)),
             }
             for p in productos
         ]

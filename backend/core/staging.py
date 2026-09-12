@@ -109,20 +109,19 @@ def _coerce_logistica(mapeo: dict, fila_dict: dict) -> dict:
 
 
 def coerce_producto_odoo(p: dict) -> dict:
-    # `costo_iva` is deliberately OMITTED: Odoo's product.template read
-    # (core/conectores.py's pull_productos) never supplies a cost, only
-    # `list_price` (-> pvp). Emitting the key at all — even as None — would
-    # let store.upsert_desde_conector's "if campo in fila" update clause
-    # overwrite a dueño-entered cost with None on every re-sync. On INSERT
-    # (first-time link, no prior dueño data to lose), the missing key just
-    # falls back to None there too, so nothing is lost either way.
+    # Odoo owns cost (`standard_price` → `costo_iva`) on linked products.
+    # `venta_x_peso` is omitted: it is a PolPilot-native field the dueño
+    # fills in by hand; emitting it would blank a dueño edit on re-sync.
     return {
         "codigo": None,
         "descripcion": str(p.get("nombre") or "").strip(),
-        "estado": "activo",
+        "estado": "activo" if p.get("activo", True) else "anulado",
         "stock": p.get("stock") or 0.0,
         "pvp": p.get("precio"),
-        "venta_x_peso": False,
+        "costo_iva": p.get("costo"),
+        "free_qty": p.get("free_qty") or 0.0,
+        "incoming_qty": p.get("incoming_qty") or 0.0,
+        "outgoing_qty": p.get("outgoing_qty") or 0.0,
         "sku": p.get("codigo") or None,
         "source": "odoo",
         "source_id": str(p["id"]),
