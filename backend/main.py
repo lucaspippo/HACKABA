@@ -3485,11 +3485,16 @@ def _con_procedencia(piezas: list[dict]) -> list[dict]:
     """Flattens origen.{quien,cuando} onto each piece, on top of every other
     field — the panel and the chat citation card (KnowledgePanel.tsx,
     KnowledgeCite.tsx) read piece.quien/piece.cuando directly, but the raw
-    piece dict only carries them nested under `origen`."""
+    piece dict only carries them nested under `origen`. Also attaches the
+    piece's CURRENT decay state (freshness/needs_review), computed at read
+    time — never stored — so the panel's freshness indicator always reflects
+    live decay, not whenever the piece happened to be fetched before."""
     out = []
     for p in piezas:
         origen = p.get("origen") or {}
-        out.append({**p, "quien": origen.get("quien"), "cuando": origen.get("cuando")})
+        out.append({**p, "quien": origen.get("quien"), "cuando": origen.get("cuando"),
+                    "freshness": conocimiento.freshness(p),
+                    "needs_review": conocimiento.needs_review(p)})
     return out
 
 

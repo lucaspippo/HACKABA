@@ -266,6 +266,19 @@ def test_rest_listar_flattens_quien_cuando_from_origen(tokens):
     assert pieza["cuando"] == pieza["origen"]["cuando"]
 
 
+def test_rest_listar_carries_freshness_and_needs_review(tokens):
+    """The panel's freshness indicator reads these two fields directly,
+    computed at read time from the piece's real decay state (never a raw
+    day count) — see core.conocimiento.freshness()/needs_review()."""
+    client.post("/api/conocimiento/confirm", headers=_h(tokens["emilio"]), json=dict(
+        texto="Regla fresca.", tipo="contexto", ambito="global",
+        nodo="caja", efecto="contexto_para_angela"))
+    listado = client.get("/api/conocimiento", headers=_h(tokens["emilio"])).json()["piezas"]
+    pieza = next(p for p in listado if p["texto"] == "Regla fresca.")
+    assert pieza["freshness"] in ("fresco", "atencion", "revisar")
+    assert isinstance(pieza["needs_review"], bool)
+
+
 def test_rest_detalle_404_fuera_de_ambito(tokens):
     pid = client.post("/api/conocimiento", headers=_h(tokens["emilio"]), json=dict(
         texto="A Doña Elsa 45 días.", tipo="regla", ambito="cliente",
