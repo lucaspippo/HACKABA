@@ -29,11 +29,17 @@ databases:
   - name: polpilot-hackathon-db
     databaseName: polpilot        # el nombre de la base adentro del server
     user: polpilot                # el rol DUEÑO: Alembic y consultas de admin
-    # `basic-256mb` es de pago y no expira. `free` también funciona y alcanza
-    # de sobra para esto, pero se vence a los 30 días y se borra: para algo que
-    # hay que tener en pie el día del pitch, esa fecha de vencimiento es un
-    # riesgo que no vale el ahorro. Cambialo a `free` si preferís lo otro.
-    plan: basic-256mb
+    # OJO CON EL NOMBRE DEL PLAN: Render usa ids del tipo `0.1c-256mb`
+    # (CPU + memoria), no nombres tipo `basic-256mb`. Un id que no existe hace
+    # fallar la sincronización ENTERA del blueprint, y el mensaje no dice cuál
+    # de los dos recursos lo causó. Los válidos son `free`, `0.1c-256mb`,
+    # `0.5c-1g`, `1c-2g`, y de ahí para arriba.
+    #
+    # `0.1c-256mb` es de pago y no expira. `free` también alcanza de sobra para
+    # esto, pero se vence a los 30 días y se borra: para algo que tiene que
+    # estar en pie el día del pitch, esa fecha de vencimiento es un riesgo que
+    # no vale el ahorro. Cambialo a `free` si preferís lo otro.
+    plan: 0.1c-256mb
     postgresMajorVersion: "16"
 
 services:
@@ -124,10 +130,10 @@ services:
       - key: POLPILOT_SEED_ON_BOOT
         value: "1"
 
-      # La copia canónica desde la que restaura POST /api/admin/reset-demo sin
-      # reiniciar el contenedor. La escribe boot.py al arrancar.
-      - key: POLPILOT_CANONICAL_DIR
-        value: /app/data-canonica
+      # POLPILOT_CANONICAL_DIR NO va acá: ya lo trae la imagen
+      # (Dockerfile: /app/canonical). Es una propiedad del LAYOUT de la imagen,
+      # no del tenant — es justo por eso que el guard del Dockerfile la deja
+      # pasar. Declararla acá con otra ruta la pisaba sin ningún motivo.
 
       # ======================================================================
       # 4 · EL DEMO
