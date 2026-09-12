@@ -23,6 +23,7 @@
 export const CATALOGO = [
   {
     id: "administracion",
+    destino: "administracion",
     busca: true,
     match: /administraci/i,
     acciones: [
@@ -40,6 +41,7 @@ export const CATALOGO = [
   },
   {
     id: "compras",
+    destino: "insights",
     busca: true,
     match: /compras/i,
     acciones: [
@@ -66,6 +68,7 @@ export const CATALOGO = [
   // los cinco comparten las del depósito, y por eso no sale del `id`.
   {
     id: "deposito_encargado",
+    destino: "deposito",
     busca: true,
     avisa: true,
     cargaLk: "rol.carga_cargar",
@@ -87,6 +90,7 @@ export const CATALOGO = [
   },
   {
     id: "deposito_recepcion",
+    destino: "deposito",
     avisa: true,
     cargaLk: "rol.carga_cargar",
     match: /dep[oó]sito.*(recepci|recib)/i,
@@ -105,6 +109,7 @@ export const CATALOGO = [
   },
   {
     id: "deposito_conteos",
+    destino: "deposito",
     avisa: true,
     cargaLk: "rol.carga_contar",
     match: /dep[oó]sito.*conteo/i,
@@ -126,6 +131,7 @@ export const CATALOGO = [
     // Picking. Su trabajo es el PEDIDO, no el remito: por eso su acción
     // destacada lleva a logística y no a cargar.
     id: "deposito_armado",
+    destino: "armado",
     avisa: true,
     cargaLk: "rol.carga_armar",
     match: /dep[oó]sito.*(armado|picking|preparaci)/i,
@@ -145,6 +151,7 @@ export const CATALOGO = [
   {
     // El que recién entró. Menos es mejor: una acción y una pregunta.
     id: "deposito_ayudante",
+    destino: "deposito",
     avisa: true,
     cargaLk: "rol.carga_avisar",
     match: /dep[oó]sito.*ayudante/i,
@@ -161,6 +168,7 @@ export const CATALOGO = [
   {
     // La red: cualquier otro rol de depósito conserva la vista de siempre.
     id: "deposito",
+    destino: "deposito",
     match: /dep[oó]sito/i,
     voz: true,
     muestras: "deposito",
@@ -180,6 +188,7 @@ export const CATALOGO = [
   },
   {
     id: "reparto",
+    destino: "parada",
     avisa: true,
     cargaLk: "rol.carga_registrar",
     match: /reparto|chofer|cami[oó]n/i,
@@ -200,6 +209,7 @@ export const CATALOGO = [
   },
   {
     id: "preventa",
+    destino: "cobranzas",
     busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
@@ -218,6 +228,7 @@ export const CATALOGO = [
   },
   {
     id: "mostrador",
+    destino: "cobranzas",
     busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
@@ -241,6 +252,7 @@ export const CATALOGO = [
   },
   {
     id: "sucursal",
+    destino: "insights",
     busca: true,
     avisa: true,
     cargaLk: "rol.carga_registrar",
@@ -277,7 +289,25 @@ const tieneFeats = (user, need) =>
   (need || []).every((f) => (user?.features || []).includes(f));
 
 /** Las acciones que este rol puede USAR de verdad (según «Quién ve qué»). */
+// EL DUEÑO NO TIENE OFICIO, y está bien: `rolDe` lo corta antes de mirar el
+// catálogo porque no es un puesto más, es el que decide. Pero sí tiene acciones,
+// y hasta ahora `accionesDe` le devolvía una lista vacía — por eso su inicio no
+// tenía ninguna. Éstas son las suyas, en el orden en que las usa:
+//
+//   · anotar una regla de la casa hablando — es cómo crece el diferencial de
+//     este producto, y hoy vive sólo en desktop;
+//   · lo que hay que decidir — su cola de aprobación;
+//   · el mapa — donde ve el negocio cruzado;
+//   · cargar un comprobante — lo único que carga, y a mano.
+const ACCIONES_DUENO = [
+  { id: "anotar_regla", icon: "BookOpen", need: ["angela"], kind: "voz", destaca: true },
+  { id: "que_decidir", icon: "ClipboardCheck", need: ["alertas"], kind: "navegar", a: "insights" },
+  { id: "ver_mapa", icon: "Waypoints", need: ["mapa"], kind: "navegar", a: "mapa" },
+  { id: "cargar_comprobante", icon: "Camera", need: ["cargar"], kind: "navegar", a: "cargar" },
+];
+
 export function accionesDe(user) {
+  if (user?.es_admin) return ACCIONES_DUENO.filter((a) => tieneFeats(user, a.need));
   const r = rolDe(user);
   if (!r) return [];
   return r.acciones.filter((a) => tieneFeats(user, a.need));
@@ -315,6 +345,71 @@ export function muestrasDe(user) {
 }
 
 /** Las preguntas pre-cargadas de su oficio (sólo las que su rol puede responder). */
+/** EL SEGUNDO DESTINO DE LA BARRA, y sale del OFICIO — no de las features.
+ *
+ *  Antes se escaneaban las features y se tomaba la primera que tuviera vista
+ *  mobile. Con eso Ramón y Aldo terminaban con «Mi ruta» en la barra: los dos
+ *  tienen `logistica` y ninguno de los dos sale a repartir. Tener el módulo no
+ *  es hacer el trabajo.
+ *
+ *  Devuelve null si esta persona no tiene la feature que su destino necesita —
+ *  la barra se queda con dos destinos antes que ofrecer una pantalla vacía. */
+export function destinoDe(user, puede) {
+  const d = rolDe(user)?.destino;
+  if (!d) return null;
+  return puede(d) ? d : null;
+}
+
+/** EL BOTÓN DEL CENTRO. Es lo que esta persona hace treinta veces por día:
+ *
+ *   · el piso CARGA — abre la hoja de avisos de su oficio;
+ *   · la oficina CARGA TAMBIÉN, pero comprobantes y archivos, no avisos del
+ *     piso: el botón la lleva a su pantalla de carga;
+ *   · el dueño NO CARGA. Decide y pregunta, así que su centro es Ángela.
+ *
+ *  Sin oficio en el catálogo se asume el dueño, que es quien no lo tiene. */
+export function centroDe(user) {
+  const r = rolDe(user);
+  if (!r) return { tipo: "angela", lk: "mnav.angela" };
+  if (r.avisa) return { tipo: "hoja", lk: r.cargaLk || "rol.carga_cargar" };
+  return { tipo: "navegar", a: "cargar", lk: "rol.carga_cargar" };
+}
+
+/** LA BARRA ENTERA de una persona: tres destinos y el botón del centro.
+ *
+ *  Vive acá y no en la vista porque es una decisión de OFICIO, y porque así se
+ *  puede pinnear el equipo entero con un test. La regla:
+ *
+ *    slot 1 · su inicio        — «Mi día» para el piso, el panel para el resto
+ *    slot 2 · su oficio        — del catálogo, no de las features
+ *    centro · lo que más hace  — carga / pantalla de carga / Ángela
+ *    slot 3 · Ángela           — salvo para quien ya la tiene al centro
+ *
+ *  `puede` repite el recorte de `resolveView` para que la barra nunca ofrezca
+ *  una puerta que después se cierra. */
+export function barraDe(user) {
+  const tiene = (f) => (user?.features || []).includes(f);
+  const puede = (id) => {
+    if (!id) return false;
+    if (id === "insights") return tiene("alertas") || tiene("oportunidades");
+    if (id === "armado" || id === "parada") return tiene("logistica");
+    if (id === "angela" || id === "mi_dia") return true;
+    return tiene(id);
+  };
+  const centro = centroDe(user);
+  const inicio = tieneVistaHerramienta(user) || !tiene("panel") ? "mi_dia" : "panel";
+  const oficio = destinoDe(user, puede) || (puede("insights") ? "insights" : null);
+  const tercero = centro.tipo === "angela"
+    ? (puede("equipo") ? "equipo" : "insights")
+    : "angela";
+  const destinos = [inicio, oficio, tercero]
+    .filter(Boolean)
+    // Sin repetidos: si el oficio de alguien ES insights y el tercero también,
+    // se muestra una sola vez en vez de dos botones que hacen lo mismo.
+    .filter((x, i, xs) => xs.indexOf(x) === i);
+  return { destinos, centro };
+}
+
 /** ¿A esta persona le sirve la lupa? Los seis que quedan afuera —recepción,
  *  conteos, armado, ayudante y los dos choferes— llegan al dato por ESCANEO o
  *  desde su tarea, que es más rápido y no se equivoca de producto. Nahuel es el

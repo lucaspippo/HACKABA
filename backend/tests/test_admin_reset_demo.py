@@ -53,10 +53,16 @@ client = TestClient(main.app)
 
 antes_articulos = len(store.raw_actual())
 
+# The dataset seeds its own floor reports (data-demo/piso_seed): the demo has
+# to show the circuit, not an empty inbox. So the count that matters is the
+# DIFFERENCE, not an absolute — and reset has to leave the seed standing while
+# wiping what somebody did on top of it.
+sembrados = len(piso.listar())
+
 # mutate: a floor report that reset must wipe
 piso.reportar("faltante", "deposito",
               {"producto": "algo", "cantidad": 1, "motivo": "roto"})
-assert len(piso.listar()) == 1
+assert len(piso.listar()) == sembrados + 1
 
 r = client.post("/api/admin/reset-demo", params={"token": %(token)r})
 assert r.status_code == 200, (r.status_code, r.text)
@@ -69,6 +75,7 @@ print(json.dumps({
     "antes_articulos": antes_articulos,
     "despues_articulos": despues_articulos,
     "despues_reportes": despues_reportes,
+    "sembrados": sembrados,
 }))
 """
 
@@ -98,8 +105,12 @@ def test_reset_demo_clears_postgres_mutations_and_reseeds():
         assert out["antes_articulos"] > 0
         # inventory got wiped and re-seeded from the real dataset — same count
         assert out["despues_articulos"] == out["antes_articulos"]
-        # the mutation made before reset is gone
-        assert out["despues_reportes"] == 0
+        # the mutation made before reset is gone, and the dataset's own seeded
+        # reports came back — which is the half this test could not check while
+        # the demo started empty: "0 after reset" reads the same whether the
+        # re-seed worked or never ran.
+        assert out["sembrados"] > 0, "the dataset seeds floor reports"
+        assert out["despues_reportes"] == out["sembrados"]
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
         from core.db.engine import get_admin_engine

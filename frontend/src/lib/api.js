@@ -295,6 +295,11 @@ export const api = {
       ? `?${[tipo && `tipo=${tipo}`, estado && `estado=${estado}`].filter(Boolean).join("&")}` : ""}`),
     resolver: (rid, nota = "") => post(`/api/piso/reportes/${rid}/resolver`, { nota }),
     propuestas: () => get("/api/piso/propuestas"),
+    // La foto de la prueba. Va como <img src>, que no puede mandar headers, así
+    // que el token viaja en la query — el endpoint ya lo acepta por ahí, y lo
+    // recorta igual: sólo el dueño y quien la sacó.
+    pruebaUrl: (rid) => apiUrl(`/api/piso/reportes/${rid}/prueba?token=${
+      encodeURIComponent(authStore.getSnapshot()?.token || "")}`),
   },
   // PDF real (P17): manda el draft EDITADO (la única copia con los cambios
   // del usuario vive en el docStore) y vuelve el binario para descargar.

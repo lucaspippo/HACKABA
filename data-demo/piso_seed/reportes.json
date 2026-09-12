@@ -1,0 +1,24 @@
+{
+  "_nota": "Lo que el piso reportó, sembrado. Hasta ahora el tenant demo arrancaba con CERO reportes, y por eso el circuito entero —el aviso dirigido, el acuse, el reclamo que el dueño aprueba— no se veía en ninguna pantalla aunque el motor existiera desde hace meses. Esto no es comportamiento falso: son filas reales que entran por el mismo repositorio que usa piso.reportar(), con la misma forma, y que se pueden ver, resolver y cerrar como cualquier otra.",
+  "_fecha": "Las fechas son relativas al hoy congelado del demo (POLPILOT_DEMO_TODAY=2026-07-07). El faltante es del 06/07: entró ayer, todavía sin resolver, que es justo el estado en que el dueño lo tiene que ver.",
+  "_prueba": "`prueba_archivo` es una imagen de ESTE directorio, que está versionada. Se copia a data-demo/piso_adjuntos/ al sembrar, porque ese directorio está en .gitignore (es de runtime) — mismo patrón que fotos_seed/ → fotos/. Sin la copia el reporte quedaría apuntando a un archivo que no existe.",
+  "reportes": [
+    {
+      "id": "seed-p001",
+      "tipo": "faltante",
+      "actor": "nahuel",
+      "destinatario": "celeste",
+      "fecha": "2026-07-06",
+      "cuando": "2026-07-06T09:14:00",
+      "estado": "nuevo",
+      "prueba_archivo": "faltante-manteca.png",
+      "datos": {
+        "producto": "MANTECA CAMPO ALEGRE 200G (X30U)",
+        "codigo": 1239,
+        "cantidad": 4,
+        "motivo": "roto",
+        "nota": "Cuatro cajas de manteca vinieron aplastadas abajo del pallet. Las separé y les saqué la foto. Es de la orden que está abierta de Campo Alegre."
+      }
+    }
+  ]
+}

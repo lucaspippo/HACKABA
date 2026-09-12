@@ -47,8 +47,10 @@ lee "qué resolvió esta semana" del panel del dueño (main._TRABAJO_EXTRA).
 from __future__ import annotations
 
 import base64
+import json
 import os
 import secrets
+import shutil
 
 from . import fechas, insight as ins, paths
 from .audit import AuditLog
@@ -114,10 +116,57 @@ DESTINO = {
 }
 
 
+# Lo que el piso reportó, sembrado. Hasta ahora el tenant demo arrancaba con
+# CERO reportes y por eso el circuito entero —el aviso dirigido, el acuse, el
+# reclamo que el dueño aprueba— no se veía en ninguna pantalla aunque el motor
+# existiera. No es comportamiento falso: son filas que entran por el MISMO
+# repositorio que usa `reportar()`, con la misma forma, y que se ven, se
+# resuelven y se cierran como cualquier otra.
+PISO_SEED_DIR = os.path.join(paths.DATA_DIR, "piso_seed")
+PISO_SEED_JSON = os.path.join(PISO_SEED_DIR, "reportes.json")
+
+
+def _seed_inicial() -> list[dict]:
+    """Los reportes del archivo del tenant, listos para insertar.
+
+    La prueba se COPIA de `piso_seed/` (versionado) a `piso_adjuntos/` (que está
+    en .gitignore porque es de runtime) — mismo patrón que fotos_seed/ → fotos/.
+    Sin la copia el reporte apuntaría a un archivo que no existe.
+    """
+    try:
+        with open(PISO_SEED_JSON, encoding="utf-8") as f:
+            filas = (json.load(f) or {}).get("reportes") or []
+    except Exception:  # noqa: BLE001 — sin archivo, el módulo se calla
+        return []
+    out = []
+    for r in filas:
+        r = dict(r)
+        archivo = r.pop("prueba_archivo", None)
+        if archivo:
+            origen = os.path.join(PISO_SEED_DIR, archivo)
+            if os.path.exists(origen):
+                ext = archivo.rsplit(".", 1)[-1]
+                nombre = f"{r['id']}.{ext}"
+                os.makedirs(ADJUNTOS_DIR, exist_ok=True)
+                shutil.copyfile(origen, os.path.join(ADJUNTOS_DIR, nombre))
+                r["adjunto"] = nombre
+        out.append(r)
+    return out
+
+
 def _load() -> list[dict]:
     from core.db import floor_reports_repo
     from core.db import tenant as _tenant
-    return floor_reports_repo.list_all(_tenant.current_tenant_id())
+    tid = _tenant.current_tenant_id()
+    filas = floor_reports_repo.list_all(tid)
+    if not filas:
+        # Vacío significa "nunca sembrado": la app no borra reportes en ningún
+        # camino —resolver los conserva— así que no hay forma de que alguien
+        # vacíe la tabla trabajando y le reaparezcan.
+        for r in _seed_inicial():
+            floor_reports_repo.create(tid, r)
+        filas = floor_reports_repo.list_all(tid)
+    return filas
 
 
 def _ahora() -> str:
@@ -402,7 +451,13 @@ def propuestas(lang: str | None = None) -> list[dict]:
         costo = (a or {}).get("costo_iva") or 0
         cant = float((r.get("datos") or {}).get("cantidad") or 0)
         g = por_prov.setdefault(prov, {"monto": 0.0, "items": [], "reportes": [],
-                                       "actores": set()})
+                                       "actores": set(), "prueba": None})
+        # La PRIMERA prueba que exista entre los reportes agrupados. El dueño
+        # decide un reclamo mirando la foto del que estaba ahí, no una
+        # ilustración: si hay una, la propuesta dice cuál para que la pantalla
+        # la pueda pedir. Sin foto el campo queda vacío y la card se arma igual.
+        if g["prueba"] is None and r.get("adjunto"):
+            g["prueba"] = r["id"]
         g["monto"] += cant * costo
         g["reportes"].append(r["id"])
         g["actores"].add(r["actor"])
@@ -458,6 +513,7 @@ def propuestas(lang: str | None = None) -> list[dict]:
             "resumen": _t(f"core.piso.reclamo_r{suf}", lang, n=n, quien=quien),
             "origen": "piso",
             "reportes": g["reportes"],
+            "prueba": g["prueba"],
             "orden_compra": (oc or {}).get("numero"),
             "accion_chat": _t("core.piso.reclamo_chat", lang, proveedor=prov),
             "fuentes": [_t("core.piso.f_reportes", lang), _t("core.piso.f_stock", lang)]

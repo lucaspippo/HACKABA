@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
-import { CATALOGO, accionesDe, atiendeMostrador, avisaDesdeElPiso, buscaEnMobile, cargaLk, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
+import { CATALOGO, accionesDe, barraDe, atiendeMostrador, avisaDesdeElPiso, buscaEnMobile, cargaLk, chipsDe, muestrasDe, rolDe, tieneVistaHerramienta } from "./roles";
 
 // The demo team, verbatim from backend/usuarios_demo.py. The role STRING is the
 // only input `rolDe` gets — there is no list of usernames anywhere — so these
 // strings are the real contract, and a typo in a regex breaks a real person.
 const EQUIPO = [
-  { username: "aldo", rol: "Dueño", es_admin: true, features: [] },
+  // Las 21 del seed, no una lista vacía: el dueño no es alguien "sin módulos",
+  // es alguien que los tiene todos, y con la lista vacía la barra no se podía
+  // comprobar (ni ninguna otra regla que dependa de lo que él ve).
+  { username: "aldo", rol: "Dueño", es_admin: true,
+    features: ["panel", "mapa", "inventario", "saneamiento", "finanzas", "cuentas", "caja", "deposito",
+               "logistica", "evolucion", "alertas", "oportunidades", "equipo", "gestion_equipo",
+               "cargar", "documentos", "cobranzas", "auditoria", "conectores", "perfil", "angela"] },
   { username: "marta", rol: "Administración", es_admin: false,
     features: ["panel", "administracion", "cuentas", "caja", "saneamiento", "documentos", "evolucion", "cargar", "alertas", "equipo", "perfil", "angela"] },
   { username: "celeste", rol: "Compras y proveedores", es_admin: false,
@@ -199,6 +205,79 @@ describe("buscaEnMobile", () => {
   it("leaves the warehouse floor and the drivers out", () => {
     for (const x of ["nahuel", "tomas", "brian", "kevin", "walter", "osmar"]) {
       expect(buscaEnMobile(de(x))).toBe(false);
+    }
+  });
+});
+
+describe("barraDe", () => {
+  // La barra es lo que esta persona HACE, no lo que puede ver. Antes se
+  // escaneaban features y por eso Aldo terminaba con seis ítems, uno de ellos
+  // "Mi ruta" — el dueño no reparte. Ramón igual: tener `logistica` no es salir
+  // a la calle. Acá queda pinneado el equipo entero.
+  const barra = (u: string) => barraDe(de(u));
+
+  it("never gives anyone more than three destinations", () => {
+    for (const u of EQUIPO) {
+      expect(barraDe(u).destinos.length).toBeLessThanOrEqual(3);
+      expect(new Set(barraDe(u).destinos).size).toBe(barraDe(u).destinos.length);
+    }
+  });
+
+  it("keeps the route out of everyone who does not drive one", () => {
+    // Ramón and Aldo both hold `logistica`; neither of them delivers anything.
+    for (const u of EQUIPO) {
+      const conRuta = barraDe(u).destinos.includes("parada");
+      expect(conRuta).toBe(["walter", "osmar"].includes(u.username));
+    }
+  });
+
+  it("gives the owner three destinations and Ángela in the centre", () => {
+    // He does not load anything: he decides and he asks.
+    expect(barra("aldo")).toEqual({
+      destinos: ["panel", "insights", "equipo"],
+      centro: { tipo: "angela", lk: "mnav.angela" },
+    });
+  });
+
+  it("gives the drivers their stop, and the picker his picking", () => {
+    expect(barra("walter").destinos).toEqual(["mi_dia", "parada", "angela"]);
+    expect(barra("brian").destinos).toEqual(["mi_dia", "armado", "angela"]);
+    // The route replaces the warehouse for the driver — it is not added to it.
+    expect(barra("walter").destinos).not.toContain("deposito");
+  });
+
+  it("keeps each warehouse trade on the warehouse, not on the street", () => {
+    for (const u of ["ramon", "nahuel", "tomas", "kevin"]) {
+      expect(barra(u).destinos).toEqual(["mi_dia", "deposito", "angela"]);
+    }
+  });
+
+  it("sends the offices to their own loading screen, not to a floor sheet", () => {
+    // They write; they do not flag things from the floor. Their loading is
+    // receipts and files.
+    for (const u of ["marta", "celeste"]) {
+      expect(barra(u).centro.tipo).toBe("navegar");
+      expect(barra(u).centro.a).toBe("cargar");
+    }
+  });
+
+  it("puts the load button on every trade that flags from the floor", () => {
+    for (const u of ["ramon", "nahuel", "tomas", "brian", "kevin", "walter",
+                     "osmar", "diego", "lucia", "vanesa", "norma"]) {
+      expect(barra(u).centro.tipo).toBe("hoja");
+    }
+  });
+
+  it("never offers a destination the person cannot reach", () => {
+    const necesita: Record<string, string[]> = {
+      panel: ["panel"], deposito: ["deposito"], armado: ["logistica"],
+      parada: ["logistica"], cobranzas: ["cobranzas"],
+      administracion: ["administracion"], equipo: ["equipo"],
+    };
+    for (const u of EQUIPO) {
+      for (const d of barraDe(u).destinos) {
+        for (const f of necesita[d] ?? []) expect(u.features).toContain(f);
+      }
     }
   });
 });
