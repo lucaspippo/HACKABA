@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Text, nullable=False),
         sa.Column("actor", sa.Text, nullable=False),
         sa.Column("channel", sa.Text, nullable=False, server_default=sa.text("'chat'")),
-        sa.Column("status", sa.Text, nullable=False, server_default=sa.text("'abierta'")),
+        sa.Column("status", sa.Text, nullable=False, server_default=sa.text("'open'")),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
         sa.Column("last_message_at", sa.TIMESTAMP(timezone=True), nullable=False,

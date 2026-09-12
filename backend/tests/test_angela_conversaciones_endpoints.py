@@ -44,22 +44,22 @@ def test_chat_persists_the_user_side_of_the_turn(aldo_token, monkeypatch):
     got = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
                      params={"actor": "aldo"})
     assert got.status_code == 200
-    convs = got.json()["conversaciones"]
+    convs = got.json()["conversations"]
     assert convs, "expected a persisted conversation for aldo"
 
     full = client.get(f"/api/angela/conversaciones/{convs[0]['id']}", headers=_h(aldo_token))
     assert full.status_code == 200
-    mensajes = full.json()["mensajes"]
+    messages = full.json()["messages"]
     assert any(m["role"] == "user" and m["content"] == "¿cuánto vendimos hoy?"
-              for m in mensajes)
+              for m in messages)
 
 
-def test_conversaciones_requires_auditoria_feature(marta_token):
+def test_conversations_requires_auditoria_feature(marta_token):
     r = client.get("/api/angela/conversaciones", headers=_h(marta_token))
     assert r.status_code == 403
 
 
-def test_conversaciones_requires_auth():
+def test_conversations_requires_auth():
     r = client.get("/api/angela/conversaciones")
     assert r.status_code == 401
 
