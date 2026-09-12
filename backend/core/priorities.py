@@ -304,9 +304,16 @@ def _merge_insights(keep: dict, extra: dict) -> dict:
             rows.append(row)
         merged[key] = rows
 
-    # pattern / hypothesis / risk / recommendation / deadline: keep the
-    # canonical card's. Concatenating two readings of one fact is what
-    # produced the duplicated prose this contract replaces.
+    # pattern: keep the canonical card's, unconditionally. Concatenating
+    # two readings of one fact is what produced the duplicated prose this
+    # contract replaces.
+    #
+    # hypothesis / risk / recommendation / deadline: keep the canonical
+    # card's when it has one, but fall back to the twin's rather than
+    # silently dropping the only interpretation the merged card had.
+    for key in ("hypothesis", "risk", "recommendation", "deadline"):
+        if merged.get(key) is None:
+            merged[key] = extra.get(key)
     return merged
 
 
@@ -635,9 +642,7 @@ def _alerts_cuentas(lang) -> list[dict]:
                                              nombre=d["nombre"])),
                 evidence=[
                     ins.metric("days_overdue",
-                               label=_t("core.prio.atraso_r", lang,
-                                        dias=_num(d["dias_sin_pagar"], lang),
-                                        atraso=_num(d["atraso_vs_promedio"], lang)),
+                               label=_t("core.prio.atraso_r_lbl", lang),
                                value=d["dias_sin_pagar"], unit="days", weight="primary",
                                baseline={"value": prom,
                                          "label": _t("core.method.prom_pago", lang)},

@@ -276,8 +276,8 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
         hypothesis=ins.hypothesis(_t("core.pat.caja_hyp", lang, dia=weekday_name)),
         evidence=[
             ins.metric("shortfall_rate",
-                       label=_t("core.pat.caja_r", lang, pct=pct, dia=weekday_name,
-                                pct_resto=pct_rest, total=_money(total, lang), n=len(diffs)),
+                       label=_t("core.pat.caja_r_lbl", lang, dia=weekday_name,
+                                total=_money(total, lang), n=len(diffs)),
                        value=pct, unit="pct",
                        baseline={"value": pct_rest,
                                  "label": _t("core.pat.caja_baseline", lang)},
