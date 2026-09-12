@@ -5,6 +5,8 @@ model called it, so the owner was told his own instruction needed someone's
 approval and every ignored suggestion piled up in a review queue. It now
 validates and returns a payload; POST /api/conocimiento/confirm writes it.
 """
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -288,3 +290,16 @@ def test_edit_endpoint_404s_on_a_missing_piece(tokens):
     r = client.post("/api/conocimiento/no-existe/editar", json={"texto": "x"},
                     headers={"Authorization": f"Bearer {tokens['emilio']}"})
     assert r.status_code == 404
+
+
+def test_age_days_counts_from_origen_cuando():
+    pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela",
+                               origen={"quien": "aldo", "cuando": "2026-08-01"})
+    assert conocimiento.age_days(pieza, today=date(2026, 9, 10)) == 40
+
+
+def test_age_days_is_none_without_origen():
+    pieza = conocimiento.crear(texto="x", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela")
+    assert conocimiento.age_days(pieza) is None

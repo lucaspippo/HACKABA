@@ -209,6 +209,22 @@ def resumen_pieza(p: dict) -> dict:
             "cuando": origen.get("cuando"), "quien": origen.get("quien")}
 
 
+def age_days(p: dict, *, today=None) -> int | None:
+    """Days since this piece was taught, or None if origen.cuando is
+    missing (a piece seeded without provenance)."""
+    cuando = (p.get("origen") or {}).get("cuando")
+    if not cuando:
+        return None
+    from datetime import date as _date
+    from . import fechas
+    ref = today or fechas.hoy()
+    try:
+        taught = _date.fromisoformat(cuando[:10])
+    except ValueError:
+        return None
+    return (ref - taught).days
+
+
 # --- scope por rol ------------------------------------------------------------
 
 def visibles_para(usuario: dict, piezas: list[dict] | None = None) -> list[dict]:
