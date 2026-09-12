@@ -27,6 +27,20 @@ if "POLPILOT_DATA_DIR" not in os.environ:
                  os.path.join(_scratch, "inventory.json"))
     os.environ["POLPILOT_DATA_DIR"] = _scratch
 
+# The suite gets its OWN database (polpilot_test), provisioned and migrated
+# here. This MUST happen before core.db.engine is imported below: that module
+# reads DATABASE_URL/APP_DATABASE_URL and caches an engine per process, so a
+# redirect after the fact would arrive too late.
+#
+# Why it isn't optional: the "demo" credential reset further down deletes and
+# reseeds auth_credentials at IMPORT time. While the suite shared the dev
+# server's database, running `pytest` silently rewrote every demo user's dev
+# login password and left no record of the plaintext — nobody could log in
+# afterwards. See tests/dbsetup.py and tests/test_test_db_isolation.py.
+from .dbsetup import ensure_test_database as _ensure_test_database  # noqa: E402
+
+_ensure_test_database()
+
 # auth.py is now Postgres-backed (see core/db/), so the suite's pinned
 # "piloto" tenant needs a row in `tenants` before any test that touches
 # login/credentials runs — idempotent, so re-running the suite is a no-op.

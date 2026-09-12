@@ -3,7 +3,10 @@
 *.env
 !.env.example
 backend/credenciales.json
-data-demo/credenciales.json
+# data-demo/credenciales.json ya no existe: las credenciales viven hasheadas en
+# Postgres (auth_credentials) y el plaintext no se persiste nunca. Se mantiene
+# el patrón por si un checkout viejo dejó el archivo huérfano dando vueltas.
+credenciales.json
 
 # Dependencias y builds
 node_modules/
