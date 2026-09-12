@@ -47,17 +47,16 @@ RUN test ! -e /app/data && \
       echo "GUARDIA: nombre/asset/datos del piloto en el bundle servido (frontend/dist)" && exit 1; fi && \
     echo "guardia de privacidad: OK (sin asset ni datos del piloto en la demo)"
 
-# El demo entero por env (los defaults seguros; la API key va como secret en Render)
-ENV POLPILOT_TENANT=demo \
-    POLPILOT_DATA_DIR=/app/data-demo \
-    POLPILOT_CANONICAL_DIR=/app/canonical \
+# Image-wide layout only. Everything tenant- or demo-specific lives in the
+# service's envVars (see render.yaml): this image is built once and must be
+# usable by any tenant. It used to bake in the tenant slug and the demo
+# switches, which meant a productive service built from this image came up
+# autologged-in as the tenant owner unless every one of them was overridden
+# by hand — silently. tests/test_deploy_config.py now asserts none of those
+# names appear in this file at all, comments included, so do not name them
+# here even to explain them.
+ENV POLPILOT_CANONICAL_DIR=/app/canonical \
     POLPILOT_STATIC_DIR=/app/frontend/dist \
-    POLPILOT_DEFAULT_LANG=en \
-    POLPILOT_DEMO_TODAY=2026-07-07 \
-    POLPILOT_DEMO_ROLE_SWITCH=1 \
-    POLPILOT_DEMO_AUTOLOGIN=1 \
-    POLPILOT_DEMO_MSG_CAP=35 \
-    POLPILOT_DEMO_IP_CAP=60 \
     PYTHONUNBUFFERED=1
 
 EXPOSE 8000
