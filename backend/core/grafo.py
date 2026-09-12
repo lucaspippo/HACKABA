@@ -444,6 +444,85 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
         if t and (s, t) not in vistos and (t, s) not in vistos:
             add_arista(s, t, "traslado", monto=round(monto, 2))
 
+    # --- LA CAPA FÍSICA: dónde está parada cada cosa --------------------------
+    #
+    # POR QUÉ ESTO EXISTE, y es el arreglo de un agujero que se veía en vivo.
+    #
+    # Seis de las treinta y una notas del equipo tenían GRADO CERO: ni una
+    # arista. Y eran justo las de los dos casos que contamos — las cuatro de la
+    # Cámara de frío 2 y las dos del Pasillo 4. La causa no era el dibujo: esas
+    # notas hablan de un LUGAR, y el grafo sólo sabía resolver cliente,
+    # producto y proveedor. Una persona que avisa sobre una cámara no tenía con
+    # qué conectarse, así que quedaba flotando al costado del lienzo.
+    #
+    # Eso es exactamente lo contrario de la tesis. En pantalla se leía «la
+    # gente está afuera del sistema», cuando lo que queremos mostrar es que lo
+    # que dijo una persona se engancha con lo que el sistema ya sabía.
+    #
+    # La ubicación es un nodo de primera clase, entonces, y sale del mismo
+    # export del depósito que ya alimenta todo lo demás. No se inventa nada:
+    # las 21 ubicaciones existen en `apartados.deposito`.
+    ubis_por_nombre: dict[str, str] = {}
+    try:
+        from . import deposito as _dep
+        filas_dep = _dep._filas()
+        por_ubi: dict[str, list] = {}
+        for f in filas_dep:
+            u = (f.get("ubicacion") or "").strip()
+            if u:
+                por_ubi.setdefault(u, []).append(f)
+        for u, filas in por_ubi.items():
+            uid = f"ubi:{_norm(u)}"
+            ubis_por_nombre[_norm(u)] = uid
+            # El frío es lo que duele: se marca distinto de un rack seco.
+            es_frio = any(p in u.lower() for p in ("camara", "cámara", "frio", "frío"))
+            nodos[uid] = _nodo(
+                uid, "ubicacion", u, seccion="deposito",
+                frio=es_frio,
+                metricas=[{"k": "partidas", "v": len(filas), "fmt": "num"},
+                          {"k": "unidades",
+                           "v": round(sum(float(x.get("cantidad") or 0) for x in filas), 1),
+                           "fmt": "num"}])
+            # Qué guarda: los seis lotes que vencen ANTES. Seis y no todos
+            # porque una ubicación con 41 partidas colgando vuelve a ser la
+            # nube que estamos sacando; y por vencimiento y no por plata
+            # porque lo que hace interesante a un lugar es lo que se le va a
+            # arruinar, que es justo el nodo que el cruce necesita tocar.
+            urgentes = sorted(filas, key=lambda x: x.get("vencimiento") or "9999")[:6]
+            for f in urgentes:
+                cod = f.get("codigo")
+                if cod is not None and por_codigo.get(int(cod)):
+                    add_arista(uid, por_codigo[int(cod)], "guarda",
+                               lote=f.get("lote"), vence=f.get("vencimiento"))
+    except Exception:  # noqa: BLE001 — sin export de depósito, el grafo es el de antes
+        pass
+
+    # --- LA CAPA HUMANA: quién dijo qué --------------------------------------
+    #
+    # La persona como nodo, y no como un texto adentro de la nota. Es la mitad
+    # de la tesis: el dato no existe hasta que alguien lo dice. Con la persona
+    # dibujada, el camino se lee como una cadena que empieza en alguien:
+    #
+    #     Ramón → «no entra más nada» (WhatsApp) → Cámara de frío 2 → el salame
+    #     que vence en once días
+    #
+    # Sale de los autores de las notas, que ya existen. Trece personas.
+    personas_por_usuario: dict[str, str] = {}
+    try:
+        from . import notas as _notas_p
+        import auth as _auth
+        for usuario, cuantas in _notas_p.autores().items():
+            pid = f"persona:{_norm(usuario)}"
+            u = (_auth.USUARIOS.get(str(usuario).strip().lower()) or {})
+            personas_por_usuario[usuario] = pid
+            nodos[pid] = _nodo(
+                pid, "persona", u.get("nombre") or str(usuario).title(),
+                seccion="equipo", usuario=usuario, rol=u.get("rol"),
+                metricas=[{"k": "avisos", "v": cuantas, "fmt": "num"},
+                          {"k": "rol", "v": u.get("rol"), "fmt": "texto"}])
+    except Exception:  # noqa: BLE001
+        pass
+
     # --- LO NO ESTRUCTURADO: lo que el equipo le contó a Ángela ---------------
     # Un tipo de entidad nuevo, y el único que no sale de una tabla: son notas
     # de personas (voz del piso, reportes, chat). Cuelgan de la entidad que
@@ -479,9 +558,20 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
                           {"k": "canal", "v": nt.get("canal"), "fmt": "texto"},
                           {"k": "fecha", "v": nt.get("fecha"), "fmt": "fecha"},
                           {"k": "tema", "v": nt.get("tipo"), "fmt": "texto"}])
+            # QUIÉN LO DIJO. La arista que convierte una nota suelta en el
+            # testimonio de alguien con nombre y oficio.
+            quien = personas_por_usuario.get(nt.get("autor"))
+            if quien:
+                add_arista(quien, nid, "dijo", canal=nt.get("canal"))
+
             for campo, idx, tipos in (("cliente", por_cliente_nombre, ("cliente",)),
                                       ("producto", idx_prod, ("producto",)),
-                                      ("proveedor", None, ("proveedor",))):
+                                      ("proveedor", None, ("proveedor",)),
+                                      # EL ARREGLO DEL GRADO CERO: la ubicación
+                                      # entra al mismo mecanismo que ya existía.
+                                      # No es un caso especial, es una entidad
+                                      # más que la nota puede nombrar.
+                                      ("ubicacion", ubis_por_nombre, ("ubicacion",))):
                 valor = nt.get(campo)
                 if not valor:
                     continue
@@ -526,6 +616,46 @@ def construir(sin_notas: frozenset | set | None = None) -> dict:
 # =============================================================================
 
 _SEMILLA_CAMPOS = ("producto", "cliente", "proveedor")
+
+# --- QUÉ RELACIÓN EXPLICA UN HALLAZGO, Y CUÁL ES SÓLO ESTRUCTURA -------------
+#
+# El grafo entero son 1.889 aristas, y tres relaciones se llevan el 78%:
+# `coventa` (615), `pertenece` (427) y `provee` (427). Las tres son verdaderas
+# y ninguna explica nunca por qué hay un problema hoy: que dos productos se
+# vendan juntos, que un producto sea del rubro lácteos o que tal proveedor lo
+# traiga es el DECORADO del negocio, no la causa de nada.
+#
+# Las que sí explican son pocas y están del lado de lo que pasó: alguien dijo
+# algo (`menciona`, `dijo`), está guardado en tal lado (`guarda`), este cliente
+# debe (`debe`), esta orden pidió esto (`pide`, `ordena`), esta regla de la casa
+# aplica acá (`aplica_a`).
+#
+# `coventa` no se expande NUNCA y aun así sigue existiendo en el grafo: si el
+# jurado pide ver todo, está. Lo que cambia es qué se trae al encender un
+# camino.
+EXPANDE_NUNCA = frozenset({"coventa", "pertenece", "traslado"})
+
+# Cuántos vecinos por relación se admiten desde UNA semilla. Las que explican
+# entran casi enteras; las de volumen entran con cuentagotas, para que un
+# proveedor con setenta productos no vuelva a tapar la nota que prueba el cruce.
+EXPANDE_TOPE = {
+    "menciona": 12, "dijo": 12, "guarda": 6, "aplica_a": 6,
+    "debe": 6, "entrega": 6, "ordena": 6, "pide": 6,
+    "compra": 4, "provee": 4, "vende": 3,
+}
+TOPE_REL_DEFAULT = 3
+
+# El orden en que se miran: primero lo que explica. Con el tope de arriba, esto
+# decide QUIÉN entra cuando hay más candidatos que lugar.
+_ORDEN_REL = ("menciona", "dijo", "guarda", "aplica_a", "debe", "pide",
+              "ordena", "entrega", "compra", "provee", "vende")
+
+
+def _prioridad_rel(rel: str) -> int:
+    try:
+        return _ORDEN_REL.index(rel)
+    except ValueError:
+        return len(_ORDEN_REL)
 
 
 def _resolver(nombre: str, indice: dict, tipos: tuple) -> str | None:
@@ -602,13 +732,30 @@ def caminos(g: dict, cards: list[dict]) -> list[dict]:
 
         conjunto = set(semillas)
         for nid in semillas:
-            # un salto: con quién se cruza esta entidad. Los locales quedan
-            # afuera salvo que la semilla sea el propio local (son hubs de todo
-            # y meterlos arrastra medio grafo al camino).
-            for a in vecinos.get(nid, [])[:14]:
+            # UN SALTO, PERO NO CUALQUIERA. Antes se tomaban los primeros 14
+            # vecinos en el orden en que estaban, y eso traía basura: el camino
+            # de «la cámara está llena» terminaba con 41 nodos, de los cuales 26
+            # eran productos que entraron por co-venta — mayonesas y lentejas
+            # alrededor de cuatro post-its. Medido en vivo: de sus 54 aristas,
+            # NINGUNA tocaba una nota.
+            #
+            # El criterio ahora es por qué EXPLICA la relación, no por orden de
+            # aparición. Ver EXPANDE_* arriba.
+            candidatas = sorted(
+                vecinos.get(nid, []),
+                key=lambda a: (_prioridad_rel(a["rel"]), -abs(a.get("monto") or 0)))
+            usados: dict[str, int] = {}
+            for a in candidatas:
+                rel = a["rel"]
+                if rel in EXPANDE_NUNCA:
+                    continue
+                tope = EXPANDE_TOPE.get(rel, TOPE_REL_DEFAULT)
+                if usados.get(rel, 0) >= tope:
+                    continue
                 otro = a["target"] if a["source"] == nid else a["source"]
                 if indice[otro]["tipo"] == "local" and len(semillas) > 2:
                     continue
+                usados[rel] = usados.get(rel, 0) + 1
                 conjunto.add(otro)
             if indice[nid]["tipo"] == "cliente":
                 cta = nid.replace("cli:", "cuenta:")
