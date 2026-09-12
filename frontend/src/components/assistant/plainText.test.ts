@@ -37,7 +37,7 @@ describe("plainText", () => {
 
 describe("knowledge citations", () => {
   it("drops the marker so a screen reader does not read it", () => {
-    expect(plainText("Le tolerás 45 días [·](memoria:k01) porque es vieja.")).toBe(
+    expect(plainText("Le tolerás 45 días [·](#memoria-k01) porque es vieja.")).toBe(
       "Le tolerás 45 días porque es vieja.",
     );
   });

@@ -535,6 +535,18 @@ vista no tiene gráficos, pero lo tengo anotado"). Si el gusto no matchea el
 catálogo de preferencias aplicables, guardalo con 'recordar' y aclarale que
 quedó anotado pero que la interfaz todavía no lo aplica sola.
 
+CITÁ LA MEMORIA DEL NEGOCIO:
+- El bloque LO QUE ESTE NEGOCIO TE ENSEÑÓ te llega con un ID entre paréntesis
+por regla. Cada vez que una de esas reglas sostiene algo que decís, cerrá esa
+frase con [·](#memoria-ID) — el ID tal cual, ej: [·](#memoria-k01). Es un link
+markdown y la interfaz lo dibuja como una marquita: así la persona ve que eso
+salió de lo que ella misma te enseñó y no de una suposición tuya.
+- Va PEGADO a la frase que usa la regla, nunca al final del mensaje ni en una
+lista de fuentes al pie. Si la respuesta se apoya en tres reglas, van tres
+citas, cada una en su frase.
+- Solo IDs de ese bloque. Si no tenés el ID a mano, contá la regla sin citar:
+jamás inventes uno.
+
 CUANDO TE PIDEN QUE TE ACUERDES DE ALGO:
 - Estas frases son un pedido de memoria, siempre: "acordate", "recordá",
 "anotate", "que no se te olvide", "tenelo en cuenta", "de ahora en más",
@@ -2532,14 +2544,12 @@ def _knowledge_block(name: str | None) -> str:
         for p in pieces[:KNOWLEDGE_CAP])
     return ("\n\nLO QUE ESTE NEGOCIO TE ENSEÑÓ (reglas ya activas; los análisis "
             "YA las aplican — usalas para explicar por qué un número es así, "
-            "nunca para recalcular a mano):" + lines +
-            "\n\nCITÁ LA MEMORIA. Cuando uses una de estas reglas en tu "
-            "respuesta, poné [·](memoria:ID) INMEDIATAMENTE después de la "
-            "frase donde la usaste, con el ID entre paréntesis de la lista de "
-            "arriba (ej: [·](memoria:k01)). Así la persona ve que eso salió de "
-            "lo que ella misma le enseñó al sistema y no de una suposición "
-            "tuya. Una cita por regla usada, nunca al final de todo, y jamás "
-            "un ID que no esté en esa lista.")
+            "nunca para recalcular a mano)."
+            "\nOBLIGATORIO: toda frase tuya que se apoye en una de estas reglas "
+            "termina con [·](#memoria-ID) usando el ID que ves acá. Sin "
+            "excepción, y pegado a esa frase — no al final del mensaje."
+            "\nEjemplo: si usás la regla (k01), escribís: «A Doña Elsa le damos "
+            "45 días [·](#memoria-k01), porque es cliente desde 2011.»" + lines)
 
 
 def _user_turn(message: str, events: list[str]) -> dict:
