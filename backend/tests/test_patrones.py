@@ -217,6 +217,118 @@ def test_they_enter_the_priorities_inbox(monkeypatch):
     assert "faltante_caja_patron" not in [i["id"] for i in without_caja["watch"]]
 
 
+# --- 3 · closing the loop: feedback on a finding -------------------------------
+
+def _patch_tenant(monkeypatch, tenant_id):
+    from core.db import tenant as tenant_module
+    monkeypatch.setattr(tenant_module, "current_tenant_id", lambda: tenant_id)
+
+
+def test_feedback_invalidates_the_priorities_inbox_cache(monkeypatch, db_tenant):
+    """priorities.inbox() caches its compose (core/analisis_cache.py) — a
+    regression here means the owner keeps seeing a finding they just gave
+    feedback on until something ELSE happens to bust the cache first."""
+    from core import ventas_cliente, priorities, analisis_cache
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    analisis_cache.limpiar()
+    before = priorities.inbox("es", features=("caja", "cuentas", "oportunidades"))
+    assert "combo_no_percibido" in [i["id"] for i in before["act"]]
+
+    patrones.record_feedback("combo_no_percibido", "dismissed", actor="aldo", lang="es")
+
+    after = priorities.inbox("es", features=("caja", "cuentas", "oportunidades"))
+    assert "combo_no_percibido" not in [i["id"] for i in after["act"]]
+
+
+def test_feedback_hides_the_exact_finding_it_was_given_on(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    before = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" in before
+
+    patrones.record_feedback("combo_no_percibido", "dismissed", actor="aldo", lang="es")
+
+    after = [c["id"] for c in patrones.cards("es")]
+    assert "combo_no_percibido" not in after
+
+
+def test_feedback_does_not_hide_a_different_instance_of_the_same_pattern(monkeypatch, db_tenant):
+    """Dismissing the yerba/sugar combo shouldn't silence a LATER, genuinely
+    different pair that happens to trip the same detector — the fingerprint,
+    not the pattern id, is what "already handled" is keyed on."""
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    patrones.record_feedback("combo_no_percibido", "dismissed", actor="aldo", lang="es")
+    assert "combo_no_percibido" not in [c["id"] for c in patrones.cards("es")]
+
+    # A different pair (different codes) now becomes the top finding.
+    other_pair_orders = _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3)
+    for order in other_pair_orders:
+        for item in order["items"]:
+            item["codigo"] += 100  # a different SKU pair -> a different fingerprint
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: other_pair_orders)
+    assert "combo_no_percibido" in [c["id"] for c in patrones.cards("es")]
+
+
+def test_feedback_on_a_card_that_is_not_live_raises(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
+    import pytest
+    with pytest.raises(KeyError):
+        patrones.record_feedback("combo_no_percibido", "dismissed", actor="aldo", lang="es")
+
+
+def test_feedback_rejects_an_unknown_action(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    import pytest
+    with pytest.raises(ValueError):
+        patrones.record_feedback("combo_no_percibido", "not_a_real_action", actor="aldo", lang="es")
+
+
+def test_feedback_history_snapshots_the_finding_even_after_it_stops_firing(monkeypatch, db_tenant):
+    from core import ventas_cliente
+    _patch_tenant(monkeypatch, db_tenant)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    recorded = patrones.record_feedback("combo_no_percibido", "already_knew",
+                                        actor="aldo", note="ya lo veníamos haciendo", lang="es")
+    assert recorded["action"] == "already_knew"
+    assert recorded["note"] == "ya lo veníamos haciendo"
+    assert "YERBA X" in recorded["snapshot"]["titulo"]
+
+    # The finding is gone from the live feed, but the history still has it.
+    monkeypatch.setattr(ventas_cliente, "all_orders", lambda: [])
+    hist = patrones.feedback_history()
+    assert len(hist) == 1
+    assert hist[0]["pattern_id"] == "combo_no_percibido"
+    assert "YERBA X" in hist[0]["snapshot"]["titulo"]
+
+
+def test_a_broken_feedback_lookup_does_not_hide_every_card(monkeypatch, db_tenant):
+    """core/patrones.py's own house rule (a broken signal must not kill the
+    section) applies to the feedback lookup too — a Postgres hiccup should
+    fail open (show the cards), not fail closed (hide everything)."""
+    from core import ventas_cliente
+    from core.db import tenant as tenant_module
+
+    def _boom():
+        raise RuntimeError("db is down")
+    monkeypatch.setattr(tenant_module, "current_tenant_id", _boom)
+    monkeypatch.setattr(ventas_cliente, "all_orders",
+                        lambda: _combo_orders(n_both=8, n_anchor_only=2, n_partner_only=3))
+    assert "combo_no_percibido" in [c["id"] for c in patrones.cards("es")]
+
+
 # --- the DEMO numbers, in a subprocess (same pattern as test_p38) -------------
 
 def _demo(expr: str):

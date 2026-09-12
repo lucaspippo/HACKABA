@@ -43,7 +43,7 @@ from core import (store, saneamiento, fase, memoria, importer, staging, anomalia
                   organizacion, documentos, cuentas, caja, sync, conectores,
                   deposito, logistica, recordatorios, perfiles, notificaciones,
                   evolucion, ventas, pagos, paths, conocimiento, piso, onboarding,
-                  whatsapp_channel)
+                  whatsapp_channel, patrones)
 import whatsapp_bot
 
 
@@ -2175,6 +2175,39 @@ def prioridades_get(u: dict = Depends(require_any_feature("alertas", "oportunida
     inbox() caches the unfiltered compose (`prioridades`) and cuts by role."""
     from core import priorities
     return priorities.inbox(_lang(u), perfiles.features_efectivas(u["username"]))
+
+
+class PatternFeedbackRequest(BaseModel):
+    card_id: str
+    action: str
+    note: str | None = None
+
+
+@app.post("/api/patrones/feedback")
+def patrones_feedback(req: PatternFeedbackRequest, u: dict = Depends(usuario_actual)):
+    """Owner's reaction (accepted/dismissed/already knew) to a continuous-
+    learning finding (core/patrones.py) — persisted so the same instance
+    doesn't resurface. Gated by the finding's own domain, not a fixed
+    feature, since each pattern id declares its own modules."""
+    needed = set(patrones.MODULES_BY_ID.get(req.card_id, ("__no_domain__",)))
+    if not needed <= set(perfiles.features_efectivas(u["username"])):
+        raise HTTPException(status_code=403,
+                            detail=i18n.t("authz.sin_feature", _lang(u), feature=req.card_id))
+    try:
+        return patrones.record_feedback(req.card_id, req.action, actor=u["username"],
+                                        note=req.note, lang=_lang(u))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except KeyError:
+        raise HTTPException(status_code=404,
+                            detail=i18n.t("api.patron_inexistente", _lang(u)))
+
+
+@app.get("/api/patrones/historial")
+def patrones_historial(u: dict = Depends(usuario_actual)):
+    """What Ángela has flagged through core/patrones.py and what the owner
+    said back — the Aprendizaje page's memory of past findings."""
+    return {"historial": patrones.feedback_history()}
 
 
 @app.get("/api/margenes")

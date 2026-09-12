@@ -166,6 +166,10 @@ def _unnoticed_combo_card(lang) -> dict | None:
         "#", False)
     return {
         "id": "combo_no_percibido", "tipo": "vender",
+        # Identifies THIS specific pair across requests, so feedback on it
+        # (see record_feedback) survives even after other numbers on the
+        # card change; a different pair firing later is a different finding.
+        "fingerprint": f"{anchor}:{partner}",
         "titulo": _t("core.pat.combo_t", lang, a=anchor_name, b=partner_name),
         "monto": amount, "monto_label": amount_label,
         "datos": {"producto_ancla": anchor_name, "producto_pareja": partner_name,
@@ -234,6 +238,9 @@ def _cash_shortfall_weekday_card(lang) -> dict | None:
                    "$", True)
     return {
         "id": "faltante_caja_patron", "tipo": "revisar",
+        # Identifies THIS weekday: if a different weekday becomes the
+        # outlier later, that's a different finding worth surfacing again.
+        "fingerprint": f"weekday:{weekday}",
         "titulo": _t("core.pat.caja_t", lang, dia=weekday_name),
         "monto": total,
         "datos": {"dia_semana": weekday, "dia_nombre": weekday_name, "pct_faltante": pct,
@@ -290,5 +297,59 @@ def cards(lang: str | None = None) -> list[dict]:
         if card:
             card["naturaleza"] = NATURE_BY_ID.get(card["id"], "accionable")
             out.append(card)
+    out = _drop_handled(out)
     out.sort(key=lambda c: -(c.get("monto") or 0))
     return out
+
+
+def _feedback_key(pattern_id: str, fingerprint: str | None) -> str:
+    return f"{pattern_id}:{fingerprint}"
+
+
+def _drop_handled(cards_: list[dict]) -> list[dict]:
+    """A finding the owner already reacted to (accepted / dismissed /
+    already knew) stays out of the feed — same "no dato, no card" spirit as
+    the thresholds above, just triggered by the owner's own word instead of
+    a statistic. A genuinely different instance (a different fingerprint)
+    still shows up normally."""
+    from core.db import pattern_feedback_repo
+    from core.db import tenant as _tenant
+    try:
+        handled = pattern_feedback_repo.latest_by_fingerprint(_tenant.current_tenant_id())
+    except Exception:  # noqa: BLE001 — a feedback lookup failure must not hide every card
+        return cards_
+    return [c for c in cards_ if _feedback_key(c["id"], c.get("fingerprint")) not in handled]
+
+
+def record_feedback(card_id: str, action: str, *, actor: str,
+                    note: str | None = None, lang: str | None = None) -> dict:
+    """Record the owner's reaction to the CURRENTLY live card `card_id`,
+    snapshotting its display text so a later history view can still show
+    what the finding was about after it stops firing. Raises KeyError if
+    that card isn't live right now (a stale request against an outdated
+    inbox, or feedback already given on this exact instance)."""
+    from core.db import pattern_feedback_repo
+    from core.db import tenant as _tenant
+    current = next((c for c in cards(lang) if c["id"] == card_id), None)
+    if not current or not current.get("fingerprint"):
+        raise KeyError(f"no live pattern finding for id={card_id!r}")
+    snapshot = {"titulo": current["titulo"], "resumen": current.get("resumen"),
+               "monto": current.get("monto"), "monto_label": current.get("monto_label")}
+    row = pattern_feedback_repo.create(
+        _tenant.current_tenant_id(), pattern_id=card_id,
+        fingerprint=current["fingerprint"], action=action, actor=actor,
+        snapshot=snapshot, note=note)
+    # priorities.inbox() caches its compose (core/analisis_cache.py) — without
+    # this, the just-recorded feedback wouldn't hide the card until something
+    # ELSE happened to invalidate the cache first.
+    from . import analisis_cache
+    analisis_cache.datos_cambiaron()
+    return row
+
+
+def feedback_history(limit: int = 50) -> list[dict]:
+    """Every feedback event this tenant has given, most recent first — the
+    Aprendizaje page's record of what Ángela flagged and what came of it."""
+    from core.db import pattern_feedback_repo
+    from core.db import tenant as _tenant
+    return pattern_feedback_repo.history(_tenant.current_tenant_id(), limit)
