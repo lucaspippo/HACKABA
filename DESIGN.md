@@ -193,10 +193,15 @@ responsive grid stretched between breakpoints.
   so dense desktop grids (the findings row, Evolution/Alerts/Opportunities) can step
   up to their widest column count on very wide monitors; evaluated in rem against a
   fixed 16px, independent of the density scale above.
+- **Mobile chrome:** no top bar. Content starts at the safe-area inset so the
+  working screen keeps the height the old header used to eat. The one persistent
+  chrome is the bottom nav.
 - **Mobile bottom nav:** `position: fixed; bottom: 0`, respects
-  `env(safe-area-inset-bottom)`, equal-width grid columns
-  (`repeat(n, minmax(0,1fr))`), Ángela's tab always present at center as a raised
-  circular button; `<main>` carries `pb-24` so content never sits under the bar.
+  `env(safe-area-inset-bottom)`, equal-width work slots
+  (`repeat(n, minmax(0,1fr))`) capped at three destinations + centre. Ángela's
+  centre slot is the sphere. Account is a trailing avatar (not a fifth
+  destination); search, inbox, profile, language and sign-out live in the Más
+  sheet. `<main>` carries `pb-24` so content never sits under the bar.
 - **Cards over grids of boxes:** the recurring content unit is a single flexible
   card shape (`CardNegocio`), reused across sections by changing accent and chip
   rather than building a new layout per section.
@@ -277,13 +282,16 @@ elevation. Hierarchy comes from spacing and weight, not from ornament.
 
 ### Navigation (Mobile Bottom Nav)
 - Fixed to the viewport bottom, `bg-crema/95` with `backdrop-blur`, single hairline
-  top border. Equal-width slots; each renders icon + micro-label
-  (`0.62rem`, `font-semibold`). Active tab: Ángela Blue icon + label, heavier icon
-  stroke width (2.4 vs 2) — weight and color carry the active state, never a
-  background pill.
-- Ángela's slot is structurally different from the rest: a raised circular button
-  (`h-9 w-9`, `bg-violeta`/Ángela Blue, `rounded-full`) that floats above the bar's
-  baseline — the one destination that is always present regardless of role.
+  top border. No companion top bar. Equal-width work slots; each renders icon +
+  micro-label (`0.62rem`, `font-semibold`). Active tab: Ángela Blue icon + label,
+  heavier icon stroke width (2.4 vs 2) — weight and color carry the active state,
+  never a background pill.
+- Ángela's centre slot is the sphere (`AngelaMark`), not a generic icon in a
+  blue circle — the one destination that is always present regardless of role.
+  A load/centre action that is the person's own work stays `tinta`, never Ángela Blue.
+- Account is a trailing avatar on the same bar (unread badge when the inbox has
+  mail). It opens the Más sheet — profile, search (when the role looks things up),
+  notifications, language, sign-out — and is not a fifth destination.
 
 ### The Ángela Sphere (signature component)
 The product's one deliberately expressive element against an otherwise restrained
@@ -317,5 +325,5 @@ otherwise idle). `prefers-reduced-motion` collapses all of these to a static fra
   exactly one hairline border and only diffuse, low-contrast shadows.
 - **Don't** style the Ángela sphere's motion states as generic loading spinners —
   idle/thinking/waiting are named, purposeful states, not decoration.
-- **Don't** collapse the mobile bottom nav's fixed five-slot, equal-width grid into
-  a scrolling or variable-width tab bar.
+- **Don't** turn the mobile work slots into a scrolling or variable-width tab
+  bar, or promote account / search / notifications into a fifth destination.

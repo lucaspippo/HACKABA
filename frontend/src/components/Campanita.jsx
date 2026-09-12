@@ -4,15 +4,12 @@ import { api } from "../lib/api";
 import { authStore } from "../lib/auth";
 import { useT } from "../lib/i18n";
 
-// La campanita: notificaciones internas de PolPilot (emitidas por el sistema).
-// Poll suave cada 30s; al abrir se refresca. Si llega un cambio de módulos,
-// refresca la sesión para que el nav muestre (o esconda) la sección al toque.
-export default function Campanita({ token, esAdmin, onVerSolicitud }) {
-  const t = useT();
+// Shared poll for the desktop bell and the mobile Más sheet. Soft 30s
+// refresh; a module-change notice also refreshes the session so the nav
+// shows (or hides) the section immediately.
+export function useNotificaciones(token) {
   const [items, setItems] = useState([]);
   const [noLeidas, setNoLeidas] = useState(0);
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
 
   const cargar = () => {
     if (!token) return;
@@ -27,9 +24,54 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
 
   useEffect(() => {
     cargar();
-    const t = setInterval(cargar, 30000);
-    return () => clearInterval(t);
+    const id = setInterval(cargar, 30000);
+    return () => clearInterval(id);
   }, [token]);
+
+  const marcarLeida = async (n) => {
+    if (!n.leida) {
+      try { await api.notificacionLeida(n.id, token); } catch { /* retry on reload */ }
+      cargar();
+    }
+  };
+
+  return { items, noLeidas, cargar, marcarLeida };
+}
+
+export function NotificacionesLista({ items, esAdmin, onPick }) {
+  const t = useT();
+  if (items.length === 0) {
+    return <p className="px-2 py-1 text-sm text-tinta-suave">{t("campanita.vacio")}</p>;
+  }
+  return (
+    <div className="max-h-80 space-y-1 overflow-y-auto">
+      {items.slice(0, 12).map((n) => (
+        <button
+          key={n.id}
+          onClick={() => onPick(n)}
+          className={`block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-papel-hondo/60 ${n.leida ? "opacity-60" : ""}`}
+        >
+          <p className="text-sm font-semibold leading-tight">
+            {!n.leida && <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-oro" />}
+            {n.titulo}
+          </p>
+          <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{n.cuerpo}</p>
+          {n.tipo === "solicitud_modulo" && esAdmin && (
+            <span className="mt-1 inline-block text-xs font-semibold text-oro-tinta">{t("campanita.ver_solicitud")} →</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Desktop header bell. Mobile mounts the list inside MasSheet instead —
+// a popover anchored to a vanished topbar has nowhere to open.
+export default function Campanita({ token, esAdmin, onVerSolicitud }) {
+  const t = useT();
+  const { items, noLeidas, cargar, marcarLeida } = useNotificaciones(token);
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
   useEffect(() => {
     const cerrar = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
@@ -38,10 +80,7 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
   }, []);
 
   const clickNotif = async (n) => {
-    if (!n.leida) {
-      try { await api.notificacionLeida(n.id, token); } catch { /* se reintenta al recargar */ }
-      cargar();
-    }
+    await marcarLeida(n);
     if (n.tipo === "solicitud_modulo" && esAdmin) {
       setOpen(false);
       onVerSolicitud?.();
@@ -67,28 +106,7 @@ export default function Campanita({ token, esAdmin, onVerSolicitud }) {
           <p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
             {t("campanita.titulo")}
           </p>
-          {items.length === 0 ? (
-            <p className="px-2 pb-2 text-sm text-tinta-suave">{t("campanita.vacio")}</p>
-          ) : (
-            <div className="max-h-80 space-y-1 overflow-y-auto">
-              {items.slice(0, 12).map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => clickNotif(n)}
-                  className={`block w-full rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-papel-hondo/60 ${n.leida ? "opacity-60" : ""}`}
-                >
-                  <p className="text-sm font-semibold leading-tight">
-                    {!n.leida && <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-oro" />}
-                    {n.titulo}
-                  </p>
-                  <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{n.cuerpo}</p>
-                  {n.tipo === "solicitud_modulo" && esAdmin && (
-                    <span className="mt-1 inline-block text-xs font-semibold text-oro-tinta">{t("campanita.ver_solicitud")} →</span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
+          <NotificacionesLista items={items} esAdmin={esAdmin} onPick={clickNotif} />
         </div>
       )}
     </div>

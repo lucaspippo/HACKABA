@@ -2554,6 +2554,7 @@ export const ES = {
   "deposito.error_carga": "No pudimos cargar esta lista ahora. Probá de nuevo en un rato.",
   // --- P9·C4: mobile — acciones de Ángela y navegación con >4 features (M8) ---
   "mnav.mas": "Más",
+  "mnav.barra": "Navegación",
   "mnav.solo_desktop": "Esa sección vive en la versión de escritorio.",
   // --- P9·E: "Ver como" (solo tenant demo) ---
   "vercomo.titulo": "Ver como",

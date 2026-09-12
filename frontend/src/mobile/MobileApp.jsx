@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, LogOut, Sparkles, Waypoints, MapPin, Plus, Search } from "lucide-react";
-import Brand from "../components/Brand";
+import { Sun, Bell, Users, MessageCircle, HandCoins, PackageX, ClipboardList, Sparkles, Waypoints, MapPin, Plus } from "lucide-react";
 import Avatar from "../components/Avatar";
+import AngelaMark from "../components/AngelaMark";
 import { resaltarPorId } from "../lib/navGuiada";
 import Hoy from "./Hoy";
 import MiDia from "./MiDia";
@@ -25,13 +25,14 @@ import Conciliacion from "../sections/Conciliacion";
 import Administracion from "../sections/Administracion";
 import AprendizajeContinuo from "../sections/AprendizajeContinuo";
 import ErrorBoundary from "../components/ErrorBoundary";
-import { authStore, useSession } from "../lib/auth";
+import { useSession } from "../lib/auth";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { barraDe, buscaEnMobile, muestrasDe, rolDe, tieneVistaHerramienta } from "../lib/roles";
 import { toast } from "../lib/toastStore";
 import Toasts from "../components/Toasts";
-import Campanita from "../components/Campanita";
+import { useNotificaciones } from "../components/Campanita";
 import { VerComoChip } from "../components/VerComo";
+import MasSheet from "./MasSheet";
 import { useT } from "../lib/i18n";
 
 // Catálogo de vistas mobile por feature (sin angela/perfil, que son especiales).
@@ -118,6 +119,8 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // De dónde se vino, para que «volver» de la ficha vuelva a la búsqueda y no
   // al inicio: la Focus Rule también aplica al camino de vuelta.
   const [volverA, setVolverA] = useState("buscar");
+  const [masAbierta, setMasAbierta] = useState(false);
+  const { items: notifs, noLeidas, cargar: cargarNotifs, marcarLeida } = useNotificaciones(session?.token);
 
   // Ejecuta una acción del oficio venga de donde venga (las acciones rápidas
   // del inicio, la vista de trabajo). Vive acá porque `voz` abre un overlay que
@@ -288,7 +291,8 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
           e.preventDefault();
           setView(slot.id);
         }}
-        className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1.5"
+        aria-current={activo ? "page" : undefined}
+        className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1"
       >
         <Icon size={21} className={activo ? "text-violeta" : "text-tinta-suave"} strokeWidth={activo ? 2.4 : 2} />
         <span className={`text-2xs font-semibold ${activo ? "text-violeta" : "text-tinta-suave"}`}>{t(slot.lk)}</span>
@@ -300,50 +304,15 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
   // alias URL segment — same reasoning as DesktopApp's `redirectTo`.
   if (!view) return <Navigate to={`/${defaultView}`} replace />;
 
+  const abrirMas = () => { setMasAbierta(true); cargarNotifs(); };
+  const irYCerrarMas = (destino) => { setMasAbierta(false); setView(destino); };
+
   return (
     <div className="flex min-h-[100dvh] justify-center bg-papel">
       <Toasts />
       <div className="relative flex min-h-[100dvh] w-full max-w-md flex-col bg-papel">
-        <div className="sticky top-0 z-20 flex flex-col border-b border-linea/70 bg-papel/85 px-5 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
-        {/* P37·AJUSTE 2 — grid de 3 columnas con LATERALES DE IGUAL PESO
-            (1fr auto 1fr): el logo del cliente (columna central) queda CENTRADO
-            en el viewport, sobre el mismo eje que el botón de Ángela de la barra
-            inferior. No es flex+margin (los iconos desbalancearían el centro).
-            El toggle EN/ES no vive acá (el idioma se hereda de la sesión). */}
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div className="flex items-center justify-self-start">
-            <img src="/logos/polpilot.png" alt="PolPilot" className="h-7 w-auto shrink-0 select-none" draggable="false" />
-          </div>
-          <div className="flex items-center justify-center">
-            <Brand variant="mobile" />
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            {/* La lupa, sólo para quien la usa. Los seis del piso llegan al
-                dato por escaneo o desde su tarea, y una lupa que nunca se toca
-                es un ícono que le come lugar a los que sí. */}
-            {buscaEnMobile(user) && (
-              <button onClick={() => setView("buscar")} aria-label={t("buscar.titulo")}
-                className={`shrink-0 ${view === "buscar" ? "text-violeta" : "text-tinta-suave hover:text-tinta"}`}>
-                <Search size={18} />
-              </button>
-            )}
-            {/* La bandeja también en el celular: solicitudes y avisos del dueño llegan acá */}
-            <Campanita
-              token={session?.token}
-              esAdmin={user.es_admin}
-              onVerSolicitud={user.es_admin && navIds.includes("equipo") ? () => setView("equipo") : undefined}
-            />
-            <button onClick={() => setView("perfil")} className="shrink-0">
-              <Avatar persona={user} size={32} />
-            </button>
-            <button onClick={() => authStore.logout({ manual: true })} className="text-tinta-suave hover:text-tinta"><LogOut size={18} /></button>
-          </div>
-        </div>
-        {/* Indicador "Viewing as" (solo demo con View as activo, P9·E) */}
-        <div className="mt-2 empty:hidden"><VerComoChip /></div>
-        </div>
-
-        <main className="flex-1 overflow-y-auto px-5 pb-24 pt-4">
+        <main className={`flex-1 overflow-y-auto px-5 pb-24 ${view === "angela" ? "pt-[max(0.5rem,env(safe-area-inset-top))]" : "pt-[max(1rem,env(safe-area-inset-top))]"}`}>
+          <div className="mb-3 empty:hidden"><VerComoChip /></div>
           <AnimatePresence mode="wait">
             <motion.div key={view} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }} className={view === "angela" ? "h-full" : ""}>
               {/* P29·A2 — nunca una pantalla muda, tampoco en el celular */}
@@ -354,43 +323,80 @@ export default function MobileApp({ data, oportunidades, fase, user, onRecargar 
           </AnimatePresence>
         </main>
 
-        {/* P35·E2 — Barra inferior FIJA (position:fixed), simétrica, con Ángela
-            al centro (botón circular). Respeta safe-area-inset-bottom; el <main>
-            lleva pb-24 para que el último elemento no quede tapado. Se fueron
-            "Más", el botón flotante de Ángela (redundante con el centro) y el
-            mapa de la barra (se abre desde Today). El grid da columnas iguales. */}
-        <nav className="fixed inset-x-0 bottom-0 z-30">
-          <div
-            className="mx-auto grid max-w-md items-stretch border-t border-linea bg-crema/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur"
-            style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
-          >
-            {destinos.slice(0, 2).map((x) => <TabBtn key={x.id} slot={x} />)}
-            {/* EL CENTRO. Ángela mantiene su azul —es lo único que lo usa— y el
-                botón de carga va en tinta: es la acción de la persona, no de la
-                asistente, y confundirlos sería romper la regla de un solo
-                significado por color. El rótulo dice el VERBO del oficio
-                («Contar», «Armar») porque un botón que dice lo que hace se toca
-                sin pensarlo. */}
-            {centro.tipo === "angela" ? (
-              <button onClick={() => setView("angela")} className="relative flex flex-col items-center gap-0.5 py-1.5">
-                <span className={`grid h-9 w-9 -translate-y-1 place-items-center rounded-full ${view === "angela" ? "bg-violeta" : "bg-violeta/90"} text-crema sombra-papel`}>
-                  <MessageCircle size={18} />
-                </span>
-                <span className={`-mt-1 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
-              </button>
-            ) : (
+        {/* One bar, thumb zone. Work slots stay equal-width and capped at
+            three destinations + centre — account is chrome, not a fifth tab.
+            Search, inbox, profile, language and sign-out live in Más. */}
+        <nav className="fixed inset-x-0 bottom-0 z-30" aria-label={t("mnav.barra")}>
+          <div className="mx-auto max-w-md border-t border-linea bg-crema/95 pb-[max(0.35rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur">
+            <div className="flex items-stretch">
+              <div
+                className="grid min-w-0 flex-1 items-stretch px-1"
+                style={{ gridTemplateColumns: `repeat(${nSlots}, minmax(0, 1fr))` }}
+              >
+                {destinos.slice(0, 2).map((x) => <TabBtn key={x.id} slot={x} />)}
+                {/* EL CENTRO. Ángela is the sphere — the only blue mark in
+                    the bar. Load stays tinta: it is the person's action, not
+                    the assistant's. The label is the verb of the trade. */}
+                {centro.tipo === "angela" ? (
+                  <Link
+                    to="/angela"
+                    onClick={(e) => {
+                      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                      e.preventDefault();
+                      setView("angela");
+                    }}
+                    className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1"
+                  >
+                    <span className="-translate-y-0.5">
+                      <AngelaMark size={28} estado="idle" />
+                    </span>
+                    <span className={`-mt-0.5 text-2xs font-semibold ${view === "angela" ? "text-violeta" : "text-tinta-suave"}`}>Ángela</span>
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => (centro.tipo === "hoja" ? setHoja(true) : navegarMobile(centro.a))}
+                    className="relative flex min-h-11 flex-col items-center justify-center gap-0.5 py-1">
+                    <span className="grid h-8 w-8 -translate-y-0.5 place-items-center rounded-full bg-tinta text-crema sombra-papel">
+                      <Plus size={18} />
+                    </span>
+                    <span className="-mt-0.5 text-2xs font-semibold text-tinta">{t(centro.lk)}</span>
+                  </button>
+                )}
+                {destinos.slice(2).map((x) => <TabBtn key={x.id} slot={x} />)}
+              </div>
               <button
-                onClick={() => (centro.tipo === "hoja" ? setHoja(true) : navegarMobile(centro.a))}
-                className="relative flex flex-col items-center gap-0.5 py-1.5">
-                <span className="grid h-9 w-9 -translate-y-1 place-items-center rounded-full bg-tinta text-crema sombra-papel">
-                  <Plus size={20} />
+                onClick={() => (masAbierta ? setMasAbierta(false) : abrirMas())}
+                aria-label={t("mnav.mas")}
+                aria-expanded={masAbierta}
+                aria-controls="mas-sheet"
+                className="relative flex w-12 shrink-0 flex-col items-center justify-center"
+              >
+                <span className={`rounded-full ${view === "perfil" || masAbierta ? "ring-2 ring-violeta/50" : ""}`}>
+                  <Avatar persona={user} size={30} />
                 </span>
-                <span className="-mt-1 text-2xs font-semibold text-tinta">{t(centro.lk)}</span>
+                {noLeidas > 0 && (
+                  <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-oro px-1 text-[0.6rem] font-bold leading-none text-crema">
+                    {noLeidas > 9 ? "9+" : noLeidas}
+                  </span>
+                )}
               </button>
-            )}
-            {destinos.slice(2).map((x) => <TabBtn key={x.id} slot={x} />)}
+            </div>
           </div>
         </nav>
+
+        {masAbierta && (
+          <MasSheet
+            user={user}
+            conBuscar={buscaEnMobile(user)}
+            items={notifs}
+            esAdmin={user.es_admin}
+            onCerrar={() => setMasAbierta(false)}
+            onBuscar={() => irYCerrarMas("buscar")}
+            onVerPerfil={() => irYCerrarMas("perfil")}
+            onVerSolicitud={user.es_admin && navIds.includes("equipo") ? () => irYCerrarMas("equipo") : undefined}
+            onPickNotif={marcarLeida}
+          />
+        )}
 
         {/* La hoja de carga: los avisos de SU oficio, el formulario del que
             tocó, y la voz. Viven al nivel de la app y no de una vista porque el

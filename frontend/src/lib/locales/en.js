@@ -2581,6 +2581,7 @@ export const EN = {
   "deposito.error_carga": "We couldn't load this list right now. Try again in a bit.",
   // --- P9·C4: mobile — Ángela actions and >4-feature navigation (M8) ---
   "mnav.mas": "More",
+  "mnav.barra": "Navigation",
   "mnav.solo_desktop": "That section lives on the desktop version.",
   // --- P9·E: "View as" (demo tenant only) ---
   "vercomo.titulo": "View as",
