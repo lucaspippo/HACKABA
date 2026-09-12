@@ -17,7 +17,7 @@ from core.db.engine import tenant_connection, to_local_iso
 STALE_AFTER_MINUTES = 180
 
 
-def _ahora() -> datetime.datetime:
+def _now() -> datetime.datetime:
     return datetime.datetime.now().astimezone()
 
 
@@ -34,13 +34,13 @@ def _to_conversation(row) -> dict:
 
 def get_or_create_open_conversation(tenant_id: str, actor: str, channel: str = "chat",
                                      stale_after_minutes: int = STALE_AFTER_MINUTES) -> dict:
-    cutoff = _ahora() - datetime.timedelta(minutes=stale_after_minutes)
+    cutoff = _now() - datetime.timedelta(minutes=stale_after_minutes)
     with tenant_connection(tenant_id) as conn:
         row = conn.execute(
             text(
                 "SELECT id, actor, channel, status, created_at, last_message_at "
                 "FROM angela_conversations "
-                "WHERE actor = :actor AND channel = :channel AND status = 'abierta' "
+                "WHERE actor = :actor AND channel = :channel AND status = 'open' "
                 "AND last_message_at >= :cutoff "
                 "ORDER BY last_message_at DESC LIMIT 1"
             ),
@@ -49,16 +49,16 @@ def get_or_create_open_conversation(tenant_id: str, actor: str, channel: str = "
         if row:
             return _to_conversation(row)
         cid = "ac" + secrets.token_hex(4)
-        now = _ahora()
+        now = _now()
         conn.execute(
             text(
                 "INSERT INTO angela_conversations "
                 "(tenant_id, id, actor, channel, status, created_at, last_message_at) "
-                "VALUES (:tid, :id, :actor, :channel, 'abierta', :now, :now)"
+                "VALUES (:tid, :id, :actor, :channel, 'open', :now, :now)"
             ),
             {"tid": tenant_id, "id": cid, "actor": actor, "channel": channel, "now": now},
         )
-        return {"id": cid, "actor": actor, "channel": channel, "status": "abierta",
+        return {"id": cid, "actor": actor, "channel": channel, "status": "open",
                 "created_at": to_local_iso(now), "last_message_at": to_local_iso(now)}
 
 
@@ -77,7 +77,7 @@ def get_conversation(tenant_id: str, conversation_id: str) -> dict | None:
 def add_message(tenant_id: str, conversation_id: str, role: str, content: str,
                  tools_used: list[str] | None = None) -> None:
     mid = "am" + secrets.token_hex(4)
-    now = _ahora()
+    now = _now()
     with tenant_connection(tenant_id) as conn:
         conn.execute(
             text(
@@ -109,7 +109,7 @@ def list_messages(tenant_id: str, conversation_id: str, limit: int = 200) -> lis
         ).mappings().all()
     out = [
         {"id": r["id"], "role": r["role"], "content": r["content"],
-         "tools_used": r["tools_used"] or [], "cuando": to_local_iso(r["created_at"])}
+         "tools_used": r["tools_used"] or [], "created_at": to_local_iso(r["created_at"])}
         for r in rows
     ]
     out.reverse()

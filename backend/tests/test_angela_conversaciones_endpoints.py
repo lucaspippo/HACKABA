@@ -44,22 +44,22 @@ def test_chat_persists_the_user_side_of_the_turn(aldo_token, monkeypatch):
     got = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
                      params={"actor": "aldo"})
     assert got.status_code == 200
-    convs = got.json()["conversaciones"]
+    convs = got.json()["conversations"]
     assert convs, "expected a persisted conversation for aldo"
 
     full = client.get(f"/api/angela/conversaciones/{convs[0]['id']}", headers=_h(aldo_token))
     assert full.status_code == 200
-    mensajes = full.json()["mensajes"]
+    messages = full.json()["messages"]
     assert any(m["role"] == "user" and m["content"] == "¿cuánto vendimos hoy?"
-              for m in mensajes)
+              for m in messages)
 
 
-def test_conversaciones_requires_auditoria_feature(marta_token):
+def test_conversations_requires_auditoria_feature(marta_token):
     r = client.get("/api/angela/conversaciones", headers=_h(marta_token))
     assert r.status_code == 403
 
 
-def test_conversaciones_requires_auth():
+def test_conversations_requires_auth():
     r = client.get("/api/angela/conversaciones")
     assert r.status_code == 401
 
@@ -75,21 +75,21 @@ def test_voice_channel_is_tagged_and_kept_separate(aldo_token, monkeypatch):
                                           "token": aldo_token, "channel": "voz"})
     assert r.status_code == 200
 
-    solo_voz = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
-                          params={"actor": "aldo", "canal": "voz"}).json()["conversaciones"]
-    assert solo_voz
-    assert all(c["channel"] == "voz" for c in solo_voz)
+    voice_only = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
+                            params={"actor": "aldo", "channel": "voz"}).json()["conversations"]
+    assert voice_only
+    assert all(c["channel"] == "voz" for c in voice_only)
 
 
 def test_unrecognized_channel_falls_back_to_chat(aldo_token, monkeypatch):
     _no_provider(monkeypatch)
     r = client.post("/api/angela", json={"message": "algo raro",
-                                          "token": aldo_token, "channel": "no-es-un-canal"})
+                                          "token": aldo_token, "channel": "not-a-channel"})
     assert r.status_code == 200
 
     convs = client.get("/api/angela/conversaciones", headers=_h(aldo_token),
-                       params={"actor": "aldo", "canal": "chat"}).json()["conversaciones"]
+                       params={"actor": "aldo", "channel": "chat"}).json()["conversations"]
     assert any(m["content"] == "algo raro"
               for c in convs
               for m in client.get(f"/api/angela/conversaciones/{c['id']}",
-                                  headers=_h(aldo_token)).json()["mensajes"])
+                                  headers=_h(aldo_token)).json()["messages"])
