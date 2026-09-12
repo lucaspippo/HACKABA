@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MapPin, Truck, ClipboardList, BookOpen, Users, ChevronDown, ArrowRight,
          MessageCircle } from "lucide-react";
 import AngelaMark from "./AngelaMark";
 import { antiguedadTexto } from "./BadgeNuevo";
-import { api } from "../lib/api";
+import { useApiQuery } from "../lib/query";
 import { useT, useLang, tRol, tDato } from "../lib/i18n";
 
 // P·onboarding — DONDE ÁNGELA LE ENSEÑA EL LABURO AL QUE RECIÉN ENTRÓ.
@@ -81,9 +81,9 @@ function Tema({ id, titulo, sub, preguntas, children, abierto, onToggle, onPregu
 export default function Onboarding({ onPreguntar, onPreguntarleA }) {
   const t = useT();
   const lang = useLang();
-  const [g, setG] = useState(null);
   const [abierto, setAbierto] = useState("ubicaciones");
-  useEffect(() => { api.onboarding().then(setG).catch(() => setG(false)); }, []);
+  const onbQ = useApiQuery("onboarding");
+  const g = onbQ.isError ? false : (onbQ.data ?? null);
 
   if (!g) return null;   // sin guía (o error): la vista de trabajo queda igual que siempre
 

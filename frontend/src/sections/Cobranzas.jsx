@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Lock, HandCoins, Gauge, Send, Check, Clock, X, Pencil, Users, AlertTriangle,
 } from "lucide-react";
 import AngelaSays from "../components/AngelaSays";
 import AngelaMark from "../components/AngelaMark";
 import Cargando from "../components/Cargando";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { peso, pesoCorto, num, fecha as fmtFecha } from "../lib/format";
 import { toast } from "../lib/toastStore";
 import { useT } from "../lib/i18n";
@@ -36,11 +36,9 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
   const t = useT();
   const hayCuentas = !!datos?.cuentas;
   const esDueno = !!user?.es_admin;
-  const [d, setD] = useState(null);
   const [abierto, setAbierto] = useState(null);   // propuesta desplegada
-
-  const recargar = () => api.cobranza().then(setD).catch(() => setD(false));
-  useEffect(() => { if (hayCuentas) recargar(); }, [hayCuentas]);
+  const { data: d, isLoading, refetch } = useApiQuery("cobranza", [], { enabled: hayCuentas });
+  const recargar = () => refetch();
 
   return (
     <div className="space-y-6">
@@ -57,7 +55,7 @@ export default function Cobranzas({ onPreguntar, datos, user, onNavegar }) {
           : "cobranzas.angela_intro")}
       </AngelaSays>
 
-      {hayCuentas && d === null && <Cargando />}
+      {hayCuentas && isLoading && <Cargando />}
 
       {hayCuentas && d && d.disponible && (
         <>
@@ -219,22 +217,26 @@ function Panorama({ p, t }) {
 }
 
 function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNavegar }) {
-  const [prop, setProp] = useState(null);
   const [texto, setTexto] = useState("");
   const [editando, setEditando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
   const [sugerencia, setSugerencia] = useState(null);
+  const seeded = useRef(false);
+  const { data: propData, isPending: propPending, isError: propError } = useApiQuery(
+    "cobranzaPropuesta", [c.id], { enabled: abierto },
+  );
+  const registrarMut = useApiMutation("cobranzaRegistrar");
+  const enviando = registrarMut.isPending;
+  const prop = !abierto ? null : (propPending && !propData ? null : propError ? false : (propData ?? null));
 
   useEffect(() => {
-    if (!abierto || prop) return;
-    api.cobranzaPropuesta(c.id).then((p) => { setProp(p); setTexto(p.mensaje); })
-      .catch(() => setProp(false));
-  }, [abierto]);
+    if (propData?.mensaje == null || seeded.current) return;
+    setTexto(propData.mensaje);
+    seeded.current = true;
+  }, [propData]);
 
   const registrar = async (estado, extra = {}) => {
-    setEnviando(true);
     try {
-      const r = await api.cobranzaRegistrar(c.id, estado, { mensaje: texto, ...extra });
+      const r = await registrarMut.mutateAsync([c.id, estado, { mensaje: texto, ...extra }]);
       // Lo que sigue después de perseguir a un cliente es mandarle el estado
       // de cuenta. Se OFRECE con la frase que arma el backend; el papel no se
       // genera solo (core/carpeta.sugerencia no escribe nada).
@@ -243,7 +245,7 @@ function Fila({ c, pos, t, esDueno, abierto, onAbrir, onHecho, onPreguntar, onNa
       if (!r?.sugerencia?.texto) onHecho();
     } catch {
       toast(t("cobranzas.err"));
-    } finally { setEnviando(false); }
+    }
   };
 
   const est = c.gestion.estado;

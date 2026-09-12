@@ -3,10 +3,10 @@ import { TrendingUp, Boxes, Warehouse, Truck, Users, Banknote, Landmark, Globe,
          ChevronDown, Waypoints, Link2, ArrowLeft } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { cargarSenales, alertasVivas } from "../lib/centroAlertas";
-import { api } from "../lib/api";
 import { useSession } from "../lib/auth";
 import { pesoCorto, num } from "../lib/format";
 import { useT } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
 
 // P35·E6 — VISTA SIMPLE DEL MAPA (mobile), read-only. NO React Flow: una lista
 // vertical de los 8 dominios con su semáforo REAL y su conclusión, derivados de
@@ -36,27 +36,25 @@ const ALERTA_DOMINIO = {
 };
 const SEM = { rojo: "bg-rojo", oro: "bg-oro", verde: "bg-salvia" };
 
-let _cacheMapaS = { lang: null, senales: null, macro: null, cards: null };
+let signalsCache = { lang: null, senales: null };
 
 export default function MapaSimpleMobile({ onPreguntar, onVolver }) {
   const t = useT();
   const langKey = useSession()?.usuario?.idioma || "es";
-  const [senales, setSenales] = useState(_cacheMapaS.lang === langKey ? _cacheMapaS.senales : null);
-  const [macro, setMacro] = useState(_cacheMapaS.lang === langKey ? _cacheMapaS.macro : null);
-  const [cards, setCards] = useState(_cacheMapaS.lang === langKey ? _cacheMapaS.cards : null);
+  const { data: macro } = useApiQuery("macro");
+  const { data: opportunitiesData } = useApiQuery("oportunidades");
+  const cards = opportunitiesData?.cards || [];
+  const [senales, setSenales] = useState(signalsCache.lang === langKey ? signalsCache.senales : null);
   const [abierto, setAbierto] = useState(null);
 
   useEffect(() => {
     let vivo = true;
-    (async () => {
-      const [s, m, ops] = await Promise.all([
-        cargarSenales().catch(() => null),
-        api.macro().catch(() => null),
-        api.oportunidades().then((d) => d.cards || []).catch(() => []),
-      ]);
-      _cacheMapaS = { lang: langKey, senales: s, macro: m, cards: ops };
-      if (vivo) { setSenales(s); setMacro(m); setCards(ops); }
-    })();
+    cargarSenales()
+      .then((s) => {
+        signalsCache = { lang: langKey, senales: s };
+        if (vivo) setSenales(s);
+      })
+      .catch(() => { if (vivo) setSenales(null); });
     return () => { vivo = false; };
   }, [langKey]);
 

@@ -14,7 +14,7 @@ import {
   Mail, Sparkles,
   Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
-import { api } from "../../lib/api";
+import { useApiQuery, queryClient, queries } from "../../lib/query";
 import AngelaMark from "../../components/AngelaMark";
 import { GRAFICO } from "../../lib/paleta";
 import { useT } from "../../lib/i18n";
@@ -631,7 +631,8 @@ function Reencuadre({ contenedor, completo, riel }) {
 // ---------------------------------------------------------------------------
 export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = null }) {
   const t = useT();
-  const [d, setD] = useState(null);
+  const mapaQ = useApiQuery("mapaOperacion");
+  const d = mapaQ.isError ? false : (mapaQ.data ?? null);
   const [foco, setFoco] = useState(null);
   const [abierto, setAbierto] = useState(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -653,12 +654,6 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
     if (firma === firmaRects.current) return;
     firmaRects.current = firma;
     setRects(rs);
-  }, []);
-
-  useEffect(() => {
-    let vivo = true;
-    api.mapaOperacion().then((r) => vivo && setD(r)).catch(() => vivo && setD(false));
-    return () => { vivo = false; };
   }, []);
 
   // Escape sale de pantalla completa. Una vista que ocupa todo y no se cierra
@@ -778,7 +773,7 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
 
   const abrir = useCallback((id, etiqueta) => {
     setAbierto({ id, etiqueta, cargando: true });
-    api.mapaOperacionNodo(id)
+    queryClient.fetchQuery(queries.mapaOperacionNodo(id))
       .then((r) => setAbierto({ id, etiqueta, ...r }))
       .catch(() => setAbierto({ id, etiqueta, filas: [] }));
   }, []);

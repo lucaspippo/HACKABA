@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { CheckCircle2, Waypoints, Sparkles, ClipboardCheck, Users, ChevronRight, Lightbulb, MapPin, Clock } from "lucide-react";
 import TarjetaAtencion from "./TarjetaAtencion";
 import AccionesRapidas from "./AccionesRapidas";
@@ -10,7 +9,8 @@ import { useEquipo } from "../lib/equipoStore";
 import { useSession, authStore } from "../lib/auth";
 import { api } from "../lib/api";
 import { peso, pesoCorto } from "../lib/format";
-import { useT, useLang, tRol } from "../lib/i18n";
+import { useT, tRol } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
 
 // P35·E4 — TODAY (home mobile): un RESUMEN del día que entra en un scroll corto,
 // no una lista de tarjetas grandes. Responde una pregunta: "¿qué hago hoy?".
@@ -49,17 +49,13 @@ function Bloque({ titulo, accion, onAccion, children }) {
 
 export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onAccion }) {
   const t = useT();
-  const lang = useLang();
   const session = useSession();
   const equipo = useEquipo();
+  const esAdmin = !!session?.usuario?.es_admin;
 
-  const [ini, setIni] = useState(null);
+  const { data: ini } = useApiQuery("inicio");
   // P41·2.1 — la limpieza de traslados internos, contada como trabajo hecho
-  const [estructura, setEstructura] = useState(null);
-  useEffect(() => {
-    if (!authStore.tiene("inventario")) return;
-    api.traslados().then(setEstructura).catch(() => {});
-  }, []);
+  const { data: estructura } = useApiQuery("traslados", [], { enabled: authStore.tiene("inventario") });
   // P·inicio — LO QUE HAY QUE DECIDIR AHORA. Las propuestas del piso son la
   // fuente más fuerte de la card de atención: nacen de algo que una persona vio
   // y traen la foto que sacó. Sólo el dueño las ve (el endpoint es de admin).
@@ -67,20 +63,11 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
   // renderizara la card mientras carga, el dueño vería primero el riesgo del día
   // y un segundo después la card se le cambiaría abajo del pulgar por el
   // reclamo. Una tarjeta que se transforma sola es peor que una que tarda.
-  const esAdmin = !!session?.usuario?.es_admin;
-  const [propuestas, setPropuestas] = useState(esAdmin ? null : []);
-  useEffect(() => {
-    if (!esAdmin) { setPropuestas([]); return; }
-    api.piso.propuestas()
-      .then((d) => setPropuestas(d.propuestas || []))
-      .catch(() => setPropuestas([]));
-  }, [session?.token, lang, esAdmin]);
-  const [caja, setCaja] = useState(null);
-  useEffect(() => { api.inicio().then(setIni).catch(() => {}); }, [session?.token, lang]);
-  useEffect(() => {
-    // P24·D3 — la caja de HOY, la misma cifra que "Caja diaria" en desktop.
-    if (authStore.tiene("caja")) api.cajaEstado().then((c) => setCaja(c?.totales?.total ?? null)).catch(() => {});
-  }, []);
+  const { data: proposalsData, isLoading: proposalsLoading } = useApiQuery("pisoPropuestas", [], { enabled: esAdmin });
+  const propuestas = !esAdmin ? [] : proposalsLoading ? null : (proposalsData?.propuestas || []);
+  // P24·D3 — la caja de HOY, la misma cifra que "Caja diaria" en desktop.
+  const { data: cajaData } = useApiQuery("caja", [], { enabled: authStore.tiene("caja") });
+  const caja = cajaData?.totales?.total ?? null;
 
   // El pulso: los cruces más importantes del día como el mapa los surface —
   // TODOS los hallazgos (incluida la exposición/concentración, el cruce más
@@ -152,10 +139,8 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
   // dueño a `panel` (esta pantalla) y sólo a la gente de piso a `mi_dia`.
   // O sea que el home mobile del usuario del demo es ESTE, y la pantalla
   // nueva no se veía nunca. Las dos la muestran, cada una con sus datos.
-  const [paradas, setParadas] = useState(null);
-  useEffect(() => {
-    api.paradasProximas().then((d) => setParadas(d.paradas || [])).catch(() => setParadas([]));
-  }, [session?.token]);
+  const { data: stopsData, isLoading: stopsLoading } = useApiQuery("paradasProximas");
+  const paradas = stopsLoading ? null : (stopsData?.paradas || []);
 
   // Lo que ya se muestra en «Detalle de tareas» NO se repite mas abajo. Sin
   // esto, la primera fila de arriba y la tarjeta grande de «Lo de mas peso hoy»

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { UploadCloud, Check, ArrowRight, Sparkles, Camera } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import FacturaFlow from "../../components/FacturaFlow";
-import { api } from "../../lib/api";
+import { useApiMutation } from "../../lib/query";
 import { useEmpresa } from "../../lib/useEmpresa";
 import { useT } from "../../lib/i18n";
 import IngestPipeline from "./IngestPipeline";
@@ -112,16 +112,18 @@ function CartaLibre({ usuario, onArchivoCargado }) {
   const [file, setFile] = useState(null);
   const [desc, setDesc] = useState("");
   const [confirm, setConfirm] = useState(null);
+  const createStaging = useApiMutation("stagingCrear");
+  const loadOther = useApiMutation("cargarOtro");
 
   const enviar = async () => {
     if (!file) return;
     if (file.name.toLowerCase().endsWith(".csv")) {
       const texto = await file.text();
-      await api.stagingCrear(desc || file.name, texto);
+      await createStaging.mutateAsync([desc || file.name, texto]);
       onArchivoCargado?.();  // va a "Datos pendientes"
       return;
     }
-    const r = await api.cargarOtro(file.name, desc, usuario);
+    const r = await loadOther.mutateAsync([file.name, desc, usuario]);
     setConfirm(r.mensaje);
     setFile(null); setDesc("");
   };
@@ -161,7 +163,8 @@ function Carta({ carta, usuario, onArchivoCargado }) {
   const [drag, setDrag] = useState(false);
   const [preview, setPreview] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const [enviando, setEnviando] = useState(false);
+  const previewImport = useApiMutation("importPreview");
+  const createStaging = useApiMutation("stagingCrear");
 
   const tomar = (file) => {
     if (!file) return;
@@ -174,7 +177,7 @@ function Carta({ carta, usuario, onArchivoCargado }) {
     r.onload = async (e) => {
       const texto = String(e.target.result || "");
       try {
-        const info = await api.importPreview(texto, carta.destino, usuario);
+        const info = await previewImport.mutateAsync([texto, carta.destino, usuario]);
         // B6: el texto queda en el estado — el preview ahora TIENE confirmación.
         setPreview({ ...info, nombre: file.name, texto });
       } catch {
@@ -188,17 +191,14 @@ function Carta({ carta, usuario, onArchivoCargado }) {
   // que el campo libre (staging → "Datos pendientes"). Antes el preview verde
   // moría en un "próximamente" sin botón.
   const confirmar = async () => {
-    if (!preview?.texto || enviando) return;
-    setEnviando(true);
+    if (!preview?.texto || createStaging.isPending) return;
     try {
-      await api.stagingCrear(`${t(carta.lk_titulo)} · ${preview.nombre}`, preview.texto);
+      await createStaging.mutateAsync([`${t(carta.lk_titulo)} · ${preview.nombre}`, preview.texto]);
       setPreview(null);
       onArchivoCargado?.();  // va a "Datos pendientes"
     } catch {
       setAviso(t("cargar.aviso_error"));
       setPreview(null);
-    } finally {
-      setEnviando(false);
     }
   };
 
@@ -229,11 +229,11 @@ function Carta({ carta, usuario, onArchivoCargado }) {
           )}
           <p className="mt-2 text-xs text-tinta-suave">{t("cargar.confirma")}</p>
           <div className="mt-2.5 flex flex-wrap gap-2">
-            <button onClick={confirmar} disabled={enviando}
+            <button onClick={confirmar} disabled={createStaging.isPending}
               className="rounded-full bg-violeta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
               {t("cargar.confirmar_cta")}
             </button>
-            <button onClick={() => setPreview(null)} disabled={enviando}
+            <button onClick={() => setPreview(null)} disabled={createStaging.isPending}
               className="rounded-full border border-linea bg-crema px-3.5 py-1.5 text-sm font-semibold text-tinta-suave">
               {t("cargar.cancelar_cta")}
             </button>

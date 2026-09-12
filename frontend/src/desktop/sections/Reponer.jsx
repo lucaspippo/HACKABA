@@ -7,22 +7,19 @@
 //
 // La plata es una cuenta de una línea (días sin stock × venta diaria) y la
 // calcula el core, no el modelo. Ver core/reponer.py.
-import { useEffect, useState } from "react";
 import { TrendingDown, Truck, ArrowRight, Clock } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import Cargando from "../../components/Cargando";
-import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 import { CoverLeadScatter, LeadTruth } from "./InventarioViz";
 
 export default function Reponer({ onPreguntar, onNavegar, viz, onSelect }) {
   const t = useT();
-  const [d, setD] = useState(null);
+  const { data: d, isLoading } = useApiQuery("reponer");
 
-  useEffect(() => { api.reponer().then(setD).catch(() => setD(false)); }, []);
-
-  if (d === null) return <Cargando />;
+  if (isLoading) return <Cargando />;
   if (!d || !d.disponible) {
     return (
       <p className="rounded-[var(--radius-card)] border border-linea bg-crema p-8 text-center

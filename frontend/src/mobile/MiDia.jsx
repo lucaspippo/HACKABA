@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Ghost, Scale, TriangleAlert, PackageCheck, MessageCircle, ArrowRight, CheckCircle2,
          ChevronRight, Check, X, Loader2, FileText, HandCoins, ClipboardList, Tag, Camera,
          ListChecks, Truck, ShieldCheck, Boxes, Wallet, PackagePlus, PackageX, Search, Mic } from "lucide-react";
@@ -13,9 +13,9 @@ import { derivarTareas } from "../lib/piso";
 import { accionesDe, atiendeMostrador, chipsDe, muestrasDe, reportaPorVoz, rolDe } from "../lib/roles";
 import VozAngela from "../components/VozAngela";
 import { useSession } from "../lib/auth";
-import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
-import { useT, useLang, tRol } from "../lib/i18n";
+import { useT, tRol } from "../lib/i18n";
+import { useApiMutation, useApiQuery } from "../lib/query";
 
 // P·frontline — "Mi día" del empleado de a pie (depósito / mostrador). Mobile-first:
 // esta gente trabaja parada, desde el teléfono. Dos cosas y nada del dueño:
@@ -42,16 +42,16 @@ const ICONO = { FileText, HandCoins, ClipboardList, Tag, Camera, TriangleAlert,
 
 export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNavegar }) {
   const t = useT();
-  const lang = useLang();
   const session = useSession();
   const nombre = session?.usuario?.nombre || user?.nombre || "";
   const rol = session?.usuario?.rol || user?.rol || "";
 
-  const [ini, setIni] = useState(null);
+  const { data: ini } = useApiQuery("inicio");
+  const completeReminder = useApiMutation("recordatorioCompletar");
+  const applyCleanup = useApiMutation("saneamientoAplicar");
   const [vozAbierta, setVozAbierta] = useState(false);
   const [confirmando, setConfirmando] = useState(null); // id de la tarea en confirmación
   const [cerrando, setCerrando] = useState(null);        // id de la tarea aplicándose
-  useEffect(() => { api.inicio().then(setIni).catch(() => {}); }, [session?.token, lang]);
 
   const tareas = derivarTareas(ini);
   const chips = chipsDe(user);
@@ -74,34 +74,27 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
   // Se declara en vez de inventarlo.
   const rolId = rolDe(user)?.id;
   const conRuta = rolId === "reparto" || rolId === "deposito_armado";
-  const [proximas, setProximas] = useState(null);
-  useEffect(() => {
-    // SIN EL GATE POR ROL. «Entregas de hoy» de la pantalla de inicio es lo que
-    // sale hoy del deposito, y eso le importa igual al que recibe que al que
-    // reparte: el de recepcion necesita saber que se va, porque es el andar que
-    // va a tener enfrente. El bloque LoQueSigue de mas abajo SI sigue siendo
-    // por oficio (`conRuta`): ese es «tu proxima parada», que es otra cosa.
-    const quien = rolId === "reparto" ? (session?.usuario?.nombre || "") : undefined;
-    api.paradasProximas(quien).then((d) => setProximas(d.paradas || [])).catch(() => setProximas([]));
-  }, [rolId, session?.usuario?.nombre]);
+  // SIN EL GATE POR ROL. «Entregas de hoy» de la pantalla de inicio es lo que
+  // sale hoy del deposito, y eso le importa igual al que recibe que al que
+  // reparte: el de recepcion necesita saber que se va, porque es el andar que
+  // va a tener enfrente. El bloque LoQueSigue de mas abajo SI sigue siendo
+  // por oficio (`conRuta`): ese es «tu proxima parada», que es otra cosa.
+  const driverName = rolId === "reparto" ? (session?.usuario?.nombre || "") : undefined;
+  const { data: nearbyData, isLoading: nearbyLoading } = useApiQuery("paradasProximas", [driverName]);
+  const proximas = nearbyLoading ? null : (nearbyData?.paradas || []);
   const proxima = proximas?.[0];
   const [consulta, setConsulta] = useState("");   // P41·4 — la consulta rápida
   // P41·4 — TAREAS ASIGNADAS: las que el dueño le dejó a ESTA persona. Persisten
   // (recordatorios del backend, con destinatario) y se marcan hechas desde acá.
-  const [asignadas, setAsignadas] = useState([]);
+  const { data: remindersData } = useApiQuery("recordatorios");
+  const asignadas = (remindersData?.recordatorios || []).filter((r) => r.estado !== "hecho");
   const [cerrandoTarea, setCerrandoTarea] = useState(null);
-  const cargarAsignadas = () =>
-    api.recordatorios()
-      .then((d) => setAsignadas((d.recordatorios || []).filter((r) => r.estado !== "hecho")))
-      .catch(() => {});
-  useEffect(() => { cargarAsignadas(); }, [session?.token]);
 
   const marcarHecha = async (r) => {
     setCerrandoTarea(r.id);
     try {
-      await api.recordatorioCompletar(r.id);
+      await completeReminder.mutateAsync([r.id]);
       toast(t("rol.tarea_hecha"));
-      await cargarAsignadas();
       onCerrada?.();          // el dueño lo ve en su panel
     } catch {
       toast(t("rol.tarea_error"), "error");
@@ -135,10 +128,8 @@ export default function MiDia({ user, onAbrirAngela, onTarea, onCerrada, onNaveg
   const cerrar = async (x) => {
     setCerrando(x.id); setConfirmando(null);
     try {
-      const r = await api.saneamientoAplicar(x.categoria);
+      const r = await applyCleanup.mutateAsync([x.categoria]);
       toast(t("piso.tarea_cerrada", { n: r?.corregidos ?? x.n }));
-      const nuevo = await api.inicio().catch(() => null);
-      if (nuevo) setIni(nuevo);
       onCerrada?.();               // el dueño verá el cambio al recargar su pantalla
     } catch {
       toast(t("piso.tarea_error"), "error");

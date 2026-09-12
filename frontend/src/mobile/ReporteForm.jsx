@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X, Check, Loader2, Camera, ArrowRight } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { CAMPOS_REPORTE } from "../lib/roles";
-import { api } from "../lib/api";
 import { toast } from "../lib/toastStore";
 import { useT } from "../lib/i18n";
+import { useApiMutation, useApiQuery } from "../lib/query";
 
 // P39·2/3 — el formulario con el que el empleado REPORTA un hecho del piso
 // (faltante, conteo, entrega, reposición, pedido). Corto y de una mano: esta
@@ -37,11 +37,9 @@ export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inic
   // de catorce nombres: Ángela propone por oficio y la persona confirma con un
   // toque. `null` mientras no contestó el backend; si no contesta, se manda
   // igual (el hecho vale más que el ruteo) y queda en el pozo del dueño.
-  const [destino, setDestino] = useState(destinoFijo || null);
-  useEffect(() => {
-    if (destinoFijo) return;   // ya lo sabemos: no hay a quién preguntarle
-    api.piso.destinatario(tipo).then((d) => setDestino(d.sugerido || null)).catch(() => {});
-  }, [tipo, destinoFijo]);
+  const { data: destData } = useApiQuery("pisoDestinatario", [tipo], { enabled: !destinoFijo && !!tipo });
+  const destino = destinoFijo || destData?.sugerido || null;
+  const report = useApiMutation("pisoReportar");
 
   const falta = campos.some((c) => c.requerido && !String(valores[c.id] ?? "").trim());
 
@@ -56,7 +54,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo, destinoFijo, inic
       }
       if (aviso) datos.aviso_id = aviso.id;
       if (aviso?.motivo) datos.motivo = aviso.motivo;
-      await api.piso.reportar(tipo, datos, destino?.username);
+      await report.mutateAsync([tipo, datos, destino?.username]);
       toast(aviso ? t("aviso.ok") : t(`rol.reporte_ok_${tipo}`));
       onListo?.();
       onCerrar();

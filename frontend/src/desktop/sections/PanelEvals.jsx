@@ -15,9 +15,9 @@
 // Color (DESIGN.md, un color un significado): salvia = en orden, rojo =
 // problema real. El azul NO se usa acá: es de Ángela, y esto no lo dice
 // Ángela — lo dice el código midiéndose a sí mismo.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CheckCircle2, XCircle, FlaskConical, Clock, ChevronDown } from "lucide-react";
-import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { useT } from "../../lib/i18n";
 
 const SALVIA = "#2f7d5b";
@@ -130,16 +130,7 @@ function Suite({ suite }) {
 
 export default function PanelEvals() {
   const t = useT();
-  const [datos, setDatos] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    let vivo = true;
-    api.evals()
-      .then((d) => vivo && setDatos(d))
-      .catch((e) => vivo && setError(e));
-    return () => { vivo = false; };
-  }, []);
+  const { data: datos, error } = useApiQuery("evals");
 
   if (error) {
     return (

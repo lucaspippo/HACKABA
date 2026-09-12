@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { langStore } from "./i18n.js";
 import { equipoStore } from "./equipoStore.js";
-import { apiUrl } from "./apiUrl.js";
+import { queries } from "./query";
 
 // La identidad del tenant (empresa, tenant, LOGO) viene ENTERA de /api/health.
 // P37 — INCIDENTE DE PRIVACIDAD: el frontend NO hardcodea ningún cliente. Hasta
@@ -9,31 +10,34 @@ import { apiUrl } from "./apiUrl.js";
 // así el nombre/logo de un tenant (en particular el piloto REAL) jamás puede
 // pintarse antes de tiempo ni por un default. El logo lo decide el backend por
 // tenant (meta.logo): el del piloto se sirve de su data dir, nunca del bundle.
-let _cache = null;
+
+function metaFromHealth(h) {
+  if (!h) return null;
+  return {
+    empresa: h.meta?.empresa || null,
+    tenant: h.tenant || null,
+    logo: h.meta?.logo || null,
+    roleSwitch: !!h.role_switch,
+    fuente: h.meta?.fuente || "",
+    idiomaDefault: h.idioma_default,
+  };
+}
 
 export function useEmpresa() {
-  const [meta, setMeta] = useState(_cache);
+  const health = useQuery(queries.health());
+  const meta = health.isError
+    ? { empresa: null, tenant: null, logo: null, roleSwitch: false, fuente: "" }
+    : metaFromHealth(health.data);
+
   useEffect(() => {
-    if (_cache) { setMeta(_cache); return; }
-    fetch(apiUrl("/api/health"))
-      .then((r) => r.json())
-      .then((h) => {
-        _cache = {
-          empresa: h.meta?.empresa || null,
-          tenant: h.tenant || null,
-          logo: h.meta?.logo || null,
-          roleSwitch: !!h.role_switch,
-          fuente: h.meta?.fuente || "",
-        };
-        // Pre-sesión (Login): el default de idioma del tenant (demo=en, piloto=es).
-        langStore.syncDefaultTenant(h.idioma_default);
-        // El tablero del equipo se siembra POR TENANT (P9·C1) — solo con el
-        // tenant YA resuelto (nunca con un default, que filtraría el piloto).
-        if (h.tenant) equipoStore.setTenant(h.tenant);
-        setMeta(_cache);
-      })
-      .catch(() => setMeta({ empresa: null, tenant: null, logo: null, roleSwitch: false, fuente: "" }));
-  }, []);
+    if (!health.data) return;
+    // Pre-sesión (Login): el default de idioma del tenant (demo=en, piloto=es).
+    langStore.syncDefaultTenant(health.data.idioma_default);
+    // El tablero del equipo se siembra POR TENANT (P9·C1) — solo con el
+    // tenant YA resuelto (nunca con un default, que filtraría el piloto).
+    if (health.data.tenant) equipoStore.setTenant(health.data.tenant);
+  }, [health.data]);
+
   return {
     empresa: meta?.empresa || null,
     tenant: meta?.tenant || null,

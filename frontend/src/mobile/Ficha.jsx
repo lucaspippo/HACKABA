@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
 import { MapPin, Clock, Users, MessageSquare, TriangleAlert, Loader2, ArrowLeft,
          Scale, Tag } from "lucide-react";
-import { api } from "../lib/api";
 import { peso, num } from "../lib/format";
-import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
+import { useT } from "../lib/i18n";
 
 // LA FICHA DE UN PRODUCTO — la pantalla de datos del teléfono.
 //
@@ -32,20 +31,14 @@ function Bloque({ icono: Icono, titulo, tono = "", children }) {
 
 export default function Ficha({ codigo, onVolver, onPreguntar }) {
   const t = useT();
-  const lang = useLang();
-  const [f, setF] = useState(undefined);   // undefined = cargando, null = no existe
+  const { data: f, isLoading, isError } = useApiQuery("fichaProducto", [codigo], { enabled: !!codigo });
 
-  useEffect(() => {
-    setF(undefined);
-    api.fichaProducto(codigo).then(setF).catch(() => setF(null));
-  }, [codigo, lang]);
-
-  if (f === undefined) return <div className="py-10 text-center">
+  if (isLoading) return <div className="py-10 text-center">
     <Loader2 size={18} className="mx-auto animate-spin text-tinta-suave" /></div>;
 
   // Escanear algo que no está en el catálogo es un caso REAL del depósito, no
   // una rareza. Se dice, no se rellena la pantalla con ceros.
-  if (!f) return (
+  if (isError || !f) return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-6 text-center">
       <p className="text-sm font-semibold text-tinta">{t("ficha.no_existe_t")}</p>
       <p className="mt-1 text-sm leading-snug text-tinta-suave">{t("ficha.no_existe_d", { codigo })}</p>

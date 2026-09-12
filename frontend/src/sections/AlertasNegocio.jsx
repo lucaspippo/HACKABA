@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, PackageX, HandCoins, TrendingUp, ArrowRight, AlertTriangle, Clock,
          Scale, Banknote, FileText } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
@@ -18,11 +19,6 @@ import { useT } from "../lib/i18n";
 // P35·E3 — la presentación de alertas (copy/ícono/cifra/fuentes/porqué/grupo)
 // vive en lib/alertasNegocio (compartida con InsightsMobile). Acá SOLO el render.
 
-// P32·1 — cache de sesión de las señales: al VOLVER a Alertas se muestran de
-// inmediato (sin skeleton ni re-fetch visible); se refrescan en background.
-// Cacheado por idioma para que un toggle no muestre texto del idioma viejo.
-let _cacheSenales = { lang: null, senales: null };
-
 export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
   const t = useT();
   // P31·4 — re-fetch al cambiar el idioma confirmado (las señales traen copy
@@ -30,12 +26,12 @@ export default function AlertasNegocio({ onPreguntar, onNavegar, datos }) {
   const langKey = useSession()?.usuario?.idioma || "es";
   // P32·1 — TRES estados explícitos: null = cargando (skeleton), objeto = llegó
   // (con datos o vacío confirmado). Nunca el estado vacío antes de saber.
-  const [senales, setSenales] = useState(
-    _cacheSenales.lang === langKey ? _cacheSenales.senales : null);
+  const senalesQ = useQuery({
+    queryKey: ["polpilot", "senales", langKey],
+    queryFn: cargarSenales,
+  });
+  const senales = senalesQ.data ?? null;
   const [abierta, setAbierta] = useState(null); // la alerta del drill-down
-  useEffect(() => {
-    cargarSenales().then((s) => { _cacheSenales = { lang: langKey, senales: s }; setSenales(s); }).catch(() => {});
-  }, [langKey]);
   const cargando = senales === null;  // la respuesta TODAVÍA no llegó
   const evolucion = senales?.evolucion;
   const alertasEvolucion = evolucion?.hay_datos ? (evolucion.alertas || []) : [];

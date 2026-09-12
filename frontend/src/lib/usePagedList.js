@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 const PAGE = 50;
 const FILTER_KEYS = ["proveedor", "deposito", "ubicacion", "tipo", "po_number", "sin_po", "proximos"];
@@ -15,13 +16,6 @@ function readFilters(params) {
 
 export function usePagedList(fetcher, extraDeps = []) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(null);
-  const [facets, setFacets] = useState({});
   const [q, setQ] = useState(() => searchParams.get("q") || "");
   const [qDebounced, setQDebounced] = useState(() => searchParams.get("q") || "");
   const [sort, setSort] = useState({ campo: null, dir: 1 });
@@ -29,9 +23,6 @@ export function usePagedList(fetcher, extraDeps = []) {
   const [dateFrom, setDateFrom] = useState(() => searchParams.get("date_from") || "");
   const [dateTo, setDateTo] = useState(() => searchParams.get("date_to") || "");
   const [filters, setFilters] = useState(() => readFilters(searchParams));
-  const [reloadKey, setReloadKey] = useState(0);
-  const offsetRef = useRef(0);
-  const loadingMoreRef = useRef(false);
   const skipUrl = useRef(true);
 
   useEffect(() => {
@@ -90,43 +81,27 @@ export function usePagedList(fetcher, extraDeps = []) {
     }, { replace: true });
   }, [qDebounced, dateFrom, dateTo, source, filters, setSearchParams]);
 
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    const params = query();
-    fetcher(params).then((d) => {
-      if (!alive) return;
-      setItems(d.items || []);
-      setTotal(d.total || 0);
-      setHasMore(!!d.has_more);
-      if (d.facets) setFacets(d.facets);
-      offsetRef.current = (d.items || []).length;
-      setError(null);
-    }).catch((e) => { if (alive) setError(e); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
-    // extraDeps lets a page pass filtro / err without forking the hook.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetcher, query, reloadKey, ...extraDeps]);
+  const params = query();
+  const infinite = useInfiniteQuery({
+    queryKey: ["polpilot", "paged", fetcher, params, ...extraDeps],
+    queryFn: ({ pageParam }) => fetcher({ ...params, offset: pageParam, limit: PAGE }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage?.has_more) return undefined;
+      return allPages.reduce((n, p) => n + (p.items?.length || 0), 0);
+    },
+  });
+
+  const items = infinite.data?.pages.flatMap((p) => p.items || []) ?? [];
+  const total = infinite.data?.pages[0]?.total || 0;
+  const facets = infinite.data?.pages.map((p) => p.facets).find(Boolean) || {};
 
   const loadMore = useCallback(() => {
-    if (loadingMoreRef.current || !hasMore) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    const params = { ...query(), offset: offsetRef.current };
-    fetcher(params).then((d) => {
-      const batch = d.items || [];
-      setItems((prev) => [...prev, ...batch]);
-      setHasMore(!!d.has_more);
-      offsetRef.current += batch.length;
-    }).catch(() => {})
-      .finally(() => {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      });
-  }, [fetcher, hasMore, query]);
+    if (infinite.isFetchingNextPage || !infinite.hasNextPage) return;
+    infinite.fetchNextPage();
+  }, [infinite]);
 
-  const reload = () => setReloadKey((k) => k + 1);
+  const reload = () => infinite.refetch();
 
   const toggleSort = (campo) => {
     setSort((o) => (o.campo === campo ? { campo, dir: -o.dir } : { campo, dir: 1 }));
@@ -157,7 +132,9 @@ export function usePagedList(fetcher, extraDeps = []) {
   const hasActiveFilters = !!(q || dateFrom || dateTo || (source && source !== "all") || Object.keys(filters).length);
 
   return {
-    items, total, hasMore, loading, loadingMore, error, facets,
+    items, total, hasMore: !!infinite.hasNextPage,
+    loading: infinite.isLoading, loadingMore: infinite.isFetchingNextPage,
+    error: infinite.error, facets,
     q, setQ, sort, toggleSort, source, setSource,
     dateFrom, setDateFrom, dateTo, setDateTo, setDateRange,
     filters, setFilter, clearFilters, hasActiveFilters,

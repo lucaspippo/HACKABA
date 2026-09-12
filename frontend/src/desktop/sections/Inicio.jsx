@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { useAui, useAuiState } from "@assistant-ui/react";
 import ChatPanel from "../../views/ChatPanel";
-import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { authStore, useSession } from "../../lib/auth";
 import { pesoCorto } from "../../lib/format";
 import { useT, useLang } from "../../lib/i18n";
@@ -24,27 +24,17 @@ function HomeLanding({ onNavegar }) {
   const nombre = primerNombre(session?.usuario?.nombre);
   const puedePrioridades = authStore.tiene("alertas") || authStore.tiene("oportunidades");
 
-  const [prio, setPrio] = useState(null);
-  const [prioError, setPrioError] = useState(false);
+  const prioQ = useApiQuery("prioridades", [], { enabled: puedePrioridades });
+  const prio = prioQ.data;
+  const prioError = prioQ.isError;
+  const identityRef = useRef({ token: session?.token, lang });
 
   useEffect(() => {
     if (!puedePrioridades) return;
-    let vivo = true;
-    api
-      .prioridades()
-      .then((d) => {
-        if (!vivo) return;
-        setPrio(d);
-        setPrioError(false);
-      })
-      .catch(() => {
-        if (!vivo) return;
-        setPrioError(true);
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [puedePrioridades, session?.token, lang]);
+    if (identityRef.current.token === session?.token && identityRef.current.lang === lang) return;
+    identityRef.current = { token: session?.token, lang };
+    prioQ.refetch();
+  }, [puedePrioridades, session?.token, lang, prioQ.refetch]);
 
   const pendientes = (prio?.act || []).filter((item) => !item.action_taken);
   const hoy = pendientes.slice(0, MAX_PRIORIDADES);

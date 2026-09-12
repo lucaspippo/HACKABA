@@ -10,6 +10,7 @@ import { num, peso } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
 import { contarACorregir } from "../../lib/alertas";
 import { useT } from "../../lib/i18n";
+import { useApiMutation } from "../../lib/query";
 
 const ERRORES_DATO = ["fantasma", "negativo", "sin_precio", "balanza", "costo_viejo"];
 const ESTADO_CAL = {
@@ -51,6 +52,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
     [filtro, errSel],
   );
   const page = usePagedList(fetcher, [filtro, errSel]);
+  const articuloEliminar = useApiMutation("articuloEliminar");
 
   useEffect(() => {
     if (qHighlight) page.setQ(qHighlight);
@@ -61,7 +63,7 @@ export default function Productos({ data, highlight, onNavegar, onPreguntar }) {
 
   const eliminar = async (codigo) => {
     try {
-      await api.articuloEliminar(codigo);
+      await articuloEliminar.mutateAsync(codigo);
       toast(t("productos.eliminado"));
       page.reload();
     } catch {
@@ -299,6 +301,8 @@ const CAMPOS_ARTICULO = [
 
 function ModalArticulo({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const articuloCrear = useApiMutation("articuloCrear");
+  const articuloActualizar = useApiMutation("articuloActualizar");
   const [form, setForm] = useState({
     codigo: inicial?.codigo ?? "", descripcion: inicial?.descripcion || "",
     tipo: inicial?.tipo || "", proveedor: inicial?.proveedor || "",
@@ -320,9 +324,9 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
     try {
       if (inicial) {
         const { codigo, ...cambios } = payload;
-        await api.articuloActualizar(inicial.codigo, cambios);
+        await articuloActualizar.mutateAsync([inicial.codigo, cambios]);
       } else {
-        await api.articuloCrear(payload);
+        await articuloCrear.mutateAsync(payload);
       }
       toast(t(inicial ? "inventario.producto_actualizado" : "inventario.producto_creado"));
       onGuardado();

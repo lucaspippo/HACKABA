@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, MessageCircle, Scale } from "lucide-react";
 import Cargando from "../components/Cargando";
 import ConfidenceIndicator from "../components/ConfidenceIndicator";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { num, peso } from "../lib/format";
 import { useT } from "../lib/i18n";
@@ -19,24 +19,18 @@ function qualitativeBand(confianza) {
 
 export default function Conciliacion({ onPreguntar, onNavegar, puedeMovimientos }) {
   const t = useT();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error, refetch } = useApiQuery("conciliacion");
+  const aceptarMut = useApiMutation("conciliacionAceptar");
   const [abierta, setAbierta] = useState(null);
   const [aceptando, setAceptando] = useState(null);
   const [tarasOpen, setTarasOpen] = useState(false);
 
-  const load = () => {
-    setError(null);
-    api.conciliacion().then(setData).catch((e) => setError(e));
-  };
-  useEffect(load, []);
-
   const aceptar = async (id) => {
     setAceptando(id);
     try {
-      await api.conciliacionAceptar(id);
+      await aceptarMut.mutateAsync([id]);
       toast(t("conc.aceptado"));
-      load();
+      refetch();
     } catch {
       toast(t("conc.error"), "error");
     } finally {

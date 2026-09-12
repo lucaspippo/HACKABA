@@ -3,34 +3,32 @@ import { MapPin, X, Pencil, Trash2 } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
 import CellLink, { paramLink } from "../../components/CellLink";
-import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useQuerySeed } from "../../lib/usePagedList";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 
 export default function Ubicaciones() {
   const t = useT();
-  const [items, setItems] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("ubicaciones");
+  const ubicacionEliminar = useApiMutation("ubicacionEliminar");
+  const items = data?.ubicaciones;
   const [modal, setModal] = useState(null); // null | "nueva" | {id,...}
   const seed = useQuerySeed();
   const [q, setQ] = useState(seed);
 
-  const cargar = () => api.ubicaciones().then((d) => setItems(d.ubicaciones)).catch(setError);
-  useEffect(() => { cargar(); }, []);
   useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const eliminar = async (id) => {
     try {
-      await api.ubicacionEliminar(id);
+      await ubicacionEliminar.mutateAsync(id);
       toast(t("ubicaciones.eliminada"));
-      cargar();
     } catch {
       toast(t("ubicaciones.error"), "error");
     }
   };
 
-  if (!items) return <div className="pt-2"><Cargando error={error} /></div>;
+  if (items == null) return <div className="pt-2"><Cargando error={error} /></div>;
 
   const qn = q.trim().toLowerCase();
   const filtradas = qn ? items.filter((u) => `${u.nombre} ${u.nota || ""}`.toLowerCase().includes(qn)) : items;
@@ -79,7 +77,7 @@ export default function Ubicaciones() {
         <ModalUbicacion
           inicial={modal === "nueva" ? null : modal}
           onClose={() => setModal(null)}
-          onGuardado={() => { setModal(null); cargar(); }}
+          onGuardado={() => { setModal(null); }}
         />
       )}
     </div>
@@ -88,6 +86,8 @@ export default function Ubicaciones() {
 
 function ModalUbicacion({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const ubicacionCrear = useApiMutation("ubicacionCrear");
+  const ubicacionActualizar = useApiMutation("ubicacionActualizar");
   const [nombre, setNombre] = useState(inicial?.nombre || "");
   const [nota, setNota] = useState(inicial?.nota || "");
   const [guardando, setGuardando] = useState(false);
@@ -97,8 +97,8 @@ function ModalUbicacion({ inicial, onClose, onGuardado }) {
     setGuardando(true);
     setError(null);
     try {
-      if (inicial) await api.ubicacionActualizar(inicial.id, { nombre, nota });
-      else await api.ubicacionCrear({ nombre, nota });
+      if (inicial) await ubicacionActualizar.mutateAsync([inicial.id, { nombre, nota }]);
+      else await ubicacionCrear.mutateAsync({ nombre, nota });
       toast(t(inicial ? "ubicaciones.actualizada" : "ubicaciones.creada"));
       onGuardado();
     } catch (e) {

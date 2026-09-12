@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Camera, Pencil, Send, Clock, XCircle, Mic, MicOff, Globe, Target } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import LangSwitch from "../components/LangSwitch";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { useSession, authStore } from "../lib/auth";
 import { equipoStore, useEquipo, ESTADO_LABEL } from "../lib/equipoStore";
 import { useT, tRol, tDato } from "../lib/i18n";
@@ -71,15 +71,21 @@ export default function MiPerfil({ user }) {
   const bloqueActivoRef = useRef("funcion");
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [sugerencias, setSugerencias] = useState([]);
-  const [solicitudes, setSolicitudes] = useState([]);
-  const [pedibles, setPedibles] = useState([]);   // todo lo que PUEDE pedir
   const [pidiendo, setPidiendo] = useState(null); // módulo elegido, esperando el porqué
   const [porque, setPorque] = useState("");
   const [fotoVersion, setFotoVersion] = useState(0);
   const [tieneFoto, setTieneFoto] = useState(!!user?.foto);
   const [aviso, setAviso] = useState(null);
   const fileRef = useRef(null);
+  const { data: profile, refetch: refetchProfile } = useApiQuery(
+    "perfil", [user?.username], { enabled: !!user?.username },
+  );
+  const descMut = useApiMutation("perfilDescripcion");
+  const fotoMut = useApiMutation("perfilFoto");
+  const solicitarMut = useApiMutation("solicitar");
+  const sugerencias = profile?.sugerencias || [];
+  const solicitudes = profile?.solicitudes || [];
+  const pedibles = profile?.pedibles || [];
 
   // Dictado por voz (Web Speech API del navegador): el empleado le CUENTA su rol
   // y Ángela arma el perfil. Transcripción local, nada de audio al backend.
@@ -110,22 +116,16 @@ export default function MiPerfil({ user }) {
     rec.start();
   };
 
-  const cargar = () => {
-    if (!user) return;
-    api.perfil(user.username).then((p) => {
-      setSugerencias(p.sugerencias || []);
-      setSolicitudes(p.solicitudes || []);
-      setPedibles(p.pedibles || []);
-      setTieneFoto(!!p.foto);
-      if (!editando) {
-        setDescripcion(p.descripcion || "");
-        setDescripcionEn(p.descripcion_en || "");
-      }
-    }).catch(() => {});
-  };
+  useEffect(() => {
+    if (!profile) return;
+    setTieneFoto(!!profile.foto);
+    if (!editando) {
+      setDescripcion(profile.descripcion || "");
+      setDescripcionEn(profile.descripcion_en || "");
+    }
+  }, [profile, editando]);
 
   useEffect(() => {
-    cargar();
     // Si el dueño aprobó algo desde la última visita, esto trae las features nuevas.
     authStore.refresh();
   }, [user?.username]);
@@ -149,9 +149,8 @@ export default function MiPerfil({ user }) {
     if (!compuesta.trim() || !token) return;
     setGuardando(true);
     try {
-      const r = await api.perfilDescripcion(user.username, token, compuesta);
+      const r = await descMut.mutateAsync([user.username, token, compuesta]);
       setDescripcion(compuesta);
-      setSugerencias(r.sugerencias || []);
       setEditando(false);
       setAviso(r.sugerencias?.length
         ? t("miperfil.guardado_sugerencias")
@@ -169,7 +168,7 @@ export default function MiPerfil({ user }) {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        await api.perfilFoto(user.username, token, reader.result);
+        await fotoMut.mutateAsync([user.username, token, reader.result]);
         setTieneFoto(true);
         setFotoVersion((v) => v + 1);
       } catch {
@@ -185,11 +184,11 @@ export default function MiPerfil({ user }) {
   const solicitarModulo = async (modulo, motivo = "") => {
     if (!token) return;
     try {
-      await api.solicitar(token, [modulo], motivo);
+      await solicitarMut.mutateAsync([token, [modulo], motivo]);
       setAviso(t("miperfil.solicitud_enviada"));
       setPidiendo(null);
       setPorque("");
-      cargar();
+      refetchProfile();
     } catch {
       setAviso(t("miperfil.solicitud_error"));
     }
@@ -496,18 +495,14 @@ export default function MiPerfil({ user }) {
 // SERVIDOR (la fuente de verdad) y la vista vuelve al default en el momento.
 function PreferenciasAngela() {
   const t = useT();
-  const [prefs, setPrefs] = useState(null);
+  const { data: prefsData, isError: prefsError } = useApiQuery("preferencias");
+  const { data: recsData, refetch: refetchReglas } = useApiQuery("recordatorios");
+  const borrarMut = useApiMutation("preferenciaBorrar");
+  const completarMut = useApiMutation("recordatorioCompletar");
+  const prefs = prefsError ? { vista: {}, notas: {} } : prefsData;
   // P24·D6 — las reglas de aviso (umbrales/programados) viven acá también:
   // visibles y borrables junto a las preferencias. Transparencia total.
-  const [reglas, setReglas] = useState([]);
-  const cargarReglas = () =>
-    api.recordatorios()
-      .then((r) => setReglas((r.recordatorios || []).filter((x) => x.condicion && x.estado !== "hecho")))
-      .catch(() => {});
-  useEffect(() => {
-    api.preferencias().then(setPrefs).catch(() => setPrefs({ vista: {}, notas: {} }));
-    cargarReglas();
-  }, []);
+  const reglas = (recsData?.recordatorios || []).filter((x) => x.condicion && x.estado !== "hecho");
   if (!prefs) return null;
 
   // Cada preferencia del catálogo se describe en lenguaje de dueño.
@@ -524,8 +519,7 @@ function PreferenciasAngela() {
 
   const borrar = async (clave) => {
     try {
-      const r = await api.preferenciaBorrar(clave);
-      setPrefs({ vista: r.vista, notas: r.notas });
+      const r = await borrarMut.mutateAsync([clave]);
       // La vista local vuelve al default de esa preferencia en el momento.
       const { vistaStore } = await import("../lib/vistaStore");
       vistaStore.hidratarServer({ vista: r.vista });
@@ -561,7 +555,7 @@ function PreferenciasAngela() {
                 <p className="text-xs text-tinta-suave">{t("miperfil.regla_aviso")}</p>
               </div>
               <button
-                onClick={() => api.recordatorioCompletar(r.id).then(cargarReglas).catch(() => {})}
+                onClick={() => completarMut.mutateAsync([r.id]).then(() => refetchReglas()).catch(() => {})}
                 aria-label={t("miperfil.pref_borrar")}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-rojo/10 hover:text-rojo">
                 <XCircle size={16} />

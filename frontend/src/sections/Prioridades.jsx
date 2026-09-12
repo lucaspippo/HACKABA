@@ -3,7 +3,7 @@ import { ArrowRight, Plus, Check, Radar, CalendarClock, CircleDollarSign } from 
 import AngelaMark from "../components/AngelaMark";
 import { ACENTO, DrillNegocio } from "../components/CardNegocio";
 import FiltrosAccion from "../components/FiltrosAccion";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { equipoStore } from "../lib/equipoStore";
 import { equipoReal } from "../lib/equipoReal";
@@ -14,8 +14,6 @@ import { accionDe, estiloAccion } from "../lib/prioridadAccion";
 import { buildPrioridadPrompt } from "../lib/prioridadPrompt";
 
 const OVERLAY_BELOW = 760;
-
-let _cachePrio = { lang: null, data: null };
 
 function EmptyNoData({ onNavegar, onPreguntar }) {
   const t = useT();
@@ -133,8 +131,10 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const t = useT();
   const lang = useLang();
   const langKey = useSession()?.usuario?.idioma || "es";
-  const [data, setData] = useState(_cachePrio.lang === langKey ? _cachePrio.data : null);
-  const [error, setError] = useState(null);
+  const { data, error, isFetching, refetch } = useApiQuery("prioridades");
+  const prepararMut = useApiMutation("ordenCompraPreparar");
+  const resolverMut = useApiMutation("pisoResolver");
+  const feedbackMut = useApiMutation("patronFeedback");
   const [selectedId, setSelectedId] = useState(null);
   const [overlay, setOverlay] = useState(false);
   const [filtro, setFiltro] = useState(null);
@@ -145,18 +145,13 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [confirmingFloorReport, setConfirmingFloorReport] = useState(null);
   const rootRef = useRef(null);
+  const langReady = useRef(false);
 
-  const cargar = () => {
-    setError(null);
-    api.prioridades()
-      .then((d) => {
-        _cachePrio = { lang: langKey, data: d };
-        setData(d);
-      })
-      .catch((e) => setError(e));
-  };
-
-  useEffect(() => { cargar(); }, [langKey]);
+  const cargar = () => refetch();
+  useEffect(() => {
+    if (!langReady.current) { langReady.current = true; return; }
+    refetch();
+  }, [langKey, refetch]);
 
   useEffect(() => {
     const el = rootRef.current;
@@ -229,10 +224,10 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     if (!p) return;
     setPropTrabajando(true);
     try {
-      const r = await api.ordenCompraPreparar({
+      const r = await prepararMut.mutateAsync([{
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
-      });
+      }]);
       toast(r.mensaje);
       cargar();
     } catch {
@@ -248,7 +243,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     }
     setConfirmingFloorReport(null);
     try {
-      await Promise.all((c.reportes || []).map((rid) => api.piso.resolver(rid)));
+      await Promise.all((c.reportes || []).map((rid) => resolverMut.mutateAsync([rid])));
       toast(t("oportunidades.piso_resuelta"));
       setSelectedId(null);
       cargar();
@@ -265,7 +260,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
 
   const giveFeedback = (item, action) => {
     setFeedbackBusy(true);
-    api.patronFeedback(item.id, action)
+    feedbackMut.mutateAsync([item.id, action])
       .then(() => {
         toast(t("aprendizaje.feedback_ok"));
         setSelectedId(null);
@@ -397,7 +392,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     };
   };
 
-  const cargando = data === null && !error;
+  const cargando = data == null && (!error || isFetching);
   const vacio = data && act.length === 0 && watch.length === 0;
 
   return (

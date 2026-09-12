@@ -13,7 +13,7 @@ import {
 import AngelaMark from "../../components/AngelaMark";
 import { CuerpoConsulta } from "../../components/Widget";
 import ErrorBoundary from "../../components/ErrorBoundary";
-import { api } from "../../lib/api";
+import { useApiQuery, useApiMutation, queryClient, queries } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { cargarSenales, alertasVivas, contarAlertas } from "../../lib/centroAlertas";
 import { armarDecisiones } from "../../lib/decisiones";
@@ -189,44 +189,53 @@ const K_COLOR = "#a86b1e";
 const ANILLO = { rojo: "border-rojo", oro: "border-oro", verde: "border-salvia/70" };
 const PULSO_COLOR = { rojo: "rgba(210,55,43,.5)", oro: "rgba(222,124,26,.5)" };
 
-// --- carga: los MISMOS endpoints cacheados de las secciones ----------------------
-// P31·4 — re-fetch cuando cambia el idioma CONFIRMADO por el servidor: los
-// títulos de las cards y las conclusiones vienen del backend (lang del perfil).
-// Al togglear EN/ES, LangSwitch persiste y refresca la sesión → cambia
-// `langKey` → el mapa vuelve a pedir todo en el idioma nuevo (sin desfasajes).
-// P32·1 — cache de sesión (por idioma): al VOLVER al mapa se ve al instante,
-// sin skeleton; se refresca en background.
-let _cacheMapa = { lang: null, datos: null };
+// --- carga: the same cached endpoints the sections already use -------------------
+// P31·4 — re-fetch when the server-confirmed language changes: card titles
+// and conclusions come from the backend (profile lang). Toggling EN/ES
+// persists via LangSwitch and refreshes the session → `langKey` changes →
+// the map asks again in the new language.
+// Session cache is TanStack Query: returning to the map is instant.
 function useMapaDatos(langKey) {
-  const [d, setD] = useState(_cacheMapa.lang === langKey ? _cacheMapa.datos : null);
-  // El idioma VIGENTE en un ref: aplicamos el resultado del fetch solo si sigue
-  // siendo el idioma actual. Antes se usaba un flag `vivo` de cleanup, pero en
-  // dev (StrictMode doble-invoca el efecto) y durante el settle inicial es→en,
-  // ese flag dejaba el setD FINAL en false y el mapa quedaba clavado en
-  // "Cruzando tus fuentes…". Con el ref, el último idioma siempre gana y siempre
-  // pinta — sin carreras. (P-E3·fix)
+  const opsQ = useApiQuery("oportunidades");
+  const calidadQ = useApiQuery("calidad");
+  const macroQ = useApiQuery("macro");
+  const iniQ = useApiQuery("inicio");
+  const equipoActQ = useApiQuery("equipoActividad");
+  const anomaliasQ = useApiQuery("anomalias");
+  const conocimientoQ = useApiQuery("conocimiento");
+  const [senales, setSenales] = useState(null);
   const langVigente = useRef(langKey);
+  const prevLang = useRef(langKey);
   langVigente.current = langKey;
   useEffect(() => {
     const miLang = langKey;
-    (async () => {
-      const senales = await cargarSenales().catch(() => null);
-      const [ops, calidad, macro, ini, equipoAct, anomalias, conocimiento] = await Promise.all([
-        api.oportunidades().catch(() => null),
-        api.calidad().catch(() => null),
-        api.macro().catch(() => null),
-        api.inicio().catch(() => null),
-        api.equipoActividad().catch(() => null),
-        api.anomalias().catch(() => null),
-        api.conocimiento().catch(() => null),
-      ]);
-      if (langVigente.current !== miLang) return;  // llegó tarde: otro idioma ya manda
-      const datos = { senales: senales || {}, ops, calidad, macro, ini, equipoAct, anomalias, conocimiento };
-      _cacheMapa = { lang: miLang, datos };
-      setD(datos);
-    })();
+    cargarSenales()
+      .then((s) => { if (langVigente.current === miLang) setSenales(s || {}); })
+      .catch(() => { if (langVigente.current === miLang) setSenales({}); });
+    if (prevLang.current !== langKey) {
+      prevLang.current = langKey;
+      opsQ.refetch();
+      calidadQ.refetch();
+      macroQ.refetch();
+      iniQ.refetch();
+      equipoActQ.refetch();
+      anomaliasQ.refetch();
+      conocimientoQ.refetch();
+    }
   }, [langKey]);
-  return d;
+  const qs = [opsQ, calidadQ, macroQ, iniQ, equipoActQ, anomaliasQ, conocimientoQ];
+  const pending = senales === null || qs.some((q) => q.isPending && q.data === undefined && !q.isError);
+  if (pending) return null;
+  return {
+    senales,
+    ops: opsQ.data ?? null,
+    calidad: calidadQ.data ?? null,
+    macro: macroQ.data ?? null,
+    ini: iniQ.data ?? null,
+    equipoAct: equipoActQ.data ?? null,
+    anomalias: anomaliasQ.data ?? null,
+    conocimiento: conocimientoQ.data ?? null,
+  };
 }
 
 // --- el modelo: dato clave + semáforo + CONCLUSIONES + HALLAZGOS por dominio -----
@@ -1132,22 +1141,17 @@ function ConocimientoNodo({ piezas, nodoLabel, t, onNavegar }) {
 // (GET /api/conocimiento/pendientes reuses visibles_para) — nothing gets
 // filtered again here.
 function PendingKnowledgeQueue({ t }) {
-  const [pieces, setPieces] = useState(null); // null = loading
+  const pendQ = useApiQuery("conocimientoPendientes");
+  const aprobar = useApiMutation("conocimientoAprobar");
+  const rechazar = useApiMutation("conocimientoRechazar");
   const [actionInFlight, setActionInFlight] = useState(null); // id of the piece with an action in flight
-
-  useEffect(() => {
-    let alive = true;
-    api.conocimientoPendientes().then((r) => { if (alive) setPieces(r.piezas); })
-      .catch(() => { if (alive) setPieces([]); });
-    return () => { alive = false; };
-  }, []);
+  const pieces = pendQ.isError ? [] : (pendQ.data?.piezas ?? null);
 
   const review = async (pid, action) => {
     setActionInFlight(pid);
     try {
-      if (action === "approve") await api.conocimientoAprobar(pid);
-      else await api.conocimientoRechazar(pid);
-      setPieces((prev) => prev.filter((p) => p.id !== pid));
+      if (action === "approve") await aprobar.mutateAsync([pid]);
+      else await rechazar.mutateAsync([pid]);
     } catch {
       toast(t("memoria_chips.error"), "error");
     } finally {
@@ -1886,6 +1890,9 @@ function MapaApilado({ modelo, onSeleccion, seleccion, onNavegar, onPreguntar, o
 }
 
 // --- la sección --------------------------------------------------------------------------
+const CONSULTA_INV_CATS = { fuente: "inventario", metrica: "inmovilizado", agrupar: "categoria", top_n: 6 };
+const CONSULTA_VENTAS_CATS = { fuente: "ventas", metrica: "pesos", agrupar: "categoria", top_n: 6 };
+
 export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
   const t = useT();
   const lang = useLang();
@@ -1898,7 +1905,21 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
   const datos = useMapaDatos(langKey);
   const [rama, setRama] = useState(null);           // dominio expandido (UNA a la vez)
   const [nivel2, setNivel2] = useState(null);       // {sub, etiqueta, items}
-  const [extras, setExtras] = useState({});         // fetch lazy: categorias inv/ventas
+  const catsQ = useApiQuery("consultaSerie", [CONSULTA_INV_CATS], { enabled: rama === "inventario" });
+  const localesQ = useApiQuery("traslados", [], { enabled: rama === "clientes" });
+  const ventasCatsQ = useApiQuery("consultaSerie", [CONSULTA_VENTAS_CATS], { enabled: rama === "ventas" });
+  const canalesQ = useApiQuery("margenes", [], { enabled: rama === "ventas" });
+  const cierresQ = useApiQuery("cierresLocales", [7], { enabled: rama === "caja" });
+  const vencQ = useApiQuery("vencimientos", [30], { enabled: rama === "deposito" });
+  const extras = useMemo(() => ({
+    categorias: catsQ.data?.ok ? catsQ.data.series[0].puntos.slice(0, 6) : undefined,
+    locales: localesQ.data?.disponible ? (localesQ.data.locales || []) : undefined,
+    ventasCats: ventasCatsQ.data?.ok ? ventasCatsQ.data.series[0].puntos.slice(0, 6) : undefined,
+    canales: canalesQ.data?.disponible ? canalesQ.data : (canalesQ.isError ? null : undefined),
+    cierres: cierresQ.data?.disponible ? cierresQ.data : (cierresQ.isError ? null : undefined),
+    vencimientos: vencQ.data?.disponible ? vencQ.data : (vencQ.isError ? null : undefined),
+  }), [catsQ.data, localesQ.data, ventasCatsQ.data, canalesQ.data, canalesQ.isError,
+       cierresQ.data, cierresQ.isError, vencQ.data, vencQ.isError]);
   const [camino, setCamino] = useState(null);       // {id, nodos, paso, monto}
   const [seleccionMobile, setSeleccionMobile] = useState(null);
   const [insightMobileH, setInsightMobileH] = useState(null);
@@ -1970,42 +1991,6 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
   const expandir = (id) => {
     setCamino(null); setNivel2(null);
     setRama((r) => (r === id ? null : id));
-    if (id === "inventario" && !extras.categorias) {
-      api.consultaSerie({ fuente: "inventario", metrica: "inmovilizado", agrupar: "categoria", top_n: 6 })
-        .then((r) => r?.ok && setExtras((e) => ({ ...e, categorias: r.series[0].puntos.slice(0, 6) })))
-        .catch(() => {});
-    }
-    // P41·1.4 — los LOCALES PROPIOS cuelgan de Clientes pero NO son clientes:
-    // se piden al abrir la rama (bajo demanda, como el resto) y se pintan
-    // distinto para que la estructura del negocio se lea de un vistazo.
-    if (id === "clientes" && !extras.locales) {
-      api.traslados()
-        .then((r) => r?.disponible && setExtras((e) => ({ ...e, locales: r.locales || [] })))
-        .catch(() => {});
-    }
-    if (id === "ventas" && !extras.ventasCats) {
-      api.consultaSerie({ fuente: "ventas", metrica: "pesos", agrupar: "categoria", top_n: 6 })
-        .then((r) => r?.ok && setExtras((e) => ({ ...e, ventasCats: r.series[0].puntos.slice(0, 6) })))
-        .catch(() => {});
-    }
-    // P41·1.3 — cortes que la fuente REALMENTE contiene y no estaban colgados:
-    // los dos canales de venta, los cierres por local y lo que vence sin llegar
-    // a venderse. Todos bajo demanda, como el resto.
-    if (id === "ventas" && !extras.canales) {
-      api.margenes()
-        .then((r) => r?.disponible && setExtras((e) => ({ ...e, canales: r })))
-        .catch(() => setExtras((e) => ({ ...e, canales: null })));
-    }
-    if (id === "caja" && !extras.cierres) {
-      api.cierresLocales(7)
-        .then((r) => r?.disponible && setExtras((e) => ({ ...e, cierres: r })))
-        .catch(() => setExtras((e) => ({ ...e, cierres: null })));
-    }
-    if (id === "deposito" && !extras.vencimientos) {
-      api.vencimientos(30)
-        .then((r) => r?.disponible && setExtras((e) => ({ ...e, vencimientos: r })))
-        .catch(() => setExtras((e) => ({ ...e, vencimientos: null })));
-    }
   };
 
   // Nivel 2: los hijos REALES del sub tocado (donde el dataset los sostiene).
@@ -2035,8 +2020,8 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
           anillo: "border-salvia/70", kind: "cliente", cliente: c });
       }
     } else if (data.kind === "categoria_inv") {
-      const r = await api.consultaSerie({ fuente: "inventario", metrica: "inmovilizado",
-        agrupar: "producto", categoria: data.nombre, top_n: 4 }).catch(() => null);
+      const r = await queryClient.fetchQuery(queries.consultaSerie({ fuente: "inventario", metrica: "inmovilizado",
+        agrupar: "producto", categoria: data.nombre, top_n: 4 })).catch(() => null);
       for (const p of r?.ok ? r.series[0].puntos : []) {
         items.push({ label: p.x, inicial: String(p.x)[0], dato: pesoCorto(p.y),
           anillo: "border-hielo/50", kind: "item" });
@@ -2045,8 +2030,8 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
       // sus productos (por marca en la descripción) + su factura pendiente
       const marca = data.nombre.replace(/^(Distrib\.|Frigorífico|Golosinas|Alimentos|Lácteos|Limpieza)\s*/i, "")
         .replace(/\s*(SA|SRL|Mayorista)\s*$/i, "").trim();
-      const r = await api.consultaSerie({ fuente: "inventario", metrica: "inmovilizado",
-        agrupar: "producto", producto: marca, top_n: 3 }).catch(() => null);
+      const r = await queryClient.fetchQuery(queries.consultaSerie({ fuente: "inventario", metrica: "inmovilizado",
+        agrupar: "producto", producto: marca, top_n: 3 })).catch(() => null);
       for (const p of r?.ok ? r.series[0].puntos : []) {
         items.push({ label: p.x, inicial: String(p.x)[0], dato: pesoCorto(p.y),
           anillo: "border-hielo/50", kind: "item" });

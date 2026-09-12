@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Showcase from "./components/assistant/tools/Showcase";
 import AngelaMark from "./components/AngelaMark";
 import Login from "./components/Login";
@@ -7,12 +8,12 @@ import MobileApp from "./mobile/MobileApp";
 import DesktopApp from "./desktop/DesktopApp";
 import { useIsDesktop } from "./lib/useViewport";
 import { authStore, useSession } from "./lib/auth";
-import { api } from "./lib/api";
 import { apiUrl } from "./lib/apiUrl";
 import { langStore, useT } from "./lib/i18n";
 import { equipoStore } from "./lib/equipoStore";
 import { vistaStore } from "./lib/vistaStore";
 import { ALERTA_DEFS } from "./lib/alertas";
+import { invalidateShell, queries } from "./lib/query";
 
 // Los roles sin el módulo "inventario" (depósito, reparto, mostrador…) no pueden
 // pedir /api/inventario (403). Reciben este esqueleto: las secciones que muestran
@@ -27,19 +28,22 @@ const dataSinInventario = () => ({
   grupos_disponibles: [],
 });
 
+function retryWhileError(query) {
+  return query.state.status === "error" ? 5000 : false;
+}
+
 // Un cerebro, dos superficies, login real por usuario.
 export default function App() {
   const location = useLocation();
   const t = useT();
   const session = useSession();
   const isDesktop = useIsDesktop();
-  const [data, setData] = useState(null);
-  const [oportunidades, setOportunidades] = useState(null);
-  const [fase, setFase] = useState(null);
-  const [error, setError] = useState(null);
   // B8: null = todavía averiguando si el tenant tiene autologin; true = ya se
   // resolvió (entró solo o corresponde mostrar el login).
   const [autologinResuelto, setAutologinResuelto] = useState(false);
+
+  const loggedIn = !!session?.usuario;
+  const hasInv = !!session?.usuario?.features?.includes("inventario");
 
   // B8 — Entrada directa del demo (link de YC): sin sesión y con el flag del
   // tenant activo, la URL entra sola como el DUEÑO. Un logout MANUAL deja la
@@ -64,21 +68,29 @@ export default function App() {
     return () => { vivo = false; };
   }, [session]);
 
-  const recargar = () =>
-    Promise.all([
-      session?.usuario?.features?.includes("inventario")
-        ? api.inventario()
-        : Promise.resolve(dataSinInventario()),
-      api.oportunidades(),
-      api.fase(),
-    ])
-      .then(([inv, op, f]) => {
-        setData(inv);
-        setOportunidades(op);
-        setFase(f);
-        setError(null);
-      })
-      .catch((e) => setError(e.message));
+  const inventarioQ = useQuery({
+    ...queries.inventario(),
+    enabled: loggedIn && hasInv,
+    refetchInterval: retryWhileError,
+  });
+  const oportunidadesQ = useQuery({
+    ...queries.oportunidades(),
+    enabled: loggedIn,
+    refetchInterval: retryWhileError,
+  });
+  const faseQ = useQuery({
+    ...queries.fase(),
+    enabled: loggedIn,
+    refetchInterval: retryWhileError,
+  });
+  const preferenciasQ = useQuery({
+    ...queries.preferencias(),
+    enabled: loggedIn,
+  });
+
+  useEffect(() => {
+    if (preferenciasQ.data) vistaStore.hidratarServer(preferenciasQ.data);
+  }, [preferenciasQ.data]);
 
   useEffect(() => {
     if (!session?.usuario) return;
@@ -87,22 +99,12 @@ export default function App() {
     // Los objetivos del server (los que creó Ángela o cualquier usuario) se
     // mezclan en el tablero local de este usuario (P9·C5, M9).
     equipoStore.sincronizar();
-    // P19·A — lo que Ángela recuerda de este usuario (sin_torta, margen pin,
-    // orden del Home, widgets) baja del server y pisa el cache local: la
-    // preferencia sobrevive logout y cambio de máquina.
-    api.preferencias().then((p) => vistaStore.hidratarServer(p)).catch(() => {});
-    recargar();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
-  // Backend caído: reintentar solo, cada 5s, hasta que vuelva (P15·E1). La
-  // pantalla de error lo dice ("reintentando…") — nunca un Home con ceros.
-  useEffect(() => {
-    if (!error || !session?.usuario) return;
-    const id = setInterval(recargar, 5000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [error, session]);
+  const data = hasInv ? inventarioQ.data : (loggedIn ? dataSinInventario() : null);
+  const oportunidades = oportunidadesQ.data;
+  const fase = faseQ.data;
+  const error = (hasInv && inventarioQ.error) || oportunidadesQ.error || faseQ.error;
 
   // /showcase renders the tool presenters from saved fixtures. It sits BEFORE
   // the session gate on purpose: its whole value is needing no login, no
@@ -139,7 +141,7 @@ export default function App() {
     );
   }
 
-  if (!data) {
+  if (!data || !oportunidades || !fase) {
     return (
       <Centro>
         <AngelaMark size={48} pulse />
@@ -159,9 +161,9 @@ export default function App() {
       <Route
         path="/:section?"
         element={isDesktop ? (
-          <DesktopApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
+          <DesktopApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={invalidateShell} />
         ) : (
-          <MobileApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={recargar} />
+          <MobileApp key={user.username} data={data} oportunidades={oportunidades} fase={fase} user={user} onRecargar={invalidateShell} />
         )}
       />
     </Routes>

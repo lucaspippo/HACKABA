@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ResponsiveContainer, Treemap, Tooltip } from "recharts";
 import {
   ArrowRight, ClipboardList, Hourglass, Package, PackagePlus, ShoppingCart,
@@ -10,11 +10,11 @@ import { useCountUp } from "../../lib/useCountUp";
 import { useVista, vistaStore } from "../../lib/vistaStore";
 import { ALERTA_DEFS, ORDEN_ALERTAS, contarACorregir } from "../../lib/alertas";
 import { peso, pesoCorto, num } from "../../lib/format";
-import { api } from "../../lib/api";
 import { GRAFICO } from "../../lib/paleta";
 import { tealSecuencial, textoSobre } from "../../components/charts/tema";
 import { authStore } from "../../lib/auth";
 import { useT, useLang, tCat } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 import { ExcessByCat, ExpiryHorizon, SeasonalityCover } from "./InventarioViz";
 
 // Inventario inteligente is the briefing, not the workbench.
@@ -43,28 +43,26 @@ const HIGHLIGHT_ERR = {
   balanza: "balanza", costo_viejo: "costo_viejo",
 };
 
+const IMMOBILIZED_BY_CATEGORY = { fuente: "inventario", metrica: "inmovilizado", agrupar: "categoria" };
+
 export default function Panorama({ data, onSelect, onNavegar, onTab, onPreguntar, viz }) {
   const t = useT();
   const lang = useLang();
   const { resumen } = data;
   const nCorregir = contarACorregir(data);
-  const [reponer, setReponer] = useState(null);
-  const [ventas, setVentas] = useState(null);
-  const [venc, setVenc] = useState(null);
-  const [plataCat, setPlataCat] = useState([]);
-  const [top, setTop] = useState(() => data.top_inmovilizado.slice(0, 12));
+  const qReponer = useApiQuery("reponer");
+  const qVentas = useApiQuery("ventas");
+  const qVenc = useApiQuery("vencimientos");
+  const qSerie = useApiQuery("consultaSerie", [IMMOBILIZED_BY_CATEGORY], { enabled: !!IMMOBILIZED_BY_CATEGORY });
+  const qTop = useApiQuery("inventarioTop", [50]);
+  const reponer = qReponer.isError ? { disponible: false } : (qReponer.data ?? null);
+  const ventas = qVentas.isError ? { disponible: false } : (qVentas.data ?? null);
+  const venc = qVenc.isError ? null : (qVenc.data ?? null);
+  const serie = qSerie.data;
+  const plataCat = (serie?.ok && serie.series?.[0]?.puntos) ? serie.series[0].puntos.slice(0, 8) : [];
+  const top = qTop.data?.items?.length ? qTop.data.items : data.top_inmovilizado.slice(0, 12);
   const [filtro, setFiltro] = useState("todas");
   const [catSel, setCatSel] = useState(null);
-
-  useEffect(() => {
-    api.reponer().then(setReponer).catch(() => setReponer({ disponible: false }));
-    api.ventas().then(setVentas).catch(() => setVentas({ disponible: false }));
-    api.vencimientos().then(setVenc).catch(() => setVenc(null));
-    api.consultaSerie({ fuente: "inventario", metrica: "inmovilizado", agrupar: "categoria" })
-      .then((r) => { if (r.ok && r.series?.[0]?.puntos) setPlataCat(r.series[0].puntos.slice(0, 8)); })
-      .catch(() => {});
-    api.inventarioTop(50).then((r) => { if (r.items?.length) setTop(r.items); }).catch(() => {});
-  }, []);
 
   const acciones = useMemo(
     () => armarAcciones({ data, reponer, ventas, venc, t }),

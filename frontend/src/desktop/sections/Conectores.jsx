@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import AngelaSays from "../../components/AngelaSays";
 import Cargando from "../../components/Cargando";
-import { api } from "../../lib/api";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import { useT } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
 import IngestPipeline from "./IngestPipeline";
@@ -39,6 +39,38 @@ const ERPS_PROXIMAMENTE = [
 // pantallas.
 const ICONOS = { csv: FileSpreadsheet, bcra: LineChart, mcp: Waypoints };
 
+function useOdooSyncTab(syncName, ingestName, t) {
+  const syncMut = useApiMutation(syncName);
+  const ingestMut = useApiMutation(ingestName);
+  const [sync, setSync] = useState(null);
+  const [error, setError] = useState(null);
+  const [ingesta, setIngesta] = useState(null);
+  const [errorIngesta, setErrorIngesta] = useState(null);
+
+  const sincronizar = async () => {
+    setError(null);
+    try {
+      setSync(await syncMut.mutateAsync());
+    } catch {
+      setError(t("odoo.error_generico"));
+    }
+  };
+
+  const ingestar = async () => {
+    setErrorIngesta(null);
+    try {
+      setIngesta(await ingestMut.mutateAsync());
+    } catch {
+      setErrorIngesta(t("odoo.error_generico"));
+    }
+  };
+
+  return {
+    sync, ingesta, error, errorIngesta, sincronizar, ingestar,
+    fetching: syncMut.isPending, ingesting: ingestMut.isPending,
+  };
+}
+
 function IngestLinks({ t, onNavigate, batchId, importedTab }) {
   return (
     <>
@@ -56,11 +88,8 @@ function IngestLinks({ t, onNavigate, batchId, importedTab }) {
 
 export default function Conectores({ onNavigate }) {
   const t = useT();
-  const [lista, setLista] = useState(null); // null=cargando, false=error
-
-  useEffect(() => {
-    api.conectores().then((r) => setLista(r.conectores)).catch(() => setLista(false));
-  }, []);
+  const { data, isError, isPending } = useApiQuery("conectores");
+  const lista = isError ? false : (isPending ? null : data?.conectores);
 
   return (
     <div className="space-y-6">
@@ -164,55 +193,44 @@ function TarjetaConectorProximo({ logo, nombre }) {
 function PanelWhatsApp() {
   const t = useT();
   const [abierta, setAbierta] = useState(false);
-  const [autoAbierta, setAutoAbierta] = useState(false);
-  const [cfg, setCfg] = useState(null);
+  const [autoOpened, setAutoOpened] = useState(false);
+  const cfgQ = useApiQuery("whatsappBotConfig");
+  const cfg = cfgQ.isError ? false : cfgQ.data;
+  const convQ = useApiQuery("whatsappBotConversaciones", [], { enabled: !!cfg?.conectado });
   const [form, setForm] = useState({
     phone_number_id: "", access_token: "", app_secret: "", greeting_message: "", enabled: true,
   });
-  const [guardando, setGuardando] = useState(false);
+  const saveConfig = useApiMutation("whatsappBotConfigGuardar");
+  const deleteConfig = useApiMutation("whatsappBotConfigBorrar");
   const [error, setError] = useState(null);
   const [copiado, setCopiado] = useState(false);
-  const [conversaciones, setConversaciones] = useState(null);
   const [conversacionAbierta, setConversacionAbierta] = useState(null);
-  const [mensajes, setMensajes] = useState(null);
+  const msgQ = useApiQuery("whatsappBotMensajes", [conversacionAbierta], { enabled: !!conversacionAbierta });
+  const conversaciones = !cfg?.conectado ? null : (convQ.isError ? [] : (convQ.data?.conversaciones ?? null));
+  const mensajes = !conversacionAbierta ? null : (msgQ.isError ? [] : (msgQ.data?.mensajes ?? null));
 
-  const cargar = () => api.whatsappBotConfig().then((c) => {
-    setCfg(c);
-    // Igual que Odoo: si ya está conectado, arranca expandido — pero sólo la
-    // PRIMERA vez que sabemos el estado, nunca fuerza el panel a reabrirse
-    // si el dueño lo cerró después de conectar.
-    if (!autoAbierta) {
-      setAbierta(!!c.conectado);
-      setAutoAbierta(true);
-    }
-  }).catch(() => setCfg(false));
-  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Igual que Odoo: si ya está conectado, arranca expandido — pero sólo la
+  // PRIMERA vez que sabemos el estado, nunca fuerza el panel a reabrirse
+  // si el dueño lo cerró después de conectar.
   useEffect(() => {
-    if (cfg?.conectado) {
-      api.whatsappBotConversaciones().then((r) => setConversaciones(r.conversaciones)).catch(() => setConversaciones([]));
-    }
-  }, [cfg?.conectado]);
+    if (!cfg || autoOpened) return;
+    setAbierta(!!cfg.conectado);
+    setAutoOpened(true);
+  }, [cfg, autoOpened]);
 
   const conectar = async (e) => {
     e.preventDefault();
-    setGuardando(true);
     setError(null);
     try {
-      await api.whatsappBotConfigGuardar(form);
+      await saveConfig.mutateAsync([form]);
       setForm({ phone_number_id: "", access_token: "", app_secret: "", greeting_message: "", enabled: true });
-      await cargar();
     } catch (err) {
       setError(err.status === 400 ? t("whatsapp_bot.error_guardar") : t("whatsapp_bot.error_generico"));
-    } finally {
-      setGuardando(false);
     }
   };
 
   const desconectar = async () => {
-    try { await api.whatsappBotConfigBorrar(); } catch { /* best-effort */ }
-    await cargar();
-    setConversaciones(null);
+    try { await deleteConfig.mutateAsync(); } catch { /* best-effort */ }
   };
 
   const webhookUrl = `${window.location.origin}/api/webhooks/whatsapp`;
@@ -223,15 +241,9 @@ function PanelWhatsApp() {
     });
   };
 
-  const verConversacion = async (id) => {
+  const verConversacion = (id) => {
     if (conversacionAbierta === id) { setConversacionAbierta(null); return; }
     setConversacionAbierta(id);
-    setMensajes(null);
-    try {
-      setMensajes((await api.whatsappBotMensajes(id)).mensajes);
-    } catch {
-      setMensajes([]);
-    }
   };
 
   return (
@@ -358,8 +370,8 @@ function PanelWhatsApp() {
                              text-tinta outline-none transition-colors focus:border-tinta/40" />
               </label>
               {error && <p className="text-sm text-rojo-hondo">{error}</p>}
-              <ConnectorButton type="submit" loading={guardando}>
-                {guardando ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
+              <ConnectorButton type="submit" loading={saveConfig.isPending}>
+                {saveConfig.isPending ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
               </ConnectorButton>
             </form>
           </li>
@@ -455,48 +467,40 @@ function PanelConectorIA({ logo: Logo, nombre, pasoFinal }) {
 function PanelOdoo({ estado, onNavigate }) {
   const t = useT();
   const [abierto, setAbierto] = useState(estado === "activo");
-  const [cfg, setCfg] = useState(null);
+  const cfgQ = useApiQuery("odooConfig");
+  const cfg = cfgQ.isError ? false : cfgQ.data;
   const [form, setForm] = useState({ url: "", database: "", username: "", api_key: "" });
-  const [guardando, setGuardando] = useState(false);
+  const saveConfig = useApiMutation("odooConfigGuardar");
+  const deleteConfig = useApiMutation("odooConfigBorrar");
+  const connectDemo = useApiMutation("odooConectarDemo");
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("contactos");
-
-  const cargar = () => api.odooConfig().then(setCfg).catch(() => setCfg(false));
-  useEffect(() => { cargar(); }, []);
+  const saving = saveConfig.isPending || connectDemo.isPending;
 
   const conectar = async (e) => {
     e.preventDefault();
-    setGuardando(true);
     setError(null);
     try {
-      await api.odooConfigGuardar(form);
+      await saveConfig.mutateAsync([form]);
       setForm({ url: "", database: "", username: "", api_key: "" });
-      await cargar();
     } catch (err) {
       setError(err.status === 400 ? t("odoo.error_guardar") : t("odoo.error_generico"));
-    } finally {
-      setGuardando(false);
     }
   };
 
   const desconectar = async () => {
-    try { await api.odooConfigBorrar(); } catch { /* best-effort */ }
-    await cargar();
+    try { await deleteConfig.mutateAsync(); } catch { /* best-effort */ }
   };
 
   // DEMO ONLY (the backend 404s elsewhere): connect the bundled sample and
   // run the first sync in one click. Explicit and labeled — never a fallback
   // for a failing real connection, which keeps failing loudly on purpose.
   const conectarMuestra = async () => {
-    setGuardando(true);
     setError(null);
     try {
-      await api.odooConectarDemo();
-      await cargar();
+      await connectDemo.mutateAsync();
     } catch {
       setError(t("odoo.error_generico"));
-    } finally {
-      setGuardando(false);
     }
   };
 
@@ -585,16 +589,16 @@ function PanelOdoo({ estado, onNavigate }) {
               hint={t("odoo.campo_api_key_hint")}
               onChange={(v) => setForm((f) => ({ ...f, api_key: v }))} />
             {error && <p className="text-sm text-rojo-hondo">{error}</p>}
-            <ConnectorButton type="submit" loading={guardando}>
-              {guardando ? t("odoo.conectando") : t("odoo.conectar")}
+            <ConnectorButton type="submit" loading={saving}>
+              {saving ? t("odoo.conectando") : t("odoo.conectar")}
             </ConnectorButton>
           </form>
           {cfg.demo_disponible && (
             <div className="mt-3 border-t border-linea pt-3">
               <p className="text-sm text-tinta-suave">{t("odoo.muestra_hint")}</p>
               <div className="mt-2">
-                <ConnectorButton onClick={conectarMuestra} loading={guardando}>
-                  {guardando ? t("odoo.conectando") : t("odoo.conectar_muestra")}
+                <ConnectorButton onClick={conectarMuestra} loading={saving}>
+                  {saving ? t("odoo.conectando") : t("odoo.conectar_muestra")}
                 </ConnectorButton>
               </div>
             </div>
@@ -609,43 +613,37 @@ function PanelOdoo({ estado, onNavigate }) {
 // Pestaña Contactos: mismo comportamiento que la versión original de PanelOdoo,
 // ahora aislado para convivir con la pestaña Productos.
 function OdooTabContactos({ t, onNavigate }) {
+  const syncMut = useApiMutation("odooSync");
+  const ingestMut = useApiMutation("odooIngestContactos");
   const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
   const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
   const [errorIngesta, setErrorIngesta] = useState(null);
 
   const sincronizar = async () => {
-    setSincronizando(true);
     setError(null);
     try {
-      setSync(await api.odooSync());
+      setSync(await syncMut.mutateAsync());
     } catch {
       setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
     }
   };
 
   const ingestar = async () => {
-    setIngestando(true);
     setErrorIngesta(null);
     try {
-      setIngesta(await api.odooIngestContactos());
+      setIngesta(await ingestMut.mutateAsync());
     } catch {
       setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
     }
   };
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={syncMut.isPending}
         fetchLabel={t("odoo.sincronizar")} fetchingLabel={t("odoo.sincronizando")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingestMut.isPending}
         ingestLabel={t("odoo.ingestar_contactos")} ingestingLabel={t("odoo.ingestando_contactos")}
         error={error} errorIngest={errorIngesta}
       />
@@ -679,43 +677,37 @@ function OdooTabContactos({ t, onNavigate }) {
 // Pestaña Productos: catálogo con stock (product.template.qty_available).
 // Mismo patrón que Contactos — sólo lectura, preview.
 function OdooTabProductos({ t, onNavigate }) {
+  const syncMut = useApiMutation("odooSyncProductos");
+  const ingestMut = useApiMutation("odooIngestProductos");
   const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
   const [error, setError] = useState(null);
   const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
   const [errorIngesta, setErrorIngesta] = useState(null);
 
   const sincronizar = async () => {
-    setSincronizando(true);
     setError(null);
     try {
-      setSync(await api.odooSyncProductos());
+      setSync(await syncMut.mutateAsync());
     } catch {
       setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
     }
   };
 
   const ingestar = async () => {
-    setIngestando(true);
     setErrorIngesta(null);
     try {
-      setIngesta(await api.odooIngestProductos());
+      setIngesta(await ingestMut.mutateAsync());
     } catch {
       setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
     }
   };
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={syncMut.isPending}
         fetchLabel={t("odoo.traer_productos")} fetchingLabel={t("odoo.sincronizando_productos")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingestMut.isPending}
         ingestLabel={t("odoo.ingestar_productos")} ingestingLabel={t("odoo.ingestando_productos")}
         error={error} errorIngest={errorIngesta}
       />
@@ -762,43 +754,14 @@ function OdooTabProductos({ t, onNavigate }) {
 // Pestaña Proveedores: contactos-proveedor (supplier_rank > 0), la
 // contraparte de Contactos del lado compras. Mismo patrón: sólo lectura, preview.
 function OdooTabProveedores({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncProveedores());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestProveedores());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncProveedores", "odooIngestProveedores", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_proveedores")} fetchingLabel={t("odoo.sincronizando_proveedores")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_proveedores")} ingestingLabel={t("odoo.ingestando_proveedores")}
         error={error} errorIngest={errorIngesta}
       />
@@ -832,43 +795,14 @@ function OdooTabProveedores({ t, onNavigate }) {
 // Pestaña Compras: órdenes de compra (purchase.order) con sus líneas, la
 // contraparte de Productos del lado compras. Mismo patrón: sólo lectura, preview.
 function OdooTabCompras({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncOrdenesCompra());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestOrdenesCompra());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncOrdenesCompra", "odooIngestOrdenesCompra", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_compras")} fetchingLabel={t("odoo.sincronizando_compras")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_compras")} ingestingLabel={t("odoo.ingestando_compras")}
         error={error} errorIngest={errorIngesta}
       />
@@ -919,43 +853,14 @@ function OdooTabCompras({ t, onNavigate }) {
 }
 
 function OdooTabVentas({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncVentas());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestVentas());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncVentas", "odooIngestVentas", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_ventas")} fetchingLabel={t("odoo.sincronizando_ventas")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_ventas")} ingestingLabel={t("odoo.ingestando_ventas")}
         error={error} errorIngest={errorIngesta}
       />
@@ -1006,43 +911,14 @@ function OdooTabVentas({ t, onNavigate }) {
 }
 
 function OdooTabDeposito({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncDeposito());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestDeposito());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncDeposito", "odooIngestDeposito", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_deposito")} fetchingLabel={t("odoo.sincronizando_deposito")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_deposito")} ingestingLabel={t("odoo.ingestando_deposito")}
         error={error} errorIngest={errorIngesta}
       />
@@ -1077,43 +953,14 @@ function OdooTabDeposito({ t, onNavigate }) {
 }
 
 function OdooTabRecepciones({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncRecepciones());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestRecepciones());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncRecepciones", "odooIngestRecepciones", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_recepciones")} fetchingLabel={t("odoo.sincronizando_recepciones")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_recepciones")} ingestingLabel={t("odoo.ingestando_recepciones")}
         error={error} errorIngest={errorIngesta}
       />
@@ -1149,43 +996,14 @@ function OdooTabRecepciones({ t, onNavigate }) {
 }
 
 function OdooTabEntregas({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncEntregas());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestEntregas());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncEntregas", "odooIngestEntregas", t);
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_entregas")} fetchingLabel={t("odoo.sincronizando_entregas")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_entregas")} ingestingLabel={t("odoo.ingestando_entregas")}
         error={error} errorIngest={errorIngesta}
       />
@@ -1221,45 +1039,16 @@ function OdooTabEntregas({ t, onNavigate }) {
 }
 
 function OdooTabFacturas({ t, onNavigate }) {
-  const [sync, setSync] = useState(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [error, setError] = useState(null);
-  const [ingesta, setIngesta] = useState(null);
-  const [ingestando, setIngestando] = useState(false);
-  const [errorIngesta, setErrorIngesta] = useState(null);
-
-  const sincronizar = async () => {
-    setSincronizando(true);
-    setError(null);
-    try {
-      setSync(await api.odooSyncFacturas());
-    } catch {
-      setError(t("odoo.error_generico"));
-    } finally {
-      setSincronizando(false);
-    }
-  };
-
-  const ingestar = async () => {
-    setIngestando(true);
-    setErrorIngesta(null);
-    try {
-      setIngesta(await api.odooIngestFacturas());
-    } catch {
-      setErrorIngesta(t("odoo.error_generico"));
-    } finally {
-      setIngestando(false);
-    }
-  };
+  const { sync, ingesta, error, errorIngesta, sincronizar, ingestar, fetching, ingesting } = useOdooSyncTab("odooSyncFacturas", "odooIngestFacturas", t);
 
   const agingKey = (f) => `odoo.aging_${f.aging || "open"}`;
 
   return (
     <div className="space-y-3 pt-1">
       <ConnectorSyncAction
-        onFetch={sincronizar} fetching={sincronizando}
+        onFetch={sincronizar} fetching={fetching}
         fetchLabel={t("odoo.traer_facturas")} fetchingLabel={t("odoo.sincronizando_facturas")}
-        onIngest={ingestar} ingesting={ingestando}
+        onIngest={ingestar} ingesting={ingesting}
         ingestLabel={t("odoo.ingestar_facturas")} ingestingLabel={t("odoo.ingestando_facturas")}
         error={error} errorIngest={errorIngesta}
       />
@@ -1301,29 +1090,28 @@ function OdooTabFacturas({ t, onNavigate }) {
 }
 
 function OdooTabPrecios({ t }) {
+  const listsMut = useApiMutation("odooSyncListasPrecios");
+  const fxMut = useApiMutation("odooSyncMonedas");
   const [listas, setListas] = useState(null);
   const [monedas, setMonedas] = useState(null);
-  const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
+  const loading = listsMut.isPending || fxMut.isPending;
 
   const traer = async () => {
-    setCargando(true);
     setError(null);
     try {
-      const [pl, fx] = await Promise.all([api.odooSyncListasPrecios(), api.odooSyncMonedas()]);
+      const [pl, fx] = await Promise.all([listsMut.mutateAsync(), fxMut.mutateAsync()]);
       setListas(pl);
       setMonedas(fx);
     } catch {
       setError(t("odoo.error_generico"));
-    } finally {
-      setCargando(false);
     }
   };
 
   return (
     <div className="space-y-3 pt-1">
-      <ConnectorButton onClick={traer} loading={cargando}>
-        {cargando ? t("odoo.sincronizando_precios") : t("odoo.traer_precios")}
+      <ConnectorButton onClick={traer} loading={loading}>
+        {loading ? t("odoo.sincronizando_precios") : t("odoo.traer_precios")}
       </ConnectorButton>
       {error && <p className="text-sm text-rojo-hondo">{error}</p>}
       {monedas && (

@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Target, TrendingUp, PauseCircle, CheckCircle2, User } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
-import { apiUrl } from "../lib/apiUrl";
 import { useSession } from "../lib/auth";
 import { pesoCorto, num } from "../lib/format";
 import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
 
 // P36·E4 — Objetivos que Ángela MIDE SOLA contra datos reales. El valor actual
 // es en vivo (del backend, misma fuente que el resto de la app); el progreso se
@@ -82,17 +82,19 @@ export default function ObjetivosPanel() {
   const t = useT();
   const lang = useLang();
   const session = useSession();
-  const [data, setData] = useState(null);
-
+  const { data: raw, isError, refetch } = useApiQuery(
+    "objetivosMedidos",
+    [session?.token],
+    { enabled: !!session?.token },
+  );
+  const data = isError ? { objetivos: [], resumen: {} } : raw;
+  const langReady = useRef(false);
   useEffect(() => {
-    if (!session?.token) return;
-    fetch(apiUrl(`/api/objetivos-medidos?token=${encodeURIComponent(session.token)}`))
-      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then(setData)
-      .catch(() => setData({ objetivos: [], resumen: {} }));
-  }, [session?.token, lang]);
+    if (!langReady.current) { langReady.current = true; return; }
+    if (session?.token) refetch();
+  }, [lang, session?.token, refetch]);
 
-  if (data === null) {
+  if (data == null) {
     return (
       <div className="space-y-2.5">
         {[0, 1, 2].map((i) => (

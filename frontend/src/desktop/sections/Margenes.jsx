@@ -1,9 +1,9 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, Sparkles, Store, Truck } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
-import { api } from "../../lib/api";
 import { peso, pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiQuery } from "../../lib/query";
 import { GmroiBars } from "./InventarioViz";
 
 // P38·C — el número que el dueño más pide: cuánto gana POR GRUPO.
@@ -143,24 +143,17 @@ function Detalle({ detalle, grupo }) {
 
 export default function Margenes({ onPreguntar, onNavegar, viz }) {
   const t = useT();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(false);
+  const { data, isError } = useApiQuery("margenes");
   const [abierto, setAbierto] = useState(null);
-  const [detalle, setDetalle] = useState(null);
+  const qDetalle = useApiQuery("margenesDetalle", [abierto], { enabled: !!abierto });
+  const detalle = qDetalle.isError ? { items: [] } : qDetalle.data;
 
-  useEffect(() => { api.margenes().then(setData).catch(() => setError(true)); }, []);
-
-  const abrirGrupo = async (g) => {
-    if (abierto === g.id) { setAbierto(null); return; }
-    setAbierto(g.id);
-    setDetalle(null);
-    try {
-      setDetalle(await api.margenes_detalle(g.id));
-    } catch { setDetalle({ items: [] }); }
+  const abrirGrupo = (g) => {
+    setAbierto((id) => (id === g.id ? null : g.id));
   };
 
-  if (error) return <p className="py-10 text-center text-sm text-tinta-suave">{t("margenes.error")}</p>;
-  if (!data) return <div className="skeleton h-72 w-full rounded-[var(--radius-card)]" />;
+  if (isError) return <p className="py-10 text-center text-sm text-tinta-suave">{t("margenes.error")}</p>;
+  if (data == null) return <div className="skeleton h-72 w-full rounded-[var(--radius-card)]" />;
   if (!data.disponible) {
     return (
       <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-linea bg-papel-hondo/40 p-6">

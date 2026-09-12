@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
 import { Check, Clock, MessageSquare } from "lucide-react";
 import AngelaSays from "../components/AngelaSays";
 import { ActividadEquipo } from "../sections/GestionEquipo";
 import ObjetivosPanel from "../sections/ObjetivosPanel";
-import { api } from "../lib/api";
-import { apiUrl } from "../lib/apiUrl";
 import { useSession } from "../lib/auth";
 import { useEquipo, equipoStore, ESTADO_LABEL } from "../lib/equipoStore";
 import { useT } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
 
 // El estado de las cosas, no un chat. El dueño coordina sin llamar a nadie.
 export default function EquipoMobile() {
@@ -15,16 +13,13 @@ export default function EquipoMobile() {
   const equipo = useEquipo();
   const session = useSession();
   const esAdmin = !!session?.usuario?.es_admin;
+  const token = session?.token;
   // P34·2.F — el dueño ve el PANEL DE GESTIÓN (lista de personas con indicadores,
   // expandible) también en el celular. Los insumos: perfiles + solicitudes.
-  const [perfiles, setPerfiles] = useState([]);
-  const [solicitudes, setSolicitudes] = useState([]);
-  useEffect(() => {
-    if (!session?.token || !esAdmin) return;
-    fetch(apiUrl(`/api/perfiles?token=${encodeURIComponent(session.token)}`))
-      .then((r) => (r.ok ? r.json() : Promise.reject(r))).then((d) => setPerfiles(d.perfiles)).catch(() => {});
-    api.solicitudes(session.token, "pendiente").then((d) => setSolicitudes(d.solicitudes)).catch(() => {});
-  }, [session, esAdmin]);
+  const { data: profilesData } = useApiQuery("perfiles", [token], { enabled: !!token && esAdmin });
+  const { data: requestsData } = useApiQuery("solicitudes", [token, "pendiente"], { enabled: !!token && esAdmin });
+  const perfiles = profilesData?.perfiles || [];
+  const solicitudes = requestsData?.solicitudes || [];
 
   return (
     <div className="space-y-6 pb-4">

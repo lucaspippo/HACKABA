@@ -6,6 +6,7 @@ import { FilterDivider, FilterRail } from "../../components/FilterRail";
 import DateRangePicker from "../../components/DateRangePicker";
 import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
+import { useApiMutation } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { fecha, num, peso } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
@@ -17,10 +18,11 @@ export default function Ventas() {
   const [exportando, setExportando] = useState(false);
   const fetcher = useCallback((p) => api.sales(p), []);
   const page = usePagedList(fetcher);
+  const deleteSale = useApiMutation("saleEliminar");
 
   const eliminar = async (id) => {
     try {
-      await api.saleEliminar(id);
+      await deleteSale.mutateAsync(id);
       toast(t("ventas_crud.eliminada"));
       page.reload();
     } catch {
@@ -122,15 +124,16 @@ const CAMPOS = [
 
 function ModalVenta({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const createSale = useApiMutation("saleCrear");
+  const updateSale = useApiMutation("saleActualizar");
   const [form, setForm] = useState({
     fecha: inicial?.fecha || "", producto: inicial?.producto || "",
     codigo: inicial?.codigo ?? "", cantidad: inicial?.cantidad ?? "", precio: inicial?.precio ?? "",
   });
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const saving = createSale.isPending || updateSale.isPending;
 
   const guardar = async () => {
-    setGuardando(true);
     setError(null);
     const payload = {
       ...form,
@@ -139,14 +142,12 @@ function ModalVenta({ inicial, onClose, onGuardado }) {
       precio: form.precio === "" ? null : Number(form.precio),
     };
     try {
-      if (inicial) await api.saleActualizar(inicial.id, payload);
-      else await api.saleCrear(payload);
+      if (inicial) await updateSale.mutateAsync([inicial.id, payload]);
+      else await createSale.mutateAsync([payload]);
       toast(t(inicial ? "ventas_crud.actualizada" : "ventas_crud.creada"));
       onGuardado();
     } catch (e) {
       setError(e.criollo || t("ventas_crud.error"));
-    } finally {
-      setGuardando(false);
     }
   };
 
@@ -170,7 +171,7 @@ function ModalVenta({ inicial, onClose, onGuardado }) {
           <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
-          <button type="button" onClick={guardar} disabled={!form.producto.trim() || guardando}
+          <button type="button" onClick={guardar} disabled={!form.producto.trim() || saving}
             className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>

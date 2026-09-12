@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
 import { X, Mic, Loader2, ArrowRight, Unlink } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { camposDe } from "../lib/roles";
-import { api } from "../lib/api";
-import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
+import { useT } from "../lib/i18n";
 
 // LA HOJA DE CARGA — lo que abre el botón del centro, POR OFICIO.
 //
@@ -24,12 +23,7 @@ import { useT, useLang } from "../lib/i18n";
 
 export default function HojaDeCarga({ onCerrar, onAviso, onVoz, conVoz }) {
   const t = useT();
-  const lang = useLang();
-  const [d, setD] = useState(null);
-
-  useEffect(() => {
-    api.piso.avisosOficio().then(setD).catch(() => setD({ avisos: [] }));
-  }, [lang]);
+  const { data: d, isLoading } = useApiQuery("pisoAvisosOficio");
 
   const tocar = (a) => {
     onAviso({
@@ -53,9 +47,9 @@ export default function HojaDeCarga({ onCerrar, onAviso, onVoz, conVoz }) {
             className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
 
-        {!d ? (
+        {isLoading ? (
           <div className="py-8 text-center"><Loader2 size={18} className="mx-auto animate-spin text-tinta-suave" /></div>
-        ) : d.avisos.length === 0 ? (
+        ) : !(d?.avisos?.length) ? (
           // Administración, compras y el dueño no tienen lista, y está dicho en
           // la semilla: son oficinas, escriben en vez de avisar desde el piso.
           <p className="mt-3 text-sm leading-snug text-tinta-suave">{t("carga.sin_lista")}</p>

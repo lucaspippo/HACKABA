@@ -3,10 +3,10 @@ import { Truck, Pencil, Trash2, X } from "lucide-react";
 import Cargando from "../../components/Cargando";
 import TablaCRUD from "../../components/TablaCRUD";
 import CellLink, { paramLink, qLink } from "../../components/CellLink";
-import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useQuerySeed } from "../../lib/usePagedList";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 
 function qDeHighlight(highlight) {
   if (!highlight) return "";
@@ -15,8 +15,9 @@ function qDeHighlight(highlight) {
 
 export default function Proveedores({ highlight }) {
   const t = useT();
-  const [items, setItems] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("proveedores");
+  const proveedorEliminar = useApiMutation("proveedorEliminar");
+  const items = data?.proveedores;
   const [modal, setModal] = useState(null);
   const seed = useQuerySeed();
   const [q, setQ] = useState(() => qDeHighlight(highlight) || seed);
@@ -26,21 +27,18 @@ export default function Proveedores({ highlight }) {
     if (n) setQ(n);
   }, [highlight]);
 
-  const cargar = () => api.proveedores().then((d) => setItems(d.proveedores)).catch(setError);
-  useEffect(() => { cargar(); }, []);
   useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const eliminar = async (id) => {
     try {
-      await api.proveedorEliminar(id);
+      await proveedorEliminar.mutateAsync(id);
       toast(t("proveedores.eliminado"));
-      cargar();
     } catch {
       toast(t("proveedores.error"), "error");
     }
   };
 
-  if (!items) return <div className="pt-2"><Cargando error={error} /></div>;
+  if (items == null) return <div className="pt-2"><Cargando error={error} /></div>;
 
   const qn = q.trim().toLowerCase();
   const filtrados = qn
@@ -96,7 +94,7 @@ export default function Proveedores({ highlight }) {
         <ModalProveedor
           inicial={modal === "nuevo" ? null : modal}
           onClose={() => setModal(null)}
-          onGuardado={() => { setModal(null); cargar(); }}
+          onGuardado={() => { setModal(null); }}
         />
       )}
     </div>
@@ -113,6 +111,8 @@ const CAMPOS = [
 
 function ModalProveedor({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const proveedorCrear = useApiMutation("proveedorCrear");
+  const proveedorActualizar = useApiMutation("proveedorActualizar");
   const [form, setForm] = useState({
     nombre: inicial?.nombre || "", contacto: inicial?.contacto || "",
     telefono: inicial?.telefono || "", email: inicial?.email || "", notas: inicial?.notas || "",
@@ -124,8 +124,8 @@ function ModalProveedor({ inicial, onClose, onGuardado }) {
     setGuardando(true);
     setError(null);
     try {
-      if (inicial) await api.proveedorActualizar(inicial.id, form);
-      else await api.proveedorCrear(form);
+      if (inicial) await proveedorActualizar.mutateAsync([inicial.id, form]);
+      else await proveedorCrear.mutateAsync(form);
       toast(t(inicial ? "proveedores.actualizado" : "proveedores.creado"));
       onGuardado();
     } catch (e) {

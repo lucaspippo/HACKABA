@@ -2,7 +2,6 @@ import { useSyncExternalStore } from "react";
 import { ES } from "./locales/es.js";
 import { EN } from "./locales/en.js";
 import { authStore } from "./auth.js";
-import { apiUrl } from "./apiUrl.js";
 
 // Idioma de la interfaz (Prompt 8). Reactivo, con la MISMA fuente de verdad que
 // el backend: la preferencia vive POR USUARIO en su perfil (el servidor la manda
@@ -61,11 +60,8 @@ export const langStore = {
     const s = authStore.getSnapshot();
     if (s?.token && s?.usuario?.username) {
       try {
-        await fetch(apiUrl(`/api/perfil/${encodeURIComponent(s.usuario.username)}/idioma`), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: s.token, idioma: nuevo }),
-        });
+        const { runMutation } = await import("./query");
+        await runMutation("perfilIdioma", s.usuario.username, s.token, nuevo);
         await authStore.refresh(); // la sesión cacheada queda con el idioma nuevo
       } catch { /* sin red: queda el cache local; el servidor se sincroniza al próximo cambio */ }
     }

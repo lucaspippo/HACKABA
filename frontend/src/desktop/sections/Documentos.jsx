@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Carpeta from "./Carpeta";
 import { FileText, Download, ClipboardList, FileBarChart2, Mail, Receipt, PenLine, ArrowRight } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { useT, useLang } from "../../lib/i18n";
 
@@ -28,13 +29,17 @@ function bajarBlob(blob, nombre) {
 export default function Documentos({ onPreguntar }) {
   const t = useT();
   const lang = useLang();
-  const [generados, setGenerados] = useState([]);
+  const { data, refetch } = useApiQuery("documentosListado");
+  const generados = data?.documentos || [];
   const [tab, setTab] = useState("carpeta");
-  const refrescarListado = () =>
-    api.documentosListado().then((d) => setGenerados(d.documentos || [])).catch(() => {});
+  const langRef = useRef(lang);
   // El listado se repide al cambiar de idioma: el `label` lo traduce el servidor
   // (ver /api/documentos/listado), igual que el resto de los textos del backend.
-  useEffect(() => { refrescarListado(); }, [lang]);
+  useEffect(() => {
+    if (langRef.current === lang) return;
+    langRef.current = lang;
+    refetch();
+  }, [lang, refetch]);
 
 
     return (

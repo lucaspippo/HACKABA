@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, Trash2, ArrowRight, PackageCheck, Sparkles, Wand2, Undo2 } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
-import { api } from "../../lib/api";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { pesoCorto, num } from "../../lib/format";
 import { useT } from "../../lib/i18n";
@@ -11,21 +11,21 @@ import IngestPipeline from "./IngestPipeline";
 // Ángela los analiza y el dueño resuelve con reglas (no caso por caso).
 export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
   const t = useT();
-  const [batches, setBatches] = useState([]);
-  const [preview, setPreview] = useState({});
+  const { data: stagingData } = useApiQuery("staging");
+  const batches = stagingData?.batches ?? [];
+  const resolveObs = useApiMutation("stagingResolver");
+  const integrateBatch = useApiMutation("stagingIntegrar");
+  const discardBatch = useApiMutation("stagingDescartar");
+  const revertNormMut = useApiMutation("stagingRevertirNormalizacion");
   const [resultado, setResultado] = useState(null);
   const [custom, setCustom] = useState({});
 
-  const cargar = () => api.stagingListar().then((d) => {
-    setBatches(d.batches);
-    onCambio?.(d.batches.length);
-    d.batches.forEach((b) => api.stagingPreview(b.id).then((p) => setPreview((s) => ({ ...s, [b.id]: p }))));
-  });
-  useEffect(() => { cargar(); }, []);
+  useEffect(() => {
+    if (stagingData) onCambio?.(stagingData.batches.length);
+  }, [stagingData, onCambio]);
 
   const resolver = async (bid, obs, accion, params) => {
-    await api.stagingResolver(bid, obs.id, accion, params);
-    await cargar();
+    await resolveObs.mutateAsync([bid, obs.id, accion, params]);
   };
 
   const resolverCustom = (bid, obs) => {
@@ -40,17 +40,15 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
   };
 
   const integrar = async (bid) => {
-    const r = await api.stagingIntegrar(bid);
+    const r = await integrateBatch.mutateAsync(bid);
     setResultado(r);
-    await cargar();
     onRecargar?.();
   };
 
   const [detalleNorm, setDetalleNorm] = useState({});
   const revertirNorm = async (bid) => {
-    await api.stagingRevertirNormalizacion(bid);
+    await revertNormMut.mutateAsync(bid);
     toast(t("staging.toast_norm_deshecha"));
-    await cargar();
   };
 
   if (batches.length === 0 && !resultado) {
@@ -100,7 +98,6 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
         const total = b.observaciones.length;
         const done = b.resueltas;
         const pendientes = b.observaciones.filter((o) => !o.resuelta);
-        const pv = preview[b.id];
         return (
           <div key={b.id} className="space-y-4 rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
             <div className="flex items-start gap-3">
@@ -111,7 +108,7 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
                 </p>
                 <p className="text-sm text-tinta-suave">{t("staging.resolve_regla")}</p>
               </div>
-              <button onClick={() => api.stagingDescartar(b.id).then(cargar)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-semibold text-tinta-suave hover:text-rojo">
+              <button onClick={() => discardBatch.mutateAsync(b.id)} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3 py-1.5 text-xs font-semibold text-tinta-suave hover:text-rojo">
                 <Trash2 size={13} /> {t("staging.descartar")}
               </button>
             </div>
@@ -213,24 +210,29 @@ export default function StagingArea({ onCambio, onRecargar, onNavigate }) {
               ))}
             </div>
 
-            {/* Integrar */}
-            {pendientes.length === 0 ? (
-              <div className="rounded-xl border border-hielo/20 bg-hielo-claro p-4">
-                <p className="text-sm text-tinta">
-                  {t("staging.todo_resuelto")} <b>{pv?.a_integrar ?? b.total_filas}</b> {t("staging.productos_entran")}
-                  {pv?.descartados ? t("staging.descarto_dup", { n: pv.descartados }) : ""}.
-                  {pv?.cambios?.length ? t("staging.cambios", { lista: pv.cambios.join("; ") }) : ""}
-                </p>
-                <button onClick={() => integrar(b.id)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
-                  {t("staging.integrar_btn")} <ArrowRight size={15} />
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-tinta-suave">{t("staging.faltan", { n: pendientes.length })}</p>
-            )}
+            <IntegrationFooter batch={b} pendientes={pendientes} onIntegrar={integrar} t={t} />
           </div>
         );
       })}
     </div>
   );
+}
+
+function IntegrationFooter({ batch, pendientes, onIntegrar, t }) {
+  const { data: pv } = useApiQuery("stagingPreview", [batch.id]);
+  if (pendientes.length === 0) {
+    return (
+      <div className="rounded-xl border border-hielo/20 bg-hielo-claro p-4">
+        <p className="text-sm text-tinta">
+          {t("staging.todo_resuelto")} <b>{pv?.a_integrar ?? batch.total_filas}</b> {t("staging.productos_entran")}
+          {pv?.descartados ? t("staging.descarto_dup", { n: pv.descartados }) : ""}.
+          {pv?.cambios?.length ? t("staging.cambios", { lista: pv.cambios.join("; ") }) : ""}
+        </p>
+        <button onClick={() => onIntegrar(batch.id)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
+          {t("staging.integrar_btn")} <ArrowRight size={15} />
+        </button>
+      </div>
+    );
+  }
+  return <p className="text-sm text-tinta-suave">{t("staging.faltan", { n: pendientes.length })}</p>;
 }

@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ClipboardList, Truck, MapPin, Lock, TriangleAlert, Loader2 } from "lucide-react";
-import { api } from "../lib/api";
+import { useApiQuery } from "../lib/query";
 import ReporteForm from "./ReporteForm";
 import { useT } from "../lib/i18n";
 
@@ -23,12 +23,9 @@ import { useT } from "../lib/i18n";
 
 export default function Armado({ onCerrada }) {
   const t = useT();
-  const [pedidos, setPedidos] = useState(null);
+  const { data, isLoading } = useApiQuery("paradasProximas");
   const [reporte, setReporte] = useState(null);
-
-  useEffect(() => {
-    api.paradasProximas().then((d) => setPedidos(d.paradas || [])).catch(() => setPedidos([]));
-  }, []);
+  const pedidos = isLoading ? null : (data?.paradas || []);
 
   if (!pedidos) return <div className="py-10 text-center"><Loader2 size={18} className="mx-auto animate-spin text-tinta-suave" /></div>;
 

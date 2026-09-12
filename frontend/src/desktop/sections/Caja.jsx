@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Wallet, Plus, Lock, FileDown, TrendingDown, TrendingUp } from "lucide-react";
 import AngelaMark from "../../components/AngelaMark";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { peso, pesoCorto, num, fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 
 // P38·E — el reporte que hoy hace una persona a mano.
 //
@@ -15,10 +16,9 @@ import { useT } from "../../lib/i18n";
 // PDF si el dueño lo quiere mandar.
 function ReporteCierres() {
   const t = useT();
-  const [r, setR] = useState(null);
+  const { data: r } = useApiQuery("cierresLocales", [7]);
   const [bajando, setBajando] = useState(false);
 
-  useEffect(() => { api.cierresLocales(7).then(setR).catch(() => setR(false)); }, []);
   if (!r) return null;   // sin locales propios (el piloto) la card no existe
 
   const pdf = async () => {
@@ -104,28 +104,25 @@ const MEDIO_LK = { efectivo: "caja.medio_efectivo", tarjeta: "caja.medio_tarjeta
 // Plan 7: caja diaria simple. Apertura, movimientos por medio, cierre con diferencia.
 export default function Caja() {
   const t = useT();
-  const [caja, setCaja] = useState(null);
+  const { data: caja } = useApiQuery("caja");
+  const cajaMovimiento = useApiMutation("cajaMovimiento");
+  const cajaCerrar = useApiMutation("cajaCerrar");
   const [cierre, setCierre] = useState(null);
   const [declarado, setDeclarado] = useState("");
   const [form, setForm] = useState({ tipo: "ingreso", medio: "efectivo", monto: "", detalle: "" });
 
-  const cargar = () => api.cajaEstado().then(setCaja).catch(() => {});
-  useEffect(() => { cargar(); }, []);
-
   const agregar = async () => {
     if (!form.monto) return;
-    await api.cajaMovimiento(form.tipo, form.medio, Number(form.monto), form.detalle);
+    await cajaMovimiento.mutateAsync([form.tipo, form.medio, Number(form.monto), form.detalle]);
     setForm({ ...form, monto: "", detalle: "" });
-    cargar();
   };
 
   const cerrar = async () => {
-    const r = await api.cajaCerrar(declarado ? Number(declarado) : null);
+    const r = await cajaCerrar.mutateAsync(declarado ? Number(declarado) : null);
     setCierre(r);
-    cargar();
   };
 
-  if (!caja) return <p className="text-sm text-tinta-suave">{t("caja.cargando")}</p>;
+  if (caja == null) return <p className="text-sm text-tinta-suave">{t("caja.cargando")}</p>;
   const tot = caja.totales;
 
   return (

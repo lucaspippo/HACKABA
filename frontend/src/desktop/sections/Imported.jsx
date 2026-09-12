@@ -5,7 +5,7 @@ import TablaCRUD, { SourceBadge } from "../../components/TablaCRUD";
 import { FacetSelect, FilterDivider, FilterRail, SourceChips, uniqueValues } from "../../components/FilterRail";
 import DateRangePicker from "../../components/DateRangePicker";
 import CellLink, { qLink } from "../../components/CellLink";
-import { api } from "../../lib/api";
+import { useApiQuery } from "../../lib/query";
 import { fecha, num, peso } from "../../lib/format";
 import { useT } from "../../lib/i18n";
 import IngestPipeline from "./IngestPipeline";
@@ -34,8 +34,7 @@ function inDateRange(iso, from, to) {
 
 export default function Imported({ highlight, onNavigate }) {
   const t = useT();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("imported");
   const [tab, setTab] = useState("products");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [query, setQuery] = useState("");
@@ -43,10 +42,6 @@ export default function Imported({ highlight, onNavigate }) {
   const [dateTo, setDateTo] = useState("");
   const [vendor, setVendor] = useState("");
   const [warehouse, setWarehouse] = useState("");
-
-  useEffect(() => {
-    api.imported().then(setData).catch(setError);
-  }, []);
 
   useEffect(() => {
     if (TABS.some((item) => item.id === highlight)) setTab(highlight);

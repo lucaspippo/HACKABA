@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { Tag, ArrowRight, Loader2 } from "lucide-react";
 import { peso, num } from "../lib/format";
-import { api } from "../lib/api";
-import { useT, useLang } from "../lib/i18n";
+import { useApiQuery } from "../lib/query";
+import { useT } from "../lib/i18n";
 
 // EL COSTO VIEJO, DONDE ALGUIEN PUEDE HACER ALGO.
 //
@@ -18,15 +17,10 @@ import { useT, useLang } from "../lib/i18n";
 
 export default function CostoViejo({ onAvisar }) {
   const t = useT();
-  const lang = useLang();
-  const [d, setD] = useState(null);
+  const { data: d, isLoading } = useApiQuery("mostradorCostosViejos");
 
-  useEffect(() => {
-    api.mostradorCostosViejos().then(setD).catch(() => setD({ items: [] }));
-  }, [lang]);
-
-  if (!d) return <div className="py-6 text-center"><Loader2 size={16} className="mx-auto animate-spin text-tinta-suave" /></div>;
-  if (!d.items?.length) return null;   // sin costos viejos, la sección no existe
+  if (isLoading) return <div className="py-6 text-center"><Loader2 size={16} className="mx-auto animate-spin text-tinta-suave" /></div>;
+  if (!d?.items?.length) return null;   // sin costos viejos, la sección no existe
 
   return (
     <section>

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, TrendingUp, Tag, Landmark, ArrowRight, Plus, HandCoins, Moon,
          ShoppingCart, Megaphone, CalendarClock, Shield, Users, Check } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
 import { CardNegocio, DrillNegocio } from "../components/CardNegocio";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { equipoStore } from "../lib/equipoStore";
 import { equipoReal } from "../lib/equipoReal";
@@ -72,16 +72,16 @@ const TIPO = {
   diversificar: { lk: "oportunidades.tipo_diversificar", icon: Shield, cls: "bg-oro/15 text-oro-tinta" },
 };
 
-// P32·1 — cache de sesión: al VOLVER a Oportunidades se muestran de inmediato
-// (sin skeleton ni re-fetch visible), cacheado por idioma.
-let _cacheOps = { lang: null, cards: null };
-
 export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
   const t = useT();
   // P31·4 — el idioma confirmado por el servidor: re-fetch bilingüe.
   const langKey = useSession()?.usuario?.idioma || "es";
-  const [cards, setCards] = useState(_cacheOps.lang === langKey ? _cacheOps.cards : null);
-  const [error, setError] = useState(null);
+  const { data: opsData, error, refetch: refetchOps } = useApiQuery("oportunidades");
+  const { data: pisoData, refetch: refetchPiso } = useApiQuery("pisoPropuestas");
+  const prepararMut = useApiMutation("ordenCompraPreparar");
+  const resolverMut = useApiMutation("pisoResolver");
+  const cards = error ? null : (opsData == null ? null : (opsData.cards || []));
+  const dePiso = pisoData?.propuestas || [];
   const [abierta, setAbierta] = useState(null); // la card del drill-down
   const [adoptados, setAdoptados] = useState({});
   const [eligiendo, setEligiendo] = useState(null);
@@ -90,16 +90,21 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
   // P38·B — la propuesta con aprobación (orden de compra / promoción de vencimiento)
   const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
+  const langReady = useRef(false);
+  useEffect(() => {
+    if (!langReady.current) { langReady.current = true; return; }
+    refetchOps();
+  }, [langKey, refetchOps]);
 
   const aprobarPropuesta = async (c) => {
     const p = c.propuesta;
     if (!p) return;
     setPropTrabajando(true);
     try {
-      const r = await api.ordenCompraPreparar({
+      const r = await prepararMut.mutateAsync([{
         codigo: p.codigo, producto: p.producto, proveedor: p.proveedor,
         cantidad: p.cantidad, motivo: c.titulo, origen: c.id,
-      });
+      }]);
       setPropResultado((s) => ({ ...s, [c.id]: r.mensaje }));
       toast(r.mensaje);
     } catch {
@@ -108,24 +113,13 @@ export default function OportunidadesNegocio({ onNavegar, onPreguntar }) {
     setPropTrabajando(false);
   };
 
-  // P39·3 — lo que el EQUIPO reportó desde el piso, ya cruzado: entra a la misma
-  // mesa de decisiones que el resto, en su propio grupo (el origen importa).
-  const [dePiso, setDePiso] = useState([]);
-  const cargarPiso = () =>
-    api.piso.propuestas().then((d) => setDePiso(d.propuestas || [])).catch(() => setDePiso([]));
-
-  useEffect(() => {
-    api.oportunidades().then((d) => { _cacheOps = { lang: langKey, cards: d.cards || [] }; setCards(d.cards || []); }).catch(setError);
-    cargarPiso();
-  }, [langKey]);
-
   // Resolver = "ya lo reclamé / ya está": cierra los reportes que la sostienen.
   const resolverPiso = async (c) => {
     try {
-      await Promise.all((c.reportes || []).map((rid) => api.piso.resolver(rid)));
+      await Promise.all((c.reportes || []).map((rid) => resolverMut.mutateAsync([rid])));
       toast(t("oportunidades.piso_resuelta"));
       setAbierta(null);
-      cargarPiso();
+      refetchPiso();
     } catch {
       toast(t("oportunidades.piso_error"), "error");
     }

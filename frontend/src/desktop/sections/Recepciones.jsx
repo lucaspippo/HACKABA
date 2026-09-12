@@ -6,6 +6,7 @@ import { FilterChip, FilterDivider, FilterRail, FacetSelect } from "../../compon
 import DateRangePicker from "../../components/DateRangePicker";
 import CellLink, { qLink } from "../../components/CellLink";
 import { api } from "../../lib/api";
+import { useApiMutation } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { fecha, num } from "../../lib/format";
 import { usePagedList } from "../../lib/usePagedList";
@@ -17,10 +18,11 @@ export default function Recepciones() {
   const [exportando, setExportando] = useState(false);
   const fetcher = useCallback((p) => api.receipts(p), []);
   const page = usePagedList(fetcher);
+  const deleteReceipt = useApiMutation("receiptEliminar");
 
   const eliminar = async (id) => {
     try {
-      await api.receiptEliminar(id);
+      await deleteReceipt.mutateAsync(id);
       toast(t("recepciones.eliminada"));
       page.reload();
     } catch {
@@ -143,17 +145,18 @@ const CAMPOS = [
 
 function ModalRecepcion({ inicial, onClose, onGuardado }) {
   const t = useT();
+  const createReceipt = useApiMutation("receiptCrear");
+  const updateReceipt = useApiMutation("receiptActualizar");
   const [form, setForm] = useState({
     fecha: inicial?.fecha || "", producto: inicial?.producto || "",
     codigo: inicial?.codigo ?? "", proveedor: inicial?.proveedor || "",
     cantidad: inicial?.cantidad ?? "", deposito: inicial?.deposito || "",
     po_number: inicial?.po_number || "",
   });
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const saving = createReceipt.isPending || updateReceipt.isPending;
 
   const guardar = async () => {
-    setGuardando(true);
     setError(null);
     const payload = {
       ...form,
@@ -161,14 +164,12 @@ function ModalRecepcion({ inicial, onClose, onGuardado }) {
       cantidad: Number(form.cantidad) || 0,
     };
     try {
-      if (inicial) await api.receiptActualizar(inicial.id, payload);
-      else await api.receiptCrear(payload);
+      if (inicial) await updateReceipt.mutateAsync([inicial.id, payload]);
+      else await createReceipt.mutateAsync([payload]);
       toast(t(inicial ? "recepciones.actualizada" : "recepciones.creada"));
       onGuardado();
     } catch (e) {
       setError(e.criollo || t("recepciones.error"));
-    } finally {
-      setGuardando(false);
     }
   };
 
@@ -192,7 +193,7 @@ function ModalRecepcion({ inicial, onClose, onGuardado }) {
           <button type="button" onClick={onClose} className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave">
             {t("inventario.form_cancelar")}
           </button>
-          <button type="button" onClick={guardar} disabled={!form.producto.trim() || guardando}
+          <button type="button" onClick={guardar} disabled={!form.producto.trim() || saving}
             className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("inventario.form_guardar")}
           </button>

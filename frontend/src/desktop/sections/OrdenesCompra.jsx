@@ -5,7 +5,7 @@ import TablaCRUD from "../../components/TablaCRUD";
 import { FilterChip, FilterDivider, FilterRail } from "../../components/FilterRail";
 import DateRangePicker from "../../components/DateRangePicker";
 import CellLink, { paramLink, qLink } from "../../components/CellLink";
-import { api } from "../../lib/api";
+import { useApiMutation, useApiQuery } from "../../lib/query";
 import { toast } from "../../lib/toastStore";
 import { fecha } from "../../lib/format";
 import { useT } from "../../lib/i18n";
@@ -32,8 +32,9 @@ const ESTADO_ICON = {
 
 export default function OrdenesCompra({ highlight }) {
   const t = useT();
-  const [items, setItems] = useState(null);
-  const [error, setError] = useState(null);
+  const { data, error } = useApiQuery("ordenesPreparadas");
+  const items = data?.ordenes;
+  const setStatus = useApiMutation("ordenCompraEstado");
   const [modal, setModal] = useState(false);
   const seed = useQuerySeed();
   const [q, setQ] = useState(() => qDeHighlight(highlight) || seed);
@@ -46,14 +47,11 @@ export default function OrdenesCompra({ highlight }) {
     if (n) setQ(n);
   }, [highlight]);
 
-  const cargar = () => api.ordenesPreparadas().then((d) => setItems(d.ordenes)).catch(setError);
-  useEffect(() => { cargar(); }, []);
   useEffect(() => { if (seed) setQ(seed); }, [seed]);
 
   const cambiarEstado = async (numero, estado) => {
     try {
-      await api.ordenCompraEstado(numero, estado);
-      cargar();
+      await setStatus.mutateAsync([numero, estado]);
     } catch {
       toast(t("ordenes.error"), "error");
     }
@@ -170,7 +168,7 @@ export default function OrdenesCompra({ highlight }) {
       />
 
       {modal && (
-        <ModalOrden onClose={() => setModal(false)} onGuardado={() => { setModal(false); cargar(); }} />
+        <ModalOrden onClose={() => setModal(false)} onGuardado={() => setModal(false)} />
       )}
     </div>
   );
@@ -178,20 +176,17 @@ export default function OrdenesCompra({ highlight }) {
 
 function ModalOrden({ onClose, onGuardado }) {
   const t = useT();
-  const [proveedores, setProveedores] = useState([]);
-  const [ubicaciones, setUbicaciones] = useState([]);
+  const { data: vendorData } = useApiQuery("proveedores");
+  const { data: locationData } = useApiQuery("ubicaciones");
+  const createOrder = useApiMutation("ordenCompraCrear");
+  const proveedores = vendorData?.proveedores ?? [];
+  const ubicaciones = locationData?.ubicaciones ?? [];
   const [proveedor, setProveedor] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [fechaOrden, setFechaOrden] = useState("");
   const [motivo, setMotivo] = useState("");
   const [items, setItems] = useState([{ producto: "", cantidad: "" }]);
-  const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    api.proveedores().then((d) => setProveedores(d.proveedores)).catch(() => {});
-    api.ubicaciones().then((d) => setUbicaciones(d.ubicaciones)).catch(() => {});
-  }, []);
 
   const cambiarItem = (i, campo, valor) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [campo]: valor } : it)));
@@ -199,21 +194,18 @@ function ModalOrden({ onClose, onGuardado }) {
   const quitarItem = (i) => setItems((prev) => prev.filter((_, idx) => idx !== i));
 
   const guardar = async () => {
-    setGuardando(true);
     setError(null);
     const validos = items
       .filter((it) => it.producto.trim())
       .map((it) => ({ producto: it.producto, cantidad: Number(it.cantidad) || 0 }));
     try {
-      await api.ordenCompraCrear({
+      await createOrder.mutateAsync([{
         proveedor, ubicacion, fecha: fechaOrden, motivo, items: validos,
-      });
+      }]);
       toast(t("ordenes.creada"));
       onGuardado();
     } catch (e) {
       setError(e.criollo || t("ordenes.error"));
-    } finally {
-      setGuardando(false);
     }
   };
 
@@ -275,7 +267,7 @@ function ModalOrden({ onClose, onGuardado }) {
             {t("ordenes.cancelar")}
           </button>
           <button onClick={guardar}
-            disabled={!proveedor.trim() || !items.some((it) => it.producto.trim()) || guardando}
+            disabled={!proveedor.trim() || !items.some((it) => it.producto.trim()) || createOrder.isPending}
             className="rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema disabled:opacity-50">
             {t("ordenes.crear")}
           </button>

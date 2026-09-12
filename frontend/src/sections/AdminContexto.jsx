@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { UploadCloud, FileText, Check, ShieldAlert } from "lucide-react";
 import AngelaMark from "../components/AngelaMark";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { useT } from "../lib/i18n";
 
 // Panel del EQUIPO POLPILOT (no del dueño). Acá cargamos el contexto externo
@@ -19,12 +19,11 @@ export default function AdminContexto() {
   const [tipo, setTipo] = useState("economia");
   const [nombre, setNombre] = useState("");
   const [texto, setTexto] = useState("");
-  const [items, setItems] = useState([]);
+  const { data, refetch } = useApiQuery("contexto");
+  const addMut = useApiMutation("contextoAgregar");
+  const items = data?.items || [];
   const [confirm, setConfirm] = useState(null);
   const fileRef = useRef(null);
-
-  const recargar = () => api.contextoListar().then((d) => setItems(d.items)).catch(() => {});
-  useEffect(() => { recargar(); }, []);
 
   const leer = (file) => {
     if (!file) return;
@@ -36,10 +35,10 @@ export default function AdminContexto() {
 
   const guardar = async () => {
     if (!texto.trim()) return;
-    const res = await api.contextoAgregar(nombre || t("contexto.nombre_default"), tipo, texto);
+    const res = await addMut.mutateAsync([nombre || t("contexto.nombre_default"), tipo, texto]);
     setConfirm(t("contexto.confirm", { nombre: res.nombre, chars: res.chars }));
     setNombre(""); setTexto("");
-    recargar();
+    refetch();
   };
 
   return (

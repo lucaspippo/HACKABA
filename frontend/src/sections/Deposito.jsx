@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { PackageX, AlertOctagon, Lock, Clock, Scale, MapPin, CalendarX, Check, Camera, Mic } from "lucide-react";
 import AngelaSays from "../components/AngelaSays";
 import AngelaMark from "../components/AngelaMark";
 import FacturaFlow from "../components/FacturaFlow";
 import VozAngela from "../components/VozAngela";
-import { api } from "../lib/api";
+import { useApiMutation, useApiQuery } from "../lib/query";
 import { toast } from "../lib/toastStore";
 import { num, peso, pesoCorto, fecha } from "../lib/format";
 import { useT, tDato } from "../lib/i18n";
@@ -19,13 +20,12 @@ import { useEmpresa } from "../lib/useEmpresa";
 // se va a tirar si no se hace nada y una acción que espera el OK.
 function Vencimientos({ onPreguntar }) {
   const t = useT();
-  const [v, setV] = useState(null);
+  const { data: v, refetch } = useApiQuery("vencimientos", [30]);
+  const gestionarMut = useApiMutation("vencimientoGestionar");
   const [hecho, setHecho] = useState(null);      // the persisted decision, from the server
   const [pospuesto, setPospuesto] = useState(false);
   const [trabajando, setTrabajando] = useState(false);
 
-  const cargar = () => api.vencimientos(30).then(setV).catch(() => setV(false));
-  useEffect(() => { cargar(); }, []);
   if (!v || !v.disponible || (!v.lotes_en_riesgo && !(v.gestionados || []).length)) return null;
 
   // "Aprobar" persists the decision (core/vencimientos.gestionar): a row, an
@@ -36,12 +36,12 @@ function Vencimientos({ onPreguntar }) {
     if (!p || trabajando) return;
     setTrabajando(true);
     try {
-      const r = await api.vencimientoGestionar({
+      const r = await gestionarMut.mutateAsync([{
         codigo: p.codigo, lote: p.lote, tipo, cantidad: p.cantidad,
-      });
+      }]);
       setHecho(r.gestion);
       toast(t("deposito.venc_prop_ok"));
-      cargar();
+      refetch();
     } catch {
       toast(t("deposito.venc_prop_error"), "error");
     }
@@ -207,25 +207,16 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
   // propia versión general del texto (P9·C1, M2), sin datos cross-tenant.
   const { esPiloto } = useEmpresa();
   const [grupo, setGrupo] = useState("fantasmas");
-  const [items, setItems] = useState([]);
-  const [errorCarga, setErrorCarga] = useState(false);
-  const [wms, setWms] = useState(null);
+  const { data: grupoData, isError: errorCarga } = useApiQuery("grupo", [grupo, 60], {
+    placeholderData: keepPreviousData,
+  });
+  const items = errorCarga ? [] : (grupoData?.items || []);
+  const { data: wms, refetch: refetchDeposito } = useApiQuery("deposito");
   const [fotoAbierta, setFotoAbierta] = useState(false);
   const [vozAbierta, setVozAbierta] = useState(false);
   // Vencimientos/discrepancias y datos-a-corregir son dos tareas distintas
   // (qué se vence vs. qué está mal cargado): separadas en pestañas.
   const [tab, setTab] = useState("vencimientos");
-
-  useEffect(() => {
-    setErrorCarga(false);
-    // Con .catch y feedback: sin esto, un fallo dejaba la lista vacía y muda (M14).
-    api.grupo(grupo, 60)
-      .then((r) => setItems(r.items))
-      .catch(() => { setItems([]); setErrorCarga(true); });
-  }, [grupo]);
-  useEffect(() => {
-    api.deposito().then(setWms).catch(() => {});
-  }, []);
 
   const a = data.alertas;
   const hayWms = wms?.resumen?.hay_datos;
@@ -270,12 +261,12 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
       {vozAbierta && (
         <VozAngela rol="deposito" onCerrar={() => setVozAbierta(false)}
           onPreguntar={onPreguntar}
-          onListo={() => { api.deposito().then(setWms).catch(() => {}); }} />
+          onListo={() => { refetchDeposito(); }} />
       )}
 
       {fotoAbierta && (
         <FacturaFlow onCerrar={() => setFotoAbierta(false)}
-          onCargado={() => { api.deposito().then(setWms).catch(() => {}); }}
+          onCargado={() => { refetchDeposito(); }}
           onPreguntar={onPreguntar} />
       )}
 
