@@ -380,11 +380,24 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
                 {act.length > 0
                   ? t("prioridades.sub_count", { n: data?.badge ?? act.length })
                   : t("prioridades.sub")}
-                {data?.recuperable?.disponible && (
-                  <span className="plata ml-2 font-semibold text-salvia">
-                    · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
-                  </span>
-                )}
+                {data?.recuperable?.disponible && (() => {
+                  // The rows below add up to MORE than this figure on purpose:
+                  // only what is `recuperable` is summed (risk and avoided loss
+                  // are shown, never added — core/oportunidades_neg.recuperable).
+                  // Say so next to the number, or anyone who adds the list sees
+                  // a total that does not close.
+                  const k = data.recuperable.componentes?.length ?? 0;
+                  const n = k + (data.recuperable.excluidos?.length ?? 0);
+                  return (
+                    <span className="ml-2 font-semibold text-salvia"
+                          title={t("prioridades.recoverable_sub", { k, n })}>
+                      <span className="plata">
+                        · {t("prioridades.recoverable", { amount: pesoCorto(data.recuperable.total) })}
+                      </span>
+                      <span className="ml-1 font-normal text-tinta-suave">({k}/{n})</span>
+                    </span>
+                  );
+                })()}
               </p>
             </div>
           </div>
