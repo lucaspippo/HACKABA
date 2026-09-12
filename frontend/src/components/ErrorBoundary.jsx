@@ -25,7 +25,7 @@ export default class ErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div className="rounded-[var(--radius-card)] border border-rojo/25 bg-rojo/[0.04] p-8 text-center">
+      <div className="rounded-card border border-rojo/25 bg-rojo/[0.04] p-8 text-center">
         <AlertTriangle size={26} className="mx-auto text-rojo" />
         <p className="mt-3 font-display text-[1.15rem] font-bold">{t("error.seccion_titulo")}</p>
         <p className="mx-auto mt-1 max-w-md text-[0.9rem] leading-snug text-tinta-suave">
