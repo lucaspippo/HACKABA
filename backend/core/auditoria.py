@@ -71,6 +71,7 @@ ACCIONES: dict[str, dict] = {
     "proponer_conocimiento": {"clase": "datos", "gate": "propia"},
     "aprobar_conocimiento":  {"clase": "datos", "gate": "aprobacion"},
     "rechazar_conocimiento": {"clase": "datos", "gate": "aprobacion"},
+    "editar_conocimiento":   {"clase": "datos", "gate": "propia"},
     # --- stock y piso --------------------------------------------------------
     "preparar_orden_compra": {"clase": "stock", "gate": "aprobacion"},
     # The yes on the expiry card: a lot marked for promotion or for the
