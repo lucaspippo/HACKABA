@@ -11,6 +11,33 @@ which fails the build if anything sensitive slipped in.
 This is the runbook — what an operator actually types. For the shape of the
 system and why it is built this way, see `deploy/ARCHITECTURE.md`.
 
+## 0 · Merging this change is a service MIGRATION, not a fresh install
+
+The blueprint's service used to be called `polpilot-demo`; it is now
+`polpilot-app` (§3). Renaming it in `render.yaml` does **not** rename it on
+Render: a Blueprint sync never deletes an existing resource, and `sync: false`
+values are never carried over to a new one. So merging this leaves you with
+**two** services, both failing, until you finish the migration:
+
+- A **new `polpilot-app`**, with none of the four §2 secrets set. Its first
+  `preDeployCommand` dies on `KeyError: 'DATABASE_URL'`.
+- The **old `polpilot-demo`**, which keeps auto-deploying this same commit and
+  now fails with `[deploy][X] POLPILOT_TENANT is not set` — the image no
+  longer bakes that variable in (§3), and the old service never needed it in
+  its own envVars.
+
+Both failures are loud and non-destructive: nothing gets published and no data
+is touched. Do this, in this order:
+
+1. On the **new** `polpilot-app`, set the four secrets from §2. To keep the
+   demo running as it is, point `DATABASE_URL` / `APP_DATABASE_URL` at the
+   same database `polpilot-demo` was using.
+2. Deploy it and wait for the healthcheck to pass; run §6's checklist against
+   its own `onrender.com` URL.
+3. **Only then suspend or delete `polpilot-demo`**, and move any custom domain
+   across. Doing it the other way round leaves the shared demo link dead in
+   between.
+
 ## 1 · Creating the service
 
 1. An account at https://render.com (sign in with GitHub works).
@@ -32,7 +59,7 @@ keys exist (`sync: false`) and must be set by hand, once, in the service's
 | Variable | What it is | Notes |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Real Anthropic API key | Never commit it; it lives only in `backend/.env` locally and in Render's dashboard here. |
-| `POLPILOT_RESET_TOKEN` | A long random string (e.g. from https://1password.com/password-generator) | Guards `POST /api/admin/reset-demo` — without the exact token the endpoint 404s and doesn't even reveal it exists. |
+| `POLPILOT_RESET_TOKEN` | A long random string (e.g. from https://1password.com/password-generator) | **Demo only** — omit it on a productive tenant (§4). Guards `POST /api/admin/reset-demo`; without the exact token the endpoint 404s and doesn't even reveal it exists. |
 | `DATABASE_URL` | Postgres connection string, **owner role** | Used by Alembic (`preDeployCommand`) and by tenant-row lookups. |
 | `APP_DATABASE_URL` | Postgres connection string, **`NOBYPASSRLS` role** | Every tenant-scoped query goes through this connection (`backend/core/db/engine.py`). |
 
@@ -100,6 +127,58 @@ To add one:
 4. **Omit `POLPILOT_SEED_ON_BOOT` entirely**, and **omit the whole
    `POLPILOT_DEMO_*` / `POLPILOT_DEFAULT_LANG` block** described in §3. None
    of it belongs on a productive service.
+5. **Omit `POLPILOT_RESET_TOKEN`.** It is listed in §2 as one of the four
+   secrets because the demo needs it; a productive service must not set it.
+   `POST /api/admin/reset-demo` truncates the *current* tenant's business
+   data and reseeds it from `DATA_DIR` — on a paying client that is data
+   loss, not a reset. The endpoint is also gated in code (`main.py` returns
+   404 on any tenant other than `demo`, the same answer a wrong token gets),
+   so omitting the token is belt-and-braces rather than the only defence.
+6. **Set `POLPILOT_DATA_DIR`, and add the tenant to `core/paths.py`'s
+   identity table** — see the next subsection. Without both, the service
+   comes up branded as the demo.
+
+### What a new tenant slug does NOT get for free
+
+`backend/core/paths.py` resolves the running instance's identity from a
+literal table, `_IDENTIDAD`, keyed by tenant slug — today it has exactly two
+entries, `demo` and `piloto`. Every lookup is
+`_IDENTIDAD.get(TENANT, _IDENTIDAD["demo"])`, so **a slug that is not in that
+table silently inherits the demo's identity**: `EMPRESA` and `NOMBRE_CORTO`
+become "Distribuidora del Litoral", `FUENTE` becomes the demo's
+"…(DEMO)" string, and `LOGO` becomes the bundled `/logos/litoral.png`. Those
+values are what the API's meta/header, the generated PDFs and the WhatsApp
+collection messages sign with.
+
+`DATA_DIR` has the same shape of default: `POLPILOT_DATA_DIR` or, unset,
+the repo's bundled `data-demo/` (`/app/data-demo` in the image). A service
+configured with only the four secrets plus `POLPILOT_TENANT` therefore comes
+up reading and writing the demo's *files* while its Postgres rows go to its
+own tenant — branded "Distribuidora del Litoral", with the demo's logo.
+
+So a productive tenant needs, in addition to the steps above:
+
+- **`POLPILOT_DATA_DIR`** pointed at that tenant's own data directory (which
+  must exist in the image or on a mounted disk; the container's filesystem is
+  ephemeral, so anything written there is lost on restart).
+- **An entry in `_IDENTIDAD`** in `backend/core/paths.py` under the tenant's
+  slug, with its `empresa`, `nombre_corto`, `fuente` and `logo`. Follow the
+  `piloto` entry, not the `demo` one: a real client's logo is served by the
+  backend from its own data dir (`"logo": "/api/marca/logo"`), never bundled
+  into the public frontend — the Dockerfile's privacy guard exists because
+  that rule was broken once.
+- **A user roster.** `backend/auth.py`'s `_seed_roster()` seeds a tenant that
+  has no `users` rows yet: the `demo` slug gets `usuarios_demo.py`, and
+  *everything else* gets the fictional Horizonte seed (`emilio`, `paula`, …).
+  A real tenant's team is created from there (admin → users), not by adding a
+  seed.
+- **The `tenants` row's own labels.** `deploy/boot.py` calls
+  `seed_db.ensure_tenant(slug)` with no name, and that function's defaults are
+  the demo's (`name`/`short_name` "Distribuidora del Litoral"). Fix the row
+  once, by hand, after the first boot.
+
+This is a known sharp edge of the identity mechanism, documented rather than
+redesigned: the fix is one table entry, and it must be a deliberate one.
 
 **Do not set `POLPILOT_SEED_ON_BOOT=1` on a productive tenant.** It gates
 `data-demo/generar.py`, which deterministically **rewrites the entire
@@ -113,15 +192,24 @@ safe, not destructively.
 
 Render runs three things in sequence, and the order is deliberate:
 
-1. **`preDeployCommand: python deploy/migrate.py`** — brings the schema to
+1. **`preDeployCommand: python /app/deploy/migrate.py`** — brings the schema to
    `alembic upgrade head` before any instance of the new version starts. If
    it fails, **the deploy stops here and the previously running instance
    keeps serving** — a bad migration no longer takes the service down, it
    just blocks the release.
 2. **`deploy/boot.py`** (the container's `CMD`) — no longer migrates.
-   It ensures the tenant row exists, optionally reseeds (§3), hard-checks
-   that the inventory landed in Postgres, copies the canonical dataset for
-   the admin reset endpoint, then `exec`s uvicorn on `$PORT`.
+   It ensures the tenant row exists, optionally reseeds (§3), checks the
+   dataset in Postgres, copies the canonical dataset for the admin reset
+   endpoint, then `exec`s uvicorn on `$PORT`.
+   That dataset check treats two things differently, and the distinction is
+   what makes a productive tenant's *first* deploy possible: a Postgres it
+   cannot read (no `APP_DATABASE_URL`, refused connection, wrong credentials,
+   unmigrated schema) is a hard failure and the service does not come up,
+   while a readable Postgres in which this tenant simply has no inventory yet
+   is a warning (`[boot][!] … has no inventory in Postgres yet`) and the
+   service serves anyway — otherwise there would be no running app through
+   which to load that first dataset. With `POLPILOT_SEED_ON_BOOT=1` an empty
+   inventory is a hard failure again: it means the seed did nothing.
 3. **The healthcheck** (`GET /api/health`) — only once it passes does Render
    route traffic to the new instance.
 
@@ -150,6 +238,10 @@ Render runs three things in sequence, and the order is deliberate:
 
 ## 7 · Resetting the demo
 
+Both halves of this section are **demo-only**. `POST /api/admin/reset-demo`
+404s on any other tenant even with the right token (§4), and
+`POLPILOT_SEED_ON_BOOT` must never be set on a productive service.
+
 - **Automatic**: every restart or redeploy returns to the canonical state —
   Render's filesystem is ephemeral, and with `POLPILOT_SEED_ON_BOOT=1` the
   boot re-seeds from scratch every time.
@@ -175,6 +267,16 @@ Render runs three things in sequence, and the order is deliberate:
     (if seeding is on) `[boot] seed verified (generar.py)` →
     `[boot] Postgres seed ok` → `[boot] dataset ok: N artículos (Postgres)` →
     uvicorn starts. A `[boot][X]` line says exactly which step failed.
+  - **`[boot][!] tenant '…' has no inventory in Postgres yet`**: the database
+    is reachable and the tenant row exists, but nothing has been loaded for it.
+    Expected on a productive tenant's first deploy — the service comes up so
+    the data can be loaded through it. If it persists, check that
+    `POLPILOT_TENANT` and `APP_DATABASE_URL` name the tenant and database you
+    meant.
+  - **`[boot][X] Postgres unreadable (…)`**: a real misconfiguration, and the
+    service deliberately does not come up. Check `APP_DATABASE_URL` (it must
+    be set, and reachable from the container), its credentials, and that the
+    pre-deploy migration actually ran.
   - **`[deploy][X] POLPILOT_TENANT is not set`** (from either script): the
     service is missing `POLPILOT_TENANT` in its envVars. Set it — see §3.
     This is deliberate: `core/paths.py` would otherwise silently default to
