@@ -3224,93 +3224,13 @@ def responder(
     client = _build_client()
     if client is None:
         return _fallback(mensaje)
-    quien = ""
-    if nombre or rol:
-        quien = (
-            f"\n\nESTÁS HABLANDO CON: {nombre or 'un usuario'} ({rol or 'rol no especificado'}). "
-            f"Adaptá lo que mostrás a lo que esta persona necesita en su rol; no le ofrezcas "
-            f"cosas que no le corresponden."
-        )
-    # P·onboarding — si la persona RECIÉN ENTRÓ, Ángela lo sabe antes de que se
-    # lo diga. El dato es del perfil (fecha de ingreso), no una inferencia.
-    try:
-        import auth as _auth
-        _ant = _auth.antiguedad(nombre) if nombre else None
-        if _ant and _ant["nuevo"]:
-            quien += (
-                f"\n\nESTA PERSONA ES NUEVA: entró hace {_ant['dias']} días. Todavía no "
-                f"sabe dónde está cada cosa ni cómo se hace cada trámite acá. Explicá "
-                f"con paciencia y sin jerga, un paso por vez, y cuando la pregunta sea "
-                f"de cómo se trabaja en este negocio usá 'consultar_manual' antes de "
-                f"contestar. No le pidas que sepa nombres de proveedores, códigos ni "
-                f"secciones: guiala."
-            )
-    except Exception:  # noqa: BLE001 — el perfil nunca tira el chat abajo
-        pass
-    # P19·A — las preferencias del usuario entran a CADA sesión: Ángela las
-    # respeta sin que se las repitan. Solo si hay algo que recordar (el prompt
-    # no crece gratis) y nunca rompe la respuesta si el archivo falta.
-    try:
-        _m = memoria.get(nombre) if nombre else {}
-        _prefs = {k: v for k, v in (_m.get("vista") or {}).items() if k != "widgets"}
-        _notas = _m.get("preferencias") or {}
-        if _prefs or _notas:
-            quien += "\n\nLO QUE RECORDÁS DE ESTA PERSONA (aplicalo sin que te lo repita):"
-            if _prefs.get("sin_torta"):
-                quien += "\n- No quiere gráficos de torta/donut NUNCA. Elegí siempre otra forma."
-            if _prefs.get("margen_pin_umbral") is not None:
-                quien += (f"\n- Quiere los productos con margen teórico menor a "
-                          f"{_prefs['margen_pin_umbral']:g}% fijados arriba donde se listan márgenes "
-                          "(la interfaz ya lo hace sola).")
-            if _prefs.get("orden_home"):
-                quien += f"\n- Ordenó los bloques de su Inicio así: {', '.join(_prefs['orden_home'])}."
-            for k, v in list(_notas.items())[:6]:
-                quien += f"\n- Nota: {k} = {v}"
-    except Exception:  # noqa: BLE001 — la memoria nunca tira el chat abajo
-        pass
-    # CAPA 3 — contexto acotado: el snapshot del inventario (inmovilizado, alertas, stock)
-    # sólo entra al prompt si el usuario tiene inventario. Un rol de reparto no lo
-    # ve ni siquiera si el modelo lo redacta libre: el dato no está en su contexto.
-    contexto = _resumen_para_prompt() if _tiene_feature("inventario") else (
-        "El resumen general del inventario no corresponde al rol de esta persona. "
-        "No cites cifras globales del negocio (plata inmovilizada, catálogo) ni datos "
-        "de módulos que no maneja; contestá sólo lo de su área."
-    )
-    # Directiva de idioma (server-side, no spoofeable): TODA la personalidad,
-    # disciplina y tools quedan idénticas — solo cambia el idioma de salida.
-    if idioma == "en":
-        directiva_idioma = (
-            "\n\nLANGUAGE: Reply ALWAYS in English — plain-spoken business English, "
-            "warm and direct, same personality as ever (never stiff corporate). "
-            "Product, customer and supplier names stay in Spanish exactly as they "
-            "appear in the data (quote them naturally). Format money with en-US "
-            "grouping: $1,234,567 (they are Argentine pesos, ARS)."
-        )
-    else:
-        directiva_idioma = (
-            "\n\nIDIOMA: Respondé SIEMPRE en castellano rioplatense, como siempre. "
-            "La plata en formato argentino: $1.234.567."
-        )
-    system_texto = (SYSTEM_PROMPT.format(contexto=contexto) + _contexto_externo()
-                    + quien + directiva_idioma)
-    # Prompt caching: si está activo, mandamos el system como bloque cacheable (paga ~10%
-    # del input en las lecturas repetidas). Si no, string plano. Ver config.PROMPT_CACHE.
-    if config.PROMPT_CACHE:
-        system = [{"type": "text", "text": system_texto, "cache_control": {"type": "ephemeral"}}]
-    else:
-        system = system_texto
 
-    # El modelo lo elige config (una sola fuente de verdad). Con ROUTING_ACTIVO=False
-    # es siempre el de validación; con routing prendido, ruteará por tipo de pedido.
-    modelo = config.modelo_para()
-    # CAPA 1 — el modelo sólo ve las tools que este usuario puede usar.
-    tools_disponibles = tools_para(_features_actuales())
-
-    messages: list[dict] = []
-    for turn in (historial or [])[-6:]:
-        if turn.get("role") in ("user", "assistant") and turn.get("content"):
-            messages.append({"role": turn["role"], "content": turn["content"]})
-    messages.append({"role": "user", "content": mensaje})
+    # Same system prompt / model / tools / message-history assembly as
+    # stream_response() — one shared place so the two entry points never
+    # diverge on identity, leakage guards, or system prompt (they used to be
+    # two independently-maintained copies of the same ~90 lines).
+    system, modelo, tools_disponibles, messages = _prepare_turn(
+        mensaje, historial, rol, nombre, features, idioma)
 
     tools_usadas: list[str] = []
     acciones: list[dict] = []
@@ -3370,10 +3290,10 @@ def responder(
 
 
 def _prepare_turn(message, history, role, name, features, language):
-    """Builds exactly what responder() builds before the tool-use loop:
-    language, request-scoped session, system prompt and the message history.
-    One shared place for both entry points (one-shot JSON and streaming) so
-    they never diverge on identity, leakage guards or system prompt."""
+    """Everything before the tool-use loop: language, request-scoped session,
+    system prompt and the message history. Shared by both entry points
+    (responder()'s one-shot JSON and stream_response()'s streaming) so they
+    never diverge on identity, leakage guards or system prompt."""
     if language not in paths.IDIOMAS:
         from core import perfiles
         language = perfiles.idioma_de(name) if name else paths.DEFAULT_LANG
