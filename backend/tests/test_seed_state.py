@@ -67,7 +67,9 @@ def test_un_tenant_productivo_no_resiembra_y_lo_dice(monkeypatch, capsys):
     """Gate closed + changed file: the data stays, and the change is loud."""
     monkeypatch.setenv("POLPILOT_SEED_ON_BOOT", "1")
     _escribir(1)
-    assert _sembrar() == seed_state.SEMBRAR
+    # First pass with the gate open re-seeds rather than assume (see decidir):
+    # what matters here is that a baseline is recorded.
+    assert _sembrar() == seed_state.RESEMBRAR
     assert len(notas.listar()) == 1
     baseline = seed_state.estado(_tenant.current_tenant_id())[DOMINIO]
 
@@ -107,7 +109,7 @@ def test_revisar_avisa_sin_tocar_nada(monkeypatch, capsys):
 def test_el_demo_resiembra_cuando_cambia_el_dataset(monkeypatch, capsys):
     monkeypatch.setenv("POLPILOT_SEED_ON_BOOT", "1")
     _escribir(1)
-    assert _sembrar() == seed_state.SEMBRAR
+    assert _sembrar() == seed_state.RESEMBRAR   # no baseline yet
     assert len(notas.listar()) == 1
 
     _escribir(31)                            # the real production change
@@ -157,7 +159,9 @@ def test_un_dominio_sin_archivo_en_disco_no_se_sigue(monkeypatch):
 @pytest.mark.parametrize("previo,actual,gate,espera", [
     (None,  None,  True,  seed_state.NADA),       # no seed file at all
     (None,  None,  False, seed_state.NADA),
-    (None,  "aa",  True,  seed_state.SEMBRAR),    # first time
+    # No baseline: a tenant that re-seeds on boot cannot prove its blob came
+    # from THIS file, so it re-seeds. One that does not, records and keeps.
+    (None,  "aa",  True,  seed_state.RESEMBRAR),
     (None,  "aa",  False, seed_state.SEMBRAR),
     ("aa",  "aa",  True,  seed_state.NADA),       # unchanged
     ("aa",  "aa",  False, seed_state.NADA),
@@ -175,3 +179,52 @@ def test_el_hash_cambia_solo_si_cambia_el_contenido():
     assert seed_state.hash_de([RUTA]) == h1, "mismo contenido, mismo hash"
     _escribir(2)
     assert seed_state.hash_de([RUTA]) != h1
+
+
+# --- 5 · the hole 0042 shipped with, pinned ---------------------------------
+
+def test_sin_baseline_y_con_la_puerta_abierta_se_resiembra(monkeypatch, capsys):
+    """The production bug, exactly: the blob was seeded from an OLD file, no
+    baseline was ever recorded, and the deploy that shipped the mechanism
+    recorded the NEW file's hash next to the OLD data — so the two agreed
+    forever and the map's band kept reading "0 de 17".
+
+    With no baseline the stored data cannot be shown to come from this file,
+    so a tenant that regenerates its dataset re-seeds instead of assuming.
+    """
+    monkeypatch.setenv("POLPILOT_SEED_ON_BOOT", "1")
+    # A blob seeded from an older, smaller file...
+    _escribir(17)
+    _sembrar()
+    # ...and the baseline is lost (a fresh deploy, a reset, 0043).
+    limpiar_tabla_tenant("seed_state")
+    # The file on disk has since grown.
+    _escribir(31)
+
+    capsys.readouterr()
+    assert _sembrar() == seed_state.RESEMBRAR
+    assert len(notas.listar()) == 31, "el dataset nuevo tiene que llegar"
+    # And it settles: the next boot is a no-op, not a re-seed on every start.
+    assert _sembrar() == seed_state.NADA
+    assert len(notas.listar()) == 31
+
+
+def test_sin_baseline_un_tenant_productivo_no_pierde_nada(monkeypatch):
+    """The same missing baseline on a tenant that does NOT re-seed: its data
+    is its own and nothing is cleared — it only records where it stands."""
+    monkeypatch.setenv("POLPILOT_SEED_ON_BOOT", "1")
+    _escribir(2)
+    _sembrar()
+    from core.db import team_notes_repo
+    tid = _tenant.current_tenant_id()
+    vivo = team_notes_repo.get_data(tid)
+    vivo["notas"].append({"id": "suyo", "autor": "alguien", "fecha": "2026-02-02",
+                          "canal": "voz", "tipo": "observacion_campo",
+                          "texto": "dato propio del tenant", "texto_en": "own data"})
+    team_notes_repo.save_data(tid, vivo)
+
+    limpiar_tabla_tenant("seed_state")
+    monkeypatch.setenv("POLPILOT_SEED_ON_BOOT", "0")
+    _escribir(31)
+    assert _sembrar() == seed_state.SEMBRAR
+    assert len(notas.listar()) == 3, "los datos del tenant siguen intactos"

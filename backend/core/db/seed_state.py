@@ -74,7 +74,18 @@ def decidir(previo: str | None, actual: str | None,
     if actual is None:
         return NADA
     if previo is None:
-        return SEMBRAR
+        # NO BASELINE. Measured in production, and the reason this branch
+        # exists: on the first boot with this mechanism the demo recorded the
+        # hash of the 31-note file next to a blob that still held 17 — and
+        # from then on `previo == actual` said "nothing to do" forever. The
+        # band kept reading "0 de 17".
+        #
+        # Without a baseline we cannot prove the stored data came from THIS
+        # file. A tenant that regenerates its dataset on every boot must end
+        # up with what the file says, so the honest move is to make it true.
+        # One that does NOT re-seed keeps its data untouched and simply
+        # records where it stands.
+        return RESEMBRAR if resiembra_habilitada else SEMBRAR
     if previo == actual:
         return NADA
     return RESEMBRAR if resiembra_habilitada else AVISAR
