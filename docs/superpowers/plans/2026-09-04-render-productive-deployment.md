@@ -719,9 +719,8 @@ def test_boot_no_longer_runs_alembic():
     # Forbid the INVOCATION, not the word: boot.py's docstring is expected to
     # explain where migrations went, and naming alembic in prose is correct.
     source = open(BOOT, encoding="utf-8").read()
-    assert '"alembic"' not in source
-    assert "'alembic'" not in source
-    assert "upgrade" not in source, "no `alembic upgrade head` argv may remain"
+    assert '"alembic"' not in source, "no alembic argv may remain"
+    assert "'alembic'" not in source, "no alembic argv may remain"
 
 
 def test_boot_seeding_is_gated_on_the_flag():
