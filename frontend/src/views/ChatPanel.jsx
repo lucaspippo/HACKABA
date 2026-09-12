@@ -24,14 +24,20 @@ import { suggestionPromptsFor } from "../lib/chat/suggestionPrompts";
 import { useT } from "../lib/i18n";
 import { useHasCamera } from "../lib/useMediaQuery";
 
+// Applied once per assistant message across every mount (home + dock can
+// both be on screen). A local Set per ChatPanel would fire navigate / widgets
+// twice for the same reply.
+const appliedIds = new Set();
+
 // The chat body — SHARED between the side panel (desktop), the fullscreen
-// page (desktop, see ChatFullscreen) and mobile. Assumes it's already mounted
-// inside an AssistantRuntimeProvider (see lib/chatRuntimeProvider for desktop,
-// or the provider AngelaView sets up on its own for mobile) — that way the
-// panel and the fullscreen page share the SAME conversation thread.
+// page (desktop, see ChatFullscreen), the desktop Home, and mobile. Assumes
+// it's already mounted inside an AssistantRuntimeProvider (see
+// lib/chatRuntimeProvider for desktop, or the provider AngelaView sets up on
+// its own for mobile) — that way every surface shares the SAME thread.
 //
 // variant: "dock" (narrow panel, with a button to expand to fullscreen)
-// | "fullscreen" (wide, centered, with a button to collapse back to the panel).
+// | "fullscreen" (wide, centered, with a button to collapse back to the panel)
+// | "home" (Inicio landing: custom empty state, conversation stays on the page).
 export default function ChatPanel({
   onNavigate,
   inputInicial,
@@ -39,6 +45,7 @@ export default function ChatPanel({
   variant = "dock",
   onExpand,
   onCollapse,
+  emptyState: emptyStateOverride,
 }) {
   const t = useT();
   const aui = useAui();
@@ -51,7 +58,6 @@ export default function ChatPanel({
   const [photoOpen, setPhotoOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const lastInitialQuery = useRef(null);
-  const appliedRef = useRef(new Set());
   const prompts = suggestionPromptsFor((feature) =>
     !!session?.usuario?.features?.includes(feature),
   );
@@ -117,8 +123,8 @@ export default function ChatPanel({
   useEffect(() => {
     for (const m of messages) {
       if (m.role !== "assistant" || m.status?.type !== "complete") continue;
-      if (appliedRef.current.has(m.id)) continue;
-      appliedRef.current.add(m.id);
+      if (appliedIds.has(m.id)) continue;
+      appliedIds.add(m.id);
       const custom = m.metadata?.custom;
       if (!custom) continue;
       applyActions(custom.actions || []);
@@ -128,9 +134,12 @@ export default function ChatPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
-  const width = variant === "fullscreen" ? "mx-auto w-full max-w-3xl" : "";
+  const wide = variant === "fullscreen" || variant === "home";
+  const width = wide
+    ? `mx-auto w-full ${variant === "home" && isEmpty ? "max-w-xl" : "max-w-3xl"}`
+    : "";
 
-  const emptyState = (
+  const defaultEmptyState = (
     <>
       <div className="flex flex-1 flex-col items-center justify-center px-2 text-center">
         <AngelaMark size={variant === "fullscreen" ? 44 : 48} />
@@ -156,12 +165,15 @@ export default function ChatPanel({
       </div>
     </>
   );
+  const emptyState = emptyStateOverride ?? defaultEmptyState;
+  const showHeader = variant !== "home" || !isEmpty;
 
   return (
     // The dock sits flush against the aside's border, so it pads itself;
-    // fullscreen is already inset by its own centred column.
+    // fullscreen / home are already inset by their own centred column.
     <div className={`relative flex h-full flex-col ${variant === "dock" ? "px-3 pb-3 pt-4" : "pt-1"}`}>
       {knowledgeOpen && <KnowledgePanel onClose={() => setKnowledgeOpen(false)} />}
+      {showHeader && (
       <header className="flex items-center gap-3 pb-4">
         <div className="min-w-0 flex-1">
           {!isEmpty && activeThreadTitle ? (
@@ -194,12 +206,13 @@ export default function ChatPanel({
           </IconButton>
         )}
       </header>
+      )}
 
       <div className={`min-h-0 flex-1 ${width}`}>
         <ChatThread
           onExecutingChange={setExecuting}
           emptyState={emptyState}
-          raisedComposer={variant === "fullscreen"}
+          raisedComposer={variant === "fullscreen" || variant === "home"}
           onAttach={authStore.tiene("cargar") ? () => setPhotoOpen(true) : undefined}
           composerLeading={
             hasCamera && authStore.tiene("cargar") && (

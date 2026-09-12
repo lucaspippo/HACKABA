@@ -46,6 +46,7 @@ import { contarACorregir } from "../lib/alertas";
 import AngelaMark from "../components/AngelaMark";
 import CommandPalette from "../components/CommandPalette";
 import AccountMenu from "../components/AccountMenu";
+import { useAui, useAuiState } from "@assistant-ui/react";
 import { ChatRuntimeProvider, useChatDock } from "../lib/chatRuntimeProvider";
 import ResizeHandle from "../components/assistant/ResizeHandle";
 import { useVista, vistaStore } from "../lib/vistaStore";
@@ -222,6 +223,8 @@ export default function DesktopApp(props) {
 function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   const t = useT();
   const session = useSession();
+  const aui = useAui();
+  const threadEmpty = useAuiState((s) => s.thread.isEmpty);
   const {
     open: angelaOpen,
     setOpen: setAngelaOpen,
@@ -592,7 +595,19 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     g.id === "panel" && vistaHerramienta ? "mnav.mi_dia" : c.lk,
                   )}
                   to={`/${g.id}`}
-                  onClick={() => navegar(g.id, null)}
+                  onClick={() => {
+                    // Already on Home, inside a thread started there: Inicio
+                    // again means the empty shell, not the same conversation.
+                    if (
+                      g.id === "panel" &&
+                      section === "panel" &&
+                      !vistaHerramienta &&
+                      !threadEmpty
+                    ) {
+                      aui.threads.switchToNewThread();
+                    }
+                    navegar(g.id, null);
+                  }}
                 />
               );
             }
@@ -739,7 +754,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
           ) : (
             <main
               className={`min-w-0 flex-1 ${
-                section === "prioridades"
+                section === "prioridades" ||
+                (section === "panel" && !vistaHerramienta)
                   ? "flex flex-col overflow-hidden"
                   : "overflow-y-auto px-7 py-6"
               }`}
@@ -755,7 +771,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 user.es_admin &&
                 !user.interno &&
                 section === "panel" && (
-                  <div className="mb-5 flex items-start gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.07] p-4">
+                  <div className={`${vistaHerramienta ? "mb-5" : "mx-7 mt-6"} flex items-start gap-3 rounded-[var(--radius-card)] border border-oro/30 bg-oro/[0.07] p-4`}>
                     <AngelaMark size={32} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-oro-tinta">
@@ -794,7 +810,8 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
                   className={
-                    section === "prioridades"
+                    section === "prioridades" ||
+                    (section === "panel" && !vistaHerramienta)
                       ? "flex min-h-0 flex-1 flex-col"
                       : undefined
                   }
@@ -834,6 +851,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                           oportunidades={oportunidades}
                           onNavegar={navegar}
                           onPreguntar={preguntar}
+                          onDatosCambiaron={onRecargar}
                         />
                       ))}
                     {section === "mapa" && (

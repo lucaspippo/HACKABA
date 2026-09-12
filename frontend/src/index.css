@@ -233,6 +233,26 @@
       0 1px 3px rgba(33, 32, 29, 0.18),
       inset 0 -2px 4px rgba(20, 37, 122, 0.35);
   }
+  /* Empty Home wash: static blue field. Opacity is animated in Inicio. */
+  .inicio-wash {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: min(62%, 36rem);
+    background:
+      radial-gradient(
+        ellipse 90% 70% at 50% 100%,
+        rgb(42 92 223 / 0.28),
+        transparent 72%
+      ),
+      linear-gradient(
+        to top,
+        rgb(42 92 223 / 0.2) 0%,
+        rgb(234 240 253 / 0.92) 32%,
+        transparent 74%
+      );
+  }
   .esfera--idle {
     animation: esferaRespira 6s ease-in-out infinite;
   }
