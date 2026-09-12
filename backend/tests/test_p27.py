@@ -158,3 +158,9 @@ def test_concentracion_cites_knowledge_as_evidence():
     assert "knowledge" in kinds
     assert not any("concentrac" in (lbl or "").lower() and "riesgo" in (lbl or "").lower()
                   for lbl in labels)
+
+
+def test_ventana_compra_cites_the_supplier_rules_as_evidence():
+    card = next(c for c in _demo_cards("es") if c["id"] == "ventana_compra")
+    kinds = [ev["kind"] for ev in card["insight"]["evidence"]]
+    assert "knowledge" in kinds

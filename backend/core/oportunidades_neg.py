@@ -383,10 +383,10 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
         supuestos.append(ins.assumption(_t("core.opn.ventana_p3", lang,
                                            ipc=f"{ipc['valor']:g}", fuente=ipc.get("fuente") or "")))
 
-    # Pieces 7+8 — lo que Aldo enseñó sobre este proveedor. La regla del viernes
-    # es un efecto de comportamiento (el día sugerido nunca cae viernes) y la
-    # suba mensual refuerza el porqué de comprar ahora. Ambas viajan como nodos
-    # de conocimiento para el camino del mapa (E3).
+    # Pieces 7+8 — lo que Aldo enseñó sobre este proveedor, citado como
+    # evidencia (no como assumption: no es un salto interpretativo). La regla
+    # del viernes es un efecto de comportamiento (el día sugerido nunca cae
+    # viernes) y la suba mensual refuerza el porqué de comprar ahora.
     piezas_prov = conocimiento.para(prov, nodo="proveedores")
     regla_viernes = next((p for p in piezas_prov
                           if (p.get("params") or {}).get("evitar_dia") == "viernes"), None)
@@ -395,11 +395,8 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
     dia_pedido, movido = base_dia, False
     if regla_viernes and base_dia.weekday() == 4:  # 4 = viernes
         dia_pedido, movido = base_dia - datetime.timedelta(days=1), True  # al jueves
-    if ctx_suba:
-        supuestos.insert(1, ins.assumption(_t("core.opn.ventana_k_suba", lang, proveedor=prov)))
-    if regla_viernes:
-        supuestos.append(ins.assumption(_t("core.opn.ventana_k_viernes_mov", lang) if movido
-                                        else _t("core.opn.ventana_k_viernes", lang)))
+    conocimiento_evidencia = ([ins.knowledge(ctx_suba)] if ctx_suba else []) + \
+                             ([ins.knowledge(regla_viernes)] if regla_viernes else [])
     aplicadas = ([conocimiento.resumen_pieza(ctx_suba)] if ctx_suba else []) + \
                 ([conocimiento.resumen_pieza(regla_viernes)] if regla_viernes else [])
 
@@ -423,6 +420,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
                    chart=grafico, weight="supporting",
                    method={"key": "core.method.price_rise_history",
                            "label": _t("core.method.price_rise_history", lang)}),
+        *conocimiento_evidencia,
     ]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.ventana_q1", lang, proveedor=prov, frec=frec,
