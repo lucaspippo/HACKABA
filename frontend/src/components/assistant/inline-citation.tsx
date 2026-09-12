@@ -86,7 +86,15 @@ export function Citation({
           <Popover.Popup
             className={cn(
               floating,
-              "w-64 max-w-[min(16rem,calc(100vw-24px))] origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
+              // EN PIXELES, NO EN rem: la app lleva la raiz a 12.8px, asi que
+              // `w-64` (16rem) daba 204,8px —medido— y el panel quedaba mas
+              // angosto que el panel del chat, con astillas de la tarjeta de
+              // atras asomando a los dos costados. Se lee amontonado.
+              "w-[300px] max-w-[calc(100vw-24px)] origin-(--transform-origin) rounded-2xl p-3.5 outline-none",
+              // La SOMBRA no es decoracion: sin ella el panel tiene el mismo
+              // fondo que la pagina y se lee como una tarjeta mas del hilo, no
+              // como algo que se abrio encima.
+              "shadow-[0_14px_38px_-10px_rgba(33,32,29,.3)]",
               "transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none",
               "data-[starting-style]:scale-[0.97] data-[starting-style]:opacity-0",
               "data-[ending-style]:scale-[0.97] data-[ending-style]:opacity-0",
