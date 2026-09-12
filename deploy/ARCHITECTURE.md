@@ -5,8 +5,8 @@ become. Three sections, in order of how real they are:
 
 | Section | Status |
 |---|---|
-| [1 · Today](#1--today-as-deployed) | **Live.** What is running on Render right now. |
-| [2 · After this branch](#2--after-this-branch) | **Planned, not deployed.** See the design in `docs/superpowers/specs/2026-09-04-render-deployment-productive-design.md`. |
+| [1 · Today](#1--today-as-deployed) | **Live.** What Render is actually running right now — none of this branch's six changes have deployed yet. |
+| [2 · After this branch](#2--after-this-branch) | **Implemented on this branch, not yet deployed.** All six changes below exist in code; Render keeps running §1 until this branch is deployed. See the design in `docs/superpowers/specs/2026-09-04-render-deployment-productive-design.md`. |
 | [3 · The target](#3--the-target-architecture) | **Documented, not built.** Deliberately deferred — the trigger is in [§3.3](#33--when-to-actually-build-it). |
 
 The operational runbook — secrets, the post-deploy checklist, how to reset
@@ -196,13 +196,20 @@ image comes up autologged-in as the tenant owner unless every one of those
 is individually overridden by hand. The failure is silent, and it is an
 unauthenticated production app.
 
+§2 below fixes this row already, in code — it moves out of the image and
+into `render.yaml`'s `envVars`. It stays listed here as "today" because
+Render has not deployed that change yet: the row above is what is actually
+baked into the image currently running.
+
 ---
 
 ## 2 · After this branch
 
 The topology does not change: still one service. What changes is that the
 image stops being demo-specific and the deploy stops being able to destroy
-productive data.
+productive data. All six changes below are already in this branch's code —
+what has not happened yet is deploying it to Render, which still runs §1's
+behavior until that deploy ships.
 
 ```mermaid
 flowchart LR
