@@ -265,3 +265,26 @@ def test_edit_validates_like_crear():
 
 def test_edit_returns_none_for_a_missing_piece():
     assert conocimiento.edit_piece("no-existe", actor="aldo", is_admin=True, texto="x") is None
+
+
+def test_edit_endpoint_needs_admin_or_author(tokens):
+    pieza = conocimiento.crear(texto="Original", tipo="contexto", ambito="global",
+                               nodo="caja", efecto="contexto_para_angela",
+                               origen={"quien": "deposito", "cuando": "2026-09-10"})
+    # vendedor is neither admin nor the author "deposito"
+    r = client.post(f"/api/conocimiento/{pieza['id']}/editar",
+                    json={"texto": "intento ajeno"},
+                    headers={"Authorization": f"Bearer {tokens['vendedor']}"})
+    assert r.status_code == 403
+    # deposito IS the author
+    r = client.post(f"/api/conocimiento/{pieza['id']}/editar",
+                    json={"texto": "editado por su autor"},
+                    headers={"Authorization": f"Bearer {tokens['deposito']}"})
+    assert r.status_code == 200
+    assert r.json()["pieza"]["texto"] == "editado por su autor"
+
+
+def test_edit_endpoint_404s_on_a_missing_piece(tokens):
+    r = client.post("/api/conocimiento/no-existe/editar", json={"texto": "x"},
+                    headers={"Authorization": f"Bearer {tokens['emilio']}"})
+    assert r.status_code == 404

@@ -3633,6 +3633,38 @@ def _revisor_o_404(pid: str, u: dict) -> dict:
     return p
 
 
+def _editor_o_403(pid: str, u: dict) -> dict:
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    if not (u.get("es_admin") or (p.get("origen") or {}).get("quien") == u["username"]):
+        raise HTTPException(status_code=403, detail=i18n.t("api.conocimiento_sin_permiso", _lang(u)))
+    return p
+
+
+class ConocimientoEditar(BaseModel):
+    texto: str | None = None
+    texto_en: str | None = None
+    tipo: str | None = None
+    ambito: str | None = None
+    efecto: str | None = None
+    entidad: str | None = None
+    params: dict | None = None
+
+
+@app.post("/api/conocimiento/{pid}/editar")
+def conocimiento_editar(pid: str, req: ConocimientoEditar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    try:
+        pieza = conocimiento.edit_piece(
+            pid, actor=u["username"], is_admin=bool(u.get("es_admin")),
+            texto=req.texto, texto_en=req.texto_en, tipo=req.tipo, ambito=req.ambito,
+            efecto=req.efecto, entidad=req.entidad, params=req.params)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "pieza": pieza}
+
+
 @app.post("/api/conocimiento/{pid}/aprobar")
 def conocimiento_aprobar(pid: str, u: dict = Depends(usuario_actual)):
     p = _revisor_o_404(pid, u)

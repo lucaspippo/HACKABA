@@ -290,6 +290,10 @@ CATALOGO: dict[str, dict[str, str]] = {
         "es": "Esa pieza ya fue revisada — no está pendiente.",
         "en": "That piece was already reviewed — it isn't pending.",
     },
+    "api.conocimiento_sin_permiso": {
+        "es": "Solo el dueño o quien la enseñó puede editar esta pieza.",
+        "en": "Only the owner or whoever taught it can edit this piece.",
+    },
     "api.version_inexistente": {
         "es": "Versión inexistente: {version_id}",
         "en": "No such version: {version_id}",
