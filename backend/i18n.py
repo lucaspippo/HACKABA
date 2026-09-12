@@ -3406,6 +3406,8 @@ CATALOGO: dict[str, dict[str, str]] = {
                                        "en": "Approved a business-knowledge proposal"},
     "audit.acc.rechazar_conocimiento": {"es": "Rechazó una propuesta de conocimiento del negocio",
                                         "en": "Rejected a business-knowledge proposal"},
+    "audit.acc.editar_conocimiento": {"es": "Editó una pieza de conocimiento del negocio",
+                                      "en": "Edited a piece of business knowledge"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {
