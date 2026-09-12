@@ -3062,4 +3062,10 @@ export const EN = {
   "tool.generar_documento.done": "Generated the document",
   "tool.consultar_manual.running": "Checking the manual…",
   "tool.consultar_manual.done": "Checked the manual",
+
+  // --- chat notices (the backend sends only the `kind`) ---
+  "chat.notice.cap": "You reached this session's message limit.",
+  "chat.notice.fake_model": "This came from your data, without the model connected.",
+  "chat.notice.tool_loop_exhausted": "I'm going in circles with that query. Can you rephrase it more simply?",
+  "chat.notice.generico": "Ángela replied in degraded mode.",
 };

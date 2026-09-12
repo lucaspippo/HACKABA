@@ -3035,4 +3035,10 @@ export const ES = {
   "tool.generar_documento.done": "Generó el documento",
   "tool.consultar_manual.running": "Revisando el manual…",
   "tool.consultar_manual.done": "Revisó el manual",
+
+  // --- avisos del chat (el backend manda sólo el `kind`) ---
+  "chat.notice.cap": "Llegaste al límite de mensajes de esta sesión.",
+  "chat.notice.fake_model": "Esto lo saqué de tus datos, sin el modelo conectado.",
+  "chat.notice.tool_loop_exhausted": "Estoy dando muchas vueltas con esa consulta. ¿Me la reformulás más simple?",
+  "chat.notice.generico": "Ángela respondió en modo degradado.",
 };
