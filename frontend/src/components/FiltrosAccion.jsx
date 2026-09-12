@@ -1,11 +1,18 @@
+import { useState } from "react";
 import { X } from "lucide-react";
 import { num } from "../lib/format";
 import { ACCION, accionDe } from "../lib/prioridadAccion";
 import { useT } from "../lib/i18n";
 
+const VISIBLE_CAP = 5;
+
 // Auditoría-style action pills: icon + label + count, one at a time, click again to clear.
+// Capped at VISIBLE_CAP (the working-memory guideline) — a busy tenant with
+// the full 12-verb vocabulary present collapses the rest behind "+N más"
+// instead of a wall of scrolling pills.
 export default function FiltrosAccion({ items, filtro, onFiltro }) {
   const t = useT();
+  const [expandido, setExpandido] = useState(false);
   const counts = {};
   const label = {};
   for (const it of items) {
@@ -13,10 +20,14 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
     counts[k] = (counts[k] || 0) + 1;
     if (!label[k]) label[k] = t(`prioridades.accion_${k}`) || it.chip || k;
   }
-  const pills = Object.keys(counts)
+  const ordenados = Object.keys(counts)
     .filter((k) => ACCION[k])
     .sort((a, b) => counts[b] - counts[a]);
-  if (pills.length < 2) return null;
+  if (ordenados.length < 2) return null;
+  const oculta = !expandido && ordenados.length > VISIBLE_CAP
+    ? ordenados.slice(VISIBLE_CAP)
+    : [];
+  const pills = expandido ? ordenados : ordenados.slice(0, VISIBLE_CAP);
 
   return (
     <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
@@ -39,6 +50,15 @@ export default function FiltrosAccion({ items, filtro, onFiltro }) {
           </button>
         );
       })}
+      {oculta.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpandido(true)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-linea px-3 py-1.5 text-[0.78rem] font-semibold text-tinta-suave hover:text-tinta"
+        >
+          {t("prioridades.filtro_mas", { n: oculta.length })}
+        </button>
+      )}
       {filtro && (
         <button
           type="button"

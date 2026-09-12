@@ -53,6 +53,7 @@ function WorkRow({ item, selected, onSelect }) {
     <button
       type="button"
       onClick={onSelect}
+      aria-current={selected || undefined}
       className={`flex w-full items-start gap-3 border-b border-linea px-4 py-3 text-left last:border-0 ${
         selected ? "bg-papel-hondo/70" : "hover:bg-papel-hondo/40"
       }`}
@@ -87,6 +88,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const [propResultado, setPropResultado] = useState({});
   const [propTrabajando, setPropTrabajando] = useState(false);
   const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [confirmandoPiso, setConfirmandoPiso] = useState(null);
   const rootRef = useRef(null);
 
   const cargar = () => {
@@ -128,6 +130,8 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
     () => (filtro ? todos.filter((i) => accionDe(i) === filtro) : todos),
     [todos, filtro],
   );
+
+  useEffect(() => { setConfirmandoPiso(null); }, [selectedId]);
 
   useEffect(() => {
     if (selectedId && visible.some((i) => i.id === selectedId)) return;
@@ -183,6 +187,11 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   };
 
   const resolverPiso = async (c) => {
+    if (confirmandoPiso !== c.id) {
+      setConfirmandoPiso(c.id);
+      return;
+    }
+    setConfirmandoPiso(null);
     try {
       await Promise.all((c.reportes || []).map((rid) => api.piso.resolver(rid)));
       toast(t("oportunidades.piso_resuelta"));
@@ -231,10 +240,22 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
   const drillAcciones = (item, closeAfter) => (
     <>
       {item.piso && (
-        <button data-quick-action="1" onClick={() => resolverPiso(item)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-hielo px-4 py-2 text-[0.84rem] font-semibold text-crema">
-          <Check size={14} /> {t("oportunidades.piso_marcar")} <HotkeyBadge>1</HotkeyBadge>
-        </button>
+        <span className="inline-flex items-center gap-1.5">
+          <button data-quick-action="1" onClick={() => resolverPiso(item)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.84rem] font-semibold text-crema ${
+              confirmandoPiso === item.id ? "bg-rojo" : "bg-hielo"
+            }`}>
+            <Check size={14} />
+            {confirmandoPiso === item.id ? t("oportunidades.piso_marcar_confirmar") : t("oportunidades.piso_marcar")}
+            <HotkeyBadge>1</HotkeyBadge>
+          </button>
+          {confirmandoPiso === item.id && (
+            <button onClick={() => setConfirmandoPiso(null)}
+              className="text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+              {t("aprendizaje.feedback_cancelar")}
+            </button>
+          )}
+        </span>
       )}
       {!item.piso && (adoptados[item.id] ? (
         <span className="text-[0.84rem] font-semibold text-salvia">{t("oportunidades.adoptado")}</span>
@@ -291,6 +312,7 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
       involucrados: item.drill?.involucrados || [],
       supuestos: item.drill?.supuestos || [],
       confidence: item.drill?.confidence,
+      origen: item.origen || [],
       fuentes: item.fuentes || [],
       propuesta: item.propuesta,
       propuestaTrabajando: propTrabajando,
@@ -327,7 +349,14 @@ export default function Prioridades({ onNavegar, onPreguntar }) {
             <Radar size={22} className="text-hielo" />
             <div>
               <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-              <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("prioridades.sub")}</p>
+              <p className="mt-1 text-[0.9rem] text-tinta-suave">
+                {act.length > 0 ? t("prioridades.sub_conteo", { n: act.length }) : t("prioridades.sub")}
+                {data?.recuperable?.disponible && (
+                  <span className="plata ml-2 font-semibold text-salvia">
+                    · {t("prioridades.recuperable", { monto: pesoCorto(data.recuperable.total) })}
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           {todos.length > 0 && (
