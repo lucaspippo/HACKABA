@@ -622,7 +622,17 @@ function MedidorDeNodos({ onCambio }) {
 // tarjeta enfocada y en ese caso vuelve a encuadrar ESA.
 //
 // `foco` es el id de la tarjeta enfocada, o null para el mapa entero.
-function Camara({ contenedor, completo, riel, foco }) {
+// DONDE VIVE, Y NO ES UN DETALLE. Va COMO HIJA de <ReactFlow>, no como
+// hermana adentro del <ReactFlowProvider>. Medido en el navegador: puesta como
+// hermana, `useReactFlow()` devuelve un instrumento desconectado —`zoomIn`,
+// `fitView` y todo lo demas no hacen absolutamente nada, sin error ninguno,
+// mientras la rueda del mouse sigue funcionando—. Adentro funciona, que es
+// donde vivia el `Reencuadre` que habia antes y donde vive `MedidorDeNodos`.
+//
+// Por eso la barra de controles NO usa el hook: no puede, porque tiene que
+// dibujarse encima del lienzo y no adentro del flow. La camara publica sus
+// acciones en `acciones` y la barra las llama desde afuera.
+function Camara({ contenedor, completo, riel, foco, acciones }) {
   const rf = useReactFlow();
   const refFoco = useRef(foco);
   refFoco.current = foco;
@@ -689,6 +699,17 @@ function Camara({ contenedor, completo, riel, foco }) {
     if (primera.current) { primera.current = false; return; }
     encuadrar(620);
   }, [foco, encuadrar]);
+
+  // Lo que la barra de arriba puede pedir.
+  useEffect(() => {
+    if (!acciones) return undefined;
+    acciones.current = {
+      acercar: () => rf.zoomIn({ duration: 180 }),
+      alejar: () => rf.zoomOut({ duration: 180 }),
+      verTodo: () => rf.fitView({ padding: 0.06, duration: 520 }),
+    };
+    return () => { acciones.current = null; };
+  }, [rf, acciones]);
   return null;
 }
 
@@ -703,8 +724,8 @@ function Camara({ contenedor, completo, riel, foco }) {
 // Van adentro del bloque del lienzo, así que aparecen igual en pantalla
 // completa: expandido es justamente donde más falta hace poder volver a ver
 // todo.
-function Controles({ completo, onCompleto, onCentrar, t }) {
-  const rf = useReactFlow();
+function Controles({ completo, onCompleto, onCentrar, acciones, t }) {
+  const pedir = (que) => () => acciones.current?.[que]?.();
   const boton = "grid h-8 w-8 place-items-center text-tinta-suave transition-colors hover:text-tinta";
   return (
     <div className="absolute right-3 top-[60px] z-20 flex items-center gap-1
@@ -718,11 +739,11 @@ function Controles({ completo, onCompleto, onCentrar, t }) {
         {completo ? t("mapaop.salir_completo") : t("mapaop.ver_completo")}
       </button>
       <span className="h-5 w-px bg-linea" />
-      <button onClick={() => rf.zoomOut({ duration: 180 })}
+      <button onClick={pedir("alejar")}
               aria-label={t("mapaop.alejar")} className={boton}>
         <Minus className="size-4" />
       </button>
-      <button onClick={() => rf.zoomIn({ duration: 180 })}
+      <button onClick={pedir("acercar")}
               aria-label={t("mapaop.acercar")} className={boton}>
         <Plus className="size-4" />
       </button>
@@ -730,7 +751,7 @@ function Controles({ completo, onCompleto, onCentrar, t }) {
           (por eso avisa al padre) y encuadra el mapa entero. Si sólo limpiara
           el foco, con el foco ya en null —alguien que hizo zoom a mano— no
           pasaría nada. */}
-      <button onClick={() => { onCentrar(); rf.fitView({ padding: 0.06, duration: 520 }); }}
+      <button onClick={() => { onCentrar(); pedir("verTodo")(); }}
               aria-label={t("mapaop.centrar")} className={boton}>
         <Maximize className="size-4" />
       </button>
@@ -759,6 +780,10 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
   // Es la unica fuente de verdad del encuadre: la Camara la mira y ella sola
   // decide, asi que el observer de tamanio no puede deshacer un acercamiento.
   const [nodoFoco, setNodoFoco] = useState(null);
+  // El puente entre la camara (que vive adentro de <ReactFlow>, unico lugar
+  // donde el hook funciona) y la barra de controles (que tiene que dibujarse
+  // encima del lienzo, o sea afuera).
+  const accionesCamara = useRef(null);
   const lienzo = useRef(null);
   // Sólo re-dibuja las aristas si las MEDIDAS cambiaron de verdad: el medidor
   // corre en cada render del lienzo y un array nuevo cada vez sería un bucle.
@@ -1029,11 +1054,13 @@ export default function MapaOperacion({ onPreguntar, onNavegar, focoInicial = nu
           onPaneClick={() => { setAbierto(null); setNodoFoco(null); }}
         >
           <Background gap={24} size={1} color="#eceae5" />
+          <Camara contenedor={lienzo} completo={completo} riel={riel}
+                  foco={nodoFoco} acciones={accionesCamara} />
           <MedidorDeNodos onCambio={recibirRects} />
         </ReactFlow>
-        <Camara contenedor={lienzo} completo={completo} riel={riel} foco={nodoFoco} />
         <Controles completo={completo} onCompleto={setCompleto}
-                   onCentrar={() => setNodoFoco(null)} t={t} />
+                   onCentrar={() => setNodoFoco(null)}
+                   acciones={accionesCamara} t={t} />
         </ReactFlowProvider>
       </div>
 
