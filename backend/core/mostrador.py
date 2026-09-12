@@ -86,6 +86,69 @@ def grupo_de_categoria(categoria: str) -> list[dict]:
     return [g for g in grupos() if categoria in (g.get("categorias") or [])]
 
 
+# --- El costo viejo, donde alguien puede hacer algo -----------------------------
+#
+# `quality.py` ya marca los costos de más de un año: es una de las categorías
+# del libro triado del dueño. El descubrimiento del relevamiento es DÓNDE sirve
+# ese dato — el jamón cocido de balanza tiene el costo cargado hace 535 días y
+# su precio de venta salió de ahí, y quien mira ese precio todos los días es la
+# que está en el mostrador, no el dueño en un análisis de escritorio.
+#
+# El cruce que lo vuelve suyo es el GRUPO: sólo se listan los artículos cuya
+# categoría alimenta un grupo de mostrador. El resto del catálogo no es de ella
+# y llenarle la pantalla con 430 SKUs es la forma más rápida de que no mire
+# ninguno.
+
+def costos_viejos(lang: str | None = None) -> dict:
+    """Los productos del mostrador cuyo precio salió de un costo viejo.
+
+    El umbral es el de `quality.UMBRAL_COSTO_VIEJO_DIAS` — el mismo que ya usa
+    el libro del dueño. Dos pantallas que cuenten "costo viejo" con umbrales
+    distintos son dos verdades, y ya sabemos cómo termina eso.
+
+    NO HAY TOTAL, y es a propósito (PRODUCT.md, The Counting Rule). Sumar el
+    inmovilizado de estos cinco artículos daría un número que parece plata en
+    juego y no lo es: el costo viejo no dice cuánto se pierde, dice que no se
+    sabe cuánto se gana. Cada fila responde por sí sola.
+    """
+    from . import quality, store
+    filas = []
+    for a in store.raw_actual():
+        if a.get("estado") != "activo":
+            continue
+        dias = a.get("antiguedad_costo_dias") or 0
+        if dias <= quality.UMBRAL_COSTO_VIEJO_DIAS:
+            continue
+        gs = grupo_de_categoria(a.get("tipo") or "")
+        if not gs:
+            continue        # no se vende en el mostrador: no es de ella
+        costo = a.get("costo_neto") or 0.0
+        pvp = a.get("pvp") or 0.0
+        filas.append({
+            "codigo": a.get("codigo"),
+            "producto": a.get("descripcion"),
+            "categoria": a.get("tipo"),
+            "dias": int(dias),
+            "pvp": pvp,
+            "costo_neto": costo,
+            "venta_x_peso": bool(a.get("venta_x_peso")),
+            # El recargo que REALMENTE tiene hoy sobre ese costo viejo, y el
+            # que la casa espera para este grupo. La fiambrería devuelve dos
+            # grupos (feteado y pieza entera) porque es el mismo producto
+            # vendido de dos maneras: se muestran los dos en vez de elegir uno,
+            # que sería inventar cuál de las dos presentaciones es ésta.
+            "recargo_actual_pct": (round((pvp / costo - 1) * 100, 1)
+                                   if costo > 0 and pvp > 0 else None),
+            "grupos": [{"id": g.get("id"),
+                        "presentacion": g.get("presentacion"),
+                        "recargo_esperado_pct": g.get("recargo_sobre_costo_pct")}
+                       for g in gs],
+        })
+    filas.sort(key=lambda f: f["dias"], reverse=True)
+    return {"disponible": bool(filas), "umbral_dias": quality.UMBRAL_COSTO_VIEJO_DIAS,
+            "items": filas}
+
+
 # --- Bloque E · el reporte de cierres que hoy se hace a mano --------------------
 
 def _semana(desde: datetime.date, hasta: datetime.date) -> dict[str, float]:

@@ -180,6 +180,8 @@ export const api = {
   margenes_detalle: (grupo) => get(`/api/margenes?grupo=${encodeURIComponent(grupo)}`),
   // P38·E/F — reporte de cierres por local y separación de traslados internos
   cierresLocales: (dias = 7) => get(`/api/cierres-locales?dias=${dias}`),
+  // El costo viejo, del lado del que mira ese precio todos los días.
+  mostradorCostosViejos: () => get("/api/mostrador/costos-viejos"),
   traslados: () => get("/api/traslados-internos"),
   // P38·H — vencimientos que Ángela gestiona
   vencimientos: (dias = 30) => get(`/api/vencimientos?dias=${dias}`),

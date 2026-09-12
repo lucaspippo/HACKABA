@@ -124,8 +124,18 @@ def test_las_familias_dinamicas_tambien_estan_cubiertas():
     for estado in cobranza.ESTADOS:
         assert auditoria.ficha(f"cobranza_{estado}")["clase"] == "plata"
     assert auditoria.ficha("sanear_lo_que_sea")["clase"] == "datos"
+    # Lo que se protege es que NINGUNA quede en `otros`: una acción sin
+    # clasificar sigue apareciendo en pantalla, pero deja de estar clasificada
+    # y eso se paga en confianza.
     for slug in piso.ACCION.values():
-        assert auditoria.ficha(slug)["clase"] == "stock"
+        assert auditoria.ficha(slug)["clase"] != "otros", slug
+    # La mayoría son de stock, pero no todas, y la clase dice qué pone en juego
+    # la acción y no de qué pantalla salió: un costo viejo es un precio, y una
+    # pregunta al referente no pone nada en juego.
+    assert auditoria.ficha(piso.ACCION["costo"])["clase"] == "plata"
+    assert auditoria.ficha(piso.ACCION["pregunta"])["clase"] == "consulta"
+    for tipo in ("faltante", "conteo", "entrega", "reposicion", "pedido", "presupuesto"):
+        assert auditoria.ficha(piso.ACCION[tipo])["clase"] == "stock", tipo
 
 
 def test_lo_no_declarado_se_ve_no_se_esconde():

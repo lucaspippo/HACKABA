@@ -1561,7 +1561,11 @@ def _familia_evento(acc: str) -> str | None:
 _TRABAJO_EXTRA = {"validacion_montos_ventas", "preparar_orden_compra",
                   "reportar_faltante", "marcar_conteo", "confirmar_entrega",
                   "cerrar_tarea_piso", "pedir_reposicion", "registrar_pedido",
-                  "registrar_presupuesto"}
+                  "registrar_presupuesto", "avisar_costo_viejo"}
+# `preguntar_referente` NO está acá a propósito: preguntar no es trabajo
+# resuelto, y contarlo le inflaría el número justo al que recién entró — que es
+# el que más pregunta y el que menos tiene para mostrar. Queda en el registro
+# con su propio sello, como las consultas a Ángela.
 
 
 def _es_trabajo(acc: str) -> bool:
@@ -2630,6 +2634,20 @@ def cierres_locales(dias: int = 7, u: dict = Depends(require_feature("caja"))):
     if not r.get("disponible"):
         raise HTTPException(404, i18n.t("api.sin_mostrador", _lang(u)))
     return r
+
+
+@app.get("/api/mostrador/costos-viejos")
+def mostrador_costos_viejos(u: dict = Depends(require_feature("inventario"))):
+    """Los productos del mostrador cuyo precio de venta salió de un costo viejo.
+
+    Va sobre `inventario` —el permiso de mirar el catálogo— y no sobre `caja`:
+    el que atiende el mostrador tiene el primero y no siempre el segundo, y es
+    él quien mira ese precio todos los días. El dato ya existía en el libro
+    triado del dueño; lo que faltaba era que llegara a la persona que puede
+    hacer algo con él.
+    """
+    from core import mostrador
+    return mostrador.costos_viejos(_lang(u))
 
 
 class OrdenCompraRequest(BaseModel):

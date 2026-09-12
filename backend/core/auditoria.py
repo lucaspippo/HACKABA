@@ -122,6 +122,14 @@ ACCIONES: dict[str, dict] = {
     "registrar_pedido":   {"clase": "stock", "gate": "propia"},
     "registrar_presupuesto": {"clase": "stock", "gate": "propia"},
     "resolver_reporte_piso": {"clase": "stock", "gate": "aprobacion"},
+    # Los dos avisos del piso que NO son de stock. La clase dice qué pone en
+    # juego la acción, no de qué pantalla salió: un costo viejo es un precio, y
+    # una pregunta al referente no pone nada en juego.
+    "avisar_costo_viejo": {"clase": "plata", "gate": "propia"},
+    # Mismo sello que `consulta_angela`, y por el mismo motivo: queda
+    # registrada pero fuera de la vista por defecto. Noventa preguntas del que
+    # recién entró taparían las tres decisiones que importan.
+    "preguntar_referente": {"clase": "consulta", "gate": "sin_efecto"},
     # --- permisos: quién ve qué ---------------------------------------------
     "solicitar_modulo":          {"clase": "permisos", "gate": "propia"},
     "resolver_solicitud_modulo": {"clase": "permisos", "gate": "aprobacion"},

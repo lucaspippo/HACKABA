@@ -203,6 +203,9 @@ const CATALOGO = [
     match: /mostrador/i,
     voz: true,
     muestras: "mostrador",
+    // Atiende un mostrador: mira precios de venta todo el día. Es lo que
+    // decide si le llega el aviso del costo viejo — no el nombre del puesto.
+    mostrador: true,
     acciones: [
       { id: "precio_pesable", icon: "Scale", need: ["inventario"], kind: "angela",
         pregunta: "rol.chip_pesable_actualizado", destaca: true },
@@ -219,6 +222,7 @@ const CATALOGO = [
     id: "sucursal",
     match: /sucursal/i,
     voz: true,
+    mostrador: true,
     acciones: [
       { id: "cierre_local", icon: "Wallet", need: ["caja"], kind: "navegar", a: "caja",
         destaca: true },
@@ -287,6 +291,12 @@ export function muestrasDe(user) {
 }
 
 /** Las preguntas pre-cargadas de su oficio (sólo las que su rol puede responder). */
+/** ¿Atiende un mostrador? Mira precios de venta todo el día, y por eso le
+ *  sirve saber cuál de esos precios salió de un costo viejo. */
+export function atiendeMostrador(user) {
+  return !!rolDe(user)?.mostrador;
+}
+
 export function chipsDe(user) {
   const r = rolDe(user);
   if (!r) return [];
@@ -329,5 +339,17 @@ export const CAMPOS_REPORTE = {
   pedido: [
     { id: "cliente", lk: "rol.f_cliente", tipo: "texto", requerido: true },
     { id: "nota", lk: "rol.f_nota_pedido", tipo: "texto" },
+  ],
+  // La pregunta del que recién entró a SU referente. Un solo campo: si hubiera
+  // que completar tres, la duda se hace en voz alta y no queda en ningún lado,
+  // que es exactamente el estado actual.
+  pregunta: [
+    { id: "nota", lk: "rol.f_pregunta", tipo: "texto", requerido: true },
+  ],
+  // El precio calculado sobre un costo viejo. El producto viene puesto desde la
+  // fila que tocó: nadie escribe "JAMON COCIDO GUARANI (HORMA)" con una mano.
+  costo: [
+    { id: "producto", lk: "rol.f_producto", tipo: "texto", requerido: true },
+    { id: "nota", lk: "rol.f_nota", tipo: "texto" },
   ],
 };
