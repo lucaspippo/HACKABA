@@ -63,7 +63,11 @@ export default function AdminContexto() {
             ))}
           </div>
           <div onClick={() => fileRef.current?.click()}
-            className="grid cursor-pointer place-items-center rounded-[var(--radius-card)] border-2 border-dashed border-linea bg-crema p-6 text-center">
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); }
+            }}
+            role="button" tabIndex={0} aria-label={t("contexto.solta_txt")}
+            className="grid cursor-pointer place-items-center rounded-[var(--radius-card)] border-2 border-dashed border-linea bg-crema p-6 text-center focus-visible:border-violeta/40">
             <input ref={fileRef} type="file" accept=".txt,.csv,.md" className="hidden" onChange={(e) => leer(e.target.files?.[0])} />
             <UploadCloud size={24} className="text-tinta-suave" />
             <p className="mt-1.5 text-[0.86rem] font-semibold">{t("contexto.solta_txt")}</p>

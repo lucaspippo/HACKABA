@@ -903,7 +903,7 @@ function PanelEntidad({ nodo, relaciones, t, onIr, onCerrar, onNavegar, onPregun
             </span>
           )}
         </div>
-        <button onClick={onCerrar} className="shrink-0 text-white/40 hover:text-white">
+        <button onClick={onCerrar} aria-label={t("common.cerrar")} className="shrink-0 text-white/40 hover:text-white">
           <X className="size-4" />
         </button>
       </div>

@@ -1,6 +1,14 @@
 // EN dictionary — plain-spoken business English with the same warmth as the ES.
 // Never stiff corporate. Same meaning, same personality.
 export const EN = {
+  // --- common / accessibility (accessible names for icon-only buttons) ---
+  "common.cerrar": "Close",
+  "common.editar": "Edit",
+  "common.eliminar": "Delete",
+  "common.enviar": "Send",
+  "common.expandir": "Expand",
+  "common.contraer": "Collapse",
+
   // --- language switch ---
   "lang.cambiar": "Change language",
 

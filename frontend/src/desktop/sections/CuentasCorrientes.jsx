@@ -130,7 +130,7 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
                 : t("cuentas.score_expl_ok", { prom: c.promedio_pago_dias, plazo: c.plazo_dias })}
             </p>
           </div>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
 
         <div className="mt-4 grid grid-cols-3 gap-3">

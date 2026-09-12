@@ -120,7 +120,7 @@ export default function VozAngela({ onCerrar, onListo, onPreguntar, rol }) {
           <h2 className="flex items-center gap-2 font-display text-[1.05rem] font-bold">
             <Mic size={18} className="text-violeta" /> {t("voz.titulo")}
           </h2>
-          <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta">
+          <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta">
             <X size={18} />
           </button>
         </div>

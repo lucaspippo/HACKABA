@@ -308,9 +308,9 @@ function ProductoDetalle({ p, onClose, onPreguntar, onGuardado, onNavegar }) {
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {onGuardado && (
-              <button onClick={() => setEditando(true)} className="text-tinta-suave hover:text-tinta"><Pencil size={18} /></button>
+              <button onClick={() => setEditando(true)} aria-label={t("common.editar")} className="text-tinta-suave hover:text-tinta"><Pencil size={18} /></button>
             )}
-            <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+            <button onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
           </div>
         </div>
         {p.estado_calidad && (
@@ -421,7 +421,7 @@ function ModalArticulo({ inicial, onClose, onGuardado }) {
       <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta" onClick={(ev) => ev.stopPropagation()}>
         <div className="flex items-start justify-between">
           <h2 className="font-display text-xl font-bold">{t(inicial ? "inventario.form_editar" : "inventario.nuevo_producto")}</h2>
-          <button onClick={onClose} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          <button onClick={onClose} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
         {CAMPOS_ARTICULO.map(([campo, lk, tipo]) => (
           <div key={campo}>
