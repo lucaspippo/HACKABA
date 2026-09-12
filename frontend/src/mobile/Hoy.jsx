@@ -189,7 +189,18 @@ export default function Hoy({ data, oportunidades, onTab, onGestionar, user, onA
         proxima={paradas?.[0]?.cliente}
         restantes={paradas?.length ?? null}
         onTarea={(x) => onGestionar({ titulo: x.titulo })}
-        onAccion={(id) => onAccion?.(id)}
+        // LOS CINCO BOTONES TIENEN QUE HACER ALGO. `onAccion` de MobileApp es
+        // `ejecutarAccion`, que espera un OBJETO con `kind` (el formato del
+        // catálogo de roles), no el id suelto que manda InicioPiso: pasándole
+        // el string, los cinco cuadrados del dueño no hacían absolutamente
+        // nada. Se traducen acá, igual que en MiDia.
+        onAccion={(id) => {
+          if (id === "escanear") onAccion?.({ kind: "navegar", a: "buscar" });
+          else if (id === "foto") onAccion?.({ kind: "navegar", a: "cargar" });
+          else if (id === "registrar") onAccion?.({ kind: "reporte", tipo: "conteo" });
+          else if (id === "problema") onAccion?.({ kind: "reporte", tipo: "faltante" });
+          else onAccion?.({ kind: "reporte", tipo: "pregunta" });
+        }}
         onRuta={() => onTab("mapa")}
         onAbrirTareas={() => onTab("insights")}
       />

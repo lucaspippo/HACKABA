@@ -38,12 +38,28 @@ function Anillo({ pct, color }) {
 
 // 1 · LA BANDA. Una franja fina, no un bloque: dice UNA cosa —cuánto llevás—
 // y deja el resto de la pantalla para lo que hay que hacer.
+//
+// EL COLOR ES `tinta`, Y NO ES UNA ELECCIÓN ESTÉTICA. La referencia venía en
+// coral y se leía como alerta: lo primero que ve alguien al abrir la app era
+// una franja roja diciéndole que algo anda mal, cuando es el resumen del día.
+//
+// La Regla de Un Solo Significado (DESIGN.md) cierra las otras puertas: rojo
+// es un problema ACTIVO, oro es una decisión esperando al dueño, salvia es
+// "no hay nada que hacer", y el azul es de Ángela y sólo de Ángela. Esta banda
+// no es ninguna de esas cosas — es un encabezado, y un encabezado no gasta un
+// color semántico.
+//
+// `tinta` es la salida que el sistema ya tiene prevista: "the darkest neutral
+// doubles as the confident action color" (es el relleno del botón primario).
+// Da peso sin significar un estado, y nunca se confunde con una alerta.
+const BANDA = "linear-gradient(101deg,#21201d 0%,#32302c 100%)";
+
 function Banda({ pct, onAbrir }) {
   const t = useT();
   return (
     <button onClick={onAbrir}
             className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left"
-            style={{ background: "linear-gradient(101deg,#e8615f 0%,#d94f62 100%)" }}>
+            style={{ background: BANDA }}>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-bold leading-tight text-white">
           {t("piso.mis_tareas")}
