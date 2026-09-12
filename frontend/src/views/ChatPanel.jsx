@@ -38,7 +38,6 @@ export default function ChatPanel({
   const t = useT();
   const aui = useAui();
   const messages = useAuiState((s) => s.thread.messages);
-  const isEmpty = useAuiState((s) => s.thread.isEmpty);
   const isRunning = useAuiState((s) => s.thread.isRunning);
   const activeThreadTitle = useActiveThreadTitle(variant === "fullscreen" ? "Ángela" : undefined);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -122,6 +121,73 @@ export default function ChatPanel({
   const currentMode = [...messages].reverse().find((m) => m.metadata?.custom?.mode)?.metadata?.custom?.mode;
   const width = variant === "fullscreen" ? "mx-auto w-full max-w-3xl" : "";
 
+  const emptyState = (
+    <>
+      <AngelaMark size={variant === "fullscreen" ? 40 : 48} />
+      <h2 className="mt-3 font-display text-[1.05rem] font-bold tracking-tight text-tinta">
+        {t("angela.hola")}
+      </h2>
+      <p className="mt-1.5 max-w-[280px] text-[0.85rem] leading-relaxed text-tinta-suave">
+        {saludoInicial || t("angela.saludo_default")}
+      </p>
+      <div className="mt-5 w-full max-w-sm text-left">
+        {/* What Angela already did — real audit log, not decoration */}
+        {feed.length > 0 && (
+          <div className="mb-3 space-y-1.5">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("angela.ultimo")}</p>
+            {feed.map((e, i) => (
+              <div key={i} className="flex items-start gap-2.5 rounded-xl border border-linea bg-crema px-3 py-2 sombra-papel">
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${e.tipo === "staging" ? "bg-salvia" : "bg-oro"}`} />
+                <span className="min-w-0 flex-1 text-[0.8rem] leading-snug text-tinta">{textoFeed(e, t)}</span>
+                <span className="shrink-0 text-[0.7rem] text-tinta-suave">{fecha(e.cuando)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Real agent actions (no made-up features) */}
+        <div className="mb-3 space-y-1.5">
+          {authStore.tiene("cargar") && (
+            <button
+              onClick={() => setPhotoOpen(true)}
+              className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2.5 text-left sombra-papel transition-colors hover:border-violeta/40"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violeta-suave text-violeta"><Paperclip size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.85rem] font-semibold leading-tight">{t("angela.accion_foto")}</span>
+                <span className="block text-[0.74rem] text-tinta-suave">{t("angela.accion_foto_sub")}</span>
+              </span>
+              <ChevronRight size={15} className="text-tinta-suave" />
+            </button>
+          )}
+          {onNavigate && authStore.tiene("documentos") && (
+            <button
+              onClick={() => onNavigate("documentos")}
+              className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2.5 text-left sombra-papel transition-colors hover:border-violeta/40"
+            >
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violeta-suave text-violeta"><FileText size={16} /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[0.85rem] font-semibold leading-tight">{t("angela.accion_doc")}</span>
+                <span className="block text-[0.74rem] text-tinta-suave">{t("angela.accion_doc_sub")}</span>
+              </span>
+              <ChevronRight size={15} className="text-tinta-suave" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {placeholderChips.map((c) => (
+            <button
+              key={typeof c === "string" ? c : c.lk}
+              onClick={() => aui.thread.append(typeof c === "string" ? c : c.enviar)}
+              className="rounded-full border border-linea bg-crema px-3 py-1.5 text-left text-[0.82rem] font-medium text-tinta-suave transition-colors hover:border-violeta/40 hover:text-tinta"
+            >
+              {typeof c === "string" ? c : t(c.lk)}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center gap-3 pb-3 pt-1">
@@ -162,6 +228,7 @@ export default function ChatPanel({
       <div className={`min-h-0 flex-1 ${width}`}>
         <ChatThread
           onExecutingChange={setExecuting}
+          emptyState={emptyState}
           composerLeading={
             <>
               {authStore.tiene("cargar") && (
@@ -187,67 +254,6 @@ export default function ChatPanel({
           }
         />
       </div>
-
-      {isEmpty && (
-        <div className={`pb-3 ${width}`}>
-          {saludoInicial && (
-            <p className="mb-3 text-[0.9rem] leading-snug text-tinta-suave">{saludoInicial}</p>
-          )}
-          {/* What Angela already did — real audit log, not decoration */}
-          {feed.length > 0 && (
-            <div className="mb-3 space-y-1.5">
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">{t("angela.ultimo")}</p>
-              {feed.map((e, i) => (
-                <div key={i} className="flex items-start gap-2.5 rounded-xl border border-linea bg-crema px-3 py-2 sombra-papel">
-                  <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${e.tipo === "staging" ? "bg-salvia" : "bg-oro"}`} />
-                  <span className="min-w-0 flex-1 text-[0.8rem] leading-snug text-tinta">{textoFeed(e, t)}</span>
-                  <span className="shrink-0 text-[0.7rem] text-tinta-suave">{fecha(e.cuando)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          {/* Real agent actions (no made-up features) */}
-          <div className="mb-3 space-y-1.5">
-            {authStore.tiene("cargar") && (
-              <button
-                onClick={() => setPhotoOpen(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2.5 text-left sombra-papel transition-colors hover:border-violeta/40"
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violeta-suave text-violeta"><Paperclip size={16} /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[0.85rem] font-semibold leading-tight">{t("angela.accion_foto")}</span>
-                  <span className="block text-[0.74rem] text-tinta-suave">{t("angela.accion_foto_sub")}</span>
-                </span>
-                <ChevronRight size={15} className="text-tinta-suave" />
-              </button>
-            )}
-            {onNavigate && authStore.tiene("documentos") && (
-              <button
-                onClick={() => onNavigate("documentos")}
-                className="flex w-full items-center gap-3 rounded-xl border border-linea bg-crema px-3 py-2.5 text-left sombra-papel transition-colors hover:border-violeta/40"
-              >
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violeta-suave text-violeta"><FileText size={16} /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[0.85rem] font-semibold leading-tight">{t("angela.accion_doc")}</span>
-                  <span className="block text-[0.74rem] text-tinta-suave">{t("angela.accion_doc_sub")}</span>
-                </span>
-                <ChevronRight size={15} className="text-tinta-suave" />
-              </button>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {placeholderChips.map((c) => (
-              <button
-                key={typeof c === "string" ? c : c.lk}
-                onClick={() => aui.thread.append(typeof c === "string" ? c : c.enviar)}
-                className="rounded-full border border-linea bg-crema px-3 py-1.5 text-left text-[0.82rem] font-medium text-tinta-suave transition-colors hover:border-violeta/40 hover:text-tinta"
-              >
-                {typeof c === "string" ? c : t(c.lk)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Receipt photo from the chat (the promise: "snap a photo and tell
           her to load it"). Only roles with `cargar`. */}

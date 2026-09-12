@@ -2275,6 +2275,8 @@ export const ES = {
 
   // --- chat de Ángela (shell del chat, no sus respuestas) ---
   "angela.saludo_default": "Soy Ángela. Preguntame lo que quieras sobre tu plata, tu stock o tus clientes — te respondo con los números reales.",
+  "angela.hola": "Hola, soy Ángela",
+  "angela.ancho_panel": "Ancho del panel de Ángela",
   "angela.error_conexion": "Se me cortó la conexión con el servidor. Probá de nuevo en un toque.",
   "angela.modo_datos": "Modo datos · conectá la API para charla libre",
   "angela.socia": "Tu socia que conoce el negocio",
