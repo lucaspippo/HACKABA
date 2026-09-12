@@ -188,7 +188,7 @@ export default function Composer({ leading }: { leading?: ReactNode }) {
           ))}
       </ComposerMenu>
 
-      <ComposerPrimitive.Root asChild>
+      <ComposerPrimitive.Root className="w-full">
         <ComposerBar>
           {attachments.length > 0 && (
             <ComposerAttachments>
