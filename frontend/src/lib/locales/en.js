@@ -2981,4 +2981,14 @@ export const EN = {
 
   "hoy.aprendizaje_titulo": "What Ángela is learning",
   "hoy.ver_aprendizaje": "See more",
+
+  "memoria_chips.memoria": "memory",
+  "memoria_chips.recordado_n": "remembered {n}",
+  "memoria_chips.olvidar": "Forget \"{texto}\"",
+  "memoria_chips.error": "Couldn't save that. Try again.",
+  "conocimiento_pendiente.titulo": "Knowledge proposals",
+  "conocimiento_pendiente.vacio": "No proposals waiting for review.",
+  "conocimiento_pendiente.aprobar": "Approve",
+  "conocimiento_pendiente.rechazar": "Reject",
+  "conocimiento_pendiente.propuesto_por": "proposed by {actor}",
 };

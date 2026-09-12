@@ -5,11 +5,15 @@ import {
   useAui,
   useAuiState,
 } from "@assistant-ui/react";
+import { useState } from "react";
 import { Send } from "lucide-react";
 import AngelaMark from "../AngelaMark";
 import ToolCallCard from "./ToolCallCard";
 import PlanChecklist from "./PlanChecklist";
 import DocCard from "./DocCard";
+import MemoryChips from "./MemoryChips";
+import { api } from "../../lib/api";
+import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 
 function UserMessage() {
@@ -22,22 +26,41 @@ function UserMessage() {
   );
 }
 
-// A message's "extras" (plan checklist, document card) are NOT content
-// parts — they travel in metadata.custom.acciones (the same shape /api/angela
-// has always returned). Read here, with the message already in scope via
-// MessagePrimitive.Root.
+// A message's "extras" (plan checklist, document card, memory chips) are
+// NOT content parts — they travel in metadata.custom.acciones (the same
+// shape /api/angela has always returned) or, for memory chips, get pulled
+// out of the tool-call parts themselves (see AssistantMessage, which skips
+// rendering proponer_conocimiento as a plain ToolCallCard so it isn't shown
+// twice). Read here, with the message already in scope via MessagePrimitive.Root.
 function MessageExtras({ onExecutingChange }) {
   const t = useT();
   const aui = useAui();
   const actions = useAuiState((s) => s.message.metadata?.custom?.acciones) || [];
   const options = useAuiState((s) => s.message.metadata?.custom?.opciones) || [];
   const isRunning = useAuiState((s) => s.thread.isRunning);
+  const propuestas = useAuiState((s) =>
+    (s.message.content || [])
+      .filter((p) => p.type === "tool-call" && p.toolName === "proponer_conocimiento" && p.result?.ok)
+      .map((p) => ({ id: p.toolCallId, pid: p.result.pieza.id, text: p.result.pieza.texto, change: "added" }))
+  ) || [];
+  const [olvidadas, setOlvidadas] = useState(() => new Set());
+  const chips = propuestas.filter((c) => !olvidadas.has(c.id));
+  const onForget = async (chip) => {
+    setOlvidadas((prev) => new Set(prev).add(chip.id)); // optimista: no esperamos al server para ocultarla
+    try {
+      await api.conocimientoRechazar(chip.pid);
+    } catch (e) {
+      setOlvidadas((prev) => { const next = new Set(prev); next.delete(chip.id); return next; });
+      toast(t("memoria_chips.error"), "error");
+    }
+  };
   const plan = actions.find((a) => a.type === "plan_progreso");
   const docAction = actions.find((a) => a.type === "documento");
   return (
     <>
       {plan && <PlanChecklist plan={{ pasos: plan.pasos, resumen: plan.resumen }} onExecutingChange={onExecutingChange} />}
       {docAction?.documento && <DocCard documento={docAction.documento} t={t} />}
+      {chips.length > 0 && <MemoryChips chips={chips} onForget={onForget} />}
       {options.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {options.map((op, k) => (
@@ -87,6 +110,10 @@ function AssistantMessage({ onExecutingChange }) {
             <MessagePrimitive.Parts>
               {({ part }) => {
                 if (part.type === "text") return <span>{part.text}</span>;
+                // proponer_conocimiento renders as a MemoryChips pill in
+                // MessageExtras instead — showing it again here would be the
+                // same proposal twice.
+                if (part.type === "tool-call" && part.toolName === "proponer_conocimiento") return null;
                 if (part.type === "tool-call") return part.toolUI ?? <ToolCallCard part={part} />;
                 return null;
               }}

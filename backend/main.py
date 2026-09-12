@@ -3015,9 +3015,13 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
 
 # --- Conocimiento del negocio ("lo que Aldo le enseñó a Ángela") ---
 # La capa no estructurada: reglas, excepciones, protocolos y contexto que ningún
-# ERP tiene. Lectura scopeada por rol (el dueño ve todo; el empleado, lo suyo);
-# escritura solo el dueño (require_admin) — el chat de Ángela también escribe por
-# acá. Persiste por-tenant en conocimiento_negocio.json.
+# ERP tiene. Lectura scopeada por rol (el dueño ve todo; el empleado, lo suyo).
+# Crear/pausar/borrar una pieza CONFIRMADA sigue siendo solo el dueño
+# (require_admin). Pero cualquier usuario puede PROPONER una vía el chat de
+# Ángela (proponer_conocimiento en angela.py) — nace en estado "pendiente",
+# sin efecto, hasta que alguien con el nodo la aprueba o la rechaza
+# (/aprobar, /rechazar — mismo scope que visibles_para, no admin-only).
+# Persiste por-tenant en business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
@@ -3025,6 +3029,17 @@ def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         u: dict = Depends(usuario_actual)):
     piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
     piezas = conocimiento.visibles_para(u, piezas)
+    return {"piezas": piezas, "total": len(piezas)}
+
+
+@app.get("/api/conocimiento/pendientes")
+def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_actual)):
+    """Propuestas que alguien dejó vía chat (proponer_conocimiento) y todavía
+    no se activaron ni se rechazaron — la cola de revisión de ESTE usuario:
+    mismo scope por nodo/feature que ya rige qué conocimiento activo ve cada
+    uno (`visibles_para`), no un permiso aparte. Declarado ANTES de
+    /{pid} — si no, "pendientes" matchea ahí como si fuera un id."""
+    piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
     return {"piezas": piezas, "total": len(piezas)}
 
 
@@ -3078,6 +3093,36 @@ def conocimiento_estado(pid: str, req: ConocimientoEstado, u: dict = Depends(req
 def conocimiento_borrar(pid: str, u: dict = Depends(require_admin)):
     if not conocimiento.borrar(pid):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return {"ok": True}
+
+
+def _revisor_o_404(pid: str, u: dict) -> dict:
+    """Sólo puede revisar (aprobar/rechazar) una propuesta quien YA la vería
+    como conocimiento activo — mismo scope de nodo/feature que visibles_para,
+    no un permiso de "revisor" aparte. Devuelve la pieza o levanta 404 (tanto
+    si no existe como si no le toca: no distinguimos, mismo criterio que
+    conocimiento_detalle)."""
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    return p
+
+
+@app.post("/api/conocimiento/{pid}/aprobar")
+def conocimiento_aprobar(pid: str, u: dict = Depends(usuario_actual)):
+    p = _revisor_o_404(pid, u)
+    if p["estado"] != "pendiente":
+        raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
+    pieza = conocimiento.aprobar(pid, u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
+@app.post("/api/conocimiento/{pid}/rechazar")
+def conocimiento_rechazar(pid: str, u: dict = Depends(usuario_actual)):
+    p = _revisor_o_404(pid, u)
+    if p["estado"] != "pendiente":
+        raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
+    conocimiento.rechazar(pid, u["username"])
     return {"ok": True}
 
 

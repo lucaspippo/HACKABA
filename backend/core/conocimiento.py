@@ -47,7 +47,7 @@ EFECTOS = {"ajusta_umbral", "suprime_alerta", "genera_alerta",
 # Dominio del mapa donde nace la pieza (los 8 nodos del Business Map).
 NODOS = {"ventas", "inventario", "deposito", "proveedores",
          "clientes", "caja", "equipo", "contexto"}
-ESTADOS = {"activo", "pausado"}
+ESTADOS = {"activo", "pausado", "pendiente"}
 
 # Scope por rol: qué feature (módulo del perfil) habilita ver las piezas de cada
 # nodo. El dueño (es_admin) ve todo; un empleado ve un nodo si tiene su módulo,
@@ -97,10 +97,15 @@ def _norm(s) -> str:
 
 def listar(nodo: str | None = None, tipo: str | None = None,
            entidad: str | None = None, ambito: str | None = None,
-           incluir_pausadas: bool = True) -> list[dict]:
+           incluir_pausadas: bool = True, estado: str | None = None) -> list[dict]:
     """Piezas que matchean los filtros. Por defecto incluye las pausadas (Mi
-    perfil las lista para reactivarlas); los motores piden incluir_pausadas=False
-    vía `aplicables`."""
+    perfil las lista para reactivarlas) pero NUNCA las pendientes — una
+    propuesta sin revisar no es lo mismo que una pieza pausada, y mezclarla
+    en el listado general la mostraría como si ya fuera conocimiento
+    confirmado. Los motores piden incluir_pausadas=False vía `aplicables`
+    (que tampoco ve pendientes: sigue exigiendo estado=="activo"). Para ver
+    las pendientes hay que pedirlas explícito con estado="pendiente" (ver
+    `pendientes`), que además ignora incluir_pausadas."""
     piezas = _todas()
     out = []
     for p in piezas:
@@ -112,10 +117,26 @@ def listar(nodo: str | None = None, tipo: str | None = None,
             continue
         if entidad and _norm(p.get("entidad")) != _norm(entidad):
             continue
-        if not incluir_pausadas and p.get("estado") != "activo":
+        if estado:
+            if p.get("estado") != estado:
+                continue
+        elif not incluir_pausadas:
+            if p.get("estado") != "activo":
+                continue
+        elif p.get("estado") == "pendiente":
             continue
         out.append(p)
     return out
+
+
+def pendientes(nodo: str | None = None) -> list[dict]:
+    """Propuestas sin revisar — lo que un usuario dejó vía `proponer_conocimiento`
+    (angela.py) y todavía no se activó ni se rechazó. El scope por rol lo
+    aplica el que llama con `visibles_para(usuario, conocimiento.pendientes())`:
+    el mismo criterio de nodo/feature que ya rige qué conocimiento ACTIVO ve
+    cada uno rige también qué le toca revisar — sin un catálogo de permisos
+    aparte."""
+    return listar(nodo=nodo, estado="pendiente")
 
 
 def detalle(pid: str) -> dict | None:
@@ -240,12 +261,17 @@ def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
         raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
     from core.db import business_knowledge_repo
     from core.db import tenant as _tenant
-    return business_knowledge_repo.create(
+    pieza = business_knowledge_repo.create(
         _tenant.current_tenant_id(), id="k" + secrets.token_hex(4),
         texto=texto.strip(), texto_en=texto_en, tipo=tipo, ambito=ambito,
         entidad=(entidad or "").strip() or None, nodo=nodo, efecto=efecto,
         efecto_profundo=efecto_profundo, params=params or {}, origen=origen or {},
         estado=estado, veces_aplicada=int(veces_aplicada))
+    if estado == "pendiente":
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record((origen or {}).get("quien", ""), "proponer_conocimiento",
+                              None, {"id": pieza["id"], "nodo": pieza["nodo"]})
+    return pieza
 
 
 def set_estado(pid: str, estado: str) -> dict | None:
@@ -268,6 +294,30 @@ def borrar(pid: str) -> bool:
     from core.db import business_knowledge_repo
     from core.db import tenant as _tenant
     return business_knowledge_repo.delete(_tenant.current_tenant_id(), pid)
+
+
+def aprobar(pid: str, actor: str) -> dict | None:
+    """Un revisor confirma una propuesta pendiente: pasa a activa (recién ahí
+    `aplicables()`/`para()` la ven) y queda auditado con quién la aprobó."""
+    pieza = set_estado(pid, "activo")
+    if pieza:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "aprobar_conocimiento", None,
+                              {"id": pieza["id"], "nodo": pieza["nodo"]})
+    return pieza
+
+
+def rechazar(pid: str, actor: str) -> bool:
+    """Un revisor descarta una propuesta pendiente — se borra, no queda
+    pausada (no hay nada útil en reactivar algo que nunca llegó a confirmarse).
+    La auditoría es el registro permanente, no la fila."""
+    pieza = detalle(pid)
+    ok = borrar(pid)
+    if ok:
+        from .audit import AuditLog
+        AuditLog(DATA_DIR).record(actor, "rechazar_conocimiento", None,
+                              {"id": pid, "nodo": (pieza or {}).get("nodo")})
+    return ok
 
 
 def marcar_aplicada(pid: str, n: int = 1) -> dict | None:

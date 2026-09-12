@@ -49,6 +49,38 @@ def test_crear_y_leer():
     assert len(conocimiento.listar()) == 1
 
 
+# --- estado "pendiente" (propuesta vía chat, ver angela.py) -------------------
+
+def test_pendiente_no_aparece_en_listar_por_defecto():
+    _pieza(estado="pendiente")
+    _pieza()  # activa
+    assert len(conocimiento.listar()) == 1
+    assert len(conocimiento.listar(estado="pendiente")) == 1
+    assert len(conocimiento.pendientes()) == 1
+
+
+def test_pendiente_no_es_aplicable_hasta_aprobarse():
+    p = _pieza(estado="pendiente", efecto="ajusta_umbral", params={"tolerancia_dias": 90})
+    assert conocimiento.aplicables(nodo="clientes") == []
+    conocimiento.aprobar(p["id"], "emilio")
+    aplicables = conocimiento.aplicables(nodo="clientes")
+    assert len(aplicables) == 1 and aplicables[0]["id"] == p["id"]
+
+
+def test_aprobar_solo_actua_sobre_pendientes():
+    p = _pieza()  # ya activa
+    # aprobar() solo tiene sentido semántico sobre una pendiente, pero
+    # técnicamente activar() de nuevo no rompe nada — lo que sí exige el
+    # 400 de la capa REST es que el estado sea "pendiente" (ver test REST).
+    assert conocimiento.aprobar(p["id"], "emilio")["estado"] == "activo"
+
+
+def test_rechazar_borra_la_pendiente():
+    p = _pieza(estado="pendiente")
+    assert conocimiento.rechazar(p["id"], "emilio") is True
+    assert conocimiento.detalle(p["id"]) is None
+
+
 def test_filtros_listar():
     _pieza(nodo="clientes", tipo="regla", entidad="Despensa Doña Elsa")
     _pieza(nodo="deposito", tipo="protocolo", ambito="categoria", entidad="fiambres",
@@ -243,3 +275,69 @@ def test_rest_estado_y_borrar_solo_dueno(tokens):
     assert client.delete(f"/api/conocimiento/{pid}", headers=_h(tokens["deposito"])).status_code == 403
     assert client.delete(f"/api/conocimiento/{pid}", headers=_h(tokens["emilio"])).status_code == 200
     assert client.get(f"/api/conocimiento/{pid}", headers=_h(tokens["emilio"])).status_code == 404
+
+
+# --- staging: pendiente -> aprobar/rechazar, revisado por quien tiene el nodo -
+
+def test_rest_pendientes_no_aparecen_en_listar_general(tokens):
+    _pieza(estado="pendiente", nodo="clientes")
+    assert client.get("/api/conocimiento", headers=_h(tokens["emilio"])).json()["total"] == 0
+    pend = client.get("/api/conocimiento/pendientes", headers=_h(tokens["emilio"])).json()
+    assert pend["total"] == 1
+
+
+def test_rest_pendientes_scopeadas_por_nodo_no_por_admin(tokens):
+    """paula (feature 'cuentas' -> nodo clientes) puede revisar una pendiente
+    de clientes sin ser admin; deposito (feature 'deposito', no 'cuentas') no
+    la ve en su cola."""
+    _pieza(estado="pendiente", nodo="clientes", entidad="Despensa Doña Elsa")
+    paula = client.get("/api/conocimiento/pendientes", headers=_h(tokens["paula"])).json()
+    dep = client.get("/api/conocimiento/pendientes", headers=_h(tokens["deposito"])).json()
+    assert paula["total"] == 1
+    assert dep["total"] == 0
+
+
+def test_rest_aprobar_por_rol_no_admin(tokens):
+    pid = _pieza(estado="pendiente", nodo="clientes",
+                 entidad="Despensa Doña Elsa")["id"]
+    # paula no es admin pero SÍ tiene el nodo -> puede aprobar
+    r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["paula"]))
+    assert r.status_code == 200, r.text
+    assert r.json()["pieza"]["estado"] == "activo"
+    assert conocimiento.aplicables(nodo="clientes", entidad="Despensa Doña Elsa")
+
+
+def test_rest_aprobar_fuera_de_nodo_es_404(tokens):
+    pid = _pieza(estado="pendiente", nodo="clientes",
+                 entidad="Despensa Doña Elsa")["id"]
+    # deposito no tiene 'cuentas' -> ni ve ni puede aprobar esta pendiente
+    r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["deposito"]))
+    assert r.status_code == 404
+    assert conocimiento.detalle(pid)["estado"] == "pendiente"
+
+
+def test_rest_rechazar_por_rol_no_admin(tokens):
+    pid = _pieza(estado="pendiente", nodo="deposito", ambito="global",
+                 entidad=None)["id"]
+    r = client.post(f"/api/conocimiento/{pid}/rechazar", headers=_h(tokens["deposito"]))
+    assert r.status_code == 200, r.text
+    assert conocimiento.detalle(pid) is None
+
+
+def test_rest_aprobar_ya_activa_es_400(tokens):
+    pid = _pieza(nodo="deposito", ambito="global", entidad=None)["id"]  # ya activa
+    r = client.post(f"/api/conocimiento/{pid}/aprobar", headers=_h(tokens["deposito"]))
+    assert r.status_code == 400
+
+
+def test_rest_cualquier_usuario_puede_proponer_via_chat(tokens):
+    """El chat de Ángela llama proponer_conocimiento sin gate de admin — la
+    prueba end-to-end real vive en tests de angela.py; acá alcanza con
+    confirmar que el modelo no exige ambito=='global' cuando hay entidad,
+    que es lo que el tool infiere del lado de angela.py."""
+    p = conocimiento.crear(texto="El vendedor dijo que Doña Elsa paga siempre en fecha.",
+                           tipo="contexto", ambito="categoria", nodo="clientes",
+                           efecto="contexto_para_angela", entidad="Despensa Doña Elsa",
+                           estado="pendiente", origen={"quien": "vendedor", "cuando": "2026-09-02"})
+    assert p["estado"] == "pendiente"
+    assert p["origen"]["quien"] == "vendedor"
