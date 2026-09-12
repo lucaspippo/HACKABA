@@ -194,6 +194,12 @@ CATALOGO: dict[str, dict[str, str]] = {
     },
     "core.piso.f_stock": {"es": "costos del catálogo", "en": "catalog costs"},
     "core.piso.f_oc": {"es": "órdenes de compra abiertas", "en": "open purchase orders"},
+    "core.method.floor_report_claim": {
+        "es": "Cantidad reportada por el equipo × costo de catálogo del producto.",
+        "en": "Quantity reported by the team × the product's catalog cost."},
+    "core.method.floor_report_po_check": {
+        "es": "Controlado contra la orden de compra abierta de ese proveedor.",
+        "en": "Checked against that supplier's open purchase order."},
     "api.reporte_inexistente": {
         "es": "ese reporte no existe",
         "en": "no such report",
@@ -1861,6 +1867,43 @@ CATALOGO: dict[str, dict[str, str]] = {
     "core.pat.caja_i": {
         "es": "{fecha}: faltaron {monto}", "en": "{fecha}: short by {monto}"},
     "core.pat.caja_g": {"es": "Faltante por cierre", "en": "Shortfall per close"},
+    "core.pat.caja_hyp": {
+        "es": "Parece algo propio del {dia} — un problema de proceso ese día puntual, no ruido repartido entre toda la semana.",
+        "en": "It looks like something specific to {dia}s — a process gap on that particular day, not noise spread across the week."},
+    "core.pat.caja_alt1": {
+        "es": "Puede ser un tema de quién atiende ese día, no del día en sí: si suele cerrar caja la misma persona los {dia}, el patrón podría seguir a quien trabaja, no a la fecha.",
+        "en": "It might be about who's working that day, not the day itself: if the same person usually closes the till on {dia}s, the pattern could be tracking the employee, not the date."},
+    "core.pat.caja_baseline": {
+        "es": "% de faltante el resto de la semana", "en": "% short the rest of the week"},
+
+    # --- structured insight (Task 9): pattern/hypothesis/alternatives for the combo card --
+    "core.pat.combo_pattern": {
+        "es": "En los últimos {n} pedidos de los {clientes} clientes que llevaron {a}, {b} viajó en el mismo pedido el {pct}% de las veces — {lift}× más seguido de lo que explicaría el azar.",
+        "en": "Across the last {n} orders from the {clientes} customers who bought {a}, {b} rode along in the same order {pct}% of the time — {lift}× more often than chance would explain."},
+    "core.pat.combo_hyp_falta": {
+        "es": "Eso no es casualidad: parece demanda complementaria real, y las {n} veces que faltó son venta cruzada que se está dejando sobre el mostrador.",
+        "en": "That's not chance: it looks like real complementary demand, and the {n} times it was missing are cross-sell being left on the counter."},
+    "core.pat.combo_hyp_conjunto": {
+        "es": "Eso no es casualidad: parece demanda complementaria real que hoy ya entra, pero como dos ventas sueltas en vez de un combo armado.",
+        "en": "That's not chance: it looks like real complementary demand that already comes in today, but as two separate sales instead of a bundled one."},
+    "core.pat.combo_alt1": {
+        "es": "Puede que los dos productos simplemente vendan más en la misma época del año, sin que exista una relación real de compra conjunta entre clientes.",
+        "en": "The two products may simply sell more during the same time of year, with no real joint-purchase relationship between customers."},
+    "core.method.combo_cooccurrence": {
+        "es": "Tasa de coocurrencia en pedidos: pedidos con ambos productos ÷ pedidos con el producto ancla.",
+        "en": "Order co-occurrence rate: orders with both products ÷ orders with the anchor product."},
+    "core.method.combo_gap_amount": {
+        "es": "Pedidos sin la pareja × el monto promedio que agrega la pareja cuando sí aparece.",
+        "en": "Orders missing the partner × the average amount the partner adds when it does appear."},
+    "core.method.combo_combined_amount": {
+        "es": "Suma de lo facturado por ambos productos en los pedidos donde viajaron juntos.",
+        "en": "Sum of what both products billed in the orders where they traveled together."},
+    "core.method.weekday_shortfall_rate": {
+        "es": "% de cierres de ese día de la semana con faltante, contra el % del resto de los días.",
+        "en": "% of that weekday's closes that came up short, against the % for the rest of the week."},
+    "core.method.weekday_shortfall_total": {
+        "es": "Suma de los faltantes de ese día de la semana en el historial analizado.",
+        "en": "Sum of that weekday's shortfalls over the analyzed history."},
 
     # P38·C — los grupos del canal MOSTRADOR (locales propios). El mismo fiambre
     # feteado o entero son dos negocios distintos: por eso son dos grupos.

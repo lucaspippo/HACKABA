@@ -115,10 +115,6 @@ def _safe(fn):
         return None
 
 
-def _blank_drill():
-    return {"porque": [], "grafico": None, "involucrados": [], "supuestos": []}
-
-
 def _blank_insight():
     from . import insight
     return insight.blank()
@@ -527,7 +523,7 @@ def _pattern_items(lang) -> list[dict]:
             accion_chat=c.get("accion_chat"),
             naturaleza=c.get("naturaleza"),
             tipo=c.get("tipo"),
-            drill=c.get("drill") or _blank_drill(),
+            insight=c.get("insight") or _blank_insight(),
         ))
     return out
 
@@ -550,7 +546,7 @@ def _piso_items(lang) -> list[dict]:
             accion_chat=c.get("accion_chat"),
             piso=True,
             tipo=c.get("tipo"),
-            drill=c.get("drill") or _blank_drill(),
+            insight=c.get("insight") or _blank_insight(),
             reportes=c.get("reportes"),
         ))
     return out
