@@ -64,3 +64,19 @@ def require_feature(feature: str):
                               perfiles.idioma_de(u["username"]), feature=feature))
         return u
     return _dep
+
+
+def require_any_feature(*features: str):
+    """Exige AL MENOS uno de los módulos (Prioridades: alertas u oportunidades)."""
+    wanted = tuple(features)
+
+    def _dep(u: dict = Depends(usuario_actual)) -> dict:
+        tiene = set(perfiles.features_efectivas(u["username"]))
+        if not any(f in tiene for f in wanted):
+            raise HTTPException(
+                status_code=403,
+                detail=i18n.t("authz.sin_feature",
+                              perfiles.idioma_de(u["username"]),
+                              feature=wanted[0] if wanted else ""))
+        return u
+    return _dep

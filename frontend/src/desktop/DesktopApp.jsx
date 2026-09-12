@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  LayoutDashboard, Boxes, Wallet, Banknote, Bell, Users, Upload, TrendingUp,
+  LayoutDashboard, Boxes, Wallet, Banknote, Users, Upload, TrendingUp,
   HandCoins, ClipboardList, PackageX, UserCircle, Search, X, PanelRightOpen,
-  Sparkles, Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
+  Globe, FileText, Waypoints, ShieldCheck, Radar, Warehouse, Settings,
   PanelLeftClose, PanelLeftOpen, ChevronRight, MapPin, PackageSearch, Truck,
   ShoppingCart, Plug, Layers, Inbox, PackageCheck,
 } from "lucide-react";
@@ -26,8 +26,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 import Inventario from "./sections/Inventario";
 import Saneamiento from "./sections/Saneamiento";
 import Finanzas from "./sections/Finanzas";
-import AlertasNegocio from "../sections/AlertasNegocio";
-import OportunidadesNegocio from "../sections/OportunidadesNegocio";
+import Prioridades from "../sections/Prioridades";
 import CargarDatos from "./sections/CargarDatos";
 import MiPerfil from "../sections/MiPerfil";
 import GestionEquipo from "../sections/GestionEquipo";
@@ -51,7 +50,6 @@ import MiDia from "../mobile/MiDia";
 import { PREGUNTA_TAREA } from "../lib/piso";
 import { tieneVistaHerramienta } from "../lib/roles";
 import { authStore, useSession } from "../lib/auth";
-import { cargarSenales, contarAlertas } from "../lib/centroAlertas";
 import { useDocNuevo } from "../lib/docStore";
 import { resaltarPorId } from "../lib/navGuiada";
 import Campanita from "../components/Campanita";
@@ -74,8 +72,7 @@ const CATALOGO = {
   // vistazo en el sidebar (P9·D).
   caja: { lk: "nav.caja", icon: Banknote },
   evolucion: { lk: "nav.evolucion", icon: TrendingUp },
-  alertas: { lk: "nav.alertas", icon: Bell },
-  oportunidades: { lk: "nav.oportunidades", icon: Sparkles },
+  prioridades: { lk: "nav.prioridades", icon: Radar },
   equipo: { lk: "nav.equipo", icon: Users },
   cargar: { lk: "nav.cargar", icon: Upload },
   documentos: { lk: "nav.documentos", icon: FileText },
@@ -98,13 +95,13 @@ const CATALOGO = {
 
 // Grupos angostos por área reconocible (tesorería, cobranzas, inventario,
 // equipo, sistema) en vez de baldes mixtos ("La plata" mezclaba tesorería con
-// cobranzas; "La operación", stock con equipo/oficina). "Alertas y
-// oportunidades" queda aparte porque es una señal cruzada de Ángela, no un
-// módulo de ERP — forzarla a otra área la volvería más confusa, no menos.
+// cobranzas; "La operación", stock con equipo/oficina). Prioridades is the
+// ranked inbox (alerts + opportunities), a leaf next to Evolución — not an ERP module.
 const GRUPOS_NAV = [
   { id: "panel", leaf: true },
   { id: "mapa", leaf: true },
-  { id: "senales", lk: "nav.grupo_senales", icon: Radar, ids: ["alertas", "oportunidades", "evolucion"] },
+  { id: "evolucion", leaf: true },
+  { id: "prioridades", leaf: true },
   { id: "tesoreria", lk: "nav.grupo_tesoreria", icon: Wallet, ids: ["finanzas", "caja"] },
   { id: "cobrar", lk: "nav.grupo_cobrar", icon: HandCoins, ids: ["cuentas", "cobranzas"] },
   { id: "inventario", lk: "nav.grupo_inventario", icon: Warehouse, ids: ["inventario", "deposito", "ubicaciones", "lotes"] },
@@ -140,6 +137,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
   // Locations/lots/vendors/POs ride on inventario. Staging is the review
   // gate of saneamiento. Imported data is the browse step of the ingest
   // pipeline (cargar / conectores / saneamiento), not a warehouse screen.
+  // Prioridades is the ranked inbox for anyone with alertas or oportunidades.
   const extraNav = [];
   if (user.features.includes("inventario")) {
     extraNav.push("ubicaciones", "lotes", "proveedores", "ordenes_compra");
@@ -150,9 +148,21 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
       || user.features.includes("saneamiento"))) {
     extraNav.push("imported");
   }
+  if (user.features.includes("alertas") || user.features.includes("oportunidades")) {
+    extraNav.push("prioridades");
+  }
   const featuresEfectivas = extraNav.length
     ? [...user.features, ...extraNav]
     : user.features;
+  const ALIAS_SECCION = {
+    inicio: "panel", home: "panel", principal: "panel",
+    "datos a corregir": "saneamiento", corregir: "saneamiento",
+    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
+    logistica: "deposito", reparto: "deposito", envios: "deposito",
+    gestion_equipo: "equipo", "gestion de equipo": "equipo",
+    alertas: "prioridades", oportunidades: "prioridades", insights: "prioridades",
+    pendientes: "staging",
+  };
   const secciones = featuresEfectivas.filter((f) => CATALOGO[f]);
   // La vista de trabajo del de a pie ("Mi día") es SUYA, no un módulo de la
   // matriz: en el celular aparece siempre (MobileApp la pone en el primer slot)
@@ -165,21 +175,11 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     .map((g) => (g.leaf ? g : { ...g, ids: g.ids.filter((id) => secciones.includes(id)) }))
     .filter((g) => g.leaf ? secciones.includes(g.id) : g.ids.length > 0);
   // El sistema define el foco de la fase: el dueño aterriza donde importa hoy.
+  const focoCanon = fase?.foco ? (ALIAS_SECCION[fase.foco] || fase.foco) : null;
   const inicial = vistaHerramienta
     ? (secciones.includes("panel") ? "panel" : (secciones[0] || "perfil"))
-    : (fase?.foco && user.features.includes(fase.foco) ? fase.foco : (secciones[0] || "perfil"));
-  // Ángela usa nombres "de dueño" para las secciones; acá los mapeamos a las keys reales
-  // del CATALOGO para que "te llevo al inicio" no sea un callejón sin salida (inicio≠panel).
-  const ALIAS_SECCION = {
-    inicio: "panel", home: "panel", principal: "panel",
-    "datos a corregir": "saneamiento", corregir: "saneamiento",
-    finanzas: "finanzas", "caja diaria": "caja", "cuentas corrientes": "cuentas",
-    logistica: "deposito", reparto: "deposito", envios: "deposito",
-    // "Gestión de equipo" se unificó dentro de "Equipo" (P6): alias para
-    // Ángela, la campanita y cualquier link viejo.
-    gestion_equipo: "equipo", "gestion de equipo": "equipo",
-    pendientes: "staging",
-  };
+    : (focoCanon && secciones.includes(focoCanon) ? focoCanon
+      : (secciones[0] || "perfil"));
   // The active section lives in the URL (/:section) instead of a useState.
   const navigate = useNavigate();
   const { section: sectionParam } = useParams();
@@ -210,21 +210,16 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
     api.stagingListar().then((d) => setStagingCount(d.batches.length)).catch(() => {});
   }, []);
 
-  // Badges del sidebar (P17·E2a): SOLO donde el número es trabajo despachable.
-  // Alerts usa las MISMAS condiciones que la pantalla (lib/centroAlertas).
-  const [nAlertas, setNAlertas] = useState(0);
+  // Badges del sidebar: SOLO donde el número es trabajo despachable.
+  // Prioridades counts the same `act` list the page shows.
+  const [nPrioridades, setNPrioridades] = useState(0);
   useEffect(() => {
-    cargarSenales().then((s) => setNAlertas(contarAlertas(s))).catch(() => {});
+    api.prioridades().then((d) => setNPrioridades(d.badge || 0)).catch(() => {});
   }, []);
-  // P30·A3 — el badge cuenta lo MISMO que muestra la sección: las
-  // oportunidades CAPTURABLES (las de riesgo no son oportunidad). Antes usaba
-  // el shape legacy concretas/pendientes → decía 4 con 8 en pantalla.
-  const nOportunidades = (oportunidades?.cards || []).filter((c) => c.naturaleza !== "riesgo").length;
-  const a = data?.alertas;
   // P38·A — una sola definición de "Datos a corregir" (lib/alertas): el badge
   // cuenta EXACTAMENTE lo que muestran la tabla de stock y la sección.
   const nCorregir = contarACorregir(data);
-  const BADGES = { alertas: nAlertas, oportunidades: nOportunidades,
+  const BADGES = { prioridades: nPrioridades,
                    saneamiento: nCorregir, staging: stagingCount };
   const docNuevo = useDocNuevo();
 
@@ -465,12 +460,12 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                     {t("nav.fase")}: {fase.titulo}
                   </p>
                   <p className="mt-0.5 text-[0.92rem] leading-snug text-tinta">{fase.mensaje}</p>
-                  {fase.foco && user.features.includes(fase.foco) && CATALOGO[fase.foco] && (
+                  {fase.foco && user.features.includes(fase.foco) && CATALOGO[ALIAS_SECCION[fase.foco] || fase.foco] && (
                     <button
                       onClick={() => navegar(fase.foco, null)}
                       className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.88rem] font-semibold text-crema"
                     >
-                      {t("nav.ir_a")} {t(CATALOGO[fase.foco].lk)}
+                      {t("nav.ir_a")} {t(CATALOGO[ALIAS_SECCION[fase.foco] || fase.foco].lk)}
                     </button>
                   )}
                 </div>
@@ -504,8 +499,7 @@ function DesktopAppInner({ data, oportunidades, fase, user, onRecargar }) {
                 {section === "staging" && <StagingArea onCambio={setStagingCount} onRecargar={onRecargar} onNavigate={navegar} />}
                 {section === "cargar" && <CargarDatos user={user} onArchivoCargado={irAPendientes} onPreguntar={preguntar} onAbrirAngela={abrirAngela} onNavigate={navegar} />}
                 {section === "finanzas" && <Finanzas data={data} onPreguntar={preguntar} datos={fase?.datos} onNavegar={navegar} />}
-                {section === "alertas" && <AlertasNegocio onPreguntar={preguntar} onNavegar={navegar} datos={fase?.datos} />}
-                {section === "oportunidades" && <OportunidadesNegocio onPreguntar={preguntar} onNavegar={navegar} />}
+                {section === "prioridades" && <Prioridades onPreguntar={preguntar} onNavegar={navegar} />}
                 {section === "equipo" && <GestionEquipo data={data} user={user} highlight={highlight} />}
                 {section === "documentos" && <Documentos onPreguntar={preguntar} />}
                 {section === "cuentas" && <CuentasCorrientes onPreguntar={preguntar} highlight={highlight} />}

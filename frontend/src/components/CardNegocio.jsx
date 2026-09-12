@@ -101,15 +101,20 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
                                porque = [], macro, grafico, involucrados = [],
                                supuestos = [], fuentes = [], acciones, onCerrar,
                                propuesta, onAprobarPropuesta, propuestaResultado,
-                               propuestaTrabajando }) {
+                               propuestaTrabajando, variante = "overlay",
+                               chip, chipIcon: ChipIcon, chipCls }) {
   const t = useT();
   const a = ACENTO[tono] || ACENTO.salvia;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
-      <div onClick={(e) => e.stopPropagation()}
-        className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
+  const panel = variante === "panel";
+  const body = (
+    <>
         <div className="flex items-start justify-between gap-3">
           <div>
+            {chip && (
+              <span className={`mb-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ${chipCls || a.chip}`}>
+                {ChipIcon && <ChipIcon size={12} />} {chip}
+              </span>
+            )}
             <h2 className="font-display text-xl font-bold leading-tight">{titulo}</h2>
             {(monto != null || cifraTexto) && (
               <p className={`plata mt-1 text-3xl font-medium ${a.cifra}`}>
@@ -118,7 +123,9 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
               </p>
             )}
           </div>
-          <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          {!panel && onCerrar && (
+            <button onClick={onCerrar} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
+          )}
         </div>
 
         {porque.length > 0 && (
@@ -178,6 +185,16 @@ export function DrillNegocio({ tono = "salvia", titulo, monto, montoLabel, cifra
             {acciones}
           </div>
         )}
+    </>
+  );
+  if (panel) {
+    return <div className="h-full overflow-y-auto p-6">{body}</div>;
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-4" onClick={onCerrar}>
+      <div onClick={(e) => e.stopPropagation()}
+        className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-[var(--radius-card)] border border-linea bg-crema p-6 sombra-alta">
+        {body}
       </div>
     </div>
   );
