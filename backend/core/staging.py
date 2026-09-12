@@ -103,6 +103,21 @@ def _coerce_logistica(mapeo: dict, fila_dict: dict) -> dict:
     }
 
 
+def coerce_producto_odoo(p: dict) -> dict:
+    return {
+        "codigo": None,
+        "descripcion": str(p.get("nombre") or "").strip(),
+        "estado": "activo",
+        "stock": p.get("stock") or 0.0,
+        "costo_iva": None,
+        "pvp": p.get("precio"),
+        "venta_x_peso": False,
+        "sku": p.get("codigo") or "",
+        "source": "odoo",
+        "source_id": str(p["id"]),
+    }
+
+
 # ---------------------------------------------------------------------------
 # P24·G4 — la pantalla de revisión habla el idioma del USUARIO QUE MIRA, no el
 # del que creó el batch: descripciones y opciones se re-localizan AL LEER, por
@@ -523,22 +538,29 @@ def integrar(batch_id: str, actor: str = "dueño", lang: str | None = None) -> d
                               nombre=plan.get("nombre", tipo), n=res["nuevas"],
                               rel=rel, activado=activado, extra=extra)}
 
-    # Productos: se suman al inventario oficial.
+    # Productos: se suman al inventario oficial. Los que llegan de un
+    # conector (b["fuente"] == "odoo") pasan por upsert_desde_conector para
+    # que queden con sku/source/source_id; el resto (CSV) sigue igual.
     raw = store.raw_actual()
     backup = store.versiones.save({"articulos": raw}, motivo=f"Backup antes de integrar «{b['nombre']}»", autor=actor)
-    siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
-    nuevos = 0
-    for f in a_integrar:
-        codigo = f["codigo"] or siguiente
-        siguiente = max(siguiente, codigo) + 1
-        inmov = round((f["stock"] or 0) * (f["costo_iva"] or 0), 2) if (f["stock"] or 0) > 0 else 0.0
-        raw.append({
-            "codigo": codigo, "descripcion": f["descripcion"], "estado": f.get("estado", "activo"),
-            "stock": f["stock"], "costo_iva": f.get("costo_iva"), "pvp": f.get("pvp"),
-            "venta_x_peso": f.get("venta_x_peso", False), "inmovilizado": inmov,
-        })
-        nuevos += 1
-    store.guardar(raw)
+    if b.get("fuente") == "odoo":
+        for f in a_integrar:
+            store.upsert_desde_conector(f, actor)
+        nuevos = len(a_integrar)
+    else:
+        siguiente = max([d.get("codigo", 0) for d in raw] + [0]) + 1
+        nuevos = 0
+        for f in a_integrar:
+            codigo = f["codigo"] or siguiente
+            siguiente = max(siguiente, codigo) + 1
+            inmov = round((f["stock"] or 0) * (f["costo_iva"] or 0), 2) if (f["stock"] or 0) > 0 else 0.0
+            raw.append({
+                "codigo": codigo, "descripcion": f["descripcion"], "estado": f.get("estado", "activo"),
+                "stock": f["stock"], "costo_iva": f.get("costo_iva"), "pvp": f.get("pvp"),
+                "venta_x_peso": f.get("venta_x_peso", False), "inmovilizado": inmov,
+            })
+            nuevos += 1
+        store.guardar(raw)
     store.audit.record(actor=actor, accion="integrar_staging",
                        antes={"batch": b["nombre"]}, despues={"nuevos": nuevos, "version_backup": backup["id"]})
     batches = [x for x in batches if x["id"] != batch_id]
@@ -573,3 +595,51 @@ def descartar(batch_id: str) -> dict:
     batches = [x for x in _load() if x["id"] != batch_id]
     _save(batches)
     return {"ok": True}
+
+
+_COERCERS_ODOO = {
+    "producto": coerce_producto_odoo,
+}
+
+# Qué campo identifica una fila coercionada como "utilizable" por tipo — una
+# fila de Odoo sin este campo (p.ej. un contacto sin nombre) se descarta en
+# vez de crear un registro vacío; mismo criterio que el filtrado por CSV en
+# _coerce_y_analizar (líneas "filas = [f for f in filas if f[...]]").
+_REQUERIDO_ODOO = {"producto": "descripcion", "proveedor": "nombre",
+                    "cliente": "nombre", "orden_compra": "numero"}
+
+
+def crear_batch_odoo(tipo: str, filas_odoo: list[dict], nombre: str | None = None,
+                      lang: str | None = None) -> dict:
+    """Como crear_batch(), pero para filas que YA llegan estructuradas desde
+    un conector (Odoo) en vez de un CSV crudo: sin parseo ni normalización
+    Nivel 1 (eso es para texto ambiguo tipeado a mano; el conector ya
+    entrega tipos correctos). Sólo debe recibir filas SIN vínculo todavía —
+    core/odoo_ingest.py filtra antes las que ya tienen source_id conocido y
+    esas se actualizan directo, sin pasar por acá."""
+    coerce = _COERCERS_ODOO[tipo]
+    filas = [coerce(f) for f in filas_odoo]
+    filas = [f for f in filas if f.get(_REQUERIDO_ODOO[tipo])]
+    if tipo == "producto":
+        observaciones = _analizar(filas)
+    else:
+        raise ValueError(f"tipo sin coercer/analizador Odoo: {tipo}")
+    batch = {
+        "id": "b" + secrets.token_hex(3),
+        "nombre": nombre or f"Odoo · {tipo}",
+        "fecha": datetime.datetime.now().isoformat(timespec="seconds"),
+        "estado": "revision",
+        "tipo": tipo,
+        "fuente": "odoo",
+        "plan": esquema.plan_integracion(tipo, lang),
+        "mapeo": {},
+        "filas": filas,
+        "observaciones": observaciones,
+        "normalizaciones": None,
+        "ambiguos": [],
+        "crudo": None,
+    }
+    batches = _load()
+    batches.append(batch)
+    _save(batches)
+    return _resumen(batch)

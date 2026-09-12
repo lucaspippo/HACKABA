@@ -21,6 +21,43 @@ def limpio():
     store.resetear_actual()
 
 
+def test_crear_batch_odoo_producto_nuevo_sin_observaciones_de_precio():
+    store.resetear_actual()
+    filas_odoo = [
+        {"id": 501, "codigo": "ODOO-NEW-1", "nombre": "Producto Totalmente Nuevo",
+         "categoria": "General", "precio": 999.0, "stock": 5.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    assert r["tipo"] == "producto"
+    assert r["total_filas"] == 1
+
+
+def test_crear_batch_odoo_producto_detecta_duplicado_por_nombre():
+    store.resetear_actual()
+    existente = store.raw_actual()[0]
+    filas_odoo = [
+        {"id": 502, "codigo": "ODOO-DUP-1", "nombre": existente["descripcion"],
+         "categoria": "General", "precio": 10.0, "stock": 1.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    tipos = {o["tipo"] for o in r["observaciones"]}
+    assert "duplicado" in tipos
+
+
+def test_integrar_batch_odoo_usa_upsert_con_source():
+    store.resetear_actual()
+    filas_odoo = [
+        {"id": 601, "codigo": "ODOO-INT-1", "nombre": "Producto Integrado Odoo",
+         "categoria": "General", "precio": 42.0, "stock": 3.0},
+    ]
+    r = staging.crear_batch_odoo("producto", filas_odoo)
+    res = staging.integrar(r["id"], actor="test")
+    assert res["ok"] is True
+    creado = next(d for d in store.raw_actual() if d.get("source_id") == "601")
+    assert creado["source"] == "odoo"
+    assert creado["sku"] == "ODOO-INT-1"
+
+
 def test_crear_batch_detecta_observaciones():
     r = staging.crear_batch("prueba.csv", CSV)
     tipos = {o["tipo"] for o in r["observaciones"]}
