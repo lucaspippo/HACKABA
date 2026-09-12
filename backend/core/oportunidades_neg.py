@@ -1146,3 +1146,16 @@ def record_feedback(card_id: str, action: str, *, actor: str,
     from . import pattern_feedback
     return pattern_feedback.record(lambda: cards(lang), card_id, action,
                                    actor=actor, note=note)
+
+
+def record_learn(card_id: str, *, actor: str, tipo: str, ambito: str, nodo: str,
+                 efecto: str, entidad: str | None = None, texto: str | None = None,
+                 texto_en: str | None = None, params: dict | None = None,
+                 note: str | None = None, lang: str | None = None) -> dict:
+    """"Enseñar a Ángela": thin wrapper over pattern_feedback.learn(), the
+    generic engine this module shares with core/patrones.py."""
+    from . import pattern_feedback
+    return pattern_feedback.learn(
+        lambda: cards(lang), card_id, actor=actor, tipo=tipo, ambito=ambito,
+        nodo=nodo, efecto=efecto, entidad=entidad, texto=texto, texto_en=texto_en,
+        params=params, note=note)

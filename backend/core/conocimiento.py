@@ -6,10 +6,19 @@ excepción, protocolos ante eventos y contexto que explica los datos. Vive hoy e
 la cabeza del dueño; acá se vuelve un registro real, consultable y con efecto
 verificable en lo que el usuario ve (ver core/*.py que llaman a `aplicables`).
 
-Persiste en <DATA_DIR>/conocimiento_negocio.json (por-tenant, como toda la data:
-el piloto no tiene archivo → git diff de data/ queda en cero). Es conocimiento
-COMPARTIDO del negocio (no memoria por-usuario): el dueño ve todo y escribe; cada
-empleado ve lo de su ámbito (ver `visibles_para`).
+Persiste en Postgres, una fila por pieza (tabla `business_knowledge_pieces`,
+migración 0039 — ver `core/db/business_knowledge_repo.py`). El único tenant
+sembrado desde un archivo es demo (<DATA_DIR>/conocimiento_negocio.json, el
+piloto no tiene archivo → git diff de data-demo/ queda en cero); esa siembra
+corre una sola vez, la primera vez que el tenant lee sin filas propias
+todavía. Es conocimiento COMPARTIDO del negocio (no memoria por-usuario): el
+dueño ve todo y escribe; cada empleado ve lo de su ámbito (ver `visibles_para`).
+
+Además de que el dueño la escriba a mano, una pieza puede nacer de un
+hallazgo que Ángela detectó y el dueño confirmó — ver `pattern_feedback.learn()`,
+el mecanismo genérico de "Enseñar a Ángela" que cualquier motor de
+detección (core/patrones.py, core/oportunidades_neg.py, y lo que se agregue
+después) puede usar sin código nuevo acá.
 
 Diseño del contador `veces_aplicada`: es acumulado y PERSISTIDO, se siembra con
 la historia real de la pieza y solo lo mueve un evento discreto (re-enseñar /
@@ -69,21 +78,15 @@ def _seed_inicial() -> dict:
         return {"piezas": []}
 
 
-def _load() -> dict:
-    from core.db import blob_repo
+def _todas() -> list[dict]:
+    """Every piece for the current tenant, one row per piece (see migration
+    0039 — this used to be a single JSONB blob, see business_knowledge_repo.py's
+    module docstring)."""
+    from core.db import business_knowledge_repo
     from core.db import tenant as _tenant
     tid = _tenant.current_tenant_id()
-    data = blob_repo.get_blob("business_knowledge", tid)
-    if data is None:
-        data = _seed_inicial()
-        blob_repo.save_blob("business_knowledge", tid, data)
-    return data
-
-
-def _save(data: dict) -> None:
-    from core.db import blob_repo
-    from core.db import tenant as _tenant
-    blob_repo.save_blob("business_knowledge", _tenant.current_tenant_id(), data)
+    business_knowledge_repo.seed_if_empty(tid, _seed_inicial())
+    return business_knowledge_repo.list_pieces(tid)
 
 
 def _norm(s) -> str:
@@ -98,7 +101,7 @@ def listar(nodo: str | None = None, tipo: str | None = None,
     """Piezas que matchean los filtros. Por defecto incluye las pausadas (Mi
     perfil las lista para reactivarlas); los motores piden incluir_pausadas=False
     vía `aplicables`."""
-    piezas = _load()["piezas"]
+    piezas = _todas()
     out = []
     for p in piezas:
         if nodo and p.get("nodo") != nodo:
@@ -116,7 +119,7 @@ def listar(nodo: str | None = None, tipo: str | None = None,
 
 
 def detalle(pid: str) -> dict | None:
-    for p in _load()["piezas"]:
+    for p in _todas():
         if p.get("id") == pid:
             return p
     return None
@@ -187,7 +190,7 @@ def visibles_para(usuario: dict, piezas: list[dict] | None = None) -> list[dict]
     """Filtra las piezas a lo que ESTE usuario puede ver. El dueño (es_admin) ve
     todo. Un empleado ve: lo global, lo que es sobre su propia persona, y los
     nodos cuyos módulos tiene habilitados. Server-side, sin escalada por body."""
-    piezas = _load()["piezas"] if piezas is None else piezas
+    piezas = _todas() if piezas is None else piezas
     if usuario.get("es_admin"):
         return list(piezas)
     from . import perfiles
@@ -221,50 +224,36 @@ def _validar(tipo: str, ambito: str, nodo: str, efecto: str, estado: str) -> Non
 
 
 def crear(*, texto: str, tipo: str, ambito: str, nodo: str, efecto: str,
-          entidad: str | None = None, origen: dict | None = None,
+          entidad: str | None = None, texto_en: str | None = None,
+          efecto_profundo: bool = False, origen: dict | None = None,
           params: dict | None = None, estado: str = "activo",
           veces_aplicada: int = 0) -> dict:
     """Crea y persiste una pieza validada. `origen` = {quien, cuando} (quién la
-    enseñó y cuándo). Lanza ConocimientoInvalido si algún campo cae fuera de
-    catálogo — el que llama decide qué mensaje mostrar."""
+    enseñó y cuándo — un humano, u origen.quien="Ángela" cuando la pieza viene
+    de un hallazgo aprendido, ver pattern_feedback.learn()). Lanza
+    ConocimientoInvalido si algún campo cae fuera de catálogo — el que llama
+    decide qué mensaje mostrar."""
     if not (texto or "").strip():
         raise ConocimientoInvalido("el texto no puede estar vacío")
     _validar(tipo, ambito, nodo, efecto, estado)
     if ambito != "global" and not (entidad or "").strip():
         raise ConocimientoInvalido("una pieza no-global necesita una entidad concreta")
-    pieza = {
-        "id": "k" + secrets.token_hex(4),
-        "texto": texto.strip(),
-        "tipo": tipo,
-        "ambito": ambito,
-        "entidad": (entidad or "").strip() or None,
-        "nodo": nodo,
-        "efecto": efecto,
-        "params": params or {},
-        "origen": origen or {},
-        "estado": estado,
-        "veces_aplicada": int(veces_aplicada),
-    }
-    data = _load()
-    data["piezas"].append(pieza)
-    _save(data)
-    return pieza
-
-
-def _mutar(pid: str, cambio) -> dict | None:
-    data = _load()
-    for p in data["piezas"]:
-        if p.get("id") == pid:
-            cambio(p)
-            _save(data)
-            return p
-    return None
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.create(
+        _tenant.current_tenant_id(), id="k" + secrets.token_hex(4),
+        texto=texto.strip(), texto_en=texto_en, tipo=tipo, ambito=ambito,
+        entidad=(entidad or "").strip() or None, nodo=nodo, efecto=efecto,
+        efecto_profundo=efecto_profundo, params=params or {}, origen=origen or {},
+        estado=estado, veces_aplicada=int(veces_aplicada))
 
 
 def set_estado(pid: str, estado: str) -> dict | None:
     if estado not in ESTADOS:
         raise ConocimientoInvalido(f"estado desconocido: {estado!r}")
-    return _mutar(pid, lambda p: p.__setitem__("estado", estado))
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.set_status(_tenant.current_tenant_id(), pid, estado)
 
 
 def pausar(pid: str) -> dict | None:
@@ -276,18 +265,15 @@ def activar(pid: str) -> dict | None:
 
 
 def borrar(pid: str) -> bool:
-    data = _load()
-    antes = len(data["piezas"])
-    data["piezas"] = [p for p in data["piezas"] if p.get("id") != pid]
-    if len(data["piezas"]) != antes:
-        _save(data)
-        return True
-    return False
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.delete(_tenant.current_tenant_id(), pid)
 
 
 def marcar_aplicada(pid: str, n: int = 1) -> dict | None:
     """Suma al contador acumulado REAL. Solo lo llaman eventos discretos (re-
     enseñar / aplicar explícito), JAMÁS el recálculo del análisis (correría en
     cada request y ensuciaría el snapshot sembrado)."""
-    return _mutar(pid, lambda p: p.__setitem__(
-        "veces_aplicada", int(p.get("veces_aplicada", 0)) + n))
+    from core.db import business_knowledge_repo
+    from core.db import tenant as _tenant
+    return business_knowledge_repo.increment_applied(_tenant.current_tenant_id(), pid, n)

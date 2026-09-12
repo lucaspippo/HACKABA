@@ -1,6 +1,7 @@
 """E1 — modelo de conocimiento del negocio: CRUD, catálogo, scope por rol y la
-capa REST. Aísla el JSON por-tenant borrándolo antes/después (como test_memoria):
-el archivo no existe en data/ del piloto, así que git diff de data/ queda en 0."""
+capa REST. Aísla las filas por-tenant truncando business_knowledge_pieces
+antes/después: el piloto no tiene archivo de siembra, así que git diff de
+data-demo/ queda en 0."""
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,9 +15,9 @@ client = TestClient(main.app)
 
 @pytest.fixture(autouse=True)
 def limpio():
-    limpiar_tabla_tenant("business_knowledge")
+    limpiar_tabla_tenant("business_knowledge_pieces")
     yield
-    limpiar_tabla_tenant("business_knowledge")
+    limpiar_tabla_tenant("business_knowledge_pieces")
 
 
 @pytest.fixture(scope="module")
