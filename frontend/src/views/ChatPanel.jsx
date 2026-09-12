@@ -16,7 +16,7 @@ import HistoryDropdown from "../components/assistant/HistoryDropdown";
 import KnowledgePanel from "../components/assistant/KnowledgePanel";
 import { useActiveThreadTitle } from "../components/assistant/threads";
 import { angelaBus } from "../lib/angelaBus";
-import { authStore } from "../lib/auth";
+import { authStore, useSession } from "../lib/auth";
 import { equipoStore } from "../lib/equipoStore";
 import { vistaStore } from "../lib/vistaStore";
 import { suggestionPromptsFor } from "../lib/chat/suggestionPrompts";
@@ -41,6 +41,7 @@ export default function ChatPanel({
 }) {
   const t = useT();
   const aui = useAui();
+  const session = useSession();
   const hasCamera = useHasCamera();
   const messages = useAuiState((s) => s.thread.messages);
   const activeThreadTitle = useActiveThreadTitle(undefined);
@@ -49,7 +50,9 @@ export default function ChatPanel({
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const lastInitialQuery = useRef(null);
   const appliedRef = useRef(new Set());
-  const prompts = suggestionPromptsFor((feature) => authStore.tiene(feature));
+  const prompts = suggestionPromptsFor((feature) =>
+    !!session?.usuario?.features?.includes(feature),
+  );
 
   // Angela's PROACTIVE messages (e.g. the analysis when a photo upload gets
   // confirmed) enter the transcript as her own messages, without a user
@@ -132,7 +135,7 @@ export default function ChatPanel({
           key={p.id}
           type="button"
           onClick={() => aui.thread.append(p.prompt)}
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium leading-snug text-tinta-suave transition-colors hover:bg-crema hover:text-tinta"
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium leading-snug text-tinta transition-colors hover:bg-crema"
         >
           <span className="min-w-0 flex-1">{t(p.labelKey)}</span>
           <ChevronRight
