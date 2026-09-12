@@ -2193,6 +2193,7 @@ export const ES = {
   "inicio.card_estado_mirar": "Lo importante está en las tarjetas de al lado.",
   "inicio.card_impacto": "Impacto estimado",
   "inicio.card_resolver": "Resolver ahora",
+  "inicio.card_ver_mapa": "Ver en el mapa",
   "inicio.card_ver_analisis": "Ver prioridades",
   "inicio.card_ver_alertas": "Ver prioridades",
   "inicio.metrica_ver": "Ver detalle",

@@ -2220,6 +2220,7 @@ export const EN = {
   "inicio.card_estado_mirar": "What matters is in the cards beside this one.",
   "inicio.card_impacto": "Estimated impact",
   "inicio.card_resolver": "Resolve now",
+  "inicio.card_ver_mapa": "See on the map",
   "inicio.card_ver_analisis": "See priorities",
   "inicio.card_ver_alertas": "See priorities",
   "inicio.metrica_ver": "See detail",
