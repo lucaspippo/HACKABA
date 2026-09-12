@@ -49,6 +49,15 @@ const STATE_TONE: Record<string, string> = {
   pendiente: "bg-oro/12 text-oro-tinta",
 };
 
+const AGING_THRESHOLD_DAYS = 60;
+
+function ageDays(cuando?: string | null): number | null {
+  if (!cuando) return null;
+  const taught = new Date(cuando);
+  if (Number.isNaN(taught.getTime())) return null;
+  return Math.floor((Date.now() - taught.getTime()) / 86_400_000);
+}
+
 export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const t = useT();
   const [pieces, setPieces] = useState<Piece[]>([]);
@@ -58,6 +67,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
   const [formOpen, setFormOpen] = useState(false);
+  const [onlyAging, setOnlyAging] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const session = useSession();
   const isAdmin = Boolean(session?.usuario?.es_admin);
@@ -88,7 +98,9 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     () => [...new Set(pieces.map((p) => p.nodo))].sort(),
     [pieces],
   );
-  const shown = pieces.filter((p) => matches(p, query) && (!node || p.nodo === node));
+  const shown = pieces
+    .filter((p) => matches(p, query) && (!node || p.nodo === node))
+    .filter((p) => !onlyAging || (ageDays(p.cuando) ?? 0) > AGING_THRESHOLD_DAYS);
   const pending = pieces.filter((p) => p.estado === "pendiente").length;
 
   const replace = (id: string, next: Piece | null) =>
@@ -192,23 +204,36 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
           <Plus size={12} /> {t("chat.knowledge.create")}
         </button>
 
-        {nodes.length > 1 && (
+        {(nodes.length > 1 || pieces.some((p) => (ageDays(p.cuando) ?? 0) > AGING_THRESHOLD_DAYS)) && (
           <div className="mb-2.5 flex flex-wrap gap-1">
-            {[null, ...nodes].map((n) => (
-              <button
-                key={n ?? "all"}
-                type="button"
-                aria-pressed={node === n}
-                onClick={() => setNode(n)}
-                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                  node === n
-                    ? "bg-tinta text-crema"
-                    : "bg-papel-hondo text-tinta-suave hover:text-tinta"
-                }`}
-              >
-                {n ?? t("chat.knowledge.all_nodes")}
-              </button>
-            ))}
+            {nodes.length > 1 &&
+              [null, ...nodes].map((n) => (
+                <button
+                  key={n ?? "all"}
+                  type="button"
+                  aria-pressed={node === n}
+                  onClick={() => setNode(n)}
+                  className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                    node === n
+                      ? "bg-tinta text-crema"
+                      : "bg-papel-hondo text-tinta-suave hover:text-tinta"
+                  }`}
+                >
+                  {n ?? t("chat.knowledge.all_nodes")}
+                </button>
+              ))}
+            <button
+              type="button"
+              aria-pressed={onlyAging}
+              onClick={() => setOnlyAging((v) => !v)}
+              className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
+                onlyAging
+                  ? "bg-tinta text-crema"
+                  : "bg-papel-hondo text-tinta-suave hover:text-tinta"
+              }`}
+            >
+              {t("chat.knowledge.only_aging")}
+            </button>
           </div>
         )}
 
@@ -256,6 +281,14 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     · {t("chat.knowledge.taught_by", { who: piece.quien, when: piece.cuando ?? "" })}
                   </span>
                 )}
+                {(() => {
+                  const days = ageDays(piece.cuando);
+                  return days !== null && days > AGING_THRESHOLD_DAYS ? (
+                    <span className="rounded-full bg-oro/[0.07] px-1.5 py-0.5 text-2xs text-oro-tinta/80">
+                      {t("chat.knowledge.age_days", { n: String(days) })}
+                    </span>
+                  ) : null;
+                })()}
                 <span className="flex-1" />
                 {piece.estado === "pendiente" && (
                   <>

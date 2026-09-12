@@ -3216,6 +3216,8 @@ export const ES = {
   "chat.knowledge.form.entidad": "Entidad",
   "chat.knowledge.form.cancel": "Cancelar",
   "chat.knowledge.form.save": "Guardar",
+  "chat.knowledge.age_days": "hace {n} días",
+  "chat.knowledge.only_aging": "Solo antiguas",
   "chat.knowledge.settings": "Ajustes de memoria",
   "chat.settings.capture": "Guardar nuevas memorias",
   "chat.settings.capture_detail": "Ángela te ofrece guardar lo que aprende en la charla.",
