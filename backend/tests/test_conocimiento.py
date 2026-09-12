@@ -251,6 +251,34 @@ def test_rest_listar_scopeado(tokens):
     assert dep["total"] == 1 and dep["piezas"][0]["nodo"] == "deposito"
 
 
+def test_rest_listar_flattens_quien_cuando_from_origen(tokens):
+    """The panel/citation UI (knowledgeStore.ts, KnowledgePanel.tsx) reads
+    piece.quien/piece.cuando directly — the raw piece dict only carries them
+    nested in `origen`, so the listing endpoints flatten them on the way out."""
+    r = client.post("/api/conocimiento/confirm", headers=_h(tokens["emilio"]), json=dict(
+        texto="Regla con procedencia.", tipo="contexto", ambito="global",
+        nodo="caja", efecto="contexto_para_angela"))
+    assert r.json()["piece"]["origen"]["quien"] == "emilio"
+
+    listado = client.get("/api/conocimiento", headers=_h(tokens["emilio"])).json()["piezas"]
+    pieza = next(p for p in listado if p["texto"] == "Regla con procedencia.")
+    assert pieza["quien"] == "emilio"
+    assert pieza["cuando"] == pieza["origen"]["cuando"]
+
+
+def test_rest_listar_carries_freshness_and_needs_review(tokens):
+    """The panel's freshness indicator reads these two fields directly,
+    computed at read time from the piece's real decay state (never a raw
+    day count) — see core.conocimiento.freshness()/needs_review()."""
+    client.post("/api/conocimiento/confirm", headers=_h(tokens["emilio"]), json=dict(
+        texto="Regla fresca.", tipo="contexto", ambito="global",
+        nodo="caja", efecto="contexto_para_angela"))
+    listado = client.get("/api/conocimiento", headers=_h(tokens["emilio"])).json()["piezas"]
+    pieza = next(p for p in listado if p["texto"] == "Regla fresca.")
+    assert pieza["freshness"] in ("fresco", "atencion", "revisar")
+    assert isinstance(pieza["needs_review"], bool)
+
+
 def test_rest_detalle_404_fuera_de_ambito(tokens):
     pid = client.post("/api/conocimiento", headers=_h(tokens["emilio"]), json=dict(
         texto="A Doña Elsa 45 días.", tipo="regla", ambito="cliente",
@@ -341,3 +369,16 @@ def test_rest_cualquier_usuario_puede_proponer_via_chat(tokens):
                            estado="pendiente", origen={"quien": "vendedor", "cuando": "2026-09-02"})
     assert p["estado"] == "pendiente"
     assert p["origen"]["quien"] == "vendedor"
+
+
+def test_enriquecer_returns_raw_tolerance_pieces_when_exceso():
+    from core import cuentas
+    _pieza(texto="Tolerale 45 días", tipo="regla", ambito="cliente",
+           nodo="clientes", efecto="contexto_para_angela",
+           entidad="Despensa Doña Elsa", params={"tolerancia_dias": 45})
+    c = {"nombre": "Despensa Doña Elsa", "saldo": 100_000, "limite_credito": 500_000,
+         "plazo_dias": 30, "dias_sin_pagar": 66, "promedio_pago_dias": 30}
+    enriquecido = cuentas._enriquecer(c)
+    assert enriquecido.get("piezas_conocimiento")
+    assert enriquecido["piezas_conocimiento"][0]["id"]  # a real piece dict
+    assert enriquecido["exceso_tolerancia"] == 21

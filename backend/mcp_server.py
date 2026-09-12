@@ -52,6 +52,7 @@ READ_ONLY_TOOLS = [
     "analisis_estacionalidad", "analisis_push_pull", "consultar_compras",
     "objetivos_negocio", "mis_recordatorios", "leer_preferencias", "recuperar",
     "recuperar_contexto_negocio", "normalizaciones_staging", "consultar_serie",
+    "consultar_conocimiento",
 ]
 
 _TOOLS_BY_NAME = {t["name"]: t for t in angela.TOOLS}

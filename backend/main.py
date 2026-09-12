@@ -3481,13 +3481,32 @@ def preferencias_del(clave: str, u: dict = Depends(usuario_actual)):
 # /rechazar — same scope as visibles_para, not admin-only).
 # Persists per-tenant in business_knowledge_pieces (core/db/business_knowledge_repo.py).
 
+def _con_procedencia(piezas: list[dict]) -> list[dict]:
+    """Flattens origen.{quien,cuando} onto each piece, on top of every other
+    field — the panel and the chat citation card (KnowledgePanel.tsx,
+    KnowledgeCite.tsx) read piece.quien/piece.cuando directly, but the raw
+    piece dict only carries them nested under `origen`. Also attaches the
+    piece's CURRENT decay state (freshness/needs_review), computed at read
+    time — never stored — so the panel's freshness indicator always reflects
+    live decay, not whenever the piece happened to be fetched before."""
+    out = []
+    for p in piezas:
+        origen = p.get("origen") or {}
+        out.append({**p, "quien": origen.get("quien"), "cuando": origen.get("cuando"),
+                    "freshness": conocimiento.freshness(p),
+                    "needs_review": conocimiento.needs_review(p)})
+    return out
+
+
 @app.get("/api/conocimiento")
 def conocimiento_listar(nodo: str | None = None, tipo: str | None = None,
                         entidad: str | None = None, ambito: str | None = None,
+                        incluir_archivadas: bool = False,
                         u: dict = Depends(usuario_actual)):
-    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito)
+    piezas = conocimiento.listar(nodo=nodo, tipo=tipo, entidad=entidad, ambito=ambito,
+                                 incluir_archivadas=incluir_archivadas)
     piezas = conocimiento.visibles_para(u, piezas)
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/pendientes")
@@ -3498,7 +3517,7 @@ def conocimiento_pendientes(nodo: str | None = None, u: dict = Depends(usuario_a
     user sees (`visibles_para`), not a separate permission. Declared BEFORE
     /{pid} — otherwise "pendientes" would match there as if it were an id."""
     piezas = conocimiento.visibles_para(u, conocimiento.pendientes(nodo=nodo))
-    return {"piezas": piezas, "total": len(piezas)}
+    return {"piezas": _con_procedencia(piezas), "total": len(piezas)}
 
 
 @app.get("/api/conocimiento/{pid}")
@@ -3507,6 +3526,15 @@ def conocimiento_detalle(pid: str, u: dict = Depends(usuario_actual)):
     if not p or p not in conocimiento.visibles_para(u, [p]):
         raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
     return p
+
+
+@app.get("/api/conocimiento/{pid}/historial")
+def conocimiento_historial(pid: str, u: dict = Depends(usuario_actual)):
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    from core.audit import AuditLog
+    return {"eventos": AuditLog().list_for(pid)}
 
 
 class ConocimientoNuevo(BaseModel):
@@ -3568,6 +3596,12 @@ def conocimiento_confirm(req: KnowledgeProposal, u: dict = Depends(usuario_actua
 @app.post("/api/conocimiento")
 def conocimiento_crear(req: ConocimientoNuevo, u: dict = Depends(require_admin)):
     from core import fechas
+    conflicto = conocimiento.find_conflict(
+        texto=req.texto, nodo=req.nodo, entidad=req.entidad, efecto=req.efecto)
+    if conflicto:
+        raise HTTPException(status_code=409, detail=i18n.t(
+            "api.conocimiento_conflicto", _lang(u), entidad=req.entidad or "",
+            nodo=req.nodo, efecto=req.efecto, texto=conflicto["texto"]))
     try:
         pieza = conocimiento.crear(
             texto=req.texto, tipo=req.tipo, ambito=req.ambito, nodo=req.nodo,
@@ -3612,6 +3646,38 @@ def _revisor_o_404(pid: str, u: dict) -> dict:
     return p
 
 
+def _editor_o_403(pid: str, u: dict) -> dict:
+    p = conocimiento.detalle(pid)
+    if not p or p not in conocimiento.visibles_para(u, [p]):
+        raise HTTPException(status_code=404, detail=i18n.t("api.conocimiento_inexistente", _lang(u)))
+    if not (u.get("es_admin") or (p.get("origen") or {}).get("quien") == u["username"]):
+        raise HTTPException(status_code=403, detail=i18n.t("api.conocimiento_sin_permiso", _lang(u)))
+    return p
+
+
+class ConocimientoEditar(BaseModel):
+    texto: str | None = None
+    texto_en: str | None = None
+    tipo: str | None = None
+    ambito: str | None = None
+    efecto: str | None = None
+    entidad: str | None = None
+    params: dict | None = None
+
+
+@app.post("/api/conocimiento/{pid}/editar")
+def conocimiento_editar(pid: str, req: ConocimientoEditar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    try:
+        pieza = conocimiento.edit_piece(
+            pid, actor=u["username"], is_admin=bool(u.get("es_admin")),
+            texto=req.texto, texto_en=req.texto_en, tipo=req.tipo, ambito=req.ambito,
+            efecto=req.efecto, entidad=req.entidad, params=req.params)
+    except conocimiento.ConocimientoInvalido as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"ok": True, "pieza": pieza}
+
+
 @app.post("/api/conocimiento/{pid}/aprobar")
 def conocimiento_aprobar(pid: str, u: dict = Depends(usuario_actual)):
     p = _revisor_o_404(pid, u)
@@ -3628,6 +3694,38 @@ def conocimiento_rechazar(pid: str, u: dict = Depends(usuario_actual)):
         raise HTTPException(status_code=400, detail=i18n.t("api.conocimiento_no_pendiente", _lang(u)))
     conocimiento.rechazar(pid, u["username"])
     return {"ok": True}
+
+
+class ConocimientoArchivar(BaseModel):
+    motivo: str | None = None
+
+
+@app.post("/api/conocimiento/{pid}/archivar")
+def conocimiento_archivar(pid: str, req: ConocimientoArchivar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.archive(pid, actor=u["username"], motivo=req.motivo)
+    return {"ok": True, "pieza": pieza}
+
+
+class ConocimientoReemplazar(BaseModel):
+    replacement_id: str
+
+
+@app.post("/api/conocimiento/{pid}/reemplazar")
+def conocimiento_reemplazar(pid: str, req: ConocimientoReemplazar, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    if not conocimiento.detalle(req.replacement_id):
+        raise HTTPException(status_code=400,
+                           detail=i18n.t("api.conocimiento_replacement_inexistente", _lang(u)))
+    pieza = conocimiento.supersede(pid, replacement_id=req.replacement_id, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
+
+
+@app.post("/api/conocimiento/{pid}/reconfirmar")
+def conocimiento_reconfirmar(pid: str, u: dict = Depends(usuario_actual)):
+    _editor_o_403(pid, u)
+    pieza = conocimiento.reconfirm(pid, actor=u["username"])
+    return {"ok": True, "pieza": pieza}
 
 
 # --- Importador asistido (Plan 4) ---

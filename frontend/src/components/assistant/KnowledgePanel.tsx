@@ -1,10 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Brain, Check, Pause, Play, Search, Trash2, X } from "lucide-react";
+import { Brain, Check, Pause, Pencil, Play, Plus, Search, Settings, Trash2, X } from "lucide-react";
 import { SettingsPanel } from "./settings-panel";
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toastStore";
 import { useT } from "../../lib/i18n";
 import { useSession } from "../../lib/auth";
+
+// Mirrors core/conocimiento.py's TIPOS/AMBITOS/NODOS/EFECTOS catalogs.
+const TIPOS = ["regla", "excepcion", "protocolo", "contexto"] as const;
+const AMBITOS = ["cliente", "proveedor", "categoria", "empleado", "global"] as const;
+const NODOS_CATALOGO = [
+  "ventas", "inventario", "deposito", "proveedores",
+  "clientes", "caja", "equipo", "contexto",
+] as const;
+const EFECTOS = [
+  "ajusta_umbral", "suprime_alerta", "genera_alerta",
+  "contexto_para_angela", "requiere_aprobacion",
+] as const;
 
 type Piece = {
   id: string;
@@ -14,6 +26,22 @@ type Piece = {
   entidad?: string | null;
   estado: string;
   tipo: string;
+  ambito?: string;
+  efecto?: string;
+  quien?: string | null;
+  cuando?: string | null;
+  superseded_by_texto?: string | null;
+  freshness?: "fresco" | "atencion" | "revisar" | null;
+  needs_review?: boolean;
+};
+
+type Tab = "active" | "review" | "archived";
+const ARCHIVED_ESTADOS = new Set(["archivada", "superada"]);
+
+const FRESHNESS_TONE: Record<string, string> = {
+  fresco: "bg-salvia",
+  atencion: "bg-oro",
+  revisar: "bg-tinta/30",
 };
 
 const SETTING_KEYS = ["knowledge_capture", "knowledge_in_context"] as const;
@@ -31,6 +59,9 @@ const STATE_TONE: Record<string, string> = {
   activo: "bg-salvia/10 text-salvia",
   pausado: "bg-tinta/[0.06] text-tinta-suave",
   pendiente: "bg-oro/12 text-oro-tinta",
+  revisar: "bg-oro/12 text-oro-tinta",
+  superada: "bg-tinta/[0.06] text-tinta-suave",
+  archivada: "bg-tinta/[0.06] text-tinta-suave",
 };
 
 export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
@@ -40,13 +71,19 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
   const [node, setNode] = useState<string | null>(null);
   const [settings, setSettings] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<Piece | null>(null); // null = create mode when formOpen
+  const [formOpen, setFormOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("active");
   const searchRef = useRef<HTMLInputElement>(null);
-  const isAdmin = Boolean(useSession()?.usuario?.es_admin);
+  const session = useSession();
+  const isAdmin = Boolean(session?.usuario?.es_admin);
+  const username = session?.usuario?.username;
 
   useEffect(() => {
     let live = true;
     Promise.all([
-      api.conocimiento().catch(() => ({ piezas: [] })),
+      api.conocimiento({ incluir_archivadas: true }).catch(() => ({ piezas: [] })),
       api.conocimientoPendientes().catch(() => ({ piezas: [] })),
       api.preferencias().catch(() => ({ vista: {} })),
     ]).then(([activas, pendientes, prefs]) => {
@@ -68,8 +105,21 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     () => [...new Set(pieces.map((p) => p.nodo))].sort(),
     [pieces],
   );
-  const shown = pieces.filter((p) => matches(p, query) && (!node || p.nodo === node));
+  const needsReview = (p: Piece) => p.estado === "revisar" || Boolean(p.needs_review);
+  const byTab: Record<Tab, (p: Piece) => boolean> = {
+    archived: (p) => ARCHIVED_ESTADOS.has(p.estado),
+    review: (p) => !ARCHIVED_ESTADOS.has(p.estado) && needsReview(p),
+    active: (p) => !ARCHIVED_ESTADOS.has(p.estado) && !needsReview(p),
+  };
+  const shown = pieces
+    .filter(byTab[tab])
+    .filter((p) => matches(p, query) && (!node || p.nodo === node));
   const pending = pieces.filter((p) => p.estado === "pendiente").length;
+  const counts: Record<Tab, number> = {
+    active: pieces.filter(byTab.active).length,
+    review: pieces.filter(byTab.review).length,
+    archived: pieces.filter(byTab.archived).length,
+  };
 
   const replace = (id: string, next: Piece | null) =>
     setPieces((prev) =>
@@ -98,6 +148,27 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const openCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const openEdit = (piece: Piece) => {
+    setEditing(piece);
+    setFormOpen(true);
+  };
+
+  const submitForm = async (fields: PieceFormFields) => {
+    if (editing) {
+      const updated = await api.conocimientoEditar(editing.id, fields);
+      setPieces((prev) => prev.map((p) => (p.id === editing.id ? updated.pieza : p)));
+    } else {
+      const created = await api.conocimientoCrear(fields);
+      setPieces((prev) => [...prev, created.pieza]);
+    }
+    setFormOpen(false);
+  };
+
   return (
     <div
       role="dialog"
@@ -105,7 +176,11 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
-          onClose();
+          if (settingsOpen) {
+            setSettingsOpen(false);
+          } else {
+            onClose();
+          }
         }
       }}
       className="absolute inset-0 z-20 flex flex-col bg-papel"
@@ -115,6 +190,34 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold text-tinta">
           {t("chat.knowledge.title")}
         </h2>
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-label={t("chat.knowledge.settings")}
+            aria-pressed={settingsOpen}
+            onClick={() => setSettingsOpen((v) => !v)}
+            className="grid size-7 place-items-center rounded-full text-tinta-suave outline-none transition-colors hover:bg-papel-hondo hover:text-tinta focus-visible:ring-2 focus-visible:ring-violeta/40"
+          >
+            <Settings size={14} />
+          </button>
+          {settingsOpen && (
+            <div className="absolute right-0 top-9 z-40 w-64 rounded-xl border border-linea bg-crema p-3 shadow-lg">
+              <SettingsPanel
+                toggles={SETTING_KEYS.map((key: SettingKey) => ({
+                  key,
+                  label: t(key === "knowledge_capture" ? "chat.settings.capture" : "chat.settings.context"),
+                  detail: t(
+                    key === "knowledge_capture"
+                      ? "chat.settings.capture_detail"
+                      : "chat.settings.context_detail",
+                  ),
+                  on: settings[key] ?? true,
+                }))}
+                onToggle={toggleSetting}
+              />
+            </div>
+          )}
+        </div>
         <button
           type="button"
           aria-label={t("chat.knowledge.close")}
@@ -125,48 +228,71 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
+      {settingsOpen && (
+        <div className="fixed inset-0 z-30" onClick={() => setSettingsOpen(false)} />
+      )}
+
       <div className="flex-1 overflow-y-auto px-3 py-3">
-        <div className="relative mb-2.5">
-          <Search
-            size={13}
-            aria-hidden
-            className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-tinta-suave"
-          />
-          <input
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("chat.knowledge.search")}
-            aria-label={t("chat.knowledge.search")}
-            className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
-          />
+        <div className="mb-2.5 flex gap-1 rounded-full bg-papel-hondo p-0.5 text-xs">
+          {(["active", "review", "archived"] as const).map((tabKey) => (
+            <button
+              key={tabKey}
+              type="button"
+              aria-pressed={tab === tabKey}
+              onClick={() => setTab(tabKey)}
+              className={`flex-1 rounded-full py-1 transition-colors ${
+                tab === tabKey ? "bg-tinta text-crema" : "text-tinta-suave hover:text-tinta"
+              }`}
+            >
+              {t(`chat.knowledge.tab_${tabKey}`)}
+              {counts[tabKey] > 0 && ` (${counts[tabKey]})`}
+            </button>
+          ))}
         </div>
 
-        {nodes.length > 1 && (
-          <div className="mb-2.5 flex flex-wrap gap-1">
-            {[null, ...nodes].map((n) => (
-              <button
-                key={n ?? "all"}
-                type="button"
-                aria-pressed={node === n}
-                onClick={() => setNode(n)}
-                className={`rounded-full px-2.5 py-1 text-xs transition-colors ${
-                  node === n
-                    ? "bg-tinta text-crema"
-                    : "bg-papel-hondo text-tinta-suave hover:text-tinta"
-                }`}
-              >
-                {n ?? t("chat.knowledge.all_nodes")}
-              </button>
-            ))}
+        <div className="mb-2.5 flex gap-1.5">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              size={13}
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-tinta-suave"
+            />
+            <input
+              ref={searchRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("chat.knowledge.search")}
+              aria-label={t("chat.knowledge.search")}
+              className="w-full rounded-xl border border-linea bg-crema py-1.5 pr-2.5 pl-7 text-sm text-tinta outline-none transition-shadow placeholder:text-tinta-suave focus-visible:ring-2 focus-visible:ring-violeta/40"
+            />
           </div>
-        )}
+          {nodes.length > 1 && (
+            <select
+              value={node ?? ""}
+              onChange={(e) => setNode(e.target.value || null)}
+              aria-label={t("chat.knowledge.all_nodes")}
+              className="shrink-0 rounded-xl border border-linea bg-crema px-2 text-xs text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              <option value="">{t("chat.knowledge.all_nodes")}</option>
+              {nodes.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            aria-label={t("chat.knowledge.create")}
+            onClick={openCreate}
+            className="grid size-8 shrink-0 place-items-center rounded-xl bg-tinta text-crema outline-none transition-colors hover:bg-tinta/90 focus-visible:ring-2 focus-visible:ring-violeta/40"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
 
-        {!loading && (
+        {!loading && pending > 0 && tab === "active" && (
           <p className="mb-2 text-xs text-tinta-suave">
-            {t("chat.knowledge.count", { n: String(pieces.length) })}
-            {pending > 0 && ` · ${t("chat.knowledge.pending_n", { n: String(pending) })}`}
+            {t("chat.knowledge.pending_n", { n: String(pending) })}
           </p>
         )}
 
@@ -177,7 +303,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         )}
         {!loading && pieces.length > 0 && shown.length === 0 && (
           <p className="py-8 text-center text-sm text-tinta-suave">
-            {t("chat.knowledge.no_results", { q: query })}
+            {query ? t("chat.knowledge.no_results", { q: query }) : t("chat.knowledge.tab_empty")}
           </p>
         )}
 
@@ -202,6 +328,24 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     · {piece.entidad}
                   </span>
                 )}
+                {piece.quien && (
+                  <span className="text-2xs text-tinta-suave">
+                    · {t("chat.knowledge.taught_by", { who: piece.quien, when: piece.cuando ?? "" })}
+                  </span>
+                )}
+                {piece.superseded_by_texto && (
+                  <span className="min-w-0 truncate text-2xs text-tinta-suave">
+                    · {t("chat.knowledge.superseded_by", { text: piece.superseded_by_texto })}
+                  </span>
+                )}
+                {piece.freshness && !ARCHIVED_ESTADOS.has(piece.estado) && piece.estado !== "pendiente" && (
+                  <span
+                    role="img"
+                    aria-label={t(`chat.knowledge.freshness.${piece.freshness}`)}
+                    title={t(`chat.knowledge.freshness.${piece.freshness}`)}
+                    className={`size-1.5 shrink-0 rounded-full ${FRESHNESS_TONE[piece.freshness] ?? ""}`}
+                  />
+                )}
                 <span className="flex-1" />
                 {piece.estado === "pendiente" && (
                   <>
@@ -223,6 +367,38 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                       }
                     >
                       <X size={12} />
+                    </PieceAction>
+                  </>
+                )}
+                {(isAdmin || piece.quien === username) &&
+                  piece.estado !== "pendiente" && !ARCHIVED_ESTADOS.has(piece.estado) && (
+                  <PieceAction label={t("chat.knowledge.edit")} onClick={() => openEdit(piece)}>
+                    <Pencil size={12} />
+                  </PieceAction>
+                )}
+                {(isAdmin || piece.quien === username) && piece.estado === "revisar" && (
+                  <>
+                    <PieceAction
+                      label={t("chat.knowledge.reconfirm")}
+                      onClick={() =>
+                        act(piece.id, () => api.conocimientoReconfirmar(piece.id), {
+                          ...piece,
+                          estado: "activo",
+                        })
+                      }
+                    >
+                      <Check size={12} />
+                    </PieceAction>
+                    <PieceAction
+                      label={t("chat.knowledge.archive")}
+                      onClick={() =>
+                        act(piece.id, () => api.conocimientoArchivar(piece.id), {
+                          ...piece,
+                          estado: "archivada",
+                        })
+                      }
+                    >
+                      <Trash2 size={12} />
                     </PieceAction>
                   </>
                 )}
@@ -252,7 +428,7 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
                     <Play size={12} />
                   </PieceAction>
                 )}
-                {isAdmin && piece.estado !== "pendiente" && (
+                {isAdmin && piece.estado !== "pendiente" && !ARCHIVED_ESTADOS.has(piece.estado) && (
                   <PieceAction
                     label={t("chat.knowledge.delete")}
                     onClick={() => act(piece.id, () => api.knowledgeDelete(piece.id), null)}
@@ -266,24 +442,13 @@ export default function KnowledgePanel({ onClose }: { onClose: () => void }) {
         </ul>
       </div>
 
-      <div className="border-t border-linea px-3 py-3">
-        <p className="mb-2 text-xs font-semibold text-tinta-suave">
-          {t("chat.knowledge.settings")}
-        </p>
-        <SettingsPanel
-          toggles={SETTING_KEYS.map((key: SettingKey) => ({
-            key,
-            label: t(key === "knowledge_capture" ? "chat.settings.capture" : "chat.settings.context"),
-            detail: t(
-              key === "knowledge_capture"
-                ? "chat.settings.capture_detail"
-                : "chat.settings.context_detail",
-            ),
-            on: settings[key] ?? true,
-          }))}
-          onToggle={toggleSetting}
+      {formOpen && (
+        <PieceForm
+          piece={editing}
+          onCancel={() => setFormOpen(false)}
+          onSubmit={submitForm}
         />
-      </div>
+      )}
     </div>
   );
 }
@@ -306,5 +471,178 @@ function PieceAction({
     >
       {children}
     </button>
+  );
+}
+
+type PieceFormFields = {
+  texto: string;
+  texto_en?: string;
+  tipo: string;
+  ambito: string;
+  nodo?: string;
+  efecto: string;
+  entidad?: string;
+};
+
+function PieceForm({
+  piece,
+  onCancel,
+  onSubmit,
+}: {
+  piece: Piece | null;
+  onCancel: () => void;
+  onSubmit: (fields: PieceFormFields) => Promise<void>;
+}) {
+  const t = useT();
+  const [texto, setTexto] = useState(piece?.texto ?? "");
+  const [tipo, setTipo] = useState(piece?.tipo ?? TIPOS[0]);
+  const [ambito, setAmbito] = useState(piece?.ambito ?? "global");
+  const [nodo, setNodo] = useState(piece?.nodo ?? NODOS_CATALOGO[0]);
+  const [efecto, setEfecto] = useState(piece?.efecto ?? EFECTOS[0]);
+  const [entidad, setEntidad] = useState(piece?.entidad ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    try {
+      await onSubmit({
+        texto,
+        tipo,
+        ambito,
+        efecto,
+        entidad: entidad || undefined,
+        ...(piece ? {} : { nodo }),
+      });
+    } catch {
+      setError(t("chat.knowledge.error"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-label={t(piece ? "chat.knowledge.edit" : "chat.knowledge.create")}
+      className="absolute inset-0 z-30 flex flex-col bg-papel"
+    >
+      <div className="flex items-center gap-2 border-b border-linea px-3 py-2.5">
+        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold text-tinta">
+          {t(piece ? "chat.knowledge.edit" : "chat.knowledge.create")}
+        </h3>
+        <button
+          type="button"
+          aria-label={t("chat.knowledge.close")}
+          onClick={onCancel}
+          className="grid size-7 shrink-0 place-items-center rounded-full text-tinta-suave outline-none transition-colors hover:bg-papel-hondo hover:text-tinta focus-visible:ring-2 focus-visible:ring-violeta/40"
+        >
+          <X size={14} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-3 py-3">
+        <label className="mb-2 block text-xs text-tinta-suave">
+          {t("chat.knowledge.form.texto")}
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            required
+            rows={3}
+            className="mt-1 w-full rounded-xl border border-linea bg-crema p-2 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+          />
+        </label>
+
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.tipo")}
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {TIPOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.ambito")}
+            <select
+              value={ambito}
+              onChange={(e) => setAmbito(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {AMBITOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+
+          {!piece && (
+            <label className="text-xs text-tinta-suave">
+              {t("chat.knowledge.form.nodo")}
+              <select
+                value={nodo}
+                onChange={(e) => setNodo(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+              >
+                {NODOS_CATALOGO.map((v) => (
+                  <option key={v} value={v}>{v}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <label className="text-xs text-tinta-suave">
+            {t("chat.knowledge.form.efecto")}
+            <select
+              value={efecto}
+              onChange={(e) => setEfecto(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-1.5 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            >
+              {EFECTOS.map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {ambito !== "global" && (
+          <label className="mb-2 block text-xs text-tinta-suave">
+            {t("chat.knowledge.form.entidad")}
+            <input
+              type="text"
+              value={entidad}
+              onChange={(e) => setEntidad(e.target.value)}
+              required
+              className="mt-1 w-full rounded-xl border border-linea bg-crema p-2 text-sm text-tinta outline-none focus-visible:ring-2 focus-visible:ring-violeta/40"
+            />
+          </label>
+        )}
+
+        {error && <p className="mb-2 text-xs text-rojo">{error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full px-3 py-1.5 text-xs text-tinta-suave hover:text-tinta"
+          >
+            {t("chat.knowledge.form.cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-full bg-tinta px-3 py-1.5 text-xs text-crema disabled:opacity-60"
+          >
+            {t("chat.knowledge.form.save")}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

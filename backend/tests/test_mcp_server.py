@@ -130,6 +130,10 @@ def test_tool_list_matches_role_features(tokens):
     assert owner_tools <= set(mcp_server.READ_ONLY_TOOLS)
 
 
+def test_consultar_conocimiento_is_in_the_read_only_catalog():
+    assert "consultar_conocimiento" in mcp_server.READ_ONLY_TOOLS
+
+
 def test_call_tool_returns_real_data(tokens):
     result = _mcp_call(tokens["emilio"], lambda s: s.call_tool("resumen_negocio", {}))
     assert not result.isError

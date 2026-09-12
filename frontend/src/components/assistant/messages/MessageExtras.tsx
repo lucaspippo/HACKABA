@@ -54,7 +54,12 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
           type: string;
           toolName?: string;
           toolCallId?: string;
-          result?: { ok?: boolean; proposal?: KnowledgeProposal; already_saved?: string };
+          result?: {
+            ok?: boolean;
+            proposal?: KnowledgeProposal;
+            already_saved?: string;
+            also_narrative?: KnowledgeProposal;
+          };
         }>
       )
         .filter(
@@ -68,6 +73,7 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
           id: p.toolCallId!,
           proposal: p.result!.proposal!,
           alreadySaved: Boolean(p.result!.already_saved),
+          narrativeAlternative: p.result!.also_narrative,
         })),
     [content],
   );
@@ -78,14 +84,19 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
       id: p.id,
       text: p.proposal.texto,
       change: (decided.get(p.id) ?? (p.alreadySaved ? "existing" : "proposed")) as MemoryChange,
+      narrativeAlternative: p.narrativeAlternative
+        ? { id: `${p.id}:context`, text: p.proposal.texto }
+        : undefined,
     }));
 
   const onSave = async (id: string) => {
-    const found = proposals.find((p) => p.id === id);
+    const isNarrativeChoice = id.endsWith(":context");
+    const found = proposals.find((p) => (isNarrativeChoice ? `${p.id}:context` === id : p.id === id));
     if (!found) return;
+    const proposal = isNarrativeChoice ? found.narrativeAlternative ?? found.proposal : found.proposal;
     try {
-      const r = await api.knowledgeConfirm(found.proposal);
-      setDecided((prev) => new Map(prev).set(id, r.state === "activo" ? "saved" : "pending"));
+      const r = await api.knowledgeConfirm(proposal);
+      setDecided((prev) => new Map(prev).set(found.id, r.state === "activo" ? "saved" : "pending"));
     } catch {
       toast(t("chat.memory.save_error"), "error");
     }
@@ -115,6 +126,8 @@ export default function MessageExtras({ onExecutingChange }: { onExecutingChange
             dismiss: (text) => t("chat.memory.dismiss", { text }),
             saved: t("chat.memory.saved"),
             pending: t("chat.memory.pending"),
+            applyRuleLabel: t("chat.memory.apply_rule"),
+            contextOnlyLabel: t("chat.memory.context_only"),
           }}
         />
       )}

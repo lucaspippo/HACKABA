@@ -35,6 +35,20 @@ def list_events(tenant_id: str) -> list[dict]:
     return [_to_evento(r) for r in rows]
 
 
+def list_events_for_ref(tenant_id: str, ref_id: str) -> list[dict]:
+    """Every event whose before/after JSON references this id — a knowledge
+    piece's own audit trail, filtered server-side."""
+    with tenant_connection(tenant_id) as conn:
+        rows = conn.execute(
+            text("SELECT id, actor, action, before, after, created_at "
+                 "FROM audit_events "
+                 "WHERE (before ->> 'id' = :ref_id) OR (after ->> 'id' = :ref_id) "
+                 "ORDER BY id"),
+            {"ref_id": ref_id},
+        ).mappings().all()
+    return [_to_evento(r) for r in rows]
+
+
 def seed_if_empty(tenant_id: str, eventos: list[dict]) -> None:
     """Bulk-loads a tenant's real, already-generated audit history (e.g. the
     demo tenant's data-demo/audit.json, produced by generar.py) exactly once

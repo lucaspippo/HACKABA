@@ -224,6 +224,11 @@ def _card_morosos(lang, ctx) -> dict | None:
             chart=grafico, weight="supporting",
             method={"key": "core.method.debtor_payment_curve",
                     "label": _t("core.method.debtor_payment_curve", lang)}))
+    piezas_tolerancia = {
+        p["id"]: p for c in morosos for p in (c.get("piezas_conocimiento") or [])
+    }.values()  # de-duplicated across clients, in case two morosos share a piece
+    for p in piezas_tolerancia:
+        evidencia.append(ins.knowledge(p))
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.morosos_p1", lang, n=len(morosos)),
                             scope={"kind": "clients", "count": len(morosos)}),
@@ -303,12 +308,13 @@ def _card_dormido(lang, ctx) -> dict | None:
                     _t("core.opn.f_costos", lang)],
     }
     # Piece 14 — el dormido de limpieza fue una compra por precio, no un error:
-    # el hallazgo lo distingue del resto (contexto declarado, no un cálculo).
+    # el hallazgo lo distingue del resto, citado como evidencia (nunca como
+    # assumption: una regla del dueño no es un salto interpretativo que baja
+    # confianza, es una fuente más).
     k_dorm = [p for p in conocimiento.aplicables(nodo="inventario", efecto="contexto_para_angela")
               if "limpieza" in conocimiento._norm(p.get("entidad"))]
     if k_dorm:
-        assunciones.append(ins.assumption(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_dorm[0], lang))))
+        evidencia.append(ins.knowledge(k_dorm[0]))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_dorm]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.dormido_p1", lang, pct=rot["pct_dormido"],
@@ -382,10 +388,10 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
         supuestos.append(ins.assumption(_t("core.opn.ventana_p3", lang,
                                            ipc=f"{ipc['valor']:g}", fuente=ipc.get("fuente") or "")))
 
-    # Pieces 7+8 — lo que Aldo enseñó sobre este proveedor. La regla del viernes
-    # es un efecto de comportamiento (el día sugerido nunca cae viernes) y la
-    # suba mensual refuerza el porqué de comprar ahora. Ambas viajan como nodos
-    # de conocimiento para el camino del mapa (E3).
+    # Pieces 7+8 — lo que Aldo enseñó sobre este proveedor, citado como
+    # evidencia (no como assumption: no es un salto interpretativo). La regla
+    # del viernes es un efecto de comportamiento (el día sugerido nunca cae
+    # viernes) y la suba mensual refuerza el porqué de comprar ahora.
     piezas_prov = conocimiento.para(prov, nodo="proveedores")
     regla_viernes = next((p for p in piezas_prov
                           if (p.get("params") or {}).get("evitar_dia") == "viernes"), None)
@@ -394,11 +400,8 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
     dia_pedido, movido = base_dia, False
     if regla_viernes and base_dia.weekday() == 4:  # 4 = viernes
         dia_pedido, movido = base_dia - datetime.timedelta(days=1), True  # al jueves
-    if ctx_suba:
-        supuestos.insert(1, ins.assumption(_t("core.opn.ventana_k_suba", lang, proveedor=prov)))
-    if regla_viernes:
-        supuestos.append(ins.assumption(_t("core.opn.ventana_k_viernes_mov", lang) if movido
-                                        else _t("core.opn.ventana_k_viernes", lang)))
+    conocimiento_evidencia = ([ins.knowledge(ctx_suba)] if ctx_suba else []) + \
+                             ([ins.knowledge(regla_viernes)] if regla_viernes else [])
     aplicadas = ([conocimiento.resumen_pieza(ctx_suba)] if ctx_suba else []) + \
                 ([conocimiento.resumen_pieza(regla_viernes)] if regla_viernes else [])
 
@@ -422,6 +425,7 @@ def _card_ventana_compra(lang, ctx) -> dict | None:
                    chart=grafico, weight="supporting",
                    method={"key": "core.method.price_rise_history",
                            "label": _t("core.method.price_rise_history", lang)}),
+        *conocimiento_evidencia,
     ]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.ventana_q1", lang, proveedor=prov, frec=frec,
@@ -770,14 +774,11 @@ def _card_quiebre_inminente(lang, ctx) -> dict | None:
     if piezas_k:
         # chip "Regla de Aldo: crítico" + la regla PRIMERO en la evidencia (misma
         # jerarquía que el viejo porque.insert(0, ...)) + el nodo de conocimiento
-        # para el camino en el mapa (E3).
+        # para el camino en el mapa (E3). Antes esto era un ins.metric() con
+        # value=None como workaround; ins.knowledge() es el constructor real,
+        # y además carga origen/freshness que el workaround no podía.
         card["chip_conocimiento"] = _t("core.opn.qi_k_chip", lang)
-        evidencia.insert(0, ins.metric(
-            "critical_rule_flag",
-            label=_t("core.opn.qi_k_por", lang, texto=conocimiento.texto_en(piezas_k[0], lang)),
-            value=None, unit=None, weight="primary",
-            method={"key": "core.method.critical_rule",
-                    "label": _t("core.method.critical_rule", lang)}))
+        evidencia.insert(0, ins.knowledge(piezas_k[0], weight="primary"))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in piezas_k]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.qi_q1b", lang, u=_num(u_mes, lang), unidad=unidad,
@@ -932,13 +933,12 @@ def _card_concentracion(lang, ctx) -> dict | None:
         "fuentes": [_t("core.opn.f_cuentas", lang), _t("core.opn.f_movs", lang)],
     }
     # Piece 4 — el matiz de Aldo: son los que pagan en fecha, el riesgo es de
-    # concentración, no de cobro. Reencuadra la card sin cambiar el número.
+    # concentración, no de cobro. Reencuadra la card sin cambiar el número —
+    # citado como evidencia, nunca como assumption.
     asunciones = [ins.assumption(_t("core.opn.conc_s1", lang))]
     k_conc = [p for p in conocimiento.aplicables(nodo="clientes", efecto="contexto_para_angela")
               if p.get("ambito") == "global" and (p.get("params") or {}).get("marca") == "concentracion"]
     if k_conc:
-        asunciones.append(ins.assumption(
-            _t("core.opn.k_ensenaste", lang, texto=conocimiento.texto_en(k_conc[0], lang))))
         card["conocimiento_aplicado"] = [conocimiento.resumen_pieza(p) for p in k_conc]
     insight_val = ins.build(
         pattern=ins.pattern(_t("core.opn.conc_q1", lang, pct=f"{pct:.0f}",
@@ -962,6 +962,7 @@ def _card_concentracion(lang, ctx) -> dict | None:
                        weight="supporting",
                        method={"key": "core.method.client_concentration",
                                "label": _t("core.method.client_concentration", lang)}),
+            *([ins.knowledge(k_conc[0])] if k_conc else []),
         ],
         assumptions=asunciones,
         risk=ins.risk(_t("core.opn.conc_q2", lang), exposure=monto),
