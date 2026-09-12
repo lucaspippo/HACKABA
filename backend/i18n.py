@@ -3418,6 +3418,12 @@ CATALOGO: dict[str, dict[str, str]] = {
                                         "en": "Rejected a business-knowledge proposal"},
     "audit.acc.editar_conocimiento": {"es": "Editó una pieza de conocimiento del negocio",
                                       "en": "Edited a piece of business knowledge"},
+    "audit.acc.archivar_conocimiento": {"es": "Archivó una pieza de conocimiento del negocio",
+                                        "en": "Archived a piece of business knowledge"},
+    "audit.acc.reemplazar_conocimiento": {"es": "Reemplazó una pieza de conocimiento del negocio",
+                                          "en": "Replaced a piece of business knowledge"},
+    "audit.acc.reconfirmar_conocimiento": {"es": "Reconfirmó una pieza de conocimiento del negocio",
+                                           "en": "Reconfirmed a piece of business knowledge"},
     "audit.acc.validacion_montos_ventas": {"es": "Validó los montos de ventas contra el sistema",
                                            "en": "Checked sales amounts against the system"},
     "audit.acc.normalizacion_nivel1": {
