@@ -26,7 +26,7 @@ export default function BadgeNuevo({ persona, compacto = false }) {
   return (
     <span
       title={t("equipo.badge_nuevo_title", { ant })}
-      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-hielo/35 bg-hielo/[0.10] px-2 py-0.5 text-[0.68rem] font-semibold text-hielo"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-hielo/35 bg-hielo/[0.10] px-2 py-0.5 text-2xs font-semibold text-hielo"
     >
       <Sparkles size={11} className="shrink-0" />
       {t("equipo.badge_nuevo")}

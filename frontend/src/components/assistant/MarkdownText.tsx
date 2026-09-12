@@ -27,10 +27,10 @@ const components = {
       />
     );
   },
-  h1: (props: object) => <h3 className="mb-1.5 font-display text-[1rem] font-bold" {...props} />,
-  h2: (props: object) => <h3 className="mb-1.5 font-display text-[1rem] font-bold" {...props} />,
-  h3: (props: object) => <h4 className="mb-1.5 font-display text-[0.95rem] font-bold" {...props} />,
-  h4: (props: object) => <h4 className="mb-1.5 font-display text-[0.9rem] font-bold" {...props} />,
+  h1: (props: object) => <h3 className="mb-1.5 font-display text-base font-bold" {...props} />,
+  h2: (props: object) => <h3 className="mb-1.5 font-display text-base font-bold" {...props} />,
+  h3: (props: object) => <h4 className="mb-1.5 font-display text-base font-bold" {...props} />,
+  h4: (props: object) => <h4 className="mb-1.5 font-display text-sm font-bold" {...props} />,
   blockquote: (props: object) => (
     <blockquote className="mb-2 border-l-2 border-linea pl-3 text-tinta-suave last:mb-0" {...props} />
   ),
@@ -39,11 +39,11 @@ const components = {
     <code className="rounded bg-papel px-1 py-0.5 font-mono text-[0.85em]" {...props} />
   ),
   pre: (props: object) => (
-    <pre className="mb-2 overflow-x-auto rounded-xl bg-papel p-3 text-[0.82rem] last:mb-0" {...props} />
+    <pre className="mb-2 overflow-x-auto rounded-xl bg-papel p-3 text-sm last:mb-0" {...props} />
   ),
   table: (props: object) => (
     <div className="mb-2 overflow-x-auto last:mb-0">
-      <table className="w-full border-collapse text-[0.85rem]" {...props} />
+      <table className="w-full border-collapse text-sm" {...props} />
     </div>
   ),
   th: (props: object) => (

@@ -260,7 +260,7 @@ export default function Imported({ highlight, onNavigate }) {
           <Layers size={24} className="text-tinta-suave" />
           <div>
             <h1 className="font-display text-2xl font-bold leading-none">{t("imported.title")}</h1>
-            <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("imported.subtitle")}</p>
+            <p className="mt-1 text-sm text-tinta-suave">{t("imported.subtitle")}</p>
             <div className="mt-3">
               <IngestPipeline current="imported" onNavigate={onNavigate} />
             </div>
@@ -272,7 +272,7 @@ export default function Imported({ highlight, onNavigate }) {
         <div className="flex flex-wrap items-center gap-1 border-b border-linea">
           {TABS.map((item) => (
             <button key={item.id} type="button" onClick={() => setTab(item.id)}
-              className={`px-3 py-1.5 text-[0.82rem] font-semibold border-b-2 -mb-px ${
+              className={`px-3 py-1.5 text-sm font-semibold border-b-2 -mb-px ${
                 tab === item.id ? "border-violeta text-violeta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
               {t(item.lk)}
               <span className="ml-1.5 font-normal text-tinta-suave">{countFor(item.id)}</span>
@@ -285,7 +285,7 @@ export default function Imported({ highlight, onNavigate }) {
       </div>
 
       {filtered.length > ROW_CAP && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {t("imported.truncated", { n: ROW_CAP, total: filtered.length })}
         </p>
       )}

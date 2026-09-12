@@ -32,7 +32,7 @@ export default function ResultTable({ rows, limit = 8 }) {
 
   return (
     <div className="mt-2 overflow-x-auto rounded-xl border border-linea">
-      <table className="w-full text-left text-[0.78rem]">
+      <table className="w-full text-left text-xs">
         <thead>
           <tr className="border-b border-linea bg-papel/60">
             {keys.map((c) => (
@@ -55,7 +55,7 @@ export default function ResultTable({ rows, limit = 8 }) {
         </tbody>
       </table>
       {rows.length > limit && (
-        <p className="border-t border-linea px-2.5 py-1 text-[0.72rem] text-tinta-suave">
+        <p className="border-t border-linea px-2.5 py-1 text-xs text-tinta-suave">
           +{rows.length - limit} más
         </p>
       )}

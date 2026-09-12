@@ -71,7 +71,7 @@ export default function IconButton({
             top: placement === "top" ? anchor.top - 8 : anchor.bottom + 8,
             transform: placement === "top" ? "translate(-50%, -100%)" : "translateX(-50%)",
           }}
-          className="z-50 whitespace-nowrap rounded-lg bg-tinta px-2.5 py-1.5 text-[0.8rem] font-medium text-crema sombra-alta"
+          className="z-50 whitespace-nowrap rounded-lg bg-tinta px-2.5 py-1.5 text-sm font-medium text-crema sombra-alta"
         >
           {label}
         </span>

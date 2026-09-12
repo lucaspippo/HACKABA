@@ -36,7 +36,7 @@ function Chip({ texto, onPreguntar }) {
       className="flex w-full items-center gap-2 rounded-xl border border-linea bg-crema px-3 py-2 text-left transition-colors hover:border-violeta/40 active:bg-papel-hondo/40"
     >
       <MessageCircle size={14} className="shrink-0 text-violeta" />
-      <span className="min-w-0 flex-1 text-[0.85rem] leading-snug text-tinta">{texto}</span>
+      <span className="min-w-0 flex-1 text-sm leading-snug text-tinta">{texto}</span>
       <ArrowRight size={14} className="shrink-0 text-tinta-suave" />
     </button>
   );
@@ -51,8 +51,8 @@ function Tema({ id, titulo, sub, preguntas, children, abierto, onToggle, onPregu
       <button onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3 text-left">
         <Icon size={18} className="shrink-0 text-violeta" />
         <span className="min-w-0 flex-1">
-          <span className="block text-[0.94rem] font-semibold leading-snug text-tinta">{titulo}</span>
-          {sub && <span className="block text-[0.78rem] leading-snug text-tinta-suave">{sub}</span>}
+          <span className="block text-base font-semibold leading-snug text-tinta">{titulo}</span>
+          {sub && <span className="block text-xs leading-snug text-tinta-suave">{sub}</span>}
         </span>
         <ChevronDown size={16} className={`shrink-0 text-tinta-suave transition-transform ${abierto ? "rotate-180" : ""}`} />
       </button>
@@ -62,7 +62,7 @@ function Tema({ id, titulo, sub, preguntas, children, abierto, onToggle, onPregu
           {children && (
             <>
               <button onClick={() => setDatos((v) => !v)}
-                className="text-[0.78rem] font-semibold text-tinta-suave underline decoration-linea underline-offset-2 hover:text-tinta">
+                className="text-xs font-semibold text-tinta-suave underline decoration-linea underline-offset-2 hover:text-tinta">
                 {datos ? t("onb.ocultar_datos") : t("onb.ver_datos")}
               </button>
               {datos && <div className="pt-1">{children}</div>}
@@ -112,14 +112,14 @@ export default function Onboarding({ onPreguntar }) {
         t("onb.q_vence_pronto"),
       ].filter(Boolean),
       contenido: (
-        <ul className="divide-y divide-linea/70 text-[0.84rem]">
+        <ul className="divide-y divide-linea/70 text-sm">
           {ubicaciones.ubicaciones.map((u) => (
             <li key={u.ubicacion} className="flex items-baseline justify-between gap-3 py-1.5">
               <span className="min-w-0 flex-1">
                 <span className="block font-medium text-tinta">{u.ubicacion}</span>
-                <span className="block truncate text-[0.76rem] text-tinta-suave">{u.ejemplos.join(" · ")}</span>
+                <span className="block truncate text-xs text-tinta-suave">{u.ejemplos.join(" · ")}</span>
               </span>
-              <span className="shrink-0 text-[0.76rem] text-tinta-suave">{t("onb.ubi_lotes", { n: u.lotes })}</span>
+              <span className="shrink-0 text-xs text-tinta-suave">{t("onb.ubi_lotes", { n: u.lotes })}</span>
             </li>
           ))}
         </ul>
@@ -139,20 +139,20 @@ export default function Onboarding({ onPreguntar }) {
       ].filter(Boolean),
       contenido: (
         <>
-          <ul className="divide-y divide-linea/70 text-[0.84rem]">
+          <ul className="divide-y divide-linea/70 text-sm">
             {provs.map((p) => (
               <li key={p.proveedor} className="flex items-baseline justify-between gap-3 py-1.5">
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium text-tinta">{p.proveedor}</span>
-                  {p.nota && <span className="block text-[0.76rem] leading-snug text-tinta-suave">{p.nota}</span>}
+                  {p.nota && <span className="block text-xs leading-snug text-tinta-suave">{p.nota}</span>}
                 </span>
-                <span className="shrink-0 text-[0.76rem] font-semibold text-tinta-suave">
+                <span className="shrink-0 text-xs font-semibold text-tinta-suave">
                   {t("onb.rep_dias", { n: p.dias_reposicion })}
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[0.76rem] text-tinta-suave">{t("onb.rep_default", { n: reposicion.dias_default })}</p>
+          <p className="mt-2 text-xs text-tinta-suave">{t("onb.rep_default", { n: reposicion.dias_default })}</p>
         </>
       ),
     });
@@ -168,8 +168,8 @@ export default function Onboarding({ onPreguntar }) {
         <div className="space-y-3">
           {orden.map((p) => (
             <div key={p.id}>
-              <p className="text-[0.84rem] font-semibold text-tinta">{t(`onb.proc_${p.id}`)}</p>
-              <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-[0.82rem] leading-snug text-tinta-suave">
+              <p className="text-sm font-semibold text-tinta">{t(`onb.proc_${p.id}`)}</p>
+              <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm leading-snug text-tinta-suave">
                 {(lang === "en" ? p.pasos_en : p.pasos).map((paso, i) => <li key={i}>{paso}</li>)}
               </ol>
             </div>
@@ -186,7 +186,7 @@ export default function Onboarding({ onPreguntar }) {
       preguntas: [t("onb.q_reglas"), t("onb.q_regla_frio"), t("onb.q_no_quebrar")],
       contenido: (
         <>
-          <ul className="space-y-1.5 text-[0.84rem] leading-snug text-tinta">
+          <ul className="space-y-1.5 text-sm leading-snug text-tinta">
             {reglas.map((r) => (
               <li key={r.id} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-violeta/60" />
@@ -194,7 +194,7 @@ export default function Onboarding({ onPreguntar }) {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[0.76rem] text-tinta-suave">{t("onb.reglas_pie")}</p>
+          <p className="mt-2 text-xs text-tinta-suave">{t("onb.reglas_pie")}</p>
         </>
       ),
     });
@@ -206,12 +206,12 @@ export default function Onboarding({ onPreguntar }) {
       sub: t("onb.t_contactos_sub"),
       preguntas: [t("onb.q_aviso_falta"), t("onb.q_quien_aprueba")],
       contenido: (
-        <ul className="divide-y divide-linea/70 text-[0.84rem]">
+        <ul className="divide-y divide-linea/70 text-sm">
           {contactos.map((c) => (
             <li key={c.username} className="py-1.5">
               <span className="font-medium text-tinta">{c.nombre}</span>
               <span className="text-tinta-suave"> · {tRol(c.rol)}</span>
-              <span className="block text-[0.76rem] leading-snug text-tinta-suave">{t(`onb.para_${c.para}`)}</span>
+              <span className="block text-xs leading-snug text-tinta-suave">{t(`onb.para_${c.para}`)}</span>
             </li>
           ))}
         </ul>
@@ -223,7 +223,7 @@ export default function Onboarding({ onPreguntar }) {
     <section className="space-y-3">
       {/* El título vive ACÁ y no en «Mi día»: mientras la guía carga, el bloque
           entero no existe — nunca un encabezado solo colgando (P32). */}
-      <h2 className="font-display text-[1.05rem] font-bold">{t("onb.titulo")}</h2>
+      <h2 className="font-display text-lg font-bold">{t("onb.titulo")}</h2>
 
       {/* La bienvenida: quién sos, hace cuánto entraste y qué podés preguntar.
           El puesto y el referente salen de SU ficha, no de un texto genérico. */}
@@ -231,12 +231,12 @@ export default function Onboarding({ onPreguntar }) {
         <div className="flex items-start gap-2.5">
           <AngelaMark size={30} estado="esperando" />
           <div className="min-w-0">
-            <p className="font-display text-[1.02rem] font-bold leading-tight">
+            <p className="font-display text-lg font-bold leading-tight">
               {t("onb.saludo", { nombre: persona?.nombre, ant })}
             </p>
-            <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("onb.intro")}</p>
+            <p className="mt-1 text-sm leading-snug text-tinta-suave">{t("onb.intro")}</p>
             {persona?.puesto && (
-              <p className="mt-1.5 text-[0.78rem] text-tinta-suave">
+              <p className="mt-1.5 text-xs text-tinta-suave">
                 {t("onb.puesto", {
                   sector: tDato(persona.puesto.sector, persona.puesto.sector_en),
                   turno: tDato(persona.puesto.turno, persona.puesto.turno_en) })}

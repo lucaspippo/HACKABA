@@ -66,7 +66,7 @@ export default function Conectores({ onNavigate }) {
     <div className="space-y-6">
       <header>
         <h1 className="font-display text-2xl font-bold">{t("conectores.titulo")}</h1>
-        <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("conectores.subtitulo")}</p>
+        <p className="mt-1 text-sm text-tinta-suave">{t("conectores.subtitulo")}</p>
         <div className="mt-3">
           <IngestPipeline current="conectores" onNavigate={onNavigate} />
         </div>
@@ -75,7 +75,7 @@ export default function Conectores({ onNavigate }) {
       <AngelaSays>{t("conectores.angela")}</AngelaSays>
 
       {lista === null && <Cargando />}
-      {lista === false && <p className="text-[0.9rem] text-rojo-hondo">{t("conectores.error")}</p>}
+      {lista === false && <p className="text-sm text-rojo-hondo">{t("conectores.error")}</p>}
 
       {lista && (
         <>
@@ -89,8 +89,8 @@ export default function Conectores({ onNavigate }) {
           </div>
 
           <div className="pt-2">
-            <h2 className="font-display text-[1.15rem] font-bold text-tinta">{t("conectores.mas_erp_titulo")}</h2>
-            <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("conectores.mas_erp_desc")}</p>
+            <h2 className="font-display text-lg font-bold text-tinta">{t("conectores.mas_erp_titulo")}</h2>
+            <p className="mt-1 text-sm leading-snug text-tinta-suave">{t("conectores.mas_erp_desc")}</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ERPS_PROXIMAMENTE.map(({ key, logo }) => (
@@ -99,8 +99,8 @@ export default function Conectores({ onNavigate }) {
           </div>
 
           <div className="pt-2">
-            <h2 className="font-display text-[1.15rem] font-bold text-tinta">{t("conectores.ia_titulo")}</h2>
-            <p className="mt-1 text-[0.85rem] leading-snug text-tinta-suave">{t("conectores.ia_intro")}</p>
+            <h2 className="font-display text-lg font-bold text-tinta">{t("conectores.ia_titulo")}</h2>
+            <p className="mt-1 text-sm leading-snug text-tinta-suave">{t("conectores.ia_intro")}</p>
           </div>
           <div className="space-y-4">
             <PanelConectorIA logo={LogoClaude} nombre="Claude" pasoFinal={t("conectores.ia_paso_claude")} />
@@ -256,17 +256,17 @@ function PanelWhatsApp() {
       {cfg && (cfg.conectado ? (
         <>
           <div>
-            <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-tinta-suave">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-tinta-suave">
               {t("whatsapp_bot.saludo_actual")}
             </p>
-            <p className="mt-1.5 rounded-xl bg-papel-hondo/40 p-3 text-[0.85rem] leading-snug text-tinta">
+            <p className="mt-1.5 rounded-xl bg-papel-hondo/40 p-3 text-sm leading-snug text-tinta">
               {cfg.greeting_message || t("whatsapp_bot.sin_saludo")}
             </p>
           </div>
 
           <div>
-            <h3 className="font-display text-[0.95rem] font-bold text-tinta">{t("whatsapp_bot.conversaciones_titulo")}</h3>
-            <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{t("whatsapp_bot.conversaciones_desc")}</p>
+            <h3 className="font-display text-base font-bold text-tinta">{t("whatsapp_bot.conversaciones_titulo")}</h3>
+            <p className="mt-0.5 text-sm text-tinta-suave">{t("whatsapp_bot.conversaciones_desc")}</p>
 
             {conversaciones === null && <div className="mt-3"><Cargando /></div>}
 
@@ -282,17 +282,17 @@ function PanelWhatsApp() {
                   <li key={c.id} className="overflow-hidden rounded-xl border border-linea/60 bg-papel-hondo/30">
                     <button onClick={() => verConversacion(c.id)} aria-expanded={conversacionAbierta === c.id}
                       className="flex w-full items-center gap-2.5 p-2.5 text-left transition-colors hover:bg-papel-hondo/60">
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crema text-[0.78rem] font-bold text-tinta-suave">
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-crema text-xs font-bold text-tinta-suave">
                         {(c.customer_name || c.customer_phone || "?").slice(0, 1).toUpperCase()}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[0.85rem] font-semibold text-tinta">
+                        <span className="block truncate text-sm font-semibold text-tinta">
                           {c.customer_name || c.customer_phone}
                         </span>
-                        <span className="block truncate text-[0.76rem] text-tinta-suave">{c.customer_phone}</span>
+                        <span className="block truncate text-xs text-tinta-suave">{c.customer_phone}</span>
                       </span>
                       {c.status === "necesita_atencion" && (
-                        <span className="shrink-0 rounded-full bg-oro/10 px-2 py-0.5 text-[0.72rem] font-semibold text-oro-tinta">
+                        <span className="shrink-0 rounded-full bg-oro/10 px-2 py-0.5 text-xs font-semibold text-oro-tinta">
                           {t("whatsapp_bot.necesita_atencion")}
                         </span>
                       )}
@@ -302,7 +302,7 @@ function PanelWhatsApp() {
                       <div className="space-y-1.5 border-t border-linea/60 bg-papel/60 p-2.5">
                         {mensajes === null && <Cargando />}
                         {mensajes?.map((m) => (
-                          <p key={m.id} className={`max-w-[85%] rounded-xl px-3 py-1.5 text-[0.82rem] leading-snug ${
+                          <p key={m.id} className={`max-w-[85%] rounded-xl px-3 py-1.5 text-sm leading-snug ${
                             m.direction === "in"
                               ? "bg-crema text-tinta"
                               : "ml-auto bg-violeta/10 text-tinta"}`}>
@@ -324,10 +324,10 @@ function PanelWhatsApp() {
       ) : (
         <ol className="space-y-3">
           <li className="rounded-xl bg-papel-hondo/40 p-3">
-            <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_webhook_titulo")}</p>
-            <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_webhook_desc")}</p>
+            <p className="text-sm font-semibold text-tinta">{t("whatsapp_bot.paso_webhook_titulo")}</p>
+            <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{t("whatsapp_bot.paso_webhook_desc")}</p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+              <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-xs text-tinta">
                 {webhookUrl}
               </code>
               <button type="button" onClick={copiarWebhook} aria-label={t("whatsapp_bot.copiar_webhook")}
@@ -337,8 +337,8 @@ function PanelWhatsApp() {
             </div>
           </li>
           <li className="rounded-xl bg-papel-hondo/40 p-3">
-            <p className="text-[0.85rem] font-semibold text-tinta">{t("whatsapp_bot.paso_credenciales_titulo")}</p>
-            <p className="mt-0.5 text-[0.82rem] leading-snug text-tinta-suave">{t("whatsapp_bot.paso_credenciales_desc")}</p>
+            <p className="text-sm font-semibold text-tinta">{t("whatsapp_bot.paso_credenciales_titulo")}</p>
+            <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{t("whatsapp_bot.paso_credenciales_desc")}</p>
             <form onSubmit={conectar} className="mt-3 space-y-3">
               <ConnectorField label={t("whatsapp_bot.campo_phone_number_id")} value={form.phone_number_id}
                 hint={t("whatsapp_bot.campo_phone_number_id_hint")}
@@ -349,15 +349,15 @@ function PanelWhatsApp() {
                 <ConnectorField label={t("whatsapp_bot.campo_app_secret")} type="password" value={form.app_secret}
                   onChange={(v) => setForm((f) => ({ ...f, app_secret: v }))} />
               </div>
-              <label className="block text-[0.8rem]">
+              <label className="block text-sm">
                 <span className="mb-1 block font-semibold text-tinta">{t("whatsapp_bot.campo_saludo")}</span>
                 <textarea value={form.greeting_message} rows={2}
                   placeholder={t("whatsapp_bot.campo_saludo_placeholder")}
                   onChange={(e) => setForm((f) => ({ ...f, greeting_message: e.target.value }))}
-                  className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-[0.85rem]
+                  className="w-full rounded-xl border border-linea bg-papel px-3 py-2 text-sm
                              text-tinta outline-none transition-colors focus:border-tinta/40" />
               </label>
-              {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+              {error && <p className="text-sm text-rojo-hondo">{error}</p>}
               <ConnectorButton type="submit" loading={guardando}>
                 {guardando ? t("whatsapp_bot.conectando") : t("whatsapp_bot.conectar")}
               </ConnectorButton>
@@ -365,7 +365,7 @@ function PanelWhatsApp() {
           </li>
         </ol>
       ))}
-      {cfg && <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>}
+      {cfg && <p className="text-xs leading-snug text-tinta-suave">{t("whatsapp_bot.nota")}</p>}
     </ConnectorCard>
   );
 }
@@ -407,9 +407,9 @@ function PanelConectorIA({ logo: Logo, nombre, pasoFinal }) {
     >
       <ol className="space-y-3">
         <li className="rounded-xl bg-papel-hondo/40 p-3">
-          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_url")}</p>
+          <p className="text-sm font-semibold text-tinta">{t("conectores.ia_paso_url")}</p>
           <div className="mt-2 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-xs text-tinta">
               {mcpUrl}
             </code>
             <button type="button" onClick={() => copiar(mcpUrl, setCopiadoUrl)}
@@ -420,10 +420,10 @@ function PanelConectorIA({ logo: Logo, nombre, pasoFinal }) {
           </div>
         </li>
         <li className="rounded-xl bg-papel-hondo/40 p-3">
-          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_token")}</p>
-          <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{t("conectores.ia_paso_token_desc")}</p>
+          <p className="text-sm font-semibold text-tinta">{t("conectores.ia_paso_token")}</p>
+          <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{t("conectores.ia_paso_token_desc")}</p>
           <div className="mt-2 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-[0.78rem] text-tinta">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-linea bg-papel px-2.5 py-1.5 text-xs text-tinta">
               {mostrarToken ? token : "•".repeat(24)}
             </code>
             <button type="button" onClick={() => setMostrarToken((v) => !v)}
@@ -439,11 +439,11 @@ function PanelConectorIA({ logo: Logo, nombre, pasoFinal }) {
           </div>
         </li>
         <li className="rounded-xl bg-papel-hondo/40 p-3">
-          <p className="text-[0.85rem] font-semibold text-tinta">{t("conectores.ia_paso_app")}</p>
-          <p className="mt-0.5 text-[0.8rem] leading-snug text-tinta-suave">{pasoFinal}</p>
+          <p className="text-sm font-semibold text-tinta">{t("conectores.ia_paso_app")}</p>
+          <p className="mt-0.5 text-sm leading-snug text-tinta-suave">{pasoFinal}</p>
         </li>
       </ol>
-      <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("conectores.ia_nota")}</p>
+      <p className="text-xs leading-snug text-tinta-suave">{t("conectores.ia_nota")}</p>
     </ConnectorCard>
   );
 }
@@ -513,7 +513,7 @@ function PanelOdoo({ estado, onNavigate }) {
     >
       {cfg && (cfg.conectado ? (
         <>
-          <p className="text-[0.85rem] text-tinta-suave">
+          <p className="text-sm text-tinta-suave">
             {t("odoo.conectado_como", { url: cfg.url, database: cfg.database, username: cfg.username })}
             {" · "}
             <button type="button" onClick={() => onNavigate?.("imported")}
@@ -524,7 +524,7 @@ function PanelOdoo({ estado, onNavigate }) {
           <div className="-mx-1 flex items-center gap-1 overflow-x-auto border-b border-linea px-1 pb-px">
             {TABS.map(({ id, icon: TabIcon }) => (
               <button key={id} onClick={() => setTab(id)}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 -mb-px px-2.5 py-2 text-[0.8rem] font-semibold transition-colors ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 -mb-px px-2.5 py-2 text-sm font-semibold transition-colors ${
                   tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"}`}>
                 <TabIcon size={14} />
                 {t(`odoo.tab_${id}`)}
@@ -548,7 +548,7 @@ function PanelOdoo({ estado, onNavigate }) {
       ) : (
         <>
           <form onSubmit={conectar} className="space-y-3">
-            <p className="text-[0.85rem] text-tinta-suave">{t("odoo.no_conectado")}</p>
+            <p className="text-sm text-tinta-suave">{t("odoo.no_conectado")}</p>
             <ConnectorField label={t("odoo.campo_url")} placeholder="https://mi-empresa.odoo.com"
               value={form.url} onChange={(v) => setForm((f) => ({ ...f, url: v }))} />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -560,14 +560,14 @@ function PanelOdoo({ estado, onNavigate }) {
             <ConnectorField label={t("odoo.campo_api_key")} type="password" value={form.api_key}
               hint={t("odoo.campo_api_key_hint")}
               onChange={(v) => setForm((f) => ({ ...f, api_key: v }))} />
-            {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+            {error && <p className="text-sm text-rojo-hondo">{error}</p>}
             <ConnectorButton type="submit" loading={guardando}>
               {guardando ? t("odoo.conectando") : t("odoo.conectar")}
             </ConnectorButton>
           </form>
         </>
       ))}
-      {cfg && <p className="text-[0.78rem] leading-snug text-tinta-suave">{t("odoo.nota")}</p>}
+      {cfg && <p className="text-xs leading-snug text-tinta-suave">{t("odoo.nota")}</p>}
     </ConnectorCard>
   );
 }
@@ -616,7 +616,7 @@ function OdooTabContactos({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_contactos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_contactos_sin_novedades")}
@@ -624,13 +624,13 @@ function OdooTabContactos({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_resultado", { n: sync.total }) : t("odoo.sync_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.clientes.map((c) => (
             <li key={c.id} className="text-tinta">
               {c.nombre}{c.localidad && <span className="text-tinta-suave"> · {c.localidad}</span>}
@@ -686,7 +686,7 @@ function OdooTabProductos({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_productos_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_productos_sin_novedades")}
@@ -694,13 +694,13 @@ function OdooTabProductos({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_productos_resultado", { n: sync.total }) : t("odoo.sync_productos_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.productos.map((p) => (
             <li key={p.id} className="flex items-center justify-between gap-2 text-tinta">
               <span className="min-w-0 truncate">
@@ -769,7 +769,7 @@ function OdooTabProveedores({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_proveedores_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_proveedores_sin_novedades")}
@@ -777,13 +777,13 @@ function OdooTabProveedores({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_proveedores_resultado", { n: sync.total }) : t("odoo.sync_proveedores_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.proveedores.map((p) => (
             <li key={p.id} className="text-tinta">
               {p.nombre}{p.localidad && <span className="text-tinta-suave"> · {p.localidad}</span>}
@@ -839,7 +839,7 @@ function OdooTabCompras({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_compras_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_compras_sin_novedades")}
@@ -847,13 +847,13 @@ function OdooTabCompras({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_compras_resultado", { n: sync.total }) : t("odoo.sync_compras_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.ordenes.map((o) => (
             <li key={o.id} className="rounded-lg border border-linea/50 bg-papel/60 p-2">
               <div className="flex items-center justify-between gap-2">
@@ -866,7 +866,7 @@ function OdooTabCompras({ t, onNavigate }) {
                     <span className="ml-1 font-normal text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>
                   )}
                 </span>
-                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
+                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-xs
                                  font-semibold text-tinta-suave">
                   {t(`odoo.estado_compra_${o.estado}`)}
                 </span>
@@ -926,7 +926,7 @@ function OdooTabVentas({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_ventas_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_ventas_sin_novedades")}
@@ -934,13 +934,13 @@ function OdooTabVentas({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_ventas_resultado", { n: sync.total }) : t("odoo.sync_ventas_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-56 space-y-2 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.ordenes.map((o) => (
             <li key={o.id} className="rounded-lg border border-linea/50 bg-papel/60 p-2">
               <div className="flex items-center justify-between gap-2">
@@ -953,7 +953,7 @@ function OdooTabVentas({ t, onNavigate }) {
                     <span className="ml-1 font-normal text-rojo-hondo"> · {t("odoo.backorder_abierto")}</span>
                   )}
                 </span>
-                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.72rem]
+                <span className="shrink-0 rounded-full bg-papel-hondo px-2 py-0.5 text-xs
                                  font-semibold text-tinta-suave">
                   {t(`odoo.estado_venta_${o.estado}`)}
                 </span>
@@ -1013,7 +1013,7 @@ function OdooTabDeposito({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_deposito_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_deposito_sin_novedades")}
@@ -1021,13 +1021,13 @@ function OdooTabDeposito({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_deposito_resultado", { n: sync.total }) : t("odoo.sync_deposito_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.quants.map((q) => (
             <li key={q.id} className="text-tinta">
               {q.producto}
@@ -1084,7 +1084,7 @@ function OdooTabRecepciones({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_recepciones_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_recepciones_sin_novedades")}
@@ -1092,13 +1092,13 @@ function OdooTabRecepciones({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_recepciones_resultado", { n: sync.total }) : t("odoo.sync_recepciones_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.recepciones.map((r) => (
             <li key={r.id} className="text-tinta">
               {r.origen} · {r.producto}
@@ -1156,7 +1156,7 @@ function OdooTabEntregas({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_entregas_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_entregas_sin_novedades")}
@@ -1164,13 +1164,13 @@ function OdooTabEntregas({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0 ? t("odoo.sync_entregas_resultado", { n: sync.total }) : t("odoo.sync_entregas_vacio")}
         </p>
       )}
       {sync?.total > 0 && (
         <ul className="max-h-48 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.entregas.map((r) => (
             <li key={r.id} className="text-tinta">
               {r.origen} · {r.producto}
@@ -1230,7 +1230,7 @@ function OdooTabFacturas({ t, onNavigate }) {
         error={error} errorIngest={errorIngesta}
       />
       {ingesta && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {ingesta.actualizados > 0 || ingesta.nuevos_para_revisar > 0
             ? t("odoo.ingesta_facturas_resultado", { actualizados: ingesta.actualizados, nuevos: ingesta.nuevos_para_revisar })
             : t("odoo.ingesta_facturas_sin_novedades")}
@@ -1238,7 +1238,7 @@ function OdooTabFacturas({ t, onNavigate }) {
         </p>
       )}
       {sync && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {sync.total > 0
             ? t("odoo.sync_facturas_resultado", { n: sync.total, as_of: sync.as_of || "" })
             : t("odoo.sync_facturas_vacio")}
@@ -1246,14 +1246,14 @@ function OdooTabFacturas({ t, onNavigate }) {
       )}
       {sync?.total > 0 && (
         <ul className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {sync.facturas.map((f) => (
             <li key={f.id} className="flex items-center justify-between gap-2 text-tinta">
               <span className="min-w-0 truncate">
                 {f.numero} · {f.partner}
                 {f.currency && <span className="text-tinta-suave"> · {f.currency}</span>}
               </span>
-              <span className={`shrink-0 text-[0.72rem] font-semibold ${
+              <span className={`shrink-0 text-xs font-semibold ${
                 f.aging === "overdue" ? "text-rojo-hondo" : "text-tinta-suave"}`}>
                 {t(agingKey(f))}
                 {f.residual != null && f.aging !== "paid" ? ` · ${f.residual}` : ""}
@@ -1291,9 +1291,9 @@ function OdooTabPrecios({ t }) {
       <ConnectorButton onClick={traer} loading={cargando}>
         {cargando ? t("odoo.sincronizando_precios") : t("odoo.traer_precios")}
       </ConnectorButton>
-      {error && <p className="text-[0.8rem] text-rojo-hondo">{error}</p>}
+      {error && <p className="text-sm text-rojo-hondo">{error}</p>}
       {monedas && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {t("odoo.sync_monedas_resultado", {
             moneda: monedas.moneda_compania, n: monedas.total,
           })}
@@ -1301,7 +1301,7 @@ function OdooTabPrecios({ t }) {
       )}
       {monedas?.tipos_cambio?.length > 0 && (
         <ul className="max-h-32 space-y-0.5 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem] text-tinta-suave">
+                       bg-papel-hondo/30 p-2 text-sm text-tinta-suave">
           {monedas.tipos_cambio.map((r) => (
             <li key={`${r.currency}-${r.fecha}`}>
               {r.fecha} · {r.currency} · {r.inverse_company_rate}
@@ -1310,7 +1310,7 @@ function OdooTabPrecios({ t }) {
         </ul>
       )}
       {listas && (
-        <p className="text-[0.82rem] text-tinta-suave">
+        <p className="text-sm text-tinta-suave">
           {listas.total > 0
             ? t("odoo.sync_listas_resultado", { n: listas.total })
             : t("odoo.sync_listas_vacio")}
@@ -1318,7 +1318,7 @@ function OdooTabPrecios({ t }) {
       )}
       {listas?.total > 0 && (
         <ul className="max-h-40 space-y-1 overflow-y-auto rounded-xl border border-linea/60
-                       bg-papel-hondo/30 p-2 text-[0.8rem]">
+                       bg-papel-hondo/30 p-2 text-sm">
           {listas.listas.map((pl) => (
             <li key={pl.id} className="text-tinta">
               {pl.nombre}

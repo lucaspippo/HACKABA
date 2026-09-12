@@ -37,7 +37,7 @@ export function SettingsPanel({
       {toggles.map((toggle) => (
         <div key={toggle.key} className="flex items-center gap-3">
           <span className="flex min-w-0 flex-1 flex-col">
-            <span className="text-[13px]">{toggle.label}</span>
+            <span className="text-lg">{toggle.label}</span>
             <span className="text-foreground/35 text-xs">{toggle.detail}</span>
           </span>
           <button

@@ -16,7 +16,7 @@ function GenericResult({ result }: { result: Record<string, unknown> }) {
   );
   if (entries.length === 0) return null;
   return (
-    <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[0.8rem]">
+    <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
       {entries.slice(0, 8).map(([k, v]) => (
         <div key={k} className="contents">
           <dt className="capitalize text-tinta-suave">{k.replaceAll("_", " ")}</dt>
@@ -47,14 +47,14 @@ export default function ToolFallback({ toolName, result }: ToolCallMessagePartPr
     if (Array.isArray(result) && result.length && typeof result[0] === "object") {
       return <ResultTable rows={result} />;
     }
-    return <p className="mt-1 text-[0.82rem] text-tinta">{String(result)}</p>;
+    return <p className="mt-1 text-sm text-tinta">{String(result)}</p>;
   }
 
   const r = result as Record<string, unknown>;
 
   if (toolName === "navegar_a" && r.navegado_a) {
     return (
-      <p className="mt-1 text-[0.82rem] text-tinta-suave">
+      <p className="mt-1 text-sm text-tinta-suave">
         → te llevé a <b className="text-tinta">{String(r.navegado_a)}</b>
       </p>
     );
@@ -69,7 +69,7 @@ export default function ToolFallback({ toolName, result }: ToolCallMessagePartPr
     return (
       <>
         {r.total_inmovilizado_listado != null && (
-          <p className="mt-1 text-[0.82rem] text-tinta">
+          <p className="mt-1 text-sm text-tinta">
             Total: <b>{peso(r.total_inmovilizado_listado as number)}</b>
           </p>
         )}

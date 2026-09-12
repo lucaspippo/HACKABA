@@ -37,7 +37,7 @@ export default function AssistantMessage({ onExecutingChange }: { onExecutingCha
         {hasVisibleBody({ partCount, noticeCount, isRunning }) && (
           <div
             aria-busy={isRunning}
-            className="rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-[0.95rem] leading-snug text-tinta sombra-papel"
+            className="rounded-2xl rounded-tl-md border border-linea bg-crema px-3.5 py-2.5 text-base leading-snug text-tinta sombra-papel"
           >
             {isRunning && <ThinkingIndicator startedAt={startedAt} />}
             {!noContentYet && (

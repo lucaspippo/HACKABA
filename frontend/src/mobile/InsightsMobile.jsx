@@ -60,7 +60,7 @@ function DeadlineChip({ urgency }) {
   const cls = DEADLINE_CHIP_CLS[urgency];
   if (!cls) return null;
   return (
-    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${cls}`}>
+    <span className={`ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${cls}`}>
       <CalendarClock size={10} /> {t(urgency === "overdue" ? "prioridades.overdue" : "prioridades.due_today")}
     </span>
   );
@@ -78,21 +78,21 @@ function Fila({ item, selected, onOpen }) {
       className="flex w-full items-start gap-3 border-b border-linea px-1 py-3 text-left last:border-0"
     >
       <span className="min-w-0 flex-1">
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${acc.cls}`}>
+        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-semibold ${acc.cls}`}>
           <Icon size={11} /> {item.chip}
         </span>
         {item.actionTaken && (
-          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-[0.68rem] font-semibold text-salvia">
+          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-salvia/12 px-2 py-0.5 text-2xs font-semibold text-salvia">
             <Check size={10} /> {t("prioridades.done")}
           </span>
         )}
         <DeadlineChip urgency={item.insight?.deadline?.urgency} />
-        <span className="mt-1 block text-[0.9rem] leading-snug text-tinta line-clamp-2">{item.titulo}</span>
+        <span className="mt-1 block text-sm leading-snug text-tinta line-clamp-2">{item.titulo}</span>
       </span>
       {item.monto ? (
-        <span className="plata mt-1 shrink-0 text-[0.95rem] font-medium text-tinta">{pesoCorto(item.monto)}</span>
+        <span className="plata mt-1 shrink-0 text-base font-medium text-tinta">{pesoCorto(item.monto)}</span>
       ) : item.cifraTexto ? (
-        <span className="plata mt-1 shrink-0 text-[0.9rem] text-tinta-suave">{item.cifraTexto}</span>
+        <span className="plata mt-1 shrink-0 text-sm text-tinta-suave">{item.cifraTexto}</span>
       ) : null}
     </button>
   );
@@ -199,7 +199,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
     <div className="space-y-5 pb-2">
       <header>
         <h1 className="font-display text-2xl font-bold leading-none">{t("nav.prioridades")}</h1>
-        <p className="mt-1 text-[0.9rem] text-tinta-suave">
+        <p className="mt-1 text-sm text-tinta-suave">
           {/* `badge`, not actRaw.length: `act` keeps executed cards visible
               (greyed out, stamped "Hecho") while the badge counts only open
               work — the header must agree with the sidebar, not with the row
@@ -231,7 +231,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       {vacio && (
         <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-8 text-center sombra-papel">
           <Radar size={22} className="mx-auto text-tinta-suave" />
-          <p className="mt-2 text-[0.95rem] text-tinta">
+          <p className="mt-2 text-base text-tinta">
             {data?.hay_ventas ? t("insights.vacio") : t("prioridades.sin_datos")}
           </p>
         </div>
@@ -247,7 +247,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
 
       {watch.length > 0 && (
         <section>
-          <h2 className="mb-2 text-[0.8rem] font-semibold uppercase tracking-wide text-oro-tinta">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-oro-tinta">
             {t("prioridades.watch")}
           </h2>
           <div className="overflow-hidden rounded-[var(--radius-card)] border border-oro/30 bg-crema px-3 sombra-papel">
@@ -259,7 +259,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
       )}
 
       {filtroVacio && (
-        <p className="px-2 py-6 text-center text-[0.88rem] text-tinta-suave">
+        <p className="px-2 py-6 text-center text-sm text-tinta-suave">
           {t("prioridades.filtro_vacio")}
         </p>
       )}
@@ -294,7 +294,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
               {abierta.chat && (
                 <button
                   onClick={() => { onPreguntar?.(abierta.chat); setAbiertaId(null); }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema"
                 >
                   <AngelaMark size={15} /> {t("insights.accionar_angela")}
                 </button>
@@ -302,7 +302,7 @@ export default function InsightsMobile({ onPreguntar, onNavegar }) {
               {abierta.navegar && (
                 <button
                   onClick={() => { onNavegar?.(abierta.navegar); setAbiertaId(null); }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta"
                 >
                   {t("insights.ver_analisis")} <ArrowRight size={13} />
                 </button>

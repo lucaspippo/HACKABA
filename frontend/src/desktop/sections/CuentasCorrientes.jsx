@@ -47,7 +47,7 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
         <HandCoins size={24} className="text-tinta-suave" />
         <div>
           <h1 className="font-display text-2xl font-bold leading-none">{t("cuentas.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("cuentas.subtitulo")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("cuentas.subtitulo")}</p>
         </div>
       </header>
 
@@ -56,11 +56,11 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
         <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-rojo/25 bg-rojo/[0.04] p-5">
           <AngelaMark size={34} />
           <div className="flex-1">
-            <p className="text-[1rem] leading-snug text-tinta">
+            <p className="text-base leading-snug text-tinta">
               <b>{peor.nombre}</b> {t("cuentas.mora_lleva")} <b>{t("cuentas.mora_dias", { dias: peor.dias_sin_pagar })}</b> {t("cuentas.mora_sin_pagar")} <b className="plata">{peso(peor.saldo)}</b>.
               {peor.atraso_vs_promedio > 0 && <> {t("cuentas.mora_historico", { promedio: peor.promedio_pago_dias })} <b>{t("cuentas.mora_pct_tarde", { pct: peor.atraso_vs_promedio })}</b> {t("cuentas.mora_que_promedio")}</>}
             </p>
-            <button onClick={() => setSel(peor)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema">
+            <button onClick={() => setSel(peor)} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
               <Send size={14} /> {t("cuentas.mandar_recordatorio")}
             </button>
           </div>
@@ -79,12 +79,12 @@ export default function CuentasCorrientes({ onPreguntar, highlight }) {
             className={`flex w-full items-center gap-4 rounded-[var(--radius-card)] border bg-crema p-4 text-left sombra-papel transition-colors hover:border-tinta/25 ${c.en_mora ? "border-rojo/30" : "border-linea"}`}>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-tinta">{c.nombre}</p>
-              <p className="text-[0.82rem] text-tinta-suave">
+              <p className="text-sm text-tinta-suave">
                 {c.saldo > 0 ? t("cuentas.fila_estado", { dias: c.dias_sin_pagar, plazo: c.plazo_dias }) : t("cuentas.al_dia")}
               </p>
             </div>
-            <span className={`rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>
-            <span className={`plata w-32 text-right text-[1.05rem] font-medium ${c.en_mora ? "text-rojo" : "text-tinta"}`}>{peso(c.saldo)}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>
+            <span className={`plata w-32 text-right text-lg font-medium ${c.en_mora ? "text-rojo" : "text-tinta"}`}>{peso(c.saldo)}</span>
           </button>
         ))}
       </div>
@@ -121,9 +121,9 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-display text-xl font-bold">{c.nombre}</h2>
-            <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[0.74rem] font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>
+            <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>
             {/* P25·B3 — el PORQUÉ del score, de los MISMOS campos que el chip */}
-            <p className="mt-1.5 max-w-sm text-[0.8rem] leading-snug text-tinta-suave">
+            <p className="mt-1.5 max-w-sm text-sm leading-snug text-tinta-suave">
               {c.en_mora
                 ? t("cuentas.score_expl_mora", { dias: c.dias_sin_pagar, plazo: c.plazo_dias,
                     atraso: c.atraso_vs_promedio, prom: c.promedio_pago_dias })
@@ -139,14 +139,14 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
           <Tarjeta label={t("cuentas.disponible")} valor={pesoCorto(c.disponible)} />
         </div>
 
-        <h3 className="mt-5 mb-2 text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cuentas.movimientos")}</h3>
+        <h3 className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("cuentas.movimientos")}</h3>
         <div className="space-y-1.5">
           {c.movimientos?.length ? c.movimientos.map((m, i) => (
-            <div key={i} className="flex justify-between border-b border-linea/60 py-1.5 text-[0.86rem]">
+            <div key={i} className="flex justify-between border-b border-linea/60 py-1.5 text-sm">
               <span className="text-tinta-suave">{m.fecha} · {m.tipo}</span>
               <span className="plata">{peso(m.monto)}</span>
             </div>
-          )) : <p className="text-[0.86rem] text-tinta-suave">{t("cuentas.sin_movimientos")}</p>}
+          )) : <p className="text-sm text-tinta-suave">{t("cuentas.sin_movimientos")}</p>}
         </div>
 
         {/* Recordatorio de cobro propuesto por Ángela (sale por WhatsApp) —
@@ -156,27 +156,27 @@ function DetalleCliente({ c, onClose, onPreguntar }) {
           <PanelDecision
             className="mt-4"
             impacto={copiado ? null : c.saldo}
-            extra={<span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>}
+            extra={<span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${SCORE[c.score].cls}`}>{t(SCORE[c.score].lk)}</span>}
             acciones={copiado ? null : (
               <>
-                <button onClick={copiarMensaje} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-1.5 text-[0.84rem] font-semibold text-crema"><Send size={14} /> {t("cuentas.copiar_mensaje")}</button>
-                <button onClick={() => setRecordatorio(null)} className="rounded-full border border-linea px-4 py-1.5 text-[0.84rem] font-semibold text-tinta-suave">{t("cuentas.cancelar")}</button>
+                <button onClick={copiarMensaje} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-1.5 text-sm font-semibold text-crema"><Send size={14} /> {t("cuentas.copiar_mensaje")}</button>
+                <button onClick={() => setRecordatorio(null)} className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">{t("cuentas.cancelar")}</button>
               </>
             )}
           >
-            <div className="flex items-center gap-2"><AngelaMark size={24} estado={copiado ? "idle" : "esperando"} /><span className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("cuentas.mensaje_propuesto")}</span></div>
-            <p className="mt-2 rounded-lg bg-papel-hondo/60 p-2.5 text-[0.88rem] italic text-tinta">"{recordatorio.mensaje}"</p>
+            <div className="flex items-center gap-2"><AngelaMark size={24} estado={copiado ? "idle" : "esperando"} /><span className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("cuentas.mensaje_propuesto")}</span></div>
+            <p className="mt-2 rounded-lg bg-papel-hondo/60 p-2.5 text-sm italic text-tinta">"{recordatorio.mensaje}"</p>
             {copiado && (
-              <p className="mt-2 inline-flex items-center gap-1.5 text-[0.84rem] font-semibold text-salvia"><Check size={15} /> {t("cuentas.mensaje_copiado")}</p>
+              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-salvia"><Check size={15} /> {t("cuentas.mensaje_copiado")}</p>
             )}
           </PanelDecision>
         )}
 
         <div className="mt-5 flex flex-wrap gap-2 border-t border-linea pt-4">
           {c.saldo > 0 && !recordatorio && (
-            <button onClick={proponerRecordatorio} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.85rem] font-semibold text-crema"><Send size={14} /> {t("cuentas.recordatorio_cobro")}</button>
+            <button onClick={proponerRecordatorio} className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema"><Send size={14} /> {t("cuentas.recordatorio_cobro")}</button>
           )}
-          <button onClick={() => { onPreguntar?.(t("cuentas.enviar_estado", { nombre: c.nombre })); onClose(); }} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta"><FileText size={14} /> {t("cuentas.estado_pdf")}</button>
+          <button onClick={() => { onPreguntar?.(t("cuentas.enviar_estado", { nombre: c.nombre })); onClose(); }} className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta"><FileText size={14} /> {t("cuentas.estado_pdf")}</button>
         </div>
       </div>
     </div>
@@ -187,7 +187,7 @@ function Tarjeta({ label, valor, acento }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
       <p className={`plata text-xl font-medium ${acento ? "text-rojo" : "text-tinta"}`}>{valor}</p>
-      <p className="text-[0.78rem] text-tinta-suave">{label}</p>
+      <p className="text-xs text-tinta-suave">{label}</p>
     </div>
   );
 }

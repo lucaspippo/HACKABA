@@ -33,14 +33,14 @@ function Vencimientos({ onPreguntar }) {
       <div className="flex flex-wrap items-center gap-3 border-b border-linea bg-rojo/[0.04] px-4 py-3">
         <CalendarX size={18} className="text-rojo" />
         <div className="min-w-0 flex-1">
-          <p className="font-display text-[1.05rem] font-bold leading-tight">
+          <p className="font-display text-lg font-bold leading-tight">
             {t("deposito.venc_riesgo_titulo", { n: num(v.lotes_en_riesgo) })}
           </p>
-          <p className="text-[0.82rem] text-tinta-suave">{t("deposito.venc_riesgo_sub", { dias: v.ventana_dias })}</p>
+          <p className="text-sm text-tinta-suave">{t("deposito.venc_riesgo_sub", { dias: v.ventana_dias })}</p>
         </div>
         <div className="shrink-0 text-right">
           <p className="plata text-xl font-medium text-rojo">{pesoCorto(v.total_en_riesgo)}</p>
-          <p className="text-[0.7rem] text-tinta-suave">{t("deposito.venc_riesgo_plata")}</p>
+          <p className="text-xs text-tinta-suave">{t("deposito.venc_riesgo_plata")}</p>
         </div>
       </div>
       {/* Seis columnas no entran en un celular: la tarjeta tiene
@@ -48,9 +48,9 @@ function Vencimientos({ onPreguntar }) {
           plata en riesgo, justo la que importa, no se veía). Ahora la tabla
           scrollea DENTRO de su tarjeta y no empuja la página. */}
       <div className="overflow-x-auto">
-      <table className="w-full min-w-[34rem] text-[0.85rem]">
+      <table className="w-full min-w-[34rem] text-sm">
         <thead>
-          <tr className="border-b border-linea text-[0.68rem] uppercase tracking-wide text-tinta-suave">
+          <tr className="border-b border-linea text-2xs uppercase tracking-wide text-tinta-suave">
             <th className="px-4 py-2 text-left font-semibold">{t("inventario.col_producto")}</th>
             <th className="px-3 py-2 text-right font-semibold">{t("deposito.venc_col_vence")}</th>
             <th className="px-3 py-2 text-right font-semibold">{t("deposito.venc_col_tenes")}</th>
@@ -64,7 +64,7 @@ function Vencimientos({ onPreguntar }) {
             <tr key={`${i.codigo}-${i.lote}`} className="border-b border-linea/60 last:border-0">
               <td className="px-4 py-2">
                 <p className="font-medium">{i.producto}</p>
-                <p className="text-[0.72rem] text-tinta-suave">{i.lote} · {i.ubicacion}</p>
+                <p className="text-xs text-tinta-suave">{i.lote} · {i.ubicacion}</p>
               </td>
               <td className={`plata px-3 py-2 text-right font-semibold ${i.dias_restantes <= 7 ? "text-rojo" : "text-oro-tinta"}`}>
                 {i.dias_restantes === 0 ? t("deposito.venc_hoy") : t("deposito.venc_dias", { n: num(i.dias_restantes) })}
@@ -83,24 +83,24 @@ function Vencimientos({ onPreguntar }) {
           <div className="flex items-start gap-3">
             <AngelaMark size={30} />
             <div className="min-w-0 flex-1">
-              <p className="font-display text-[0.98rem] font-bold leading-tight">{v.propuesta.titulo}</p>
-              <p className="mt-0.5 text-[0.86rem] leading-snug text-tinta">{v.propuesta.detalle}</p>
+              <p className="font-display text-base font-bold leading-tight">{v.propuesta.titulo}</p>
+              <p className="mt-0.5 text-sm leading-snug text-tinta">{v.propuesta.detalle}</p>
               {hecho ? (
-                <p className="mt-2.5 flex items-center gap-1.5 text-[0.85rem] font-semibold text-salvia">
+                <p className="mt-2.5 flex items-center gap-1.5 text-sm font-semibold text-salvia">
                   <Check size={15} /> {t("deposito.venc_prop_ok")}
                 </p>
               ) : (
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   <button onClick={aprobar}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-[0.84rem] font-semibold text-crema">
+                    className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-4 py-2 text-sm font-semibold text-crema">
                     <Check size={14} /> {t("cardneg.prop_aprobar")}
                   </button>
                   <button onClick={() => setPospuesto(true)}
-                    className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+                    className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                     {t("cardneg.prop_despues")}
                   </button>
                   <button onClick={() => onPreguntar?.(t("deposito.venc_preguntar"))}
-                    className="rounded-full border border-linea px-4 py-2 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+                    className="rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
                     {t("deposito.venc_otra_idea")}
                   </button>
                 </div>
@@ -109,7 +109,7 @@ function Vencimientos({ onPreguntar }) {
           </div>
         </div>
       )}
-      <p className="border-t border-linea px-4 py-2.5 text-[0.76rem] leading-snug text-tinta-suave">
+      <p className="border-t border-linea px-4 py-2.5 text-xs leading-snug text-tinta-suave">
         {t("deposito.venc_nota_captura")}
       </p>
     </div>
@@ -136,8 +136,8 @@ function AgingMercaderia({ aging }) {
   if (!totalU) return null;
   return (
     <div className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-      <p className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.aging_titulo")}</p>
-      <p className="mt-0.5 text-[0.82rem] text-tinta-suave">{t("deposito.aging_sub")}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.aging_titulo")}</p>
+      <p className="mt-0.5 text-sm text-tinta-suave">{t("deposito.aging_sub")}</p>
       <div className="mt-3 flex h-3 overflow-hidden rounded-full">
         {buckets.filter((b) => b.units > 0).map((b) => (
           <div key={b.bucket} className={AGING_COLOR[b.bucket]}
@@ -147,7 +147,7 @@ function AgingMercaderia({ aging }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4">
         {buckets.map((b) => (
-          <div key={b.bucket} className="flex items-baseline justify-between gap-2 text-[0.8rem]">
+          <div key={b.bucket} className="flex items-baseline justify-between gap-2 text-sm">
             <span className="flex items-center gap-1.5 text-tinta-suave">
               <span className={`h-2 w-2 rounded-full ${AGING_COLOR[b.bucket]}`} />
               {t(AGING_LABEL[b.bucket])}
@@ -205,7 +205,7 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold">{t("deposito.titulo")}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{t("deposito.subtitulo")}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{t("deposito.subtitulo")}</p>
         </div>
         {/* La carga por foto vivía sólo en "Cargar datos" y en el chat. Pero el
             remito llega ACÁ: cuando baja el camión, el encargado está en esta
@@ -218,13 +218,13 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
               remito y la voz. Ninguna de las dos pasa por el teclado. */}
           <button onClick={() => setVozAbierta(true)}
             className="inline-flex items-center gap-2 rounded-full border border-violeta/40
-                       bg-violeta-suave px-4 py-2 text-[0.86rem] font-semibold text-violeta-hondo
+                       bg-violeta-suave px-4 py-2 text-sm font-semibold text-violeta-hondo
                        hover:bg-violeta/15">
             <Mic size={16} /> {t("deposito.decirle")}
           </button>
           <button onClick={() => setFotoAbierta(true)}
             className="inline-flex items-center gap-2 rounded-full bg-violeta px-4 py-2
-                       text-[0.86rem] font-semibold text-crema hover:bg-violeta-hondo">
+                       text-sm font-semibold text-crema hover:bg-violeta-hondo">
             <Camera size={16} /> {t("deposito.cargar_remito")}
           </button>
         </div>
@@ -265,7 +265,7 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
                   imparFinal ? "col-span-2 sm:col-span-1" : ""} ${x.ir ? "hover:border-violeta/40" : ""}`}>
                 <Icon size={15} className={x.color} />
                 <p className={`plata mt-1 text-xl font-medium leading-none ${x.color}`}>{num(x.valor)}</p>
-                <p className="mt-1 text-[0.76rem] leading-snug text-tinta-suave">{t(x.lk)}</p>
+                <p className="mt-1 text-xs leading-snug text-tinta-suave">{t(x.lk)}</p>
               </Tag>
             );
           })}
@@ -275,7 +275,7 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
       <div className="flex gap-1.5 border-b border-linea">
         {[["vencimientos", "deposito.tab_vencimientos"], ["corregir", "deposito.tab_corregir"]].map(([id, lk]) => (
           <button key={id} onClick={() => setTab(id)}
-            className={`-mb-px border-b-2 px-1 py-2.5 text-[0.92rem] font-semibold transition-colors ${
+            className={`-mb-px border-b-2 px-1 py-2.5 text-sm font-semibold transition-colors ${
               tab === id ? "border-tinta text-tinta" : "border-transparent text-tinta-suave hover:text-tinta"
             }`}>
             {t(lk)}
@@ -292,14 +292,14 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
       {/* Vencidos + por vencer: mover primero (FIFO con datos reales) */}
       {hayWms && (wms.vencidos?.length > 0 || wms.vencimientos?.length > 0) && (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
-          <p className="border-b border-linea px-4 py-2.5 text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.venc_titulo")}</p>
+          <p className="border-b border-linea px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.venc_titulo")}</p>
           {[...(wms.vencidos || []), ...(wms.vencimientos || [])].slice(0, 12).map((f, i) => (
             <div key={`${f.codigo}-${f.lote}-${i}`} className="flex items-center justify-between gap-3 border-b border-linea px-4 py-2.5 last:border-0">
               <div className="min-w-0">
-                <p className="truncate text-[0.88rem] font-medium">{f.producto}</p>
-                <p className="text-[0.72rem] text-tinta-suave">{f.lote} · {f.ubicacion} · {num(f.cantidad)} u.</p>
+                <p className="truncate text-sm font-medium">{f.producto}</p>
+                <p className="text-xs text-tinta-suave">{f.lote} · {f.ubicacion} · {num(f.cantidad)} u.</p>
               </div>
-              <span className={`shrink-0 text-[0.8rem] font-semibold ${f.dias_vencido != null ? "text-rojo" : f.dias_restantes <= 3 ? "text-oro-tinta" : "text-tinta-suave"}`}>
+              <span className={`shrink-0 text-sm font-semibold ${f.dias_vencido != null ? "text-rojo" : f.dias_restantes <= 3 ? "text-oro-tinta" : "text-tinta-suave"}`}>
                 {f.dias_vencido != null
                   ? t("deposito.venc_vencido", { n: num(f.dias_vencido) })
                   : f.dias_restantes === 0
@@ -315,18 +315,18 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
       {hayWms && wms.discrepancias?.length > 0 && (
         <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
           <div className="flex items-center justify-between gap-3 border-b border-linea px-4 py-2.5">
-            <p className="text-[0.78rem] font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.disc_titulo")}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-tinta-suave">{t("deposito.disc_titulo")}</p>
             {onNavegar && (
               <button type="button" onClick={() => onNavegar("conciliacion")}
-                className="text-[0.78rem] font-semibold text-hielo">{t("nav.conciliacion")}</button>
+                className="text-xs font-semibold text-hielo">{t("nav.conciliacion")}</button>
             )}
           </div>
           {wms.discrepancias.slice(0, 8).map((d) => (
             <button key={d.codigo} type="button" onClick={() => onNavegar?.("conciliacion")}
               className="flex w-full items-center justify-between gap-3 border-b border-linea px-4 py-2.5 text-left last:border-0 hover:bg-papel">
-              <p className="min-w-0 flex-1 truncate text-[0.88rem] font-medium">{d.descripcion}</p>
-              <span className="plata shrink-0 text-[0.82rem] text-tinta-suave">{num(d.stock_contable)} → {num(d.stock_fisico)}</span>
-              <span className={`plata shrink-0 text-[0.84rem] font-semibold ${d.diferencia < 0 ? "text-rojo" : "text-salvia"}`}>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium">{d.descripcion}</p>
+              <span className="plata shrink-0 text-sm text-tinta-suave">{num(d.stock_contable)} → {num(d.stock_fisico)}</span>
+              <span className={`plata shrink-0 text-sm font-semibold ${d.diferencia < 0 ? "text-rojo" : "text-salvia"}`}>
                 {d.diferencia > 0 ? "+" : ""}{num(d.diferencia)}
               </span>
             </button>
@@ -341,9 +341,9 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
         <div className="rounded-[var(--radius-card)] border border-dashed border-linea bg-papel-hondo/40 p-4">
           <div className="flex items-center gap-2 text-tinta-suave">
             <Lock size={15} />
-            <p className="text-[0.9rem] font-semibold">{t("deposito.fifo_titulo")}</p>
+            <p className="text-sm font-semibold">{t("deposito.fifo_titulo")}</p>
           </div>
-          <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">
+          <p className="mt-1.5 text-sm leading-snug text-tinta-suave">
             {t("deposito.fifo_detalle")}
           </p>
         </div>
@@ -358,7 +358,7 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
         >
           <PackageX size={18} className="text-rojo" />
           <p className="plata mt-1.5 text-2xl font-medium">{num(a.fantasmas.cantidad)}</p>
-          <p className="text-[0.82rem] text-tinta-suave">{t("deposito.fantasmas")}</p>
+          <p className="text-sm text-tinta-suave">{t("deposito.fantasmas")}</p>
         </button>
         <button
           onClick={() => setGrupo("negativos")}
@@ -366,21 +366,21 @@ export default function Deposito({ data, onPreguntar, onNavegar }) {
         >
           <AlertOctagon size={18} className="text-rojo" />
           <p className="plata mt-1.5 text-2xl font-medium">{num(a.negativos.cantidad)}</p>
-          <p className="text-[0.82rem] text-tinta-suave">{t("deposito.negativos")}</p>
+          <p className="text-sm text-tinta-suave">{t("deposito.negativos")}</p>
         </button>
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
         {errorCarga && (
-          <p className="p-4 text-[0.88rem] text-tinta-suave">{t("deposito.error_carga")}</p>
+          <p className="p-4 text-sm text-tinta-suave">{t("deposito.error_carga")}</p>
         )}
         {items.map((p, i) => (
           <div key={`${p.codigo}-${i}`} className="flex items-center justify-between gap-3 border-b border-linea px-4 py-2.5 last:border-0">
             <div className="min-w-0">
-              <p className="truncate text-[0.88rem] font-medium">{p.descripcion}</p>
-              <p className="text-[0.72rem] text-tinta-suave">{t("deposito.cod", { codigo: p.codigo })}</p>
+              <p className="truncate text-sm font-medium">{p.descripcion}</p>
+              <p className="text-xs text-tinta-suave">{t("deposito.cod", { codigo: p.codigo })}</p>
             </div>
-            <span className={`plata shrink-0 text-[0.86rem] font-medium ${grupo === "negativos" ? "text-rojo" : "text-tinta-suave"}`}>
+            <span className={`plata shrink-0 text-sm font-medium ${grupo === "negativos" ? "text-rojo" : "text-tinta-suave"}`}>
               {t("deposito.unidades", { n: num(p.stock) })}
             </span>
           </div>

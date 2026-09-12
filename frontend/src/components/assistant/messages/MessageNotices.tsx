@@ -22,7 +22,7 @@ export default function MessageNotices() {
         return (
           <p
             key={i}
-            className="flex items-start gap-2 rounded-xl border border-oro/40 bg-oro/5 px-2.5 py-1.5 text-[0.78rem] leading-snug text-oro-tinta"
+            className="flex items-start gap-2 rounded-xl border border-oro/40 bg-oro/5 px-2.5 py-1.5 text-xs leading-snug text-oro-tinta"
           >
             <AlertCircle size={14} className="mt-0.5 shrink-0" />
             <span>{text === key ? t("chat.notice.generico") : text}</span>

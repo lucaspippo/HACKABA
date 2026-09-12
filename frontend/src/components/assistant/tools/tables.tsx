@@ -53,7 +53,7 @@ function SortableTable({
 
   return (
     <div className="mt-1.5 overflow-x-auto rounded-xl border border-linea">
-      <table className="w-full text-left text-[0.78rem]">
+      <table className="w-full text-left text-xs">
         <thead>
           <tr className="border-b border-linea bg-papel/60">
             {columns.map((column) => {
@@ -93,7 +93,7 @@ function SortableTable({
         </tbody>
       </table>
       {rows.length > limit && (
-        <p className="border-t border-linea px-2.5 py-1 text-[0.72rem] text-tinta-suave">
+        <p className="border-t border-linea px-2.5 py-1 text-xs text-tinta-suave">
           {t("toolui.tabla.mas", { n: String(rows.length - limit) })}
         </p>
       )}
@@ -137,7 +137,7 @@ export function AccountsReceivable({ result }: ToolRenderProps) {
 
   if (data.encontrado === false) {
     return (
-      <p className="mt-1 text-[0.82rem] text-tinta-suave">
+      <p className="mt-1 text-sm text-tinta-suave">
         {t("toolui.cuentas.no_encontrado", { cliente: data.cliente ?? "" })}
       </p>
     );
@@ -205,7 +205,7 @@ export function ItemGroupTable({ result }: ToolRenderProps) {
   return (
     <div className="mt-1.5">
       {data.total_inmovilizado_listado != null && (
-        <p className="text-[0.82rem] text-tinta">
+        <p className="text-sm text-tinta">
           {t("toolui.items.total")}: <b className="plata">{peso(data.total_inmovilizado_listado)}</b>
         </p>
       )}

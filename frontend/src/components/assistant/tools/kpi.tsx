@@ -21,8 +21,8 @@ export function Tile({
 }) {
   return (
     <div className="rounded-xl border border-linea bg-papel/50 px-3 py-2">
-      <p className={`plata text-[1.05rem] font-medium leading-none ${tone}`}>{value}</p>
-      <p className="mt-1 text-[0.72rem] leading-snug text-tinta-suave">{label}</p>
+      <p className={`plata text-lg font-medium leading-none ${tone}`}>{value}</p>
+      <p className="mt-1 text-xs leading-snug text-tinta-suave">{label}</p>
     </div>
   );
 }
@@ -45,7 +45,7 @@ export function CashDrawerTile({ result }: ToolRenderProps) {
   return (
     <div className="mt-1.5">
       <span
-        className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${
+        className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
           data.abierta ? "bg-salvia/12 text-salvia" : "bg-papel-hondo text-tinta-suave"
         }`}
       >
@@ -58,7 +58,7 @@ export function CashDrawerTile({ result }: ToolRenderProps) {
         <Tile label={t("toolui.caja.saldo_inicial")} value={peso(data.saldo_inicial || 0)} />
       </div>
       {byMethod.length > 0 && (
-        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[0.78rem]">
+        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
           {byMethod.map(([method, amount]) => (
             <div key={method} className="flex items-center gap-1.5">
               <dt className="capitalize text-tinta-suave">{method.replaceAll("_", " ")}</dt>
@@ -111,7 +111,7 @@ export function BusinessSummary({ result }: ToolRenderProps) {
     <div className="mt-1.5">
       {summary.salud?.label && (
         <span
-          className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[0.72rem] font-semibold ${healthTone(summary.salud.nivel)}`}
+          className={`mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${healthTone(summary.salud.nivel)}`}
         >
           {summary.salud.label}
         </span>
@@ -135,7 +135,7 @@ export function BusinessSummary({ result }: ToolRenderProps) {
           {alerts.map(([key, alert]) => (
             <span
               key={key}
-              className="inline-flex items-center gap-1 rounded-full border border-linea px-2 py-1 text-[0.74rem] text-tinta-suave"
+              className="inline-flex items-center gap-1 rounded-full border border-linea px-2 py-1 text-xs text-tinta-suave"
             >
               {t(ALERT_LABEL_KEYS[key] || key)} <b className="text-tinta">{num(alert?.cantidad || 0)}</b>
               {alert?.impacto_pesos ? <span> · {peso(alert.impacto_pesos)}</span> : null}

@@ -623,19 +623,19 @@ function NodoDominio({ data }) {
           <Icon size={26} className="text-tinta" />
         </div>
         {data.nHallazgos > 0 && (
-          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violeta px-1 text-[0.66rem] font-bold text-crema"
+          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-violeta px-1 text-2xs font-bold text-crema"
             title={`${data.nHallazgos}`}>
             {data.nHallazgos}
           </span>
         )}
         {data.nConocimiento > 0 && (
-          <span className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center gap-0.5 rounded-full px-1 text-[0.66rem] font-bold text-crema sombra-papel"
+          <span className="absolute -left-1 -top-1 flex h-5 min-w-5 items-center gap-0.5 rounded-full px-1 text-2xs font-bold text-crema sombra-papel"
             style={{ background: K_COLOR }} title={`${data.nConocimiento}`}>
             <GraduationCap size={11} /> {data.nConocimiento}
           </span>
         )}
         {data.bombilla && (
-          <span className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-violeta px-2 py-0.5 text-[0.68rem] font-bold text-crema sombra-alta">
+          <span className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-violeta px-2 py-0.5 text-2xs font-bold text-crema sombra-alta">
             <Lightbulb size={11} /> {data.bombilla}
           </span>
         )}
@@ -651,8 +651,8 @@ function NodoDominio({ data }) {
           </button>
         )}
       </div>
-      <p className="mt-2 font-display text-[0.86rem] font-bold leading-tight">{data.label}</p>
-      <p className="plata text-[0.74rem] leading-tight text-tinta-suave">{data.dato}</p>
+      <p className="mt-2 font-display text-sm font-bold leading-tight">{data.label}</p>
+      <p className="plata text-xs leading-tight text-tinta-suave">{data.dato}</p>
     </div>
   );
 }
@@ -674,15 +674,15 @@ function NodoSub({ data }) {
           ? <Store size={18} className="text-hielo" />
           : vacio && data.vacioBueno
           ? <Check size={18} className="text-salvia" />
-          : <span className={`font-display text-[0.72rem] font-bold ${vacio ? "text-tinta-suave" : ""}`}>{data.inicial}</span>}
+          : <span className={`font-display text-xs font-bold ${vacio ? "text-tinta-suave" : ""}`}>{data.inicial}</span>}
       </div>
-      <p className={`mt-1 text-[0.68rem] font-semibold leading-tight ${vacio ? "text-tinta-suave" : ""}`}>{data.label}</p>
+      <p className={`mt-1 text-2xs font-semibold leading-tight ${vacio ? "text-tinta-suave" : ""}`}>{data.label}</p>
       {data.esLocalPropio && (
-        <span className="mt-0.5 rounded-full bg-hielo/12 px-1.5 py-px text-[0.56rem] font-bold uppercase tracking-wide text-hielo">
+        <span className="mt-0.5 rounded-full bg-hielo/12 px-1.5 py-px text-2xs font-bold uppercase tracking-wide text-hielo">
           {data.badge}
         </span>
       )}
-      {data.dato && <p className="plata text-[0.66rem] leading-tight text-tinta-suave">{data.dato}</p>}
+      {data.dato && <p className="plata text-2xs leading-tight text-tinta-suave">{data.dato}</p>}
     </div>
   );
 }
@@ -700,8 +700,8 @@ function NodoConocimiento({ data }) {
           transform: data.enCamino ? "scale(1.08)" : "none", transition: "transform .2s ease" }}>
         <GraduationCap size={24} style={{ color: K_COLOR }} />
       </div>
-      <p className="mt-1 text-[0.66rem] font-bold leading-tight" style={{ color: K_COLOR }}>{data.etiqueta}</p>
-      {data.texto && <p className="mt-0.5 max-w-[128px] text-[0.6rem] leading-tight text-tinta-suave line-clamp-2">{data.texto}</p>}
+      <p className="mt-1 text-2xs font-bold leading-tight" style={{ color: K_COLOR }}>{data.etiqueta}</p>
+      {data.texto && <p className="mt-0.5 max-w-[128px] text-2xs leading-tight text-tinta-suave line-clamp-2">{data.texto}</p>}
     </div>
   );
 }
@@ -720,14 +720,14 @@ function NodoMemory({ data }) {
           <Brain size={40} style={{ color: K_COLOR }} />
         </div>
         {data.total > 0 && (
-          <span className="absolute -right-2 -top-2 grid h-7 min-w-[28px] place-items-center rounded-full px-1.5 text-[0.8rem] font-bold text-crema sombra-papel"
+          <span className="absolute -right-2 -top-2 grid h-7 min-w-[28px] place-items-center rounded-full px-1.5 text-sm font-bold text-crema sombra-papel"
             style={{ background: K_COLOR }} title={`${data.total}`}>
             {data.total}
           </span>
         )}
       </div>
-      <p className="mt-2 font-display text-[0.9rem] font-bold leading-tight" style={{ color: K_COLOR }}>{data.label}</p>
-      <p className="plata text-[0.68rem] leading-tight text-tinta-suave">{data.dato}</p>
+      <p className="mt-2 font-display text-sm font-bold leading-tight" style={{ color: K_COLOR }}>{data.label}</p>
+      <p className="plata text-2xs leading-tight text-tinta-suave">{data.dato}</p>
     </div>
   );
 }
@@ -740,7 +740,7 @@ function NodoCorte({ data }) {
     <div className={`rf-suave w-[126px] ${data.apagado ? "rf-apagado" : ""}`}>
       <HandlesOcultos />
       <div className="rounded-full border border-linea bg-crema px-2.5 py-1.5 text-center sombra-papel transition-colors hover:border-hielo/60">
-        <p className="text-[0.66rem] font-semibold leading-tight text-tinta">{data.label}</p>
+        <p className="text-2xs font-semibold leading-tight text-tinta">{data.label}</p>
       </div>
     </div>
   );
@@ -1071,9 +1071,9 @@ function PiezaK({ p, lang, t, nodoLabel, onNavegar, onVer }) {
       style={prof ? { borderColor: "var(--color-linea)", borderLeftColor: K_COLOR } : { borderColor: "var(--color-linea)" }}>
       <div className="flex items-start gap-1.5">
         <Icon size={13} className="mt-0.5 shrink-0" style={{ color: prof ? K_COLOR : "var(--color-tinta-suave)" }} />
-        <p className={`text-[0.78rem] leading-snug ${prof ? "text-tinta" : "text-tinta-suave"}`}>{textoPieza(p, lang)}</p>
+        <p className={`text-xs leading-snug ${prof ? "text-tinta" : "text-tinta-suave"}`}>{textoPieza(p, lang)}</p>
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[19px] text-[0.66rem]">
+      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[19px] text-2xs">
         {prof ? (
           <>
             <span className="font-semibold" style={{ color: K_COLOR }}>{t("mapa.k_aplicada", { n: p.veces_aplicada })}</span>
@@ -1099,7 +1099,7 @@ function PiezaK({ p, lang, t, nodoLabel, onNavegar, onVer }) {
 function ConocimientoNodo({ piezas, nodoLabel, t, onNavegar }) {
   const lang = useLang();
   const [verTodo, setVerTodo] = useState(false);
-  if (!piezas.length) return <p className="text-[0.78rem] text-tinta-suave">{t("mapa.k_vacio")}</p>;
+  if (!piezas.length) return <p className="text-xs text-tinta-suave">{t("mapa.k_vacio")}</p>;
   const mostradas = verTodo ? piezas : piezas.slice(0, 3);
   const restantes = piezas.length - mostradas.length;
   // agrupar las mostradas por tipo, respetando el orden (profundas primero)
@@ -1109,14 +1109,14 @@ function ConocimientoNodo({ piezas, nodoLabel, t, onNavegar }) {
     <div className="space-y-2">
       {["regla", "excepcion", "protocolo", "contexto"].filter((tp) => grupos[tp]).map((tp) => (
         <div key={tp} className="space-y-1">
-          <p className="text-[0.64rem] font-semibold uppercase tracking-wide text-tinta-suave">{t(K_TIPO_LABEL[tp])}</p>
+          <p className="text-2xs font-semibold uppercase tracking-wide text-tinta-suave">{t(K_TIPO_LABEL[tp])}</p>
           {grupos[tp].map((p) => (
             <PiezaK key={p.id} p={p} lang={lang} t={t} nodoLabel={nodoLabel} onNavegar={onNavegar} />
           ))}
         </div>
       ))}
       {(restantes > 0 || verTodo) && (
-        <button onClick={() => setVerTodo((v) => !v)} className="text-[0.72rem] font-semibold text-hielo hover:underline">
+        <button onClick={() => setVerTodo((v) => !v)} className="text-xs font-semibold text-hielo hover:underline">
           {verTodo ? t("mapa.k_ver_menos") : t("mapa.k_ver_restantes", { n: restantes })}
         </button>
       )}
@@ -1158,25 +1158,25 @@ function PendingKnowledgeQueue({ t }) {
   if (!pieces || pieces.length === 0) return null;
   return (
     <div className="border-b border-linea bg-violeta/[0.04] px-5 py-3">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-violeta">
+      <p className="text-xs font-semibold uppercase tracking-wide text-violeta">
         {t("conocimiento_pendiente.titulo")} · {pieces.length}
       </p>
       <div className="mt-2 space-y-1.5">
         {pieces.map((p) => (
           <div key={p.id} className="rounded-lg border border-violeta/20 bg-crema px-3 py-2">
-            <p className="text-[0.82rem] leading-snug text-tinta">{p.texto}</p>
+            <p className="text-sm leading-snug text-tinta">{p.texto}</p>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              <span className="text-[0.68rem] text-tinta-suave">
+              <span className="text-2xs text-tinta-suave">
                 {t(DOMINIOS[p.nodo]?.lk || p.nodo)}
                 {p.origen?.quien && ` · ${t("conocimiento_pendiente.propuesto_por", { actor: p.origen.quien })}`}
               </span>
               <div className="ml-auto flex gap-1.5">
                 <button onClick={() => review(p.id, "reject")} disabled={actionInFlight === p.id}
-                  className="rounded-full border border-linea px-2.5 py-1 text-[0.72rem] font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
+                  className="rounded-full border border-linea px-2.5 py-1 text-xs font-semibold text-tinta-suave hover:text-tinta disabled:opacity-50">
                   {t("conocimiento_pendiente.rechazar")}
                 </button>
                 <button onClick={() => review(p.id, "approve")} disabled={actionInFlight === p.id}
-                  className="inline-flex items-center gap-1 rounded-full bg-violeta px-2.5 py-1 text-[0.72rem] font-semibold text-crema disabled:opacity-50">
+                  className="inline-flex items-center gap-1 rounded-full bg-violeta px-2.5 py-1 text-xs font-semibold text-crema disabled:opacity-50">
                   {actionInFlight === p.id ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
                   {t("conocimiento_pendiente.aprobar")}
                 </button>
@@ -1203,17 +1203,17 @@ function PanelConocimientoFull({ conocimiento, t, onNavegar, onCerrar }) {
   if (fTipo === "ctx") vis = vis.filter((p) => !p.profunda);
   if (fNodo) vis = vis.filter((p) => p.nodo === fNodo);
   const Chip = ({ activo, onClick, children }) => (
-    <button onClick={onClick} className={`rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold ${activo ? "border-tinta bg-tinta text-crema" : "border-linea text-tinta-suave hover:border-tinta/40"}`}>{children}</button>
+    <button onClick={onClick} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${activo ? "border-tinta bg-tinta text-crema" : "border-linea text-tinta-suave hover:border-tinta/40"}`}>{children}</button>
   );
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-tinta/40 p-4 backdrop-blur-sm" onClick={onCerrar}>
       <div className="flex max-h-[85dvh] w-full max-w-2xl flex-col rounded-2xl border border-linea bg-crema sombra-alta" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-2 border-b border-linea p-5 pb-3">
           <div>
-            <h3 className="flex items-center gap-2 font-display text-[1.1rem] font-bold" style={{ color: K_COLOR }}>
+            <h3 className="flex items-center gap-2 font-display text-lg font-bold" style={{ color: K_COLOR }}>
               <GraduationCap size={18} /> {t("mapa.kpanel_titulo")}
             </h3>
-            <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{t("mapa.kpanel_sub", { total: conocimiento.total, hoy: conocimiento.aplicadasHoy })}</p>
+            <p className="mt-0.5 text-sm text-tinta-suave">{t("mapa.kpanel_sub", { total: conocimiento.total, hoy: conocimiento.aplicadasHoy })}</p>
           </div>
           <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={18} /></button>
         </div>
@@ -1228,7 +1228,7 @@ function PanelConocimientoFull({ conocimiento, t, onNavegar, onCerrar }) {
           ))}
         </div>
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 pb-5">
-          {vis.length === 0 && <p className="text-[0.82rem] text-tinta-suave">{t("mapa.kpanel_vacio")}</p>}
+          {vis.length === 0 && <p className="text-sm text-tinta-suave">{t("mapa.kpanel_vacio")}</p>}
           {vis.map((p) => (
             <PiezaK key={p.id} p={p} lang={lang} t={t} nodoLabel={t(DOMINIOS[p.nodo]?.lk || p.nodo)} onNavegar={(sec) => { onCerrar(); onNavegar?.(sec); }} />
           ))}
@@ -1243,7 +1243,7 @@ function SeccionPanel({ titulo, n, abierta, onToggle, accent, children }) {
   return (
     <div className="mt-3 border-t border-linea pt-2.5 first:mt-0 first:border-0 first:pt-0">
       <button onClick={onToggle} className="flex w-full items-center justify-between gap-2 text-left">
-        <span className="flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-wide"
+        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide"
           style={{ color: accent || "var(--color-tinta-suave)" }}>
           {titulo}{n != null && <span className="text-tinta-suave">· {n}</span>}
         </span>
@@ -1285,11 +1285,11 @@ function MemDocItem({ f, t, onNavegar }) {
     <div className="rounded-lg border border-linea bg-papel px-2.5 py-1.5">
       <div className="flex items-start gap-1.5">
         <FileText size={13} className="mt-0.5 shrink-0 text-hielo" />
-        <p className="text-[0.78rem] leading-snug text-tinta">{_memDocTexto(f, t)}</p>
+        <p className="text-xs leading-snug text-tinta">{_memDocTexto(f, t)}</p>
       </div>
       {sec && (
         <div className="mt-1 pl-[19px]">
-          <button onClick={() => onNavegar?.(sec)} className="inline-flex items-center gap-0.5 text-[0.66rem] text-hielo hover:underline">
+          <button onClick={() => onNavegar?.(sec)} className="inline-flex items-center gap-0.5 text-2xs text-hielo hover:underline">
             {t("mapa.mem_ver_origen")} <ArrowRight size={10} />
           </button>
         </div>
@@ -1310,9 +1310,9 @@ function MemDecItem({ f, t, onNavegar }) {
     <div className="rounded-lg border border-l-[3px] border-linea bg-papel px-2.5 py-1.5" style={{ borderLeftColor: K_COLOR }}>
       <div className="flex items-start gap-1.5">
         <Check size={13} className="mt-0.5 shrink-0" style={{ color: K_COLOR }} />
-        <p className="text-[0.78rem] leading-snug text-tinta">{_memDecLabel(f, t)}</p>
+        <p className="text-xs leading-snug text-tinta">{_memDecLabel(f, t)}</p>
       </div>
-      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[19px] text-[0.66rem]">
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 pl-[19px] text-2xs">
         {numerico
           ? <span className="font-semibold" style={{ color: K_COLOR }}>{t("mapa.mem_dec_stats", { fixed, left: despues })}</span>
           : <span className="font-semibold text-tinta-suave">{String(_primerValor(f.detalle?.antes))} → {String(_primerValor(f.detalle?.despues))}</span>}
@@ -1354,11 +1354,11 @@ function MemoriaPanel({ memoria, t, onNavegar, onPreguntar, onCerrar, onVerRegla
           <span className="grid h-8 w-8 place-items-center rounded-xl border-2" style={{ background: "#fbf3e4", borderColor: K_COLOR }}>
             <Brain size={17} style={{ color: K_COLOR }} />
           </span>
-          <h3 className="font-display text-[1rem] font-bold leading-tight" style={{ color: K_COLOR }}>{t("mapa.memoria_label")}</h3>
+          <h3 className="font-display text-base font-bold leading-tight" style={{ color: K_COLOR }}>{t("mapa.memoria_label")}</h3>
         </div>
         <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
-      <p className="mt-1 text-[0.78rem] leading-snug text-tinta-suave">{t("mapa.mem_intro")}</p>
+      <p className="mt-1 text-xs leading-snug text-tinta-suave">{t("mapa.mem_intro")}</p>
 
       <SeccionPanel titulo={t("mapa.mem_cap_reglas")} n={memoria.total} accent={K_COLOR} abierta={ab.reglas} onToggle={() => tog("reglas")}>
         {!verTodas ? (
@@ -1367,7 +1367,7 @@ function MemoriaPanel({ memoria, t, onNavegar, onPreguntar, onCerrar, onVerRegla
               <PiezaK key={p.id} p={p} lang={lang} t={t} nodoLabel={t(DOMINIOS[p.nodo]?.lk || p.nodo)}
                 onNavegar={onNavegar} onVer={onVerRegla} />
             ))}
-            <button onClick={() => setVerTodas(true)} className="text-[0.72rem] font-semibold text-hielo hover:underline">
+            <button onClick={() => setVerTodas(true)} className="text-xs font-semibold text-hielo hover:underline">
               {t("mapa.mem_ver_todas", { n: memoria.total })}
             </button>
           </div>
@@ -1375,14 +1375,14 @@ function MemoriaPanel({ memoria, t, onNavegar, onPreguntar, onCerrar, onVerRegla
           <div className="space-y-2">
             {["regla", "excepcion", "protocolo", "contexto"].filter((tp) => grupos[tp]).map((tp) => (
               <div key={tp} className="space-y-1">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-wide text-tinta-suave">{t(K_TIPO_LABEL[tp])} · {grupos[tp].length}</p>
+                <p className="text-2xs font-semibold uppercase tracking-wide text-tinta-suave">{t(K_TIPO_LABEL[tp])} · {grupos[tp].length}</p>
                 {grupos[tp].map((p) => (
                   <PiezaK key={p.id} p={p} lang={lang} t={t} nodoLabel={t(DOMINIOS[p.nodo]?.lk || p.nodo)}
                     onNavegar={onNavegar} onVer={onVerRegla} />
                 ))}
               </div>
             ))}
-            <button onClick={() => setVerTodas(false)} className="text-[0.72rem] font-semibold text-hielo hover:underline">
+            <button onClick={() => setVerTodas(false)} className="text-xs font-semibold text-hielo hover:underline">
               {t("mapa.k_ver_menos")}
             </button>
           </div>
@@ -1392,19 +1392,19 @@ function MemoriaPanel({ memoria, t, onNavegar, onPreguntar, onCerrar, onVerRegla
       <SeccionPanel titulo={t("mapa.mem_cap_docs")} n={memoria.docs} accent={K_COLOR} abierta={ab.docs} onToggle={() => tog("docs")}>
         <div className="space-y-1.5">
           {memoria.docsItems.map((f, i) => <MemDocItem key={i} f={f} t={t} onNavegar={onNavegar} />)}
-          {!memoria.docsItems.length && <p className="text-[0.76rem] text-tinta-suave">{t("mapa.mem_vacio")}</p>}
+          {!memoria.docsItems.length && <p className="text-xs text-tinta-suave">{t("mapa.mem_vacio")}</p>}
         </div>
       </SeccionPanel>
 
       <SeccionPanel titulo={t("mapa.mem_cap_dec")} n={memoria.decisiones} accent={K_COLOR} abierta={ab.dec} onToggle={() => tog("dec")}>
         <div className="space-y-1.5">
           {memoria.decisionesItems.map((f, i) => <MemDecItem key={i} f={f} t={t} onNavegar={onNavegar} />)}
-          {!memoria.decisionesItems.length && <p className="text-[0.76rem] text-tinta-suave">{t("mapa.mem_vacio")}</p>}
+          {!memoria.decisionesItems.length && <p className="text-xs text-tinta-suave">{t("mapa.mem_vacio")}</p>}
         </div>
       </SeccionPanel>
 
       <SeccionPanel titulo={t("mapa.mem_cap_traza")} accent={K_COLOR} abierta={ab.traza} onToggle={() => tog("traza")}>
-        <p className="text-[0.76rem] leading-snug text-tinta-suave">
+        <p className="text-xs leading-snug text-tinta-suave">
           {t("mapa.mem_traza", { reglas: reglasConLink, docs: memoria.docs, dec: memoria.decisiones })}
         </p>
       </SeccionPanel>
@@ -1452,17 +1452,17 @@ export function HallazgoChip({ h, onVer }) {
       className="flex w-full items-start gap-2 rounded-xl border border-linea bg-papel px-3 py-2 text-left transition-colors hover:border-violeta/40">
       <Icon size={14} className={`mt-0.5 shrink-0 ${c.cls}`} />
       <span className="min-w-0 flex-1">
-        <span className="block text-[0.78rem] font-semibold leading-tight">{h.titulo}</span>
+        <span className="block text-xs font-semibold leading-tight">{h.titulo}</span>
         {h.conocimiento?.length > 0 && (
-          <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[0.58rem] font-bold"
+          <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-2xs font-bold"
             style={{ background: `${K_COLOR}1a`, color: K_COLOR }}>
             <GraduationCap size={9} /> {t("mapa.chip_mas_regla")}
           </span>
         )}
         {h.monto != null && (
           <span className="mt-0.5 flex items-baseline gap-1.5">
-            <span className="plata text-[0.78rem] font-semibold text-tinta">{pesoCorto(h.monto)}</span>
-            {h.tipo === "riesgo" && <span className="text-[0.6rem] font-semibold uppercase tracking-wide text-oro-tinta">{t("mapa.chip_exposicion")}</span>}
+            <span className="plata text-xs font-semibold text-tinta">{pesoCorto(h.monto)}</span>
+            {h.tipo === "riesgo" && <span className="text-2xs font-semibold uppercase tracking-wide text-oro-tinta">{t("mapa.chip_exposicion")}</span>}
           </span>
         )}
       </span>
@@ -1511,7 +1511,7 @@ function NodoDetalle({ insight, onNavegar, onPreguntar, onCerrar, t, flotante })
           <span className="grid h-8 w-8 place-items-center rounded-full border border-linea bg-papel">
             <Icon size={16} />
           </span>
-          <h3 className="font-display text-[1rem] font-bold leading-tight">{insight.titulo}</h3>
+          <h3 className="font-display text-base font-bold leading-tight">{insight.titulo}</h3>
           <span className={`h-2 w-2 rounded-full ${punto}`} />
         </div>
         <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
@@ -1520,10 +1520,10 @@ function NodoDetalle({ insight, onNavegar, onPreguntar, onCerrar, t, flotante })
       <SeccionPanel titulo={t("mapa.sec_conclusiones")} abierta={abierto.ver} onToggle={() => tog("ver")}>
         <div className="space-y-1.5">
           {conclusiones.map((c, i) => (
-            <p key={i} className="text-[0.84rem] leading-snug text-tinta">· {c}</p>
+            <p key={i} className="text-sm leading-snug text-tinta">· {c}</p>
           ))}
           {conclusiones.length === 0 && (
-            <p className="text-[0.82rem] text-tinta-suave">{t("mapa.sin_conclusiones")}</p>
+            <p className="text-sm text-tinta-suave">{t("mapa.sin_conclusiones")}</p>
           )}
         </div>
       </SeccionPanel>
@@ -1553,7 +1553,7 @@ function NodoDetalle({ insight, onNavegar, onPreguntar, onCerrar, t, flotante })
       {/* El detalle completo es opcional y va ÚLTIMO: el nodo primero informa. */}
       <div className="mt-3 border-t border-linea pt-3">
         <button onClick={() => onNavegar?.(insight.seccion, insight.hl)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold text-tinta hover:border-tinta/30">
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta hover:border-tinta/30">
           {t("mapa.ir_a", { seccion: t(`nav.${insight.seccion}`) })} <ArrowRight size={13} />
         </button>
       </div>
@@ -1570,11 +1570,11 @@ function PreguntarAqui({ prompt, onPreguntar, t }) {
     <div className="mt-3 rounded-xl border border-violeta/20 bg-violeta/[0.04] p-2.5">
       <div className="flex items-center gap-1.5">
         <AngelaMark size={16} />
-        <p className="text-[0.72rem] font-semibold uppercase tracking-wide text-violeta">{t("mapa.preguntar_aqui")}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-violeta">{t("mapa.preguntar_aqui")}</p>
       </div>
       {prompt && (
         <button onClick={() => onPreguntar?.(prompt)}
-          className="mt-1.5 w-full rounded-lg border border-linea bg-crema px-2.5 py-1.5 text-left text-[0.76rem] leading-snug text-tinta hover:border-violeta/40">
+          className="mt-1.5 w-full rounded-lg border border-linea bg-crema px-2.5 py-1.5 text-left text-xs leading-snug text-tinta hover:border-violeta/40">
           {prompt}
         </button>
       )}
@@ -1582,7 +1582,7 @@ function PreguntarAqui({ prompt, onPreguntar, t }) {
         <input value={q} onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && mandar()}
           placeholder={t("mapa.preguntar_ph")}
-          className="min-w-0 flex-1 rounded-full border border-linea bg-crema px-3 py-1.5 text-[0.76rem] outline-none focus:border-violeta/40" />
+          className="min-w-0 flex-1 rounded-full border border-linea bg-crema px-3 py-1.5 text-xs outline-none focus:border-violeta/40" />
         <button onClick={mandar} disabled={!q.trim()} aria-label={t("common.enviar")}
           className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violeta text-crema disabled:opacity-40">
           <ArrowRight size={13} />
@@ -1600,7 +1600,7 @@ function HallazgoDetalle({ h, alCamino, onNavegar, onPreguntar, onCerrar, t, flo
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <Icon size={16} className={c.cls} />
-          <h3 className="font-display text-[0.98rem] font-bold leading-tight">{h.titulo}</h3>
+          <h3 className="font-display text-base font-bold leading-tight">{h.titulo}</h3>
         </div>
         <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={16} /></button>
       </div>
@@ -1609,16 +1609,16 @@ function HallazgoDetalle({ h, alCamino, onNavegar, onPreguntar, onCerrar, t, flo
           {pesoCorto(h.monto)}
           {/* P30·A2 — la etiqueta del $ cuando NO es plata a cobrar (ej.
               concentración: facturación 12m, no deuda) */}
-          {h.montoLabel && <span className="ml-2 align-middle text-[0.7rem] font-normal text-tinta-suave">{h.montoLabel}</span>}
+          {h.montoLabel && <span className="ml-2 align-middle text-xs font-normal text-tinta-suave">{h.montoLabel}</span>}
         </p>
       )}
 
       {/* Qué se cruzó */}
-      <p className="mt-2 text-[0.72rem] text-tinta-suave">{t("cardneg.cruce")} {h.fuentes.join(" · ")}</p>
+      <p className="mt-2 text-xs text-tinta-suave">{t("cardneg.cruce")} {h.fuentes.join(" · ")}</p>
       {/* El porqué con los datos */}
       <div className="mt-2 space-y-1.5">
         {h.porque.map((p, i) => (
-          <p key={i} className="text-[0.86rem] leading-snug text-tinta">{p}</p>
+          <p key={i} className="text-sm leading-snug text-tinta">{p}</p>
         ))}
       </div>
       {h.grafico && (
@@ -1628,24 +1628,24 @@ function HallazgoDetalle({ h, alCamino, onNavegar, onPreguntar, onCerrar, t, flo
       )}
       {/* La ventana / supuestos declarados */}
       {h.supuestos.length > 0 && (
-        <p className="mt-2 rounded-lg bg-papel-hondo/50 px-2.5 py-1.5 text-[0.74rem] leading-snug text-tinta-suave">
+        <p className="mt-2 rounded-lg bg-papel-hondo/50 px-2.5 py-1.5 text-xs leading-snug text-tinta-suave">
           {h.supuestos.join(" · ")}
         </p>
       )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button onClick={() => alCamino?.(h)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-[0.8rem] font-semibold text-crema">
+          className="inline-flex items-center gap-1.5 rounded-full bg-violeta px-3.5 py-1.5 text-sm font-semibold text-crema">
           <Lightbulb size={13} /> {t("mapa.como_lo_pense")}
         </button>
         {h.chat && (
           <button onClick={() => onPreguntar?.(h.chat)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-violeta/40 px-3.5 py-1.5 text-[0.8rem] font-semibold text-violeta">
+            className="inline-flex items-center gap-1.5 rounded-full border border-violeta/40 px-3.5 py-1.5 text-sm font-semibold text-violeta">
             <AngelaMark size={13} /> {t("mapa.preguntar")}
           </button>
         )}
         <button onClick={() => onNavegar?.(h.seccion)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+          className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
           {t("mapa.ver_seccion")} <ArrowRight size={13} />
         </button>
       </div>
@@ -1841,7 +1841,7 @@ function MapaApilado({ modelo, onSeleccion, seleccion, onNavegar, onPreguntar, o
     <div className="space-y-2.5">
       {/* Los hallazgos primero: lo que el cerebro produjo (tap → explicación) */}
       <div className="rounded-[var(--radius-card)] border border-violeta/20 bg-violeta/[0.04] p-3.5">
-        <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-wide text-violeta">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-violeta">
           {t("mapa.fila_hallazgos", { n: num(modelo.hallazgos.length) })}
         </p>
         <div className="space-y-1.5">
@@ -1864,11 +1864,11 @@ function MapaApilado({ modelo, onSeleccion, seleccion, onNavegar, onPreguntar, o
                 <Icon size={19} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block font-display text-[0.98rem] font-bold leading-tight">{t(def.lk)}</span>
-                <span className="plata block text-[0.8rem] text-tinta-suave">{m.dato}</span>
+                <span className="block font-display text-base font-bold leading-tight">{t(def.lk)}</span>
+                <span className="plata block text-sm text-tinta-suave">{m.dato}</span>
               </span>
               {m.nHallazgos > 0 && (
-                <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-violeta px-1 text-[0.66rem] font-bold text-crema">{m.nHallazgos}</span>
+                <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-violeta px-1 text-2xs font-bold text-crema">{m.nHallazgos}</span>
               )}
               <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${punto}`} />
             </button>
@@ -2200,7 +2200,7 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
                 Con el panel abierto se corre a su derecha — si no, queda tapado
                 (mismo criterio que la cámara del cerebro). */}
             {rama && (
-              <div className="absolute top-4 z-10 flex items-center gap-1 rounded-full border border-linea bg-crema/95 px-3 py-1.5 text-[0.76rem] font-semibold sombra-papel backdrop-blur"
+              <div className="absolute top-4 z-10 flex items-center gap-1 rounded-full border border-linea bg-crema/95 px-3 py-1.5 text-xs font-semibold sombra-papel backdrop-blur"
                 style={{ left: panelIzq ? "calc(var(--panel-w) + 2rem)" : "1rem" }}>
                 <button onClick={() => { setRama(null); setNivel2(null); }} className="text-tinta-suave hover:text-tinta">{t("nav.mapa")}</button>
                 <ChevronRight size={12} className="text-tinta-suave" />
@@ -2216,23 +2216,23 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
                 ? { left: "calc(var(--panel-w) + 2rem)", maxWidth: "calc(100% - var(--panel-w) - 3rem)" }
                 : { left: "1rem", maxWidth: "calc(100% - 2rem)" }}>
               {[["producto", t("mapa.leyenda_producto")], ["plata", t("mapa.leyenda_plata")], ["senal", t("mapa.leyenda_senal")]].map(([k, l]) => (
-                <span key={k} className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-tinta-suave">
+                <span key={k} className="flex items-center gap-1.5 text-xs font-semibold text-tinta-suave">
                   <span className="h-0.5 w-4 rounded-full" style={{ background: COLOR_RELACION[k] }} /> {l}
                 </span>
               ))}
-              <span className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-violeta">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-violeta">
                 <span className="h-0.5 w-4 rounded-full" style={{ background: AZUL_IA }} /> {t("mapa.leyenda_camino")}
               </span>
-              <span className="flex items-center gap-1.5 text-[0.7rem] font-semibold" style={{ color: K_COLOR }}>
+              <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: K_COLOR }}>
                 <span className="h-0 w-4 border-t-2 border-dashed" style={{ borderColor: K_COLOR }} /> {t("mapa.leyenda_conocimiento")}
               </span>
-              <span className="text-[0.7rem] text-tinta-suave/70">{t("mapa.pista_expandir")}</span>
+              <span className="text-xs text-tinta-suave/70">{t("mapa.pista_expandir")}</span>
             </div>
 
             {/* P40·3 — el acceso a la vista completa. Arriba a la derecha del
                 lienzo, lejos de los controles de zoom (que son otra cosa). */}
             <button onClick={() => setCompleto(true)}
-              className="absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema/95 px-3.5 py-1.5 text-[0.76rem] font-semibold text-tinta-suave sombra-papel backdrop-blur hover:text-tinta">
+              className="absolute right-4 top-4 z-10 inline-flex items-center gap-1.5 rounded-full border border-linea bg-crema/95 px-3.5 py-1.5 text-xs font-semibold text-tinta-suave sombra-papel backdrop-blur hover:text-tinta">
               <Expand size={14} /> {t("mapa.ver_completo")}
             </button>
 
@@ -2269,11 +2269,11 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
             <div className="flex shrink-0 items-center gap-3 border-b border-linea px-5 py-3">
               <Waypoints size={18} className="text-hielo" />
               <div className="min-w-0 flex-1">
-                <h2 className="font-display text-[1.05rem] font-bold leading-tight">{t("mapa.completo_titulo")}</h2>
-                <p className="truncate text-[0.8rem] text-tinta-suave">{t("mapa.completo_sub")}</p>
+                <h2 className="font-display text-lg font-bold leading-tight">{t("mapa.completo_titulo")}</h2>
+                <p className="truncate text-sm text-tinta-suave">{t("mapa.completo_sub")}</p>
               </div>
               <button onClick={() => setCompleto(false)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-[0.8rem] font-semibold text-tinta-suave hover:text-tinta">
+                className="inline-flex items-center gap-1.5 rounded-full border border-linea px-3.5 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
                 <X size={14} /> {t("mapa.completo_cerrar")}
               </button>
             </div>
@@ -2300,39 +2300,39 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
           <button onClick={() => setPanelK(true)}
             className="card-hover flex flex-col rounded-[var(--radius-card)] border bg-crema px-3.5 py-2.5 text-left sombra-papel"
             style={{ borderColor: `${K_COLOR}55` }}>
-            <p className="flex items-center gap-1.5 text-[0.64rem] font-semibold uppercase tracking-wide" style={{ color: K_COLOR }}>
+            <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide" style={{ color: K_COLOR }}>
               <GraduationCap size={12} /> {t("mapa.fila_ensenaste")}
             </p>
             <p className="plata mt-0.5 text-xl font-medium leading-none">
-              {num(modelo.conocimiento.total)} <span className="text-[0.7rem] font-normal text-tinta-suave">· {num(modelo.conocimiento.aplicadasHoy)} {t("mapa.k_aplicadas_hoy")}</span>
+              {num(modelo.conocimiento.total)} <span className="text-xs font-normal text-tinta-suave">· {num(modelo.conocimiento.aplicadasHoy)} {t("mapa.k_aplicadas_hoy")}</span>
             </p>
-            <p className="mt-1 line-clamp-3 break-words text-[0.66rem] leading-snug text-tinta-suave">{t("mapa.fila_ensenaste_sub", { total: modelo.conocimiento.total, hoy: modelo.conocimiento.aplicadasHoy })}</p>
+            <p className="mt-1 line-clamp-3 break-words text-2xs leading-snug text-tinta-suave">{t("mapa.fila_ensenaste_sub", { total: modelo.conocimiento.total, hoy: modelo.conocimiento.aplicadasHoy })}</p>
           </button>
           <button onClick={() => top && verHallazgo(top)}
             className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema px-3.5 py-2.5 text-left sombra-papel">
-            <p className="flex items-center gap-1.5 text-[0.64rem] font-semibold uppercase tracking-wide text-violeta"><Lightbulb size={12} /> {t("mapa.fila_hallazgos_t")}</p>
+            <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-violeta"><Lightbulb size={12} /> {t("mapa.fila_hallazgos_t")}</p>
             <p className="plata mt-0.5 text-xl font-medium leading-none">{num(nAlertas)} + {num(nOps)}</p>
-            <p className="mt-1 line-clamp-3 break-words text-[0.66rem] leading-snug text-tinta-suave">{top ? t("mapa.fila_hallazgos_top", { titulo: top.titulo }) : t("mapa.fila_hallazgos_sub")}</p>
+            <p className="mt-1 line-clamp-3 break-words text-2xs leading-snug text-tinta-suave">{top ? t("mapa.fila_hallazgos_top", { titulo: top.titulo }) : t("mapa.fila_hallazgos_sub")}</p>
           </button>
           {/* Capital recuperable: número + desglose (2 líneas si hace falta); la
               nota de exposición se conserva como tooltip + ícono info. */}
           <button onClick={() => recuperables[0] && verHallazgo(recuperables[0])}
             title={exposicion > 0 ? t("mapa.fila_exposicion", { monto: pesoCorto(exposicion) }) : ""}
             className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema px-3.5 py-2.5 text-left sombra-papel">
-            <p className="flex items-center gap-1.5 text-[0.64rem] font-semibold uppercase tracking-wide text-salvia">
+            <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-salvia">
               <Sparkles size={12} /> {t("mapa.fila_recuperable")}
               {exposicion > 0 && <Info size={11} className="text-tinta-suave/70" />}
             </p>
             <p className="plata mt-0.5 text-xl font-medium leading-none text-salvia">{pesoCorto(recuperable)}</p>
-            <p className="mt-1 line-clamp-3 break-words text-[0.66rem] leading-snug text-tinta-suave">
+            <p className="mt-1 line-clamp-3 break-words text-2xs leading-snug text-tinta-suave">
               {recuperables.map((h) => `${t(`mapa.recc_${h.id}`)} ${pesoCorto(h.monto)}`).join(" · ")}
             </p>
           </button>
           <button onClick={() => onNavegar?.("panel")}
             className="card-hover flex flex-col rounded-[var(--radius-card)] border border-linea bg-crema px-3.5 py-2.5 text-left sombra-papel">
-            <p className="flex items-center gap-1.5 text-[0.64rem] font-semibold uppercase tracking-wide text-tinta-suave"><AngelaMark size={12} /> {t("mapa.fila_hizo")}</p>
+            <p className="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-tinta-suave"><AngelaMark size={12} /> {t("mapa.fila_hizo")}</p>
             <p className="plata mt-0.5 text-xl font-medium leading-none">{num(hechoN)}</p>
-            <p className="mt-1 line-clamp-3 break-words text-[0.66rem] leading-snug text-tinta-suave">{t("mapa.fila_hizo_sub")}</p>
+            <p className="mt-1 line-clamp-3 break-words text-2xs leading-snug text-tinta-suave">{t("mapa.fila_hizo_sub")}</p>
           </button>
         </div>
         </>
@@ -2343,7 +2343,7 @@ export default function MapaNegocio({ onNavegar, onPreguntar, onInsight }) {
               <InsightNodo insight={insightMobileH} onNavegar={onNavegar}
                 onPreguntar={onPreguntar} onCerrar={() => setInsightMobileH(null)} />
               {/* el camino, contado (sin canvas): la secuencia que lo produjo */}
-              <p className="mt-1 px-1 text-[0.74rem] text-tinta-suave">
+              <p className="mt-1 px-1 text-xs text-tinta-suave">
                 {t("mapa.camino_textual")}: {(insightMobileH.h.camino || []).map((n) => t(DOMINIOS[n]?.lk || n)).join(" → ")} → 💡
               </p>
             </div>
@@ -2366,10 +2366,10 @@ function Cabecera({ t, modelo }) {
   return (
     <div className="mb-4">
       <h1 className="font-display text-2xl font-bold leading-none">{t("nav.mapa")}</h1>
-      <p className="mt-1 text-[0.92rem] text-tinta-suave">{t("mapa.subtitulo")}</p>
+      <p className="mt-1 text-sm text-tinta-suave">{t("mapa.subtitulo")}</p>
       <div className="mt-2.5 flex items-center gap-2.5">
         <AngelaMark size={30} estado={modelo ? "idle" : "pensando"} />
-        <p className="min-w-0 text-[0.86rem] leading-snug text-tinta">
+        <p className="min-w-0 text-sm leading-snug text-tinta">
           {c ? `${t("mapa.frase", { anios: num(c.anios), productos: num(c.productos), clientes: num(c.clientes), fuentes: num(c.fuentes) })} ${t("mapa.angela_cruces", { n: num(modelo.hallazgos.length) })}`
              : t("mapa.cargando")}
         </p>

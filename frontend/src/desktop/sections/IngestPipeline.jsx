@@ -23,7 +23,7 @@ export default function IngestPipeline({ current, onNavigate }) {
             {i > 0 && <ChevronRight size={12} className="mx-0.5 text-tinta-suave/50" aria-hidden />}
             <button type="button" onClick={() => onNavigate(step.id)}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-2.5 py-1 text-[0.76rem] font-semibold ${
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                 active ? "bg-violeta text-crema" : "text-tinta-suave hover:text-tinta"}`}>
               {t(step.lk)}
             </button>

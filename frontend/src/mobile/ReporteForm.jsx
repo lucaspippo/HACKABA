@@ -50,16 +50,16 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <AngelaMark size={28} />
-            <h2 className="font-display text-[1.1rem] font-bold leading-tight">{t(`rol.reporte_t_${tipo}`)}</h2>
+            <h2 className="font-display text-lg font-bold leading-tight">{t(`rol.reporte_t_${tipo}`)}</h2>
           </div>
           <button onClick={onCerrar} aria-label={t("common.cerrar")} className="text-tinta-suave hover:text-tinta"><X size={20} /></button>
         </div>
-        <p className="mt-1.5 text-[0.84rem] leading-snug text-tinta-suave">{t(`rol.reporte_sub_${tipo}`)}</p>
+        <p className="mt-1.5 text-sm leading-snug text-tinta-suave">{t(`rol.reporte_sub_${tipo}`)}</p>
 
         <div className="mt-4 space-y-3">
           {campos.map((c) => (
             <div key={c.id}>
-              <label className="mb-1 block text-[0.76rem] font-semibold uppercase tracking-wide text-tinta-suave">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-tinta-suave">
                 {t(c.lk)}{c.requerido && <span className="ml-1 text-rojo">*</span>}
               </label>
               {c.tipo === "foto" ? (
@@ -67,7 +67,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
                 // "environment" abre la trasera directo). Se manda como data-URL
                 // y el backend la guarda como archivo.
                 <div>
-                  <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-violeta/40 bg-violeta/[0.04] px-3.5 py-2.5 text-[0.86rem] font-semibold text-violeta">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-violeta/40 bg-violeta/[0.04] px-3.5 py-2.5 text-sm font-semibold text-violeta">
                     <Camera size={16} />
                     {valores[c.id] ? t("rol.f_prueba_cambiar") : t("rol.f_prueba_sacar")}
                     <input type="file" accept="image/*" capture="environment" className="hidden"
@@ -84,7 +84,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
                     <div className="mt-2 flex items-center gap-2">
                       <img src={valores[c.id]} alt="" className="h-16 w-16 rounded-lg object-cover" />
                       <button onClick={() => setValores((v) => ({ ...v, [c.id]: "" }))}
-                        className="text-[0.78rem] font-semibold text-tinta-suave hover:text-tinta">
+                        className="text-xs font-semibold text-tinta-suave hover:text-tinta">
                         {t("rol.f_prueba_quitar")}
                       </button>
                     </div>
@@ -94,7 +94,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
                 <div className="flex flex-wrap gap-1.5">
                   {c.opciones.map((o) => (
                     <button key={o.v} onClick={() => setValores((v) => ({ ...v, [c.id]: o.v }))}
-                      className={`min-h-9 rounded-full border px-3 py-1.5 text-[0.82rem] font-semibold transition-colors ${
+                      className={`min-h-9 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                         valores[c.id] === o.v ? "border-tinta bg-tinta text-crema"
                                               : "border-linea text-tinta-suave"}`}>
                       {t(o.lk)}
@@ -107,7 +107,7 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
                   inputMode={c.tipo === "numero" ? "decimal" : undefined}
                   value={valores[c.id] ?? ""}
                   onChange={(e) => setValores((v) => ({ ...v, [c.id]: e.target.value }))}
-                  className="min-h-11 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-[0.92rem] outline-none focus:border-tinta/40"
+                  className="min-h-11 w-full rounded-xl border border-linea bg-papel px-3.5 py-2.5 text-sm outline-none focus:border-tinta/40"
                 />
               )}
             </div>
@@ -116,17 +116,17 @@ export default function ReporteForm({ tipo, onCerrar, onListo }) {
 
         <div className="mt-4 flex items-center gap-2">
           <button onClick={enviar} disabled={falta || enviando}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5 text-[0.88rem] font-semibold text-crema active:scale-95 disabled:opacity-40">
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-violeta px-4 py-2.5 text-sm font-semibold text-crema active:scale-95 disabled:opacity-40">
             {enviando ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
             {t("rol.reporte_enviar")}
           </button>
           <button onClick={onCerrar}
-            className="min-h-11 rounded-full border border-linea px-4 py-2.5 text-[0.88rem] font-semibold text-tinta-suave">
+            className="min-h-11 rounded-full border border-linea px-4 py-2.5 text-sm font-semibold text-tinta-suave">
             {t("rol.reporte_cancelar")}
           </button>
         </div>
         {/* La regla de la casa, dicha donde se aplica */}
-        <p className="mt-3 rounded-xl bg-papel-hondo/60 px-3 py-2 text-[0.78rem] leading-snug text-tinta-suave">
+        <p className="mt-3 rounded-xl bg-papel-hondo/60 px-3 py-2 text-xs leading-snug text-tinta-suave">
           {t("rol.reporte_nota")}
         </p>
       </div>

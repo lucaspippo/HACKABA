@@ -15,7 +15,7 @@ export default function Toasts() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.25 }}
-            className={`pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full border bg-crema px-4 py-2.5 text-[0.86rem] shadow-[0_14px_36px_-14px_rgba(27,25,22,0.35)] ${
+            className={`pointer-events-auto flex max-w-md items-center gap-2.5 rounded-full border bg-crema px-4 py-2.5 text-sm shadow-[0_14px_36px_-14px_rgba(27,25,22,0.35)] ${
               t.tipo === "error" ? "border-rojo/30" : "border-salvia/30"
             }`}
           >

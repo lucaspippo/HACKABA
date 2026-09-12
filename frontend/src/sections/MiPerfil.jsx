@@ -231,22 +231,22 @@ export default function MiPerfil({ user }) {
         </div>
         <div>
           <h1 className="font-display text-2xl font-bold leading-none">{user.nombre}</h1>
-          <p className="mt-1 text-[0.9rem] text-tinta-suave">{tRol(user.rol)}</p>
+          <p className="mt-1 text-sm text-tinta-suave">{tRol(user.rol)}</p>
         </div>
       </header>
 
       {aviso && (
-        <p className="rounded-xl border border-oro/30 bg-oro/[0.07] px-3.5 py-2 text-[0.86rem] text-tinta">{aviso}</p>
+        <p className="rounded-xl border border-oro/30 bg-oro/[0.07] px-3.5 py-2 text-sm text-tinta">{aviso}</p>
       )}
 
       {/* Descripción editable (personalización de vista: sin aprobación, queda auditada) */}
       <section className="rounded-[var(--radius-card)] border border-linea bg-crema p-5 sombra-papel">
         <div className="flex items-center justify-between">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-tinta-suave">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-tinta-suave">
             {t("miperfil.que_haces")}
           </p>
           {esMiPerfil && !editando && (
-            <button onClick={() => setEditando(true)} className="inline-flex items-center gap-1 text-[0.8rem] font-semibold text-tinta">
+            <button onClick={() => setEditando(true)} className="inline-flex items-center gap-1 text-sm font-semibold text-tinta">
               <Pencil size={13} /> {t("miperfil.editar")}
             </button>
           )}
@@ -255,16 +255,16 @@ export default function MiPerfil({ user }) {
           <div className="mt-3 space-y-3">
             <div className="flex items-start gap-2.5">
               <AngelaMark size={24} />
-              <p className="text-[0.86rem] leading-snug text-tinta-suave">
+              <p className="text-sm leading-snug text-tinta-suave">
                 {t("miperfil.intro_preguntas")}
               </p>
             </div>
             {BLOQUES.map((b) => (
               <div key={b.id}>
-                <label htmlFor={`bloque-${b.id}`} className="mb-1 flex items-center gap-2 text-[0.84rem] font-semibold">
+                <label htmlFor={`bloque-${b.id}`} className="mb-1 flex items-center gap-2 text-sm font-semibold">
                   {t(b.lkq)}
                   {grabando && bloqueActivo === b.id && (
-                    <span className="inline-flex items-center gap-1 text-[0.72rem] font-medium text-rojo"><Mic size={11} /> {t("miperfil.dictando_aca")}</span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-rojo"><Mic size={11} /> {t("miperfil.dictando_aca")}</span>
                   )}
                 </label>
                 <textarea
@@ -273,40 +273,40 @@ export default function MiPerfil({ user }) {
                   onChange={(e) => setBloques((v) => ({ ...v, [b.id]: e.target.value }))}
                   onFocus={() => { setBloqueActivo(b.id); bloqueActivoRef.current = b.id; }}
                   rows={2}
-                  className={`w-full rounded-xl border bg-papel p-3 text-[0.92rem] leading-relaxed outline-none focus:border-tinta/40 ${
+                  className={`w-full rounded-xl border bg-papel p-3 text-sm leading-relaxed outline-none focus:border-tinta/40 ${
                     grabando && bloqueActivo === b.id ? "border-rojo/40" : "border-linea"}`}
                   placeholder={t(b.lkph)}
                 />
               </div>
             ))}
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={guardarDescripcion} disabled={guardando} className="rounded-full bg-tinta px-4 py-1.5 text-[0.84rem] font-semibold text-crema disabled:opacity-50">
+              <button onClick={guardarDescripcion} disabled={guardando} className="rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-50">
                 {guardando ? t("miperfil.guardando") : t("miperfil.guardar")}
               </button>
               {SR && (
                 <button onClick={toggleDictado}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-[0.84rem] font-semibold ${
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-sm font-semibold ${
                     grabando ? "border-rojo bg-rojo/10 text-rojo animate-pulse" : "border-linea text-tinta-suave hover:text-tinta"}`}>
                   {grabando ? <><MicOff size={14} /> {t("miperfil.voz_parar")}</> : <><Mic size={14} /> {t("miperfil.voz_contar")}</>}
                 </button>
               )}
-              <button onClick={() => { recRef.current?.stop(); setEditando(false); setBloques(partirDescripcion(descripcion)); }} className="rounded-full border border-linea px-4 py-1.5 text-[0.84rem] font-semibold text-tinta-suave">
+              <button onClick={() => { recRef.current?.stop(); setEditando(false); setBloques(partirDescripcion(descripcion)); }} className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave">
                 {t("miperfil.cancelar")}
               </button>
-              {grabando && <span className="text-[0.8rem] text-rojo">{t("miperfil.escuchando")}</span>}
+              {grabando && <span className="text-sm text-rojo">{t("miperfil.escuchando")}</span>}
             </div>
           </div>
         ) : vista && tieneBloques(vista) ? (
           <dl className="mt-2 space-y-2">
             {BLOQUES.filter((b) => bloquesVista[b.id]).map((b) => (
               <div key={b.id}>
-                <dt className="text-[0.76rem] font-semibold text-tinta-suave">{t(b.lket)}</dt>
-                <dd className="text-[0.92rem] leading-relaxed">{bloquesVista[b.id]}</dd>
+                <dt className="text-xs font-semibold text-tinta-suave">{t(b.lket)}</dt>
+                <dd className="text-sm leading-relaxed">{bloquesVista[b.id]}</dd>
               </div>
             ))}
           </dl>
         ) : (
-          <p className="mt-2 text-[0.95rem] leading-relaxed text-tinta">{vista}</p>
+          <p className="mt-2 text-base leading-relaxed text-tinta">{vista}</p>
         )}
       </section>
 
@@ -314,7 +314,7 @@ export default function MiPerfil({ user }) {
           (match por nombre, insensible a acentos — el tablero completo vive en Equipo) */}
       {esMiPerfil && (misObjetivos.length > 0 || misRecordatorios.length > 0) && (
         <section>
-          <h2 className="mb-3 flex items-center gap-2 font-display text-[1.1rem] font-bold">
+          <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold">
             <Target size={18} className="text-tinta-suave" /> {t("miperfil.mio_titulo")}
           </h2>
           {misObjetivos.length > 0 && (
@@ -322,12 +322,12 @@ export default function MiPerfil({ user }) {
               {misObjetivos.map((o) => (
                 <div key={o.id} className="flex items-center gap-3 rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
                   <div className="min-w-0 flex-1">
-                    <p className="font-display text-[0.98rem] font-bold leading-tight">{t(o.nombre)}</p>
-                    <p className="mt-0.5 text-[0.8rem] text-tinta-suave">{t(o.fecha)}</p>
+                    <p className="font-display text-base font-bold leading-tight">{t(o.nombre)}</p>
+                    <p className="mt-0.5 text-sm text-tinta-suave">{t(o.fecha)}</p>
                   </div>
                   <button
                     onClick={() => equipoStore.cicloEstado(o.id)}
-                    className={`shrink-0 rounded-full px-3 py-1 text-[0.76rem] font-semibold ${
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
                       o.estado === "listo" ? "bg-salvia/15 text-salvia" : o.estado === "en_proceso" ? "bg-oro/15 text-oro-tinta" : "bg-papel-hondo text-tinta-suave"
                     }`}
                   >
@@ -345,7 +345,7 @@ export default function MiPerfil({ user }) {
                   <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${r.hecho ? "border-salvia bg-salvia text-crema" : "border-tinta-suave/40"}`}>
                     {r.hecho && <CheckCircle2 size={13} />}
                   </span>
-                  <span className={`flex-1 text-[0.88rem] ${r.hecho ? "text-tinta-suave line-through" : "text-tinta"}`}>{t(r.texto)}</span>
+                  <span className={`flex-1 text-sm ${r.hecho ? "text-tinta-suave line-through" : "text-tinta"}`}>{t(r.texto)}</span>
                 </button>
               ))}
             </div>
@@ -362,18 +362,18 @@ export default function MiPerfil({ user }) {
         <section>
           <div className="mb-1 flex items-center gap-2">
             <AngelaMark size={26} />
-            <h2 className="font-display text-[1.1rem] font-bold">{t("miperfil.pedir_titulo")}</h2>
+            <h2 className="font-display text-lg font-bold">{t("miperfil.pedir_titulo")}</h2>
           </div>
-          <p className="mb-3 text-[0.86rem] leading-snug text-tinta-suave">{t("miperfil.pedir_sub")}</p>
+          <p className="mb-3 text-sm leading-snug text-tinta-suave">{t("miperfil.pedir_sub")}</p>
 
           {sugerencias.length > 0 && (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {sugerencias.map((s) => (
                 <div key={s.modulo} className="rounded-[var(--radius-card)] border border-linea bg-crema p-4 sombra-papel">
-                  <p className="font-display text-[0.98rem] font-bold">{s.label}</p>
-                  <p className="mt-1 text-[0.84rem] leading-snug text-tinta-suave">{s.motivo}</p>
+                  <p className="font-display text-base font-bold">{s.label}</p>
+                  <p className="mt-1 text-sm leading-snug text-tinta-suave">{s.motivo}</p>
                   <button onClick={() => { setPidiendo(s); setPorque(""); }}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-tinta px-3.5 py-1.5 text-[0.82rem] font-semibold text-crema">
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-tinta px-3.5 py-1.5 text-sm font-semibold text-crema">
                     <Send size={13} /> {t("miperfil.solicitar")}
                   </button>
                 </div>
@@ -383,13 +383,13 @@ export default function MiPerfil({ user }) {
 
           {pedibles.length > 0 && (
             <div className="mt-3">
-              <p className="mb-2 text-[0.8rem] font-semibold uppercase tracking-wide text-tinta-suave">
+              <p className="mb-2 text-sm font-semibold uppercase tracking-wide text-tinta-suave">
                 {sugerencias.length > 0 ? t("miperfil.pedir_otro") : t("miperfil.pedir_cual")}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {pedibles.map((m) => (
                   <button key={m.modulo} onClick={() => { setPidiendo(m); setPorque(""); }}
-                    className={`rounded-full border px-3 py-1.5 text-[0.8rem] font-semibold transition-colors ${
+                    className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
                       pidiendo?.modulo === m.modulo
                         ? "border-tinta bg-tinta text-crema"
                         : "border-linea text-tinta-suave hover:border-tinta/40 hover:text-tinta"}`}>
@@ -402,24 +402,24 @@ export default function MiPerfil({ user }) {
 
           {pidiendo && (
             <div className="mt-3 rounded-[var(--radius-card)] border border-tinta/20 bg-papel-hondo/40 p-4">
-              <p className="text-[0.9rem] font-semibold text-tinta">
+              <p className="text-sm font-semibold text-tinta">
                 {t("miperfil.pedir_para_que", { modulo: pidiendo.label })}
               </p>
               <textarea
                 value={porque} onChange={(e) => setPorque(e.target.value)} rows={2} autoFocus
                 placeholder={t("miperfil.pedir_ph")}
-                className="mt-2 w-full rounded-xl border border-linea bg-crema p-3 text-[0.88rem] leading-snug outline-none focus:border-tinta/40"
+                className="mt-2 w-full rounded-xl border border-linea bg-crema p-3 text-sm leading-snug outline-none focus:border-tinta/40"
               />
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button onClick={() => solicitarModulo(pidiendo.modulo, porque)} disabled={!porque.trim()}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-1.5 text-[0.84rem] font-semibold text-crema disabled:opacity-40">
+                  className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-1.5 text-sm font-semibold text-crema disabled:opacity-40">
                   <Send size={13} /> {t("miperfil.pedir_enviar")}
                 </button>
                 <button onClick={() => { setPidiendo(null); setPorque(""); }}
-                  className="rounded-full border border-linea px-4 py-1.5 text-[0.84rem] font-semibold text-tinta-suave hover:text-tinta">
+                  className="rounded-full border border-linea px-4 py-1.5 text-sm font-semibold text-tinta-suave hover:text-tinta">
                   {t("miperfil.pedir_cancelar")}
                 </button>
-                <span className="text-[0.78rem] text-tinta-suave">{t("miperfil.pedir_nota")}</span>
+                <span className="text-xs text-tinta-suave">{t("miperfil.pedir_nota")}</span>
               </div>
             </div>
           )}
@@ -429,7 +429,7 @@ export default function MiPerfil({ user }) {
       {/* Mis solicitudes: estado + respuesta del dueño */}
       {esMiPerfil && solicitudes.length > 0 && (
         <section>
-          <h2 className="mb-2 font-display text-[1.05rem] font-bold">{t("miperfil.tus_solicitudes")}</h2>
+          <h2 className="mb-2 font-display text-lg font-bold">{t("miperfil.tus_solicitudes")}</h2>
           <div className="space-y-2">
             {solicitudes.map((s) => {
               const e = ESTADO[s.estado] || ESTADO.pendiente;
@@ -438,8 +438,8 @@ export default function MiPerfil({ user }) {
                 <div key={s.id} className="flex items-start gap-2.5 rounded-xl border border-linea bg-crema px-3.5 py-2.5">
                   <Icon size={16} className={`mt-0.5 shrink-0 ${e.color}`} />
                   <div className="min-w-0">
-                    <p className="text-[0.88rem] font-medium">{s.label} · <span className={e.color}>{t(e.lk)}</span></p>
-                    {s.motivo_dueno && <p className="text-[0.8rem] text-tinta-suave">{t("miperfil.el_dueno", { motivo: s.motivo_dueno })}</p>}
+                    <p className="text-sm font-medium">{s.label} · <span className={e.color}>{t(e.lk)}</span></p>
+                    {s.motivo_dueno && <p className="text-sm text-tinta-suave">{t("miperfil.el_dueno", { motivo: s.motivo_dueno })}</p>}
                   </div>
                 </div>
               );
@@ -450,18 +450,18 @@ export default function MiPerfil({ user }) {
 
       {/* Módulos activos */}
       <section>
-        <h2 className="mb-3 font-display text-[1.1rem] font-bold">{t("miperfil.incluye")}</h2>
+        <h2 className="mb-3 font-display text-lg font-bold">{t("miperfil.incluye")}</h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {Object.entries(user.modulos_labels || {})
             .filter(([id]) => id !== "angela")
             .map(([id, label]) => (
               <div key={id} className="flex items-center gap-2.5 rounded-xl border border-linea bg-crema px-3.5 py-2.5">
                 <CheckCircle2 size={16} className="text-salvia" />
-                <span className="text-[0.9rem] font-medium">{label}</span>
+                <span className="text-sm font-medium">{label}</span>
               </div>
             ))}
         </div>
-        <p className="mt-3 text-[0.82rem] text-tinta-suave">
+        <p className="mt-3 text-sm text-tinta-suave">
           {t("miperfil.usas_en", {
             lista: user.superficies?.map((s) => t(s === "desktop" ? "miperfil.superficie_desktop" : "miperfil.superficie_mobile")).join(` ${t("miperfil.y")} `),
           })}
@@ -476,10 +476,10 @@ export default function MiPerfil({ user }) {
           mañana WhatsApp le habla a cada uno en su idioma leyendo lo mismo) */}
       {esMiPerfil && (
         <section>
-          <h2 className="mb-3 font-display text-[1.1rem] font-bold">{t("perfil.idioma_titulo")}</h2>
+          <h2 className="mb-3 font-display text-lg font-bold">{t("perfil.idioma_titulo")}</h2>
           <div className="flex items-center gap-3 rounded-xl border border-linea bg-crema px-3.5 py-3">
             <Globe size={16} className="shrink-0 text-hielo" />
-            <p className="flex-1 text-[0.85rem] text-tinta-suave">{t("perfil.idioma_nota")}</p>
+            <p className="flex-1 text-sm text-tinta-suave">{t("perfil.idioma_nota")}</p>
             <LangSwitch />
           </div>
         </section>
@@ -534,10 +534,10 @@ function PreferenciasAngela() {
 
   return (
     <section>
-      <h2 className="mb-1 font-display text-[1.1rem] font-bold">{t("miperfil.prefs_titulo")}</h2>
-      <p className="mb-3 text-[0.84rem] text-tinta-suave">{t("miperfil.prefs_sub")}</p>
+      <h2 className="mb-1 font-display text-lg font-bold">{t("miperfil.prefs_titulo")}</h2>
+      <p className="mb-3 text-sm text-tinta-suave">{t("miperfil.prefs_sub")}</p>
       {items.length === 0 && reglas.length === 0 ? (
-        <p className="rounded-xl border border-linea bg-crema px-3.5 py-3 text-[0.85rem] text-tinta-suave">
+        <p className="rounded-xl border border-linea bg-crema px-3.5 py-3 text-sm text-tinta-suave">
           {t("miperfil.prefs_vacio")}
         </p>
       ) : (
@@ -545,7 +545,7 @@ function PreferenciasAngela() {
           {items.map((it) => (
             <div key={it.clave} className="flex items-center gap-3 border-b border-linea/70 px-3.5 py-2.5 last:border-0">
               <AngelaMark size={20} />
-              <p className="min-w-0 flex-1 text-[0.86rem] text-tinta">{it.texto}</p>
+              <p className="min-w-0 flex-1 text-sm text-tinta">{it.texto}</p>
               <button onClick={() => borrar(it.clave)} aria-label={t("miperfil.pref_borrar")}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-tinta-suave hover:bg-rojo/10 hover:text-rojo">
                 <XCircle size={16} />
@@ -557,8 +557,8 @@ function PreferenciasAngela() {
             <div key={r.id} className="flex items-center gap-3 border-b border-linea/70 px-3.5 py-2.5 last:border-0">
               <AngelaMark size={20} estado="esperando" />
               <div className="min-w-0 flex-1">
-                <p className="text-[0.86rem] text-tinta">{r.texto}</p>
-                <p className="text-[0.72rem] text-tinta-suave">{t("miperfil.regla_aviso")}</p>
+                <p className="text-sm text-tinta">{r.texto}</p>
+                <p className="text-xs text-tinta-suave">{t("miperfil.regla_aviso")}</p>
               </div>
               <button
                 onClick={() => api.recordatorioCompletar(r.id).then(cargarReglas).catch(() => {})}

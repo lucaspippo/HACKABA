@@ -36,17 +36,17 @@ export default function AccountMenu({ user, onVerPerfil }) {
           <div className="flex items-center gap-3 border-b border-linea p-3">
             <Avatar persona={user} size={36} />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[0.9rem] font-semibold">{user.nombre}</p>
-              <p className="truncate text-[0.8rem] text-tinta-suave">{tRol(user.rol)}</p>
+              <p className="truncate text-sm font-semibold">{user.nombre}</p>
+              <p className="truncate text-sm text-tinta-suave">{tRol(user.rol)}</p>
             </div>
           </div>
           <div className="flex items-center justify-between gap-3 border-b border-linea px-3 py-2.5">
-            <span className="text-[0.85rem] font-medium text-tinta-suave">{t("nav.idioma")}</span>
+            <span className="text-sm font-medium text-tinta-suave">{t("nav.idioma")}</span>
             <LangSwitch />
           </div>
           <button
             onClick={() => { setAbierto(false); onVerPerfil(); }}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-[0.88rem] font-medium text-tinta hover:bg-papel-hondo/60"
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-medium text-tinta hover:bg-papel-hondo/60"
           >
             <UserCircle size={17} className="text-tinta-suave" />
             <span className="flex-1">{t("nav.ver_perfil")}</span>
@@ -54,7 +54,7 @@ export default function AccountMenu({ user, onVerPerfil }) {
           </button>
           <button
             onClick={() => authStore.logout({ manual: true })}
-            className="flex w-full items-center gap-3 border-t border-linea px-3 py-2.5 text-left text-[0.88rem] font-medium text-rojo-hondo hover:bg-rojo/[0.05]"
+            className="flex w-full items-center gap-3 border-t border-linea px-3 py-2.5 text-left text-sm font-medium text-rojo-hondo hover:bg-rojo/[0.05]"
           >
             <LogOut size={17} />
             {t("nav.salir")}

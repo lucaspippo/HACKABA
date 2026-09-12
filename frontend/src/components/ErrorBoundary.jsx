@@ -27,18 +27,18 @@ export default class ErrorBoundary extends Component {
     return (
       <div className="rounded-card border border-rojo/25 bg-rojo/[0.04] p-8 text-center">
         <AlertTriangle size={26} className="mx-auto text-rojo" />
-        <p className="mt-3 font-display text-[1.15rem] font-bold">{t("error.seccion_titulo")}</p>
-        <p className="mx-auto mt-1 max-w-md text-[0.9rem] leading-snug text-tinta-suave">
+        <p className="mt-3 font-display text-lg font-bold">{t("error.seccion_titulo")}</p>
+        <p className="mx-auto mt-1 max-w-md text-sm leading-snug text-tinta-suave">
           {t("error.seccion_detalle")}
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <button onClick={() => this.setState({ error: null })}
-            className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-2 text-[0.85rem] font-semibold text-crema">
+            className="inline-flex items-center gap-1.5 rounded-full bg-tinta px-4 py-2 text-sm font-semibold text-crema">
             <RotateCcw size={14} /> {t("error.reintentar")}
           </button>
           {this.props.onInicio && (
             <button onClick={this.props.onInicio}
-              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-[0.85rem] font-semibold text-tinta-suave hover:text-tinta">
+              className="inline-flex items-center gap-1.5 rounded-full border border-linea px-4 py-2 text-sm font-semibold text-tinta-suave hover:text-tinta">
               <Home size={14} /> {t("error.ir_inicio")}
             </button>
           )}

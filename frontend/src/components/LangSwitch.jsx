@@ -6,7 +6,7 @@ export default function LangSwitch({ className = "" }) {
     <div
       role="group"
       aria-label={t("lang.cambiar")}
-      className={`plata flex items-center overflow-hidden rounded-full border border-linea text-[0.68rem] font-medium ${className}`}
+      className={`plata flex items-center overflow-hidden rounded-full border border-linea text-2xs font-medium ${className}`}
     >
       {["en", "es"].map((code) => (
         <button

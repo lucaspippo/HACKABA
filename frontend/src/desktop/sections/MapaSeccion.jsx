@@ -59,7 +59,7 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight }) {
             return (
               <button key={v.id} onClick={() => cambiar(v.id)}
                 aria-pressed={on}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-lg font-medium
                             transition-colors ${on
                     ? "bg-crema text-tinta shadow-[0_1px_2px_rgba(33,32,29,.08)]"
                     : "text-tinta-suave hover:text-tinta"}`}>
@@ -69,7 +69,7 @@ export default function MapaSeccion({ onNavegar, onPreguntar, onInsight }) {
             );
           })}
         </div>
-        <span className="text-[12.5px] text-tinta-suave">{t(activa.ay)}</span>
+        <span className="text-base text-tinta-suave">{t(activa.ay)}</span>
       </div>
 
       {/* montadas por turno y con boundary propio: una no puede tirar a la otra */}

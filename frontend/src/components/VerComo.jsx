@@ -60,10 +60,10 @@ export function VerComoSelector() {
 
   return (
     <section>
-      <h2 className="mb-1 flex items-center gap-2 font-display text-[1.1rem] font-bold">
+      <h2 className="mb-1 flex items-center gap-2 font-display text-lg font-bold">
         <Eye size={17} className="text-hielo" /> {t("vercomo.titulo")}
       </h2>
-      <p className="mb-3 text-[0.84rem] leading-snug text-tinta-suave">{t("vercomo.sub")}</p>
+      <p className="mb-3 text-sm leading-snug text-tinta-suave">{t("vercomo.sub")}</p>
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-linea bg-crema">
         {visibles.map((p) => (
           <button
@@ -80,23 +80,23 @@ export function VerComoSelector() {
                   llevan años. El chip sale de su antigüedad real (el endpoint
                   la manda con cada persona), no de una lista aparte. */}
               <span className="flex items-center gap-1.5">
-                <span className="truncate text-[0.9rem] font-semibold text-tinta">{p.nombre}</span>
+                <span className="truncate text-sm font-semibold text-tinta">{p.nombre}</span>
                 <BadgeNuevo persona={p} compacto />
               </span>
-              <span className="block text-[0.74rem] text-tinta-suave">{tRol(p.rol)}</span>
+              <span className="block text-xs text-tinta-suave">{tRol(p.rol)}</span>
             </span>
             {/* La superficie de cada uno se DICE (el de piso trabaja del celular),
                 en vez de sacarlo de la lista — P39·1.1 */}
             {isDesktop && !(p.superficies || []).includes("desktop") && (
               <span title={t("vercomo.solo_mobile")}
-                className="hidden shrink-0 items-center gap-1 rounded-full bg-papel-hondo px-2 py-0.5 text-[0.68rem] font-semibold text-tinta-suave sm:inline-flex">
+                className="hidden shrink-0 items-center gap-1 rounded-full bg-papel-hondo px-2 py-0.5 text-2xs font-semibold text-tinta-suave sm:inline-flex">
                 <Smartphone size={11} /> {t("vercomo.solo_mobile")}
               </span>
             )}
             {p.username === actual ? (
-              <span className="shrink-0 text-[0.74rem] font-semibold text-hielo">{t("vercomo.actual")}</span>
+              <span className="shrink-0 text-xs font-semibold text-hielo">{t("vercomo.actual")}</span>
             ) : (
-              <span className="shrink-0 text-[0.78rem] font-semibold text-tinta">{t("vercomo.mirar")}</span>
+              <span className="shrink-0 text-xs font-semibold text-tinta">{t("vercomo.mirar")}</span>
             )}
           </button>
         ))}
@@ -115,12 +115,12 @@ export function VerComoChip() {
   return (
     <div className="flex shrink-0 items-center gap-2 rounded-full border border-hielo/30 bg-hielo/[0.07] py-1 pl-3 pr-1">
       <Eye size={13} className="shrink-0 text-hielo" />
-      <span className="max-w-[180px] truncate text-[0.76rem] font-semibold text-hielo">
+      <span className="max-w-[180px] truncate text-xs font-semibold text-hielo">
         {t("vercomo.chip", { nombre: u.nombre, rol: tRol(u.rol) })}
       </span>
       <button
         onClick={() => volverAlDueno(t)}
-        className="flex shrink-0 items-center gap-1 rounded-full bg-hielo px-2.5 py-1 text-[0.72rem] font-semibold text-crema"
+        className="flex shrink-0 items-center gap-1 rounded-full bg-hielo px-2.5 py-1 text-xs font-semibold text-crema"
       >
         <Undo2 size={11} /> {t("vercomo.volver")}
       </button>
